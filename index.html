@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jeu de Mémoire</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="app__header">
+      <h1>Jeu de Mémoire</h1>
+      <p class="app__subtitle">Retrouvez toutes les paires le plus vite possible.</p>
+    </header>
+
+    <section class="app__stats">
+      <div class="stat">
+        <span class="stat__label">Coups</span>
+        <span class="stat__value" id="moves">0</span>
+      </div>
+      <div class="stat">
+        <span class="stat__label">Paires</span>
+        <span class="stat__value"><span id="pairs">0</span>/<span id="total">8</span></span>
+      </div>
+      <div class="stat">
+        <span class="stat__label">Temps</span>
+        <span class="stat__value" id="timer">0s</span>
+      </div>
+    </section>
+
+    <section class="board" id="board" aria-label="Plateau de jeu"></section>
+
+    <section class="app__actions">
+      <button class="btn" id="restart" type="button">Recommencer</button>
+    </section>
+
+    <div class="overlay" id="overlay" hidden>
+      <div class="overlay__card">
+        <h2 class="overlay__title">Bravo !</h2>
+        <p class="overlay__text" id="result"></p>
+        <button class="btn btn--primary" id="playAgain" type="button">Rejouer</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
