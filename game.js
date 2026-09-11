@@ -99,6 +99,7 @@
     trees: [],
     walls: [],
     zombies: [],
+    zombieGroups: [],
     bag: { open: false, contents: [] },
     equipped: null,
     projectiles: [],
@@ -446,6 +447,7 @@
     state.nextWaveAt = WAVE_EVERY;
     state.waveActive = false;
     state.zombies = [];
+    state.zombieGroups = [];
     state.walls = [];
     state.buildMode = false;
     buildWorld();
@@ -626,9 +628,24 @@
         state.projectiles.splice(i, 1);
       }
     }
-    // retirer zombies morts
+    // retirer zombies morts (et de leur groupe)
     for (var zj = state.zombies.length - 1; zj >= 0; zj--) {
-      if (state.zombies[zj].hp <= 0) state.zombies.splice(zj, 1);
+      if (state.zombies[zj].hp <= 0) {
+        var dz = state.zombies[zj];
+        if (dz.group && dz.group.members) {
+          var idx = dz.group.members.indexOf(dz);
+          if (idx >= 0) dz.group.members.splice(idx, 1);
+        }
+        state.zombies.splice(zj, 1);
+      }
+    }
+    // retirer groupes vides
+    if (state.zombieGroups) {
+      for (var gj = state.zombieGroups.length - 1; gj >= 0; gj--) {
+        if (!state.zombieGroups[gj].members || state.zombieGroups[gj].members.length === 0) {
+          state.zombieGroups.splice(gj, 1);
+        }
+      }
     }
     // retirer murs détruits
     for (var wj = state.walls.length - 1; wj >= 0; wj--) {
@@ -648,19 +665,80 @@
     updateHud();
   }
 
+  /* Groupes de zombies : à l'apparition, les zombies sont répartis en
+     petits groupes (un leader + des membres en formation). Les groupes
+     fusionnent progressivement quand ils sont proches. */
+  var GROUP_SIZE = 8;          // taille d'un petit groupe
+  var GROUP_FORMATION = 90;    // rayon de formation autour du leader
+  var GROUP_MERGE_DIST = 320;  // distance de fusion entre groupes
+  var GROUP_MERGE_INTERVAL = 2.0; // vérif fusion toutes les 2 s
+
   function spawnWave() {
-    // des milliers de zombies : on génère une vague dense autour de la ville
     var count = ZOMBIE_PER_WAVE_BASE + state.day * 20;
-    for (var i = 0; i < count; i++) {
-      var side = randi(0, 3);
-      var zx, zy;
-      if (side === 0) { zx = rand(TOWN_MIN, TOWN_MAX); zy = TOWN_MIN - rand(200, 2000); }
-      else if (side === 1) { zx = rand(TOWN_MIN, TOWN_MAX); zy = TOWN_MAX + rand(200, 2000); }
-      else if (side === 2) { zx = TOWN_MIN - rand(200, 2000); zy = rand(TOWN_MIN, TOWN_MAX); }
-      else { zx = TOWN_MAX + rand(200, 2000); zy = rand(TOWN_MIN, TOWN_MAX); }
-      state.zombies.push({
-        x: zx, y: zy, hp: ZOMBIE_HP, atkCd: 0, wallCd: 0, target: null
-      });
+    // répartir en groupes le long d'un côté de la ville
+    var side = randi(0, 3);
+    var nbGroups = Math.ceil(count / GROUP_SIZE);
+    state.zombieGroups = [];
+    for (var g = 0; g < nbGroups; g++) {
+      var lx, ly;
+      if (side === 0) { lx = rand(TOWN_MIN, TOWN_MAX); ly = TOWN_MIN - rand(300, 2200); }
+      else if (side === 1) { lx = rand(TOWN_MIN, TOWN_MAX); ly = TOWN_MAX + rand(300, 2200); }
+      else if (side === 2) { lx = TOWN_MIN - rand(300, 2200); ly = rand(TOWN_MIN, TOWN_MAX); }
+      else { lx = TOWN_MAX + rand(300, 2200); ly = rand(TOWN_MIN, TOWN_MAX); }
+      var grp = { x: lx, y: ly, members: [] };
+      state.zombieGroups.push(grp);
+      var n = Math.min(GROUP_SIZE, count - g * GROUP_SIZE);
+      for (var k = 0; k < n; k++) {
+        var ang = (k / n) * Math.PI * 2 + rand(0, 1);
+        var dist = GROUP_FORMATION * (0.3 + Math.random() * 0.7);
+        var zx = lx + Math.cos(ang) * dist;
+        var zy = ly + Math.sin(ang) * dist;
+        var z = { x: zx, y: zy, hp: ZOMBIE_HP, atkCd: 0, wallCd: 0, group: grp, slotAng: ang, slotDist: dist };
+        grp.members.push(z);
+        state.zombies.push(z);
+      }
+    }
+  }
+
+  // fusion des groupes proches : si deux leaders sont à moins de GROUP_MERGE_DIST,
+  // on transfère les membres du groupe le plus petit vers le plus grand et on
+  // retire le petit groupe. La formation se réorganise progressivement.
+  function mergeGroups() {
+    var groups = state.zombieGroups;
+    var merged = true;
+    var guard = 0;
+    while (merged && guard < 50) {
+      merged = false;
+      guard++;
+      for (var a = 0; a < groups.length; a++) {
+        for (var b = a + 1; b < groups.length; b++) {
+          var ga = groups[a], gb = groups[b];
+          var dx = ga.x - gb.x, dy = ga.y - gb.y;
+          if (Math.sqrt(dx * dx + dy * dy) < GROUP_MERGE_DIST) {
+            // on fusionne le plus petit dans le plus grand
+            var big = ga.members.length >= gb.members.length ? ga : gb;
+            var small = big === ga ? gb : ga;
+            // transférer les membres
+            for (var m = 0; m < small.members.length; m++) {
+              var z = small.members[m];
+              z.group = big;
+              // recalculer un slot dans le grand groupe
+              var idx = big.members.length;
+              var total = big.members.length + 1;
+              var ang = (idx / total) * Math.PI * 2 + rand(0, 0.5);
+              z.slotAng = ang;
+              z.slotDist = GROUP_FORMATION * (0.3 + Math.random() * 0.7);
+              big.members.push(z);
+            }
+            // retirer le petit groupe
+            var idx2 = groups.indexOf(small);
+            groups.splice(idx2, 1);
+            merged = true;
+            break;
+          }
+        }
+        if (merged) break;
+      }
     }
   }
 
@@ -671,67 +749,87 @@
         spawnWave();
         state.waveActive = true;
         state.waveLeaveAt = state.elapsed + WAVE_LEAVE;
+        state.groupMergeTimer = 0;
       }
     } else {
       // les zombies repartent après 10 min
       if (state.elapsed >= state.waveLeaveAt) {
         state.zombies = [];
+        state.zombieGroups = [];
         state.waveActive = false;
         state.nextWaveAt = state.elapsed + WAVE_EVERY;
       }
     }
 
-    var p = state.player;
-    for (var i = 0; i < state.zombies.length; i++) {
-      var z = state.zombies[i];
-      // cible : joueur s'il est à portée, sinon le mur le plus proche, sinon se déplace vers la ville
-      var cible = null;
-      var cdx = p.x - z.x, cdy = p.y - z.y;
-      var distP = Math.sqrt(cdx * cdx + cdy * cdy);
-      if (distP < ZOMBIE_ATTACK_RANGE) {
-        cible = { type: "player", x: p.x, y: p.y };
-      } else {
-        // cherche un mur à portée
-        var best = null, bestD = ZOMBIE_ATTACK_RANGE;
-        for (var j = 0; j < state.walls.length; j++) {
-          var m = state.walls[j];
-          var mx = m.x + m.w / 2, my = m.y + m.h / 2;
-          var md = Math.sqrt((mx - z.x) * (mx - z.x) + (my - z.y) * (my - z.y));
-          if (md < bestD) { bestD = md; best = m; }
-        }
-        if (best) cible = { type: "wall", ref: best };
+    // fusion périodique des groupes proches
+    if (state.waveActive && state.zombieGroups) {
+      state.groupMergeTimer = (state.groupMergeTimer || 0) + dt;
+      if (state.groupMergeTimer >= GROUP_MERGE_INTERVAL) {
+        state.groupMergeTimer = 0;
+        mergeGroups();
       }
+    }
 
-      if (z.atkCd > 0) z.atkCd -= dt;
-      if (z.wallCd > 0) z.wallCd -= dt;
-
-      if (cible) {
- var cx, cy;
-        if (cible.type === "player") { cx = cible.x; cy = cible.y; }
-        else { cx = cible.ref.x + cible.ref.w / 2; cy = cible.ref.y + cible.ref.h / 2; }
-        var dx = cx - z.x, dy = cy - z.y;
-        var d = Math.sqrt(dx * dx + dy * dy) || 1;
-        if (d > 8) {
-          // avance vers la cible (moitié de la vitesse du joueur)
-          z.x += (dx / d) * ZOMBIE_SPEED * dt;
-          z.y += (dy / d) * ZOMBIE_SPEED * dt;
+    var p = state.player;
+    // déplacement des leaders vers une cible commune (ville / joueur / mur)
+    // puis les membres suivent leur slot autour du leader
+    if (state.zombieGroups) {
+      for (var gi = 0; gi < state.zombieGroups.length; gi++) {
+        var grp = state.zombieGroups[gi];
+        // cible du groupe = mur le plus proche du leader, ou joueur si proche
+        var cible = null;
+        var pdx = p.x - grp.x, pdy = p.y - grp.y;
+        var distP = Math.sqrt(pdx * pdx + pdy * pdy);
+        if (distP < ZOMBIE_ATTACK_RANGE) {
+          cible = { x: p.x, y: p.y, isPlayer: true };
         } else {
-          // à portée : attaque
-          if (cible.type === "player" && z.atkCd <= 0) {
-            z.atkCd = ZOMBIE_ATTACK_CD;
-            p.hp -= ZOMBIE_PLAYER_DMG;
-            if (p.hp <= 0) { p.hp = 0; state.gameOver = true; }
-          } else if (cible.type === "wall" && z.wallCd <= 0) {
-            z.wallCd = ZOMBIE_WALL_CD;
-            cible.ref.hp -= ZOMBIE_WALL_DMG;
+          var best = null, bestD = Infinity;
+          for (var j = 0; j < state.walls.length; j++) {
+            var m = state.walls[j];
+            var mx = m.x + m.w / 2, my = m.y + m.h / 2;
+            var md = Math.sqrt((mx - grp.x) * (mx - grp.x) + (my - grp.y) * (my - grp.y));
+            if (md < bestD) { bestD = md; best = m; }
+          }
+          if (best) cible = { x: best.x + best.w / 2, y: best.y + best.h / 2, isPlayer: false, wall: best };
+          else cible = { x: 50000, y: 50000, isPlayer: false };
+        }
+        // le leader avance vers la cible
+        var ldx = cible.x - grp.x, ldy = cible.y - grp.y;
+        var ld = Math.sqrt(ldx * ldx + ldy * ldy) || 1;
+        if (ld > 10) {
+          grp.x += (ldx / ld) * ZOMBIE_SPEED * dt;
+          grp.y += (ldy / ld) * ZOMBIE_SPEED * dt;
+        }
+        // position cible de chaque membre = slot autour du leader
+        for (var mi = 0; mi < grp.members.length; mi++) {
+          var z = grp.members[mi];
+          var tx = grp.x + Math.cos(z.slotAng) * z.slotDist;
+          var ty = grp.y + Math.sin(z.slotAng) * z.slotDist;
+          // attaque si la cible réelle est à portée du membre
+          var zdx = cible.x - z.x, zdy = cible.y - z.y;
+          var zd = Math.sqrt(zdx * zdx + zdy * zdy);
+          if (z.atkCd > 0) z.atkCd -= dt;
+          if (z.wallCd > 0) z.wallCd -= dt;
+          if (zd < 14) {
+            // à portée : attaque
+            if (cible.isPlayer && z.atkCd <= 0) {
+              z.atkCd = ZOMBIE_ATTACK_CD;
+              p.hp -= ZOMBIE_PLAYER_DMG;
+              if (p.hp <= 0) { p.hp = 0; state.gameOver = true; }
+            } else if (!cible.isPlayer && cible.wall && z.wallCd <= 0) {
+              z.wallCd = ZOMBIE_WALL_CD;
+              cible.wall.hp -= ZOMBIE_WALL_DMG;
+            }
+          } else {
+            // se déplace vers son slot (moitié vitesse du joueur)
+            var sx = tx - z.x, sy = ty - z.y;
+            var sd = Math.sqrt(sx * sx + sy * sy) || 1;
+            if (sd > 4) {
+              z.x += (sx / sd) * ZOMBIE_SPEED * dt;
+              z.y += (sy / sd) * ZOMBIE_SPEED * dt;
+            }
           }
         }
-      } else {
-        // pas de cible : converge vers le centre de la ville
-        var tx = 50000 - z.x, ty = 50000 - z.y;
-        var td = Math.sqrt(tx * tx + ty * ty) || 1;
-        z.x += (tx / td) * ZOMBIE_SPEED * dt;
-        z.y += (ty / td) * ZOMBIE_SPEED * dt;
       }
     }
   }
