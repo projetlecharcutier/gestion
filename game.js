@@ -30,6 +30,32 @@
     return WEAPON_STATS[name] || WEAPON_STATS["Mains nues"];
   }
 
+  /* Cycle jour / nuit : 12h = 5 min (300s) réel.
+     Nuit = attaque des zombies pendant 2 min (120s).
+     Une vague toutes les 7 min (420s) de nuit, repartent après 10 min (600s). */
+  var DAY_SECONDS = 300;          // 12h in-game = 300s réel
+  var NIGHT_SECONDS = 120;        // attaque dure 2 min la nuit
+  var CYCLE_SECONDS = DAY_SECONDS * 2; // 24h = 600s
+  var WAVE_EVERY = 420;           // vague toutes les 7 min
+  var WAVE_LEAVE = 600;           // repartent après 10 min
+  var ZOMBIE_SPEED = 130;         // moitié de la vitesse joueur (260/2)
+  var ZOMBIE_ATTACK_RANGE = 150;  // portée d'attaque zombie
+  var ZOMBIE_PLAYER_DMG = 20;      // 5 attaques -> mort (100 PV)
+  var ZOMBIE_WALL_DMG = 5;         // mur : -5 PV / attaque
+  var ZOMBIE_WALL_CD = 20;         // toutes les 20s
+  var WALL_MAX_HP = 100;
+  var PLAYER_MAX_HP = 100;
+  var ZOMBIE_HP = 1;               // meurt avec un coup de feu
+  var ZOMBIE_ATTACK_CD = 1.0;
+  var WALL_PLANKS = 4;             // planches par mur (1 planche d'épaisseur = 1 segment)
+  var WALL_BUILD_RANGE = 180;     // portée de construction d'un mur
+  var ZOMBIE_PER_WAVE_BASE = 40;   // milliers au fil du temps -> on adapte la densité
+
+  function isNight(clock) {
+    // nuit entre 22h et 02h (sur 24h) -> attaques
+    return clock >= 22 || clock < 2;
+  }
+
   function viewW() { return canvas.width / (window.devicePixelRatio || 1); }
   function viewH() { return canvas.height / (window.devicePixelRatio || 1); }
 
@@ -42,6 +68,8 @@
   var hudPos = document.getElementById("hudPos");
   var hudInv = document.getElementById("hudInv");
   var hudWeapon = document.getElementById("hudWeapon");
+  var hudHp = document.getElementById("hudHp");
+  var hudPlanks = document.getElementById("hudPlanks");
   var startScreen = document.getElementById("startScreen");
   var startForm = document.getElementById("startForm");
   var nameInput = document.getElementById("nameInput");
@@ -56,22 +84,33 @@
   var state = {
     started: false,
     paused: false,
+    gameOver: false,
     inBuilding: null,
     playerName: "",
-    player: { x: 50000, y: 50000, face: 1, moving: false },
+    player: { x: 50000, y: 50000, face: 1, moving: false, hp: PLAYER_MAX_HP },
     camera: { x: 50000, y: 50000 },
     zoom: 8,
     targetZoom: 8,
     mouse: { sx: 0, sy: 0, wx: 50000, wy: 50000, inside: false },
     inventory: 0,
+    planks: 0,
     items: [],
     buildings: [],
     trees: [],
+    walls: [],
+    zombies: [],
     bag: { open: false, contents: [] },
-    equipped: null, // nom de l'arme équipée (null = "Mains nues")
+    equipped: null,
     projectiles: [],
     keys: {},
     shootCd: 0,
+    buildMode: false,
+    clock: 8,       // heure in-game (0..24)
+    day: 0,         // compteur de jours (commence à 0)
+    elapsed: 0,     // temps réel écoulé (s)
+    nextWaveAt: WAVE_EVERY, // prochaine vague (s réel)
+    waveActive: false,
+    waveLeaveAt: 0,
     time: 0
   };
 
@@ -87,39 +126,69 @@
   function rand(min, max) { return min + Math.random() * (max - min); }
   function randi(min, max) { return Math.floor(rand(min, max + 1)); }
 
+  function buildPerimeterWall() {
+    // Mur de 1 planche d'épaisseur tout autour de la ville
+    state.walls = [];
+    var seg = 250;       // longueur d'un segment de mur
+    var pad = 60;        // distance depuis la bordure de ville
+    // haut (y = TOWN_MIN - pad), de gauche à droite
+    for (var x = TOWN_MIN; x < TOWN_MAX; x += seg) {
+      state.walls.push({ x: x, y: TOWN_MIN - pad, w: seg, h: 24, hp: WALL_MAX_HP, orient: "h" });
+    }
+    // bas (y = TOWN_MAX + pad)
+    for (var x = TOWN_MIN; x < TOWN_MAX; x += seg) {
+      state.walls.push({ x: x, y: TOWN_MAX + pad - 24, w: seg, h: 24, hp: WALL_MAX_HP, orient: "h" });
+    }
+    // gauche (x = TOWN_MIN - pad)
+    for (var y = TOWN_MIN; y < TOWN_MAX; y += seg) {
+      state.walls.push({ x: TOWN_MIN - pad, y: y, w: 24, h: seg, hp: WALL_MAX_HP, orient: "v" });
+    }
+    // droite (x = TOWN_MAX + pad - 24)
+    for (var y = TOWN_MIN; y < TOWN_MAX; y += seg) {
+      state.walls.push({ x: TOWN_MAX + pad - 24, y: y, w: 24, h: seg, hp: WALL_MAX_HP, orient: "v" });
+    }
+  }
+
   function buildWorld() {
     var c = 50000;
-    // Bâtiments plus petits, échelle réduite à la nouvelle ville (5000x5000)
+    // Bâtiments dont un Hôpital dans la ville
     state.buildings = [
       makeBuilding(c - 2100, c - 2100, 700, 700, "Mairie", "Vous êtes à la mairie. Tout semble calme.", 380),
       makeBuilding(c + 1400, c - 2000, 650, 650, "Auberge", "L'auberge sent la soupe chaude. Repos bien mérité.", 330),
       makeBuilding(c - 2000, c + 1300, 650, 650, "Forge", "La forge résonne du bruit de l'enclume.", 360),
       makeBuilding(c + 1500, c + 1400, 700, 600, "Marché", "Le marché grouille de marchandises.", 300),
       makeBuilding(c - 750, c + 1600, 550, 450, "Temple", "Le temple est silencieux et frais.", 440),
-      makeBuilding(c + 600, c - 1500, 500, 550, "Tour", "La vue depuis la tour couvre toute la ville.", 600)
+      makeBuilding(c + 600, c - 1500, 500, 550, "Tour", "La vue depuis la tour couvre toute la ville.", 600),
+      makeBuilding(c - 1900, c + 1500, 600, 500, "Hôpital", "Hôpital : payez une pièce d'or pour retrouver toute votre vie.", 420)
     ];
 
-    // Objets + armes au sol
+    // Mur de périmètre (1 planche d'épaisseur) entoure la ville
+    buildPerimeterWall();
+
+    // Objets : armes UNIQUEMENT en dehors de la ville ; objets en ville
     state.items = [
+      // objets en ville (dont pièces d'or pour l'hôpital)
       { x: c - 400, y: c + 100, taken: false, name: "Pièce", color: "#fbbf24", kind: "objet" },
-      { x: c + 450, y: c - 300, taken: false, name: "Gemme", color: "#22d3ee", kind: "objet" },
+      { x: c + 450, y: c - 300, taken: false, name: "Pièce", color: "#fbbf24", kind: "objet" },
       { x: c - 1000, y: c - 900, taken: false, name: "Potion", color: "#ef4444", kind: "objet" },
-      { x: c + 1100, y: c + 600, taken: false, name: "Clé", color: "#eab308", kind: "objet" },
       { x: c + 200, y: c + 1200, taken: false, name: "Pièce", color: "#fbbf24", kind: "objet" },
       { x: c - 1600, y: c + 400, taken: false, name: "Gemme", color: "#22d3ee", kind: "objet" },
       { x: c + 1700, y: c - 700, taken: false, name: "Parchemin", color: "#fde68a", kind: "objet" },
       { x: c - 600, y: c - 1300, taken: false, name: "Pièce", color: "#fbbf24", kind: "objet" },
-      // armes dans et autour de la ville
-      { x: c - 1900, y: c - 1800, taken: false, name: "Pistolet", color: "#94a3b8", kind: "arme" },
-      { x: c + 2000, y: c + 1500, taken: false, name: "Fusil", color: "#64748b", kind: "arme" },
-      { x: TOWN_MIN - 2200, y: c + 300, taken: false, name: "Arc", color: "#a16207", kind: "arme" },
+      { x: c + 1100, y: c + 600, taken: false, name: "Clé", color: "#eab308", kind: "objet" },
+      // armes en dehors de la ville (uniquement)
+      { x: TOWN_MIN - 2200, y: c + 300, taken: false, name: "Pistolet", color: "#94a3b8", kind: "arme" },
       { x: TOWN_MAX + 1800, y: c - 600, taken: false, name: "Couteau", color: "#cbd5e1", kind: "arme" },
       { x: c - 1100, y: TOWN_MAX + 1900, taken: false, name: "Bâton", color: "#7c5e3c", kind: "arme" },
-      { x: c + 1200, y: TOWN_MIN - 2100, taken: false, name: "Pistolet", color: "#94a3b8", kind: "arme" },
+      { x: c + 1200, y: TOWN_MIN - 2100, taken: false, name: "Arc", color: "#a16207", kind: "arme" },
+      { x: TOWN_MIN - 6000, y: TOWN_MIN - 4000, taken: false, name: "Fusil", color: "#64748b", kind: "arme" },
+      { x: TOWN_MAX + 7000, y: TOWN_MAX + 5000, taken: false, name: "Pistolet", color: "#94a3b8", kind: "arme" },
+      { x: c, y: TOWN_MIN - 8000, taken: false, name: "Fusil", color: "#64748b", kind: "arme" },
+      { x: c + 9000, y: c - 12000, taken: false, name: "Arc", color: "#a16207", kind: "arme" },
+      { x: TOWN_MIN - 14000, y: c + 15000, taken: false, name: "Couteau", color: "#cbd5e1", kind: "arme" },
       // objets rares hors ville
       { x: TOWN_MIN - 6000, y: TOWN_MIN - 4000, taken: false, name: "Relique", color: "#a855f7", kind: "objet" },
       { x: TOWN_MAX + 7000, y: TOWN_MAX + 5000, taken: false, name: "Cristal", color: "#38bdf8", kind: "objet" },
-      { x: c, y: TOWN_MIN - 8000, taken: false, name: "Gemme", color: "#22d3ee", kind: "objet" },
       { x: c + 9000, y: c - 12000, taken: false, name: "Potion", color: "#ef4444", kind: "objet" }
     ];
 
@@ -133,9 +202,9 @@
         ty = rand(TOWN_MIN + 200, TOWN_MAX - 200);
         tries++;
       } while (nearBuilding(tx, ty, 150) && tries < 12);
-      if (tries < 12) state.trees.push({ x: tx, y: ty, r: rand(70, 110), kind: "town" });
+      if (tries < 12) state.trees.push({ x: tx, y: ty, r: rand(70, 110), kind: "town", hp: 2 });
     }
-    // beaucoup d'arbres hors ville (forêt dense)
+    // beaucoup d'arbres hors ville (forêt dense) — abattables pour faire des planches
     for (i = 0; i < 700; i++) {
       var edge = Math.random() < 0.5;
       if (edge) {
@@ -145,7 +214,7 @@
         tx = Math.random() < 0.5 ? rand(0, TOWN_MIN - 200) : rand(TOWN_MAX + 200, WORLD);
         ty = rand(0, WORLD);
       }
-      state.trees.push({ x: tx, y: ty, r: rand(90, 180), kind: "wild" });
+      state.trees.push({ x: tx, y: ty, r: rand(90, 180), kind: "wild", hp: 2 });
     }
     // arbres en bordure immédiate de la ville
     for (i = 0; i < 200; i++) {
@@ -154,8 +223,10 @@
       else if (side === 1) { tx = rand(TOWN_MIN, TOWN_MAX); ty = rand(TOWN_MAX + 100, TOWN_MAX + 1400); }
       else if (side === 2) { tx = rand(TOWN_MIN - 1400, TOWN_MIN - 100); ty = rand(TOWN_MIN, TOWN_MAX); }
       else { tx = rand(TOWN_MAX + 100, TOWN_MAX + 1400); ty = rand(TOWN_MIN, TOWN_MAX); }
-      state.trees.push({ x: tx, y: ty, r: rand(80, 140), kind: "edge" });
+      state.trees.push({ x: tx, y: ty, r: rand(80, 140), kind: "edge", hp: 2 });
     }
+
+    state.zombies = [];
   }
 
   function nearBuilding(x, y, pad) {
@@ -252,7 +323,7 @@
   canvas.addEventListener("mouseleave", function () { state.mouse.inside = false; });
 
   canvas.addEventListener("click", function (e) {
-    if (!state.started || state.paused || state.inBuilding) return;
+    if (!state.started || state.paused || state.inBuilding || state.gameOver) return;
     var rect = canvas.getBoundingClientRect();
     var sx = e.clientX - rect.left;
     var sy = e.clientY - rect.top;
@@ -266,6 +337,12 @@
     var w = unproj(sx, sy);
     var p = state.player;
 
+    // Mode construction : placer un mur au point cliqué (si assez de planches + à portée)
+    if (state.buildMode) {
+      tryBuildWall(w[0], w[1]);
+      return;
+    }
+
     // 1) porte de bâtiment
     for (var i = 0; i < state.buildings.length; i++) {
       var b = state.buildings[i];
@@ -273,13 +350,37 @@
       if (Math.sqrt(ddx * ddx + ddy * ddy) < 80) {
         var pdx = p.x - b.door.x, pdy = p.y - b.door.y;
         if (Math.sqrt(pdx * pdx + pdy * pdy) < 160) {
+          // Hôpital : soin contre une pièce d'or
+          if (b.name === "Hôpital") {
+            tryHealAtHospital();
+            return;
+          }
           enterBuilding(b);
           return;
         }
       }
     }
 
-    // 2) ramassage d'objet / arme -> va dans le sac
+    // 2) abattre un arbre (clic sur l'arbre à proximité) -> donne des planches
+    for (var ti = 0; ti < state.trees.length; ti++) {
+      var t = state.trees[ti];
+      var tdx = w[0] - t.x, tdy = w[1] - t.y;
+      if (Math.sqrt(tdx * tdx + tdy * tdy) < t.r * 0.6) {
+        var pdx2 = p.x - t.x, pdy2 = p.y - t.y;
+        if (Math.sqrt(pdx2 * pdx2 + pdy2 * pdy2) < WALL_BUILD_RANGE) {
+          t.hp -= 1;
+          if (t.hp <= 0) {
+            // abattu : donne des planches
+            var gain = 2 + randi(0, 2);
+            state.planks += gain;
+            updateHud();
+          }
+          return;
+        }
+      }
+    }
+
+    // 3) ramassage d'objet / arme -> va dans le sac
     for (var j = 0; j < state.items.length; j++) {
       var it = state.items[j];
       if (it.taken) continue;
@@ -314,8 +415,13 @@
       if (state.started) togglePause();
     }
     if (e.code === "KeyA" || e.key === "a" || e.key === "A" || e.key === "q" || e.key === "Q") {
-      if (state.started && !state.paused && !state.inBuilding) {
+      if (state.started && !state.paused && !state.inBuilding && !state.gameOver) {
         state.bag.open = !state.bag.open;
+      }
+    }
+    if (e.code === "KeyB" || e.key === "b" || e.key === "B") {
+      if (state.started && !state.paused && !state.inBuilding && !state.bag.open && !state.gameOver) {
+        state.buildMode = !state.buildMode;
       }
     }
   });
@@ -331,6 +437,17 @@
     startScreen.hidden = true;
     hud.hidden = false;
     state.started = true;
+    state.gameOver = false;
+    state.player.hp = PLAYER_MAX_HP;
+    state.planks = 0;
+    state.clock = 8;
+    state.day = 0;
+    state.elapsed = 0;
+    state.nextWaveAt = WAVE_EVERY;
+    state.waveActive = false;
+    state.zombies = [];
+    state.walls = [];
+    state.buildMode = false;
     buildWorld();
     updateHud();
     nameInput.blur();
@@ -368,6 +485,54 @@
     p.y = clamp(p.y, PLAYER_HALF, WORLD - PLAYER_HALF);
   }
 
+  function hasGoldPiece() {
+    for (var i = 0; i < state.bag.contents.length; i++) {
+      if (state.bag.contents[i].name === "Pièce") return i;
+    }
+    return -1;
+  }
+
+  function tryHealAtHospital() {
+    if (state.player.hp >= PLAYER_MAX_HP) {
+      state.bag.open = true;
+      return;
+    }
+    var idx = hasGoldPiece();
+    if (idx < 0) {
+      // pas de pièce : on entre juste pour info
+      state.bag.open = true;
+      return;
+    }
+    // dépense une pièce d'or
+    state.bag.contents.splice(idx, 1);
+    state.inventory = Math.max(0, state.inventory - 1);
+    state.player.hp = PLAYER_MAX_HP;
+    updateHud();
+  }
+
+  function tryBuildWall(wx, wy) {
+    var p = state.player;
+    var dx = wx - p.x, dy = wy - p.y;
+    if (Math.sqrt(dx * dx + dy * dy) > WALL_BUILD_RANGE) return;
+    if (state.planks < WALL_PLANKS) return;
+    // détermine orientation selon la position dominante
+    var w = 24, h = 24;
+    if (Math.abs(wx - p.x) > Math.abs(wy - p.y)) h = 120; else w = 120;
+    var mx = wx - w / 2, my = wy - h / 2;
+    // éviter de construire sur un bâtiment ou un mur existant
+    for (var i = 0; i < state.buildings.length; i++) {
+      var b = state.buildings[i];
+      if (mx < b.x + b.w && mx + w > b.x && my < b.y + b.h && my + h > b.y) return;
+    }
+    for (var j = 0; j < state.walls.length; j++) {
+      var m = state.walls[j];
+      if (mx < m.x + m.w && mx + w > m.x && my < m.y + m.h && my + h > m.y) return;
+    }
+    state.planks -= WALL_PLANKS;
+    state.walls.push({ x: mx, y: my, w: w, h: h, hp: WALL_MAX_HP, orient: w > h ? "h" : "v" });
+    updateHud();
+  }
+
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 
   /* ===================== HUD ===================== */
@@ -378,6 +543,8 @@
     hudPos.textContent = "(" + Math.round(p.x) + ", " + Math.round(p.y) + ")";
     hudInv.textContent = String(state.inventory);
     hudWeapon.textContent = state.equipped || "Mains nues";
+    hudHp.textContent = String(Math.round(state.player.hp));
+    hudPlanks.textContent = String(state.planks);
   }
 
   /* ===================== Update ===================== */
@@ -387,7 +554,19 @@
 
     if (state.shootCd > 0) state.shootCd -= dt;
 
-    if (!state.inBuilding && !state.paused && !state.bag.open) {
+    // Cycle jour/nuit : 12h = 5 min réel
+    if (!state.paused && !state.gameOver) {
+      state.elapsed += dt;
+      state.clock += (12 / DAY_SECONDS) * dt; // heures in-game par seconde réelle
+      if (state.clock >= 24) {
+        state.clock -= 24;
+        state.day += 1; // un nouveau cycle jour/nuit complet
+      }
+    }
+
+    if (!state.gameOver) updateZombies(dt);
+
+    if (!state.inBuilding && !state.paused && !state.bag.open && !state.gameOver) {
       var p = state.player;
       var tx = state.mouse.wx, ty = state.mouse.wy;
       var dx = tx - p.x, dy = ty - p.y;
@@ -410,7 +589,6 @@
         var ax = tx - p.x, ay = ty - p.y;
         var al = Math.sqrt(ax * ax + ay * ay) || 1;
         var ang = Math.atan2(ay, ax);
-        // dispersion
         var sp = (Math.random() * 2 - 1) * st.spread;
         ang += sp;
         state.projectiles.push({
@@ -422,11 +600,11 @@
           color: st.color,
           trail: []
         });
-        if (state.projectiles.length > 80) state.projectiles.shift();
+        if (state.projectiles.length > 120) state.projectiles.shift();
       }
     }
 
-    // projectiles
+    // projectiles + collisions avec zombies
     for (var i = state.projectiles.length - 1; i >= 0; i--) {
       var pr = state.projectiles[i];
       pr.trail.push([pr.x, pr.y]);
@@ -434,9 +612,27 @@
       pr.x += pr.vx * dt;
       pr.y += pr.vy * dt;
       pr.life -= dt;
-      if (pr.life <= 0 || pr.x < 0 || pr.x > WORLD || pr.y < 0 || pr.y > WORLD) {
+      var hitZ = false;
+      for (var zi = 0; zi < state.zombies.length; zi++) {
+        var z = state.zombies[zi];
+        var zdx = pr.x - z.x, zdy = pr.y - z.y;
+        if (Math.sqrt(zdx * zdx + zdy * zdy) < 14) {
+          z.hp -= pr.dmg;
+          hitZ = true;
+          break;
+        }
+      }
+      if (hitZ || pr.life <= 0 || pr.x < 0 || pr.x > WORLD || pr.y < 0 || pr.y > WORLD) {
         state.projectiles.splice(i, 1);
       }
+    }
+    // retirer zombies morts
+    for (var zj = state.zombies.length - 1; zj >= 0; zj--) {
+      if (state.zombies[zj].hp <= 0) state.zombies.splice(zj, 1);
+    }
+    // retirer murs détruits
+    for (var wj = state.walls.length - 1; wj >= 0; wj--) {
+      if (state.walls[wj].hp <= 0) state.walls.splice(wj, 1);
     }
 
     // caméra suit le joueur
@@ -450,6 +646,94 @@
       state.mouse.wy = w[1];
     }
     updateHud();
+  }
+
+  function spawnWave() {
+    // des milliers de zombies : on génère une vague dense autour de la ville
+    var count = ZOMBIE_PER_WAVE_BASE + state.day * 20;
+    for (var i = 0; i < count; i++) {
+      var side = randi(0, 3);
+      var zx, zy;
+      if (side === 0) { zx = rand(TOWN_MIN, TOWN_MAX); zy = TOWN_MIN - rand(200, 2000); }
+      else if (side === 1) { zx = rand(TOWN_MIN, TOWN_MAX); zy = TOWN_MAX + rand(200, 2000); }
+      else if (side === 2) { zx = TOWN_MIN - rand(200, 2000); zy = rand(TOWN_MIN, TOWN_MAX); }
+      else { zx = TOWN_MAX + rand(200, 2000); zy = rand(TOWN_MIN, TOWN_MAX); }
+      state.zombies.push({
+        x: zx, y: zy, hp: ZOMBIE_HP, atkCd: 0, wallCd: 0, target: null
+      });
+    }
+  }
+
+  function updateZombies(dt) {
+    // gestion des vagues
+    if (!state.waveActive) {
+      if (state.elapsed >= state.nextWaveAt) {
+        spawnWave();
+        state.waveActive = true;
+        state.waveLeaveAt = state.elapsed + WAVE_LEAVE;
+      }
+    } else {
+      // les zombies repartent après 10 min
+      if (state.elapsed >= state.waveLeaveAt) {
+        state.zombies = [];
+        state.waveActive = false;
+        state.nextWaveAt = state.elapsed + WAVE_EVERY;
+      }
+    }
+
+    var p = state.player;
+    for (var i = 0; i < state.zombies.length; i++) {
+      var z = state.zombies[i];
+      // cible : joueur s'il est à portée, sinon le mur le plus proche, sinon se déplace vers la ville
+      var cible = null;
+      var cdx = p.x - z.x, cdy = p.y - z.y;
+      var distP = Math.sqrt(cdx * cdx + cdy * cdy);
+      if (distP < ZOMBIE_ATTACK_RANGE) {
+        cible = { type: "player", x: p.x, y: p.y };
+      } else {
+        // cherche un mur à portée
+        var best = null, bestD = ZOMBIE_ATTACK_RANGE;
+        for (var j = 0; j < state.walls.length; j++) {
+          var m = state.walls[j];
+          var mx = m.x + m.w / 2, my = m.y + m.h / 2;
+          var md = Math.sqrt((mx - z.x) * (mx - z.x) + (my - z.y) * (my - z.y));
+          if (md < bestD) { bestD = md; best = m; }
+        }
+        if (best) cible = { type: "wall", ref: best };
+      }
+
+      if (z.atkCd > 0) z.atkCd -= dt;
+      if (z.wallCd > 0) z.wallCd -= dt;
+
+      if (cible) {
+ var cx, cy;
+        if (cible.type === "player") { cx = cible.x; cy = cible.y; }
+        else { cx = cible.ref.x + cible.ref.w / 2; cy = cible.ref.y + cible.ref.h / 2; }
+        var dx = cx - z.x, dy = cy - z.y;
+        var d = Math.sqrt(dx * dx + dy * dy) || 1;
+        if (d > 8) {
+          // avance vers la cible (moitié de la vitesse du joueur)
+          z.x += (dx / d) * ZOMBIE_SPEED * dt;
+          z.y += (dy / d) * ZOMBIE_SPEED * dt;
+        } else {
+          // à portée : attaque
+          if (cible.type === "player" && z.atkCd <= 0) {
+            z.atkCd = ZOMBIE_ATTACK_CD;
+            p.hp -= ZOMBIE_PLAYER_DMG;
+            if (p.hp <= 0) { p.hp = 0; state.gameOver = true; }
+          } else if (cible.type === "wall" && z.wallCd <= 0) {
+            z.wallCd = ZOMBIE_WALL_CD;
+            cible.ref.hp -= ZOMBIE_WALL_DMG;
+          }
+        }
+      } else {
+        // pas de cible : converge vers le centre de la ville
+        var tx = 50000 - z.x, ty = 50000 - z.y;
+        var td = Math.sqrt(tx * tx + ty * ty) || 1;
+        z.x += (tx / td) * ZOMBIE_SPEED * dt;
+        z.y += (ty / td) * ZOMBIE_SPEED * dt;
+      }
+    }
   }
 
   /* ===================== Rendering ===================== */
@@ -712,6 +996,157 @@
     ctx.restore();
   }
 
+  function drawWall(m) {
+    var z = state.zoom;
+    var A = proj(m.x, m.y), B = proj(m.x + m.w, m.y),
+        C = proj(m.x + m.w, m.y + m.h), D = proj(m.x, m.y + m.h);
+    var hPx = Math.max(8, 18 * 0.25 * z);
+    var At = [A[0], A[1] - hPx], Bt = [B[0], B[1] - hPx],
+        Ct = [C[0], C[1] - hPx], Dt = [D[0], D[1] - hPx];
+    // faces
+    fillPoly([B, C, Ct, Bt], "#8a6a3a", "#5a3e1c");
+    fillPoly([D, C, Ct, Dt], "#a07a45", "#6b4f24");
+    // dessus (planche)
+    fillPoly([At, Bt, Ct, Dt], "#caa45f", "#7a5a2c");
+    // barre de vie sous le mur
+    var hp = m.hp, ratio = hp / WALL_MAX_HP;
+    var col = ratio < 0.10 ? "#ef4444" : (ratio < 0.30 ? "#f59e0b" : "#22c55e");
+    var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
+    var bw = Math.max(18, m.w * 0.25 * z);
+    if (m.orient === "v") bw = Math.max(18, m.h * 0.25 * z);
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(cx - bw / 2 - 1, by - 2, bw + 2, 5);
+    ctx.fillStyle = col;
+    ctx.fillRect(cx - bw / 2, by - 1, bw * ratio, 3);
+  }
+
+  var ZOMBIE_SPRITE = [
+    "..hh..",
+    ".hhhh.",
+    ".hhhh.",
+    ".ssss.",
+    ".s..s.",
+    ".ssss.",
+    "gggggg",
+    "gggggg",
+    ".gggg.",
+    ".pppp.",
+    ".pppp.",
+    ".pppp.",
+    ".p..p.",
+    ".p..p.",
+    ".f..f."
+  ];
+  var ZPAL = {
+    h: "#4b6b3a", s: "#9bbf8a", g: "#5b7a4a",
+    p: "#3a4a30", f: "#26331f"
+  };
+
+  function drawZombie(z) {
+    var base = proj(z.x, z.y);
+    var zoom = state.zoom;
+    var cell = zoom * 0.5;
+    if (cell < 1.2) cell = 1.2;
+    var cols = 6, rows = 15;
+    var ox = base[0] - (cols / 2) * cell;
+    var oy = base[1] - rows * cell;
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    ctx.beginPath();
+    ctx.ellipse(base[0], base[1], cols / 2 * cell, cell * 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    for (var r = 0; r < rows; r++) {
+      var line = ZOMBIE_SPRITE[r];
+      for (var c = 0; c < cols; c++) {
+        var ch = line.charAt(c);
+        if (ch === ".") continue;
+        ctx.fillStyle = ZPAL[ch];
+        ctx.fillRect(ox + c * cell, oy + r * cell, cell + 0.5, cell + 0.5);
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawClock() {
+    var W = canvas.width / (window.devicePixelRatio || 1);
+    var h = Math.floor(state.clock);
+    var m = Math.floor((state.clock - h) * 60);
+    var hh = h < 10 ? "0" + h : "" + h;
+    var mm = m < 10 ? "0" + m : "" + m;
+    var night = isNight(state.clock);
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = night ? "#1e293b" : "#fef3c7";
+    ctx.font = "bold 22px Segoe UI, system-ui, sans-serif";
+    ctx.fillText((night ? "🌙 " : "☀ ") + hh + ":" + mm, W / 2, 12);
+    if (state.waveActive) {
+      ctx.fillStyle = "#ef4444";
+      ctx.font = "bold 14px Segoe UI, system-ui, sans-serif";
+      ctx.fillText("⚠ Vague de zombies", W / 2, 40);
+    }
+    // compteur de jours en haut à droite
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#e2e8f0";
+    ctx.font = "bold 16px Segoe UI, system-ui, sans-serif";
+    ctx.fillText("Jour " + state.day, W - 14, 14);
+    ctx.restore();
+  }
+
+  function drawPlayerHpBar() {
+    var p = state.player;
+    var base = proj(p.x, p.y);
+    var z = state.zoom;
+    var w = 28, h = 4;
+    var ratio = p.hp / PLAYER_MAX_HP;
+    var col = ratio < 0.30 ? "#ef4444" : (ratio < 0.60 ? "#f59e0b" : "#22c55e");
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(base[0] - w / 2 - 1, base[1] - 24 * z * 0.5 - h - 2, w + 2, h + 2);
+    ctx.fillStyle = col;
+    ctx.fillRect(base[0] - w / 2, base[1] - 24 * z * 0.5 - h - 1, w * ratio, h);
+    ctx.restore();
+  }
+
+  function drawBuildHint() {
+    if (!state.buildMode || !state.mouse.inside) return;
+    var s = proj(state.mouse.wx, state.mouse.wy);
+    ctx.save();
+    ctx.strokeStyle = state.planks >= WALL_PLANKS ? "rgba(34,197,94,0.9)" : "rgba(239,68,68,0.9)";
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 2;
+    ctx.strokeRect(s[0] - 30, s[1] - 18, 60, 36);
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#e2e8f0";
+    ctx.font = "12px Segoe UI, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(state.planks >= WALL_PLANKS ?
+      "Construire (" + state.planks + " planches)" :
+      "Pas assez de planches (" + state.planks + "/" + WALL_PLANKS + ")", s[0], s[1] - 26);
+    ctx.restore();
+  }
+
+  function drawGameOver() {
+    if (!state.gameOver) return;
+    var W = canvas.width / (window.devicePixelRatio || 1);
+    var H = canvas.height / (window.devicePixelRatio || 1);
+    ctx.save();
+    ctx.fillStyle = "rgba(2,6,23,0.8)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#ef4444";
+    ctx.font = "bold 40px Segoe UI, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Vous êtes mort", W / 2, H / 2 - 20);
+    ctx.fillStyle = "#e2e8f0";
+    ctx.font = "18px Segoe UI, system-ui, sans-serif";
+    ctx.fillText("Vous avez survécu jusqu'au jour " + state.day, W / 2, H / 2 + 20);
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "14px Segoe UI, system-ui, sans-serif";
+    ctx.fillText("Rechargez la page pour recommencer", W / 2, H / 2 + 48);
+    ctx.restore();
+  }
+
   function bagLayout() {
     var W = canvas.width / (window.devicePixelRatio || 1);
     var H = canvas.height / (window.devicePixelRatio || 1);
@@ -831,7 +1266,9 @@
   function render() {
     var W = canvas.width / (window.devicePixelRatio || 1);
     var H = canvas.height / (window.devicePixelRatio || 1);
-    ctx.fillStyle = "#0e1a30";
+    // fond selon l'heure (jour/nuit)
+    var night = isNight(state.clock);
+    ctx.fillStyle = night ? "#0a1020" : "#0e1a30";
     ctx.fillRect(0, 0, W, H);
 
     if (!state.started) return;
@@ -841,20 +1278,27 @@
     // objets au sol
     for (var i = 0; i < state.items.length; i++) drawItem(state.items[i]);
 
-    // bâtiments et arbres triés ensemble (loin -> près) pour un rendu correct
+    // bâtiments, arbres, murs, zombies triés ensemble (loin -> près)
     var drawables = [];
     for (var bi = 0; bi < state.buildings.length; bi++) {
       var bld = state.buildings[bi];
       drawables.push({ depth: bld.x + bld.y, type: "building", ref: bld });
     }
-    // trier et dessiner arbres visibles uniquement
     var bnds = visibleWorldBounds();
     for (var ti = 0; ti < state.trees.length; ti++) {
       var tr = state.trees[ti];
       if (tr.x < bnds.minX || tr.x > bnds.maxX || tr.y < bnds.minY || tr.y > bnds.maxY) continue;
       drawables.push({ depth: tr.x + tr.y, type: "tree", ref: tr });
     }
-    // joueur inséré à sa propre profondeur pour cohérence
+    for (var wi = 0; wi < state.walls.length; wi++) {
+      var m = state.walls[wi];
+      drawables.push({ depth: m.x + m.y, type: "wall", ref: m });
+    }
+    for (var zi = 0; zi < state.zombies.length; zi++) {
+      var zb = state.zombies[zi];
+      if (zb.x < bnds.minX || zb.x > bnds.maxX || zb.y < bnds.minY || zb.y > bnds.maxY) continue;
+      drawables.push({ depth: zb.x + zb.y, type: "zombie", ref: zb });
+    }
     var pDepth = state.player.x + state.player.y;
 
     drawables.sort(function (a, b) { return a.depth - b.depth; });
@@ -864,16 +1308,21 @@
       var d = drawables[k];
       if (!drewPlayer && pDepth < d.depth) {
         drawPlayer();
+        drawPlayerHpBar();
         drewPlayer = true;
       }
       if (d.type === "building") drawBuilding(d.ref);
-      else drawTree(d.ref);
+      else if (d.type === "tree") drawTree(d.ref);
+      else if (d.type === "wall") drawWall(d.ref);
+      else if (d.type === "zombie") drawZombie(d.ref);
     }
-    if (!drewPlayer) drawPlayer();
+    if (!drewPlayer) { drawPlayer(); drawPlayerHpBar(); }
 
     drawProjectiles();
     drawFog();
     drawCrosshair();
+    drawBuildHint();
+    drawClock();
 
     if (state.bag.open) drawBag();
 
@@ -881,6 +1330,8 @@
       ctx.fillStyle = "rgba(2,6,23,0.4)";
       ctx.fillRect(0, 0, W, H);
     }
+
+    drawGameOver();
   }
 
   /* ===================== Loop ===================== */

@@ -30,20 +30,36 @@ Ouvrez `index.html` dans un navigateur récent (Chrome, Firefox, Edge, Safari).
 - **Collisions** : le personnage est bloqué par les murs des bâtiments.
 - **Brouillard de guerre** : dans la ville, tout est visible ; hors de la ville, vous ne voyez qu'à **200 px** autour du personnage.
 
+## Cycle jour/nuit & zombies
+
+- **Cycle jour/nuit** : 12h in-game = 5 min réel (24h = 10 min). L'heure s'affiche en haut (☀ le jour, 🌙 la nuit).
+- **Compteur de jours** en haut à droite (commence à **Jour 0**), s'incrémente à chaque cycle complet.
+- **Vagues de zombies** : une vague toutes les **7 min** la nuit ; **milliers de zombies** attaquent la ville et **repartent après 10 min**.
+- **Zombies** : 2× plus lents que le joueur (on peut les fuir), n'attaquent qu'**à la main**. **Un coup de feu les tue**.
+- **Cible des zombies** : ils attaquent le joueur s'il est à **150 px** autour d'eux ; sinon ils attaquent les **murs**.
+- **Murs** : la ville est entourée d'un mur de **1 planche d'épaisseur** au départ. Mur = **100 PV**. Les zombies font **-5 PV au mur toutes les 20 s**.
+- **Barre de vie des murs** sous chaque mur ; **orange** à moins de 30 PV, **rouge** à moins de 10 PV.
+- **Joueur** : **100 PV**. **5 attaques de zombie = mort** (game over).
+- **Bois & murs** : on peut **débiter les arbres** (clic sur un arbre à proximité) pour obtenir des **planches**. Appuyez sur **B** puis cliquez pour **construire un mur** (4 planches par mur, à portée limitée).
+- **Armes au sol** : trouvées **uniquement en dehors de la ville** dès le début.
+- **Hôpital** : dans la ville ; cliquez sur sa porte avec une **pièce d'or** dans le sac pour **retrouver toute votre vie**.
+
 ## Caractéristiques
 
 - Personnage pixelisé : **6 px de large × 15 px de haut**.
 - Rendu très pixelisé (zoom par défaut plus important).
 - Projection isométrique (vue de haut), caméra qui suit le joueur.
-- Bâtiments en 3D isométrique avec toit et porte (échelle réduite avec la ville).
+- Bâtiments en 3D isométrique avec toit et porte (échelle réduite avec la ville), dont un **Hôpital**.
 - Objets et armes au sol ramassables, rangés dans le sac.
-- Arbres (forêt dense hors ville, quelques-uns en ville).
+- Arbres (forêt dense hors ville, quelques-uns en ville), abattables pour faire des planches.
+- Murs (planches) avec barre de vie, constructibles.
+- Zombies pixelisés, vagues nocturnes, cycle jour/nuit, compteur de jours.
 
 ## Fichiers
 
 - `index.html` — page et écrans (nom, pause, intérieur de bâtiment)
 - `style.css` — interface (HUD, panneaux, overlays)
-- `game.js` — moteur du jeu (projection iso, monde, ville, joueur, collisions, tir, brouillard, zoom)
+- `game.js` — moteur du jeu (projection iso, monde, ville, joueur, collisions, tir, murs, zombies, cycle jour/nuit, brouillard, zoom)
 
 ## Technologies
 
