@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ville Isométrique</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="game" width="800" height="600"></canvas>
+
+  <div class="hud" id="hud" hidden>
+    <div class="hud__row"><span class="hud__name" id="hudName">—</span></div>
+    <div class="hud__row">
+      <span id="hudZone">Hors ville</span>
+      <span id="hudPos">(0, 0)</span>
+    </div>
+    <div class="hud__row">
+      <span>Inventaire : <b id="hudInv">0</b></span>
+      <span class="hud__hint">Échap = pause · Molette = zoom · Espace = tir</span>
+    </div>
+  </div>
+
+  <div class="overlay" id="startScreen">
+    <div class="panel">
+      <h1>Ville Isométrique</h1>
+      <p class="panel__sub">Entrez votre nom pour commencer.</p>
+      <form id="startForm">
+        <input id="nameInput" type="text" maxlength="18" placeholder="Votre nom" autocomplete="off" required />
+        <button class="btn btn--primary" type="submit">Entrer dans la ville</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="overlay" id="pauseScreen" hidden>
+    <div class="panel">
+      <h2>Pause</h2>
+      <p class="panel__sub">Appuyez sur Échap pour reprendre.</p>
+      <button class="btn btn--primary" id="resumeBtn" type="button">Reprendre</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="buildingScreen" hidden>
+    <div class="panel">
+      <h2 id="buildingName">—</h2>
+      <p class="panel__sub" id="buildingMsg">—</p>
+      <button class="btn btn--primary" id="leaveBuildingBtn" type="button">Sortir</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
