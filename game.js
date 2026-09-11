@@ -3,15 +3,15 @@
 
   /* ===================== Config ===================== */
   var WORLD = 100000;          // carte 100000 x 100000 px
-  var TOWN = 10000;            // ville 10000 x 10000 px
-  var TOWN_MIN = (WORLD - TOWN) / 2; // 45000
-  var TOWN_MAX = TOWN_MIN + TOWN;    // 55000
+  var TOWN = 5000;             // ville 5000 x 5000 px
+  var TOWN_MIN = (WORLD - TOWN) / 2; // 47500
+  var TOWN_MAX = TOWN_MIN + TOWN;    // 52500
 
   var PLAYER_W = 6;   // personnage : 6 px de large
   var PLAYER_H = 15;  // 15 px de haut (pixelisé)
   var PLAYER_HALF = 3;
   var SPEED = 260;    // px monde / sec
-  var FOG_RADIUS = 50; // visibilité hors ville (px monde)
+  var FOG_RADIUS = 200; // visibilité hors ville (px monde)
   var PROJ_SPEED = 700;
   var PROJ_LIFE = 1.6;
   var SHOOT_COOLDOWN = 0.18;
@@ -46,12 +46,14 @@
     playerName: "",
     player: { x: 50000, y: 50000, face: 1, moving: false },
     camera: { x: 50000, y: 50000 },
-    zoom: 4,
-    targetZoom: 4,
+    zoom: 8,
+    targetZoom: 8,
     mouse: { sx: 0, sy: 0, wx: 50000, wy: 50000, inside: false },
     inventory: 0,
     items: [],
     buildings: [],
+    trees: [],
+    bag: { open: false, contents: [] },
     projectiles: [],
     keys: {},
     shootCd: 0,
@@ -62,38 +64,91 @@
   function makeBuilding(x, y, w, h, name, msg, height) {
     return {
       x: x, y: y, w: w, h: h,
-      name: name, msg: msg, height: height || 500,
+      name: name, msg: msg, height: height || 350,
       door: { x: x + w / 2, y: y + h } // porte au centre de la face avant
     };
   }
 
+  function rand(min, max) { return min + Math.random() * (max - min); }
+  function randi(min, max) { return Math.floor(rand(min, max + 1)); }
+
   function buildWorld() {
     var c = 50000;
+    // Bâtiments plus petits, échelle réduite à la nouvelle ville (5000x5000)
     state.buildings = [
-      makeBuilding(c - 4200, c - 4200, 1400, 1400, "Mairie", "Vous êtes à la mairie. Tout semble calme.", 700),
-      makeBuilding(c + 2800, c - 4000, 1300, 1300, "Auberge", "L'auberge sent la soupe chaude. Repos bien mérité.", 600),
-      makeBuilding(c - 4000, c + 2600, 1300, 1300, "Forge", "La forge résonne du bruit de l'enclume.", 650),
-      makeBuilding(c + 3000, c + 2800, 1400, 1200, "Marché", "Le marché grouille de marchandises.", 550),
-      makeBuilding(c - 1500, c + 3200, 1100, 900, "Temple", "Le temple est silencieux et frais.", 800),
-      makeBuilding(c + 1200, c - 3000, 1000, 1100, "Tour", "La vue depuis la tour couvre toute la ville.", 1100)
+      makeBuilding(c - 2100, c - 2100, 700, 700, "Mairie", "Vous êtes à la mairie. Tout semble calme.", 380),
+      makeBuilding(c + 1400, c - 2000, 650, 650, "Auberge", "L'auberge sent la soupe chaude. Repos bien mérité.", 330),
+      makeBuilding(c - 2000, c + 1300, 650, 650, "Forge", "La forge résonne du bruit de l'enclume.", 360),
+      makeBuilding(c + 1500, c + 1400, 700, 600, "Marché", "Le marché grouille de marchandises.", 300),
+      makeBuilding(c - 750, c + 1600, 550, 450, "Temple", "Le temple est silencieux et frais.", 440),
+      makeBuilding(c + 600, c - 1500, 500, 550, "Tour", "La vue depuis la tour couvre toute la ville.", 600)
     ];
 
+    // Objets + armes au sol
     state.items = [
-      { x: c - 800, y: c + 200, taken: false, name: "Pièce" },
-      { x: c + 900, y: c - 600, taken: false, name: "Gemme" },
-      { x: c - 2000, y: c - 1800, taken: false, name: "Potion" },
-      { x: c + 2200, y: c + 1200, taken: false, name: "Clé" },
-      { x: c + 400, y: c + 2400, taken: false, name: "Pièce" },
-      { x: c - 3200, y: c + 800, taken: false, name: "Gemme" },
-      { x: c + 3400, y: c - 1400, taken: false, name: "Parchemin" },
-      { x: c - 1200, y: c - 2600, taken: false, name: "Pièce" },
-      { x: c + 1800, y: c + 3000, taken: false, name: "Gemme" },
-      { x: c - 3600, y: c - 3600, taken: false, name: "Potion" },
-      { x: TOWN_MIN - 1400, y: c, taken: false, name: "Relique" },
-      { x: TOWN_MAX + 1200, y: c - 400, taken: false, name: "Cristal" },
-      { x: c, y: TOWN_MIN - 1600, taken: false, name: "Pièce" },
-      { x: c + 600, y: TOWN_MAX + 1300, taken: false, name: "Gemme" }
+      { x: c - 400, y: c + 100, taken: false, name: "Pièce", color: "#fbbf24", kind: "objet" },
+      { x: c + 450, y: c - 300, taken: false, name: "Gemme", color: "#22d3ee", kind: "objet" },
+      { x: c - 1000, y: c - 900, taken: false, name: "Potion", color: "#ef4444", kind: "objet" },
+      { x: c + 1100, y: c + 600, taken: false, name: "Clé", color: "#eab308", kind: "objet" },
+      { x: c + 200, y: c + 1200, taken: false, name: "Pièce", color: "#fbbf24", kind: "objet" },
+      { x: c - 1600, y: c + 400, taken: false, name: "Gemme", color: "#22d3ee", kind: "objet" },
+      { x: c + 1700, y: c - 700, taken: false, name: "Parchemin", color: "#fde68a", kind: "objet" },
+      { x: c - 600, y: c - 1300, taken: false, name: "Pièce", color: "#fbbf24", kind: "objet" },
+      // armes dans et autour de la ville
+      { x: c - 1900, y: c - 1800, taken: false, name: "Pistolet", color: "#94a3b8", kind: "arme" },
+      { x: c + 2000, y: c + 1500, taken: false, name: "Fusil", color: "#64748b", kind: "arme" },
+      { x: TOWN_MIN - 2200, y: c + 300, taken: false, name: "Arc", color: "#a16207", kind: "arme" },
+      { x: TOWN_MAX + 1800, y: c - 600, taken: false, name: "Couteau", color: "#cbd5e1", kind: "arme" },
+      { x: c - 1100, y: TOWN_MAX + 1900, taken: false, name: "Bâton", color: "#7c5e3c", kind: "arme" },
+      { x: c + 1200, y: TOWN_MIN - 2100, taken: false, name: "Pistolet", color: "#94a3b8", kind: "arme" },
+      // objets rares hors ville
+      { x: TOWN_MIN - 6000, y: TOWN_MIN - 4000, taken: false, name: "Relique", color: "#a855f7", kind: "objet" },
+      { x: TOWN_MAX + 7000, y: TOWN_MAX + 5000, taken: false, name: "Cristal", color: "#38bdf8", kind: "objet" },
+      { x: c, y: TOWN_MIN - 8000, taken: false, name: "Gemme", color: "#22d3ee", kind: "objet" },
+      { x: c + 9000, y: c - 12000, taken: false, name: "Potion", color: "#ef4444", kind: "objet" }
     ];
+
+    // Arbres : quelques-uns en ville, beaucoup en dehors de la ville
+    state.trees = [];
+    var i, tx, ty, tries;
+    for (i = 0; i < 25; i++) {
+      tries = 0;
+      do {
+        tx = rand(TOWN_MIN + 200, TOWN_MAX - 200);
+        ty = rand(TOWN_MIN + 200, TOWN_MAX - 200);
+        tries++;
+      } while (nearBuilding(tx, ty, 150) && tries < 12);
+      if (tries < 12) state.trees.push({ x: tx, y: ty, r: rand(70, 110), kind: "town" });
+    }
+    // beaucoup d'arbres hors ville (forêt dense)
+    for (i = 0; i < 700; i++) {
+      var edge = Math.random() < 0.5;
+      if (edge) {
+        tx = rand(0, WORLD);
+        ty = Math.random() < 0.5 ? rand(0, TOWN_MIN - 200) : rand(TOWN_MAX + 200, WORLD);
+      } else {
+        tx = Math.random() < 0.5 ? rand(0, TOWN_MIN - 200) : rand(TOWN_MAX + 200, WORLD);
+        ty = rand(0, WORLD);
+      }
+      state.trees.push({ x: tx, y: ty, r: rand(90, 180), kind: "wild" });
+    }
+    // arbres en bordure immédiate de la ville
+    for (i = 0; i < 200; i++) {
+      var side = randi(0, 3);
+      if (side === 0) { tx = rand(TOWN_MIN, TOWN_MAX); ty = rand(TOWN_MIN - 1400, TOWN_MIN - 100); }
+      else if (side === 1) { tx = rand(TOWN_MIN, TOWN_MAX); ty = rand(TOWN_MAX + 100, TOWN_MAX + 1400); }
+      else if (side === 2) { tx = rand(TOWN_MIN - 1400, TOWN_MIN - 100); ty = rand(TOWN_MIN, TOWN_MAX); }
+      else { tx = rand(TOWN_MAX + 100, TOWN_MAX + 1400); ty = rand(TOWN_MIN, TOWN_MAX); }
+      state.trees.push({ x: tx, y: ty, r: rand(80, 140), kind: "edge" });
+    }
+  }
+
+  function nearBuilding(x, y, pad) {
+    for (var i = 0; i < state.buildings.length; i++) {
+      var b = state.buildings[i];
+      if (x > b.x - pad && x < b.x + b.w + pad && y > b.y - pad && y < b.y + b.h + pad) return true;
+    }
+    return false;
   }
 
   /* ===================== Projection iso ===================== */
@@ -202,7 +257,7 @@
       }
     }
 
-    // 2) ramassage d'objet
+    // 2) ramassage d'objet / arme -> va dans le sac
     for (var j = 0; j < state.items.length; j++) {
       var it = state.items[j];
       if (it.taken) continue;
@@ -212,6 +267,7 @@
         var px = p.x - it.x, py = p.y - it.y;
         if (Math.sqrt(px * px + py * py) < 120) {
           it.taken = true;
+          state.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });
           state.inventory += 1;
           updateHud();
         }
@@ -223,7 +279,7 @@
     if (!state.started) return;
     e.preventDefault();
     var factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-    state.targetZoom = clamp(state.targetZoom * factor, 0.5, 24);
+    state.targetZoom = clamp(state.targetZoom * factor, 1, 40);
   }, { passive: false });
 
   window.addEventListener("keydown", function (e) {
@@ -232,7 +288,13 @@
       state.keys.space = true;
     }
     if (e.code === "Escape") {
+      if (state.started && state.bag.open) { state.bag.open = false; return; }
       if (state.started) togglePause();
+    }
+    if (e.code === "KeyA" || e.key === "a" || e.key === "A" || e.key === "q" || e.key === "Q") {
+      if (state.started && !state.paused && !state.inBuilding) {
+        state.bag.open = !state.bag.open;
+      }
     }
   });
   window.addEventListener("keyup", function (e) {
@@ -302,7 +364,7 @@
 
     if (state.shootCd > 0) state.shootCd -= dt;
 
-    if (!state.inBuilding && !state.paused) {
+    if (!state.inBuilding && !state.paused && !state.bag.open) {
       var p = state.player;
       var tx = state.mouse.wx, ty = state.mouse.wy;
       var dx = tx - p.x, dy = ty - p.y;
@@ -418,13 +480,65 @@
     ctx.beginPath();
     ctx.ellipse(s[0], s[1], r * 1.2, r * 0.6, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#fbbf24";
+    var col = it.color || "#fbbf24";
+    if (it.kind === "arme") {
+      // arme : petit rectangle pixelisé + poignée
+      ctx.fillStyle = col;
+      ctx.fillRect(s[0] - r, s[1] - r * 0.6, r * 2, r * 0.7);
+      ctx.fillStyle = "#3b2a1a";
+      ctx.fillRect(s[0] - r * 0.4, s[1] - r * 0.6 + r * 0.7, r * 0.8, r * 0.5);
+      ctx.strokeStyle = "#0f172a";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(s[0] - r, s[1] - r * 0.6, r * 2, r * 0.7);
+    } else {
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(s[0], s[1] - r, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // reflet pixelisé
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.fillRect(s[0] - r * 0.4, s[1] - r * 1.3, r * 0.4, r * 0.4);
+    }
+    ctx.restore();
+  }
+
+  function drawTree(t) {
+    var s = proj(t.x, t.y);
+    var z = state.zoom;
+    var r = t.r * 0.25 * z;
+    if (r < 2) r = 2;
+    ctx.save();
+    // ombre
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
     ctx.beginPath();
-    ctx.arc(s[0], s[1] - r, r, 0, Math.PI * 2);
+    ctx.ellipse(s[0], s[1], r * 1.1, r * 0.5, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "#b45309";
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    // tronc pixelisé
+    var trunkW = Math.max(2, r * 0.3);
+    var trunkH = Math.max(4, r * 0.9);
+    ctx.fillStyle = "#5b3a1f";
+    ctx.fillRect(s[0] - trunkW / 2, s[1] - trunkH, trunkW, trunkH);
+    // feuillage : blocs pixelisés pour l'effet pixel
+    var foliage = t.kind === "town" ? "#2f7d32" : (t.kind === "edge" ? "#3b8a3e" : "#256b2a");
+    var dark = t.kind === "town" ? "#22611f" : (t.kind === "edge" ? "#2d6e2f" : "#1c5020");
+    var cy = s[1] - trunkH - r * 0.5;
+    // forme globale
+    ctx.fillStyle = foliage;
+    ctx.beginPath();
+    ctx.arc(s[0], cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    // blocs pixels
+    var cell = Math.max(2, r * 0.28);
+    for (var py = -1; py <= 1; py++) {
+      for (var px = -2; px <= 2; px++) {
+        if (Math.abs(px) + Math.abs(py) > 2) continue;
+        if (((px + py) & 1) === 0) ctx.fillStyle = dark; else ctx.fillStyle = foliage;
+        ctx.fillRect(s[0] + px * cell - cell / 2, cy + py * cell - cell / 2, cell, cell);
+      }
+    }
     ctx.restore();
   }
 
@@ -560,6 +674,77 @@
     ctx.restore();
   }
 
+  function drawBag() {
+    var W = canvas.width / (window.devicePixelRatio || 1);
+    var H = canvas.height / (window.devicePixelRatio || 1);
+    ctx.save();
+    ctx.fillStyle = "rgba(2,6,23,0.7)";
+    ctx.fillRect(0, 0, W, H);
+
+    var pw = Math.min(460, W - 40), ph = Math.min(420, H - 60);
+    var px = (W - pw) / 2, py = (H - ph) / 2;
+    ctx.fillStyle = "#1e293b";
+    ctx.strokeStyle = "#334155";
+    ctx.lineWidth = 2;
+    roundRect(px, py, pw, ph, 16);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#818cf8";
+    ctx.font = "bold 20px Segoe UI, system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText("Sac de " + state.playerName, px + 18, py + 34);
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "13px Segoe UI, system-ui, sans-serif";
+    ctx.fillText("A pour fermer · " + state.bag.contents.length + " objet(s)", px + 18, py + 54);
+
+    // liste des objets
+    var listY = py + 76;
+    var lineH = 30;
+    ctx.font = "15px Segoe UI, system-ui, sans-serif";
+    ctx.textBaseline = "middle";
+    var n = state.bag.contents.length;
+    var maxLines = Math.floor((ph - 90) / lineH);
+    var shown = Math.min(n, maxLines);
+    if (n === 0) {
+      ctx.fillStyle = "#64748b";
+      ctx.fillText("(vide — ramassez des objets et armes au sol)", px + 18, listY + 12);
+    }
+    for (var i = 0; i < shown; i++) {
+      var it = state.bag.contents[i];
+      var ly = listY + i * lineH + 14;
+      // icône pixel
+      ctx.fillStyle = it.color || "#fbbf24";
+      if (it.kind === "arme") {
+        ctx.fillRect(px + 20, ly - 6, 16, 7);
+        ctx.fillStyle = "#3b2a1a";
+        ctx.fillRect(px + 26, ly + 1, 5, 6);
+      } else {
+        ctx.beginPath();
+        ctx.arc(px + 28, ly - 2, 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#f1f5f9";
+      ctx.textAlign = "left";
+      ctx.fillText(it.name, px + 50, ly);
+      ctx.fillStyle = "#64748b";
+      ctx.textAlign = "right";
+      ctx.fillText(it.kind, px + pw - 18, ly);
+    }
+    ctx.restore();
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
   function render() {
     var W = canvas.width / (window.devicePixelRatio || 1);
     var H = canvas.height / (window.devicePixelRatio || 1);
@@ -570,19 +755,44 @@
 
     drawGround();
 
-    // objets au sol (avant les bâtiments)
+    // objets au sol
     for (var i = 0; i < state.items.length; i++) drawItem(state.items[i]);
 
-    // bâtiments triés (loin -> près)
-    var sorted = state.buildings.slice().sort(function (a, b) {
-      return (a.x + a.y) - (b.x + b.y);
-    });
-    for (var j = 0; j < sorted.length; j++) drawBuilding(sorted[j]);
+    // bâtiments et arbres triés ensemble (loin -> près) pour un rendu correct
+    var drawables = [];
+    for (var bi = 0; bi < state.buildings.length; bi++) {
+      var bld = state.buildings[bi];
+      drawables.push({ depth: bld.x + bld.y, type: "building", ref: bld });
+    }
+    // trier et dessiner arbres visibles uniquement
+    var bnds = visibleWorldBounds();
+    for (var ti = 0; ti < state.trees.length; ti++) {
+      var tr = state.trees[ti];
+      if (tr.x < bnds.minX || tr.x > bnds.maxX || tr.y < bnds.minY || tr.y > bnds.maxY) continue;
+      drawables.push({ depth: tr.x + tr.y, type: "tree", ref: tr });
+    }
+    // joueur inséré à sa propre profondeur pour cohérence
+    var pDepth = state.player.x + state.player.y;
 
-    drawPlayer();
+    drawables.sort(function (a, b) { return a.depth - b.depth; });
+
+    var drewPlayer = false;
+    for (var k = 0; k < drawables.length; k++) {
+      var d = drawables[k];
+      if (!drewPlayer && pDepth < d.depth) {
+        drawPlayer();
+        drewPlayer = true;
+      }
+      if (d.type === "building") drawBuilding(d.ref);
+      else drawTree(d.ref);
+    }
+    if (!drewPlayer) drawPlayer();
+
     drawProjectiles();
     drawFog();
     drawCrosshair();
+
+    if (state.bag.open) drawBag();
 
     if (state.paused) {
       ctx.fillStyle = "rgba(2,6,23,0.4)";
