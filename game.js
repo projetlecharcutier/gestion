@@ -12,10 +12,23 @@
   var PLAYER_HALF = 3;
   var SPEED = 260;    // px monde / sec
   var FOG_RADIUS = 200; // visibilité hors ville (px monde)
-  var PROJ_SPEED = 700;
-  var PROJ_LIFE = 1.6;
-  var SHOOT_COOLDOWN = 0.18;
   var TS = 1000;       // taille de tuile (px monde)
+
+  // Armes : chaque arme modifie le tir (vitesse, portée, cadence, dégâts, couleur)
+  // kind: arme ; stats = { speed, life, cd, dmg, color, spread }
+  var WEAPON_STATS = {
+    "Mains nues": { speed: 600,  life: 1.0, cd: 0.30, dmg: 1, color: "#fff7ad", spread: 0.10, label: "poing" },
+    "Pistolet":    { speed: 900,  life: 1.2, cd: 0.22, dmg: 2, color: "#fde68a", spread: 0.03, label: "pistolet" },
+    "Fusil":       { speed: 1400, life: 1.6, cd: 0.45, dmg: 5, color: "#fb923c", spread: 0.01, label: "fusil" },
+    "Arc":         { speed: 1000, life: 1.4, cd: 0.40, dmg: 3, color: "#bbf7d0", spread: 0.02, label: "arc" },
+    "Couteau":     { speed: 520,  life: 0.4, cd: 0.25, dmg: 2, color: "#e2e8f0", spread: 0.0,  label: "couteau" },
+    "Bâton":       { speed: 680,  life: 0.8, cd: 0.50, dmg: 3, color: "#d6bb89", spread: 0.06, label: "bâton" }
+  };
+
+  function equippedStats() {
+    var name = state.equipped || "Mains nues";
+    return WEAPON_STATS[name] || WEAPON_STATS["Mains nues"];
+  }
 
   function viewW() { return canvas.width / (window.devicePixelRatio || 1); }
   function viewH() { return canvas.height / (window.devicePixelRatio || 1); }
@@ -28,6 +41,7 @@
   var hudZone = document.getElementById("hudZone");
   var hudPos = document.getElementById("hudPos");
   var hudInv = document.getElementById("hudInv");
+  var hudWeapon = document.getElementById("hudWeapon");
   var startScreen = document.getElementById("startScreen");
   var startForm = document.getElementById("startForm");
   var nameInput = document.getElementById("nameInput");
@@ -54,6 +68,7 @@
     buildings: [],
     trees: [],
     bag: { open: false, contents: [] },
+    equipped: null, // nom de l'arme équipée (null = "Mains nues")
     projectiles: [],
     keys: {},
     shootCd: 0,
@@ -241,6 +256,13 @@
     var rect = canvas.getBoundingClientRect();
     var sx = e.clientX - rect.left;
     var sy = e.clientY - rect.top;
+
+    // Sac ouvert : clic pour équiper / déséquiper une arme
+    if (state.bag.open) {
+      handleBagClick(sx, sy);
+      return;
+    }
+
     var w = unproj(sx, sy);
     var p = state.player;
 
@@ -355,6 +377,7 @@
     hudZone.textContent = inTown(p.x, p.y) ? "Ville" : "Hors ville";
     hudPos.textContent = "(" + Math.round(p.x) + ", " + Math.round(p.y) + ")";
     hudInv.textContent = String(state.inventory);
+    hudWeapon.textContent = state.equipped || "Mains nues";
   }
 
   /* ===================== Update ===================== */
@@ -380,19 +403,26 @@
         p.moving = false;
       }
 
-      // tir
+      // tir (les propriétés dépendent de l'arme équipée)
       if (state.keys.space && state.shootCd <= 0) {
-        state.shootCd = SHOOT_COOLDOWN;
+        var st = equippedStats();
+        state.shootCd = st.cd;
         var ax = tx - p.x, ay = ty - p.y;
         var al = Math.sqrt(ax * ax + ay * ay) || 1;
+        var ang = Math.atan2(ay, ax);
+        // dispersion
+        var sp = (Math.random() * 2 - 1) * st.spread;
+        ang += sp;
         state.projectiles.push({
           x: p.x, y: p.y - PLAYER_H * 0.5,
-          vx: (ax / al) * PROJ_SPEED,
-          vy: (ay / al) * PROJ_SPEED,
-          life: PROJ_LIFE,
+          vx: Math.cos(ang) * st.speed,
+          vy: Math.sin(ang) * st.speed,
+          life: st.life,
+          dmg: st.dmg,
+          color: st.color,
           trail: []
         });
-        if (state.projectiles.length > 60) state.projectiles.shift();
+        if (state.projectiles.length > 80) state.projectiles.shift();
       }
     }
 
@@ -623,20 +653,28 @@
   function drawProjectiles() {
     for (var i = 0; i < state.projectiles.length; i++) {
       var pr = state.projectiles[i];
+      var col = pr.color || "#fff7ad";
       for (var t = 0; t < pr.trail.length; t++) {
         var s = proj(pr.trail[t][0], pr.trail[t][1]);
         var a = (t / pr.trail.length) * 0.6;
-        ctx.fillStyle = "rgba(250,204,21," + a + ")";
+        ctx.globalAlpha = a;
+        ctx.fillStyle = col;
         ctx.beginPath();
         ctx.arc(s[0], s[1], 2 + t * 0.4, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.globalAlpha = 1;
       var h = proj(pr.x, pr.y);
-      ctx.fillStyle = "#fff7ad";
+      var rad = 2 + (pr.dmg || 1) * 0.8;
+      ctx.fillStyle = col;
       ctx.beginPath();
-      ctx.arc(h[0], h[1], 3, 0, Math.PI * 2);
+      ctx.arc(h[0], h[1], rad, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = "rgba(15,23,42,0.6)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
+    ctx.globalAlpha = 1;
   }
 
   function drawFog() {
@@ -674,15 +712,24 @@
     ctx.restore();
   }
 
-  function drawBag() {
+  function bagLayout() {
     var W = canvas.width / (window.devicePixelRatio || 1);
     var H = canvas.height / (window.devicePixelRatio || 1);
+    var pw = Math.min(460, W - 40), ph = Math.min(420, H - 60);
+    var px = (W - pw) / 2, py = (H - ph) / 2;
+    var listY = py + 96;
+    var lineH = 30;
+    var maxLines = Math.floor((ph - 112) / lineH);
+    return { W: W, H: H, px: px, py: py, pw: pw, ph: ph, listY: listY, lineH: lineH, maxLines: maxLines };
+  }
+
+  function drawBag() {
+    var L = bagLayout();
+    var W = L.W, H = L.H, px = L.px, py = L.py, pw = L.pw, ph = L.ph;
     ctx.save();
     ctx.fillStyle = "rgba(2,6,23,0.7)";
     ctx.fillRect(0, 0, W, H);
 
-    var pw = Math.min(460, W - 40), ph = Math.min(420, H - 60);
-    var px = (W - pw) / 2, py = (H - ph) / 2;
     ctx.fillStyle = "#1e293b";
     ctx.strokeStyle = "#334155";
     ctx.lineWidth = 2;
@@ -695,25 +742,43 @@
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
     ctx.fillText("Sac de " + state.playerName, px + 18, py + 34);
+
+    // arme équipée + stats
+    var eq = state.equipped || "Mains nues";
+    var st = equippedStats();
+    ctx.fillStyle = "#fbbf24";
+    ctx.font = "bold 14px Segoe UI, system-ui, sans-serif";
+    ctx.fillText("Équipé : " + eq, px + 18, py + 56);
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "12px Segoe UI, system-ui, sans-serif";
+    ctx.fillText("dégâts " + st.dmg + " · portée " + Math.round(st.speed * st.life) +
+                  " · cadence " + (1 / st.cd).toFixed(1) + "/s · dispersion " + Math.round(st.spread * 100) + "%",
+                  px + 18, py + 74);
+    ctx.textAlign = "right";
     ctx.fillStyle = "#94a3b8";
     ctx.font = "13px Segoe UI, system-ui, sans-serif";
-    ctx.fillText("A pour fermer · " + state.bag.contents.length + " objet(s)", px + 18, py + 54);
+    ctx.fillText("A fermer · clic sur une arme = équiper", px + pw - 18, py + 34);
 
     // liste des objets
-    var listY = py + 76;
-    var lineH = 30;
+    var listY = L.listY, lineH = L.lineH;
     ctx.font = "15px Segoe UI, system-ui, sans-serif";
     ctx.textBaseline = "middle";
     var n = state.bag.contents.length;
-    var maxLines = Math.floor((ph - 90) / lineH);
-    var shown = Math.min(n, maxLines);
+    var shown = Math.min(n, L.maxLines);
     if (n === 0) {
       ctx.fillStyle = "#64748b";
+      ctx.textAlign = "left";
       ctx.fillText("(vide — ramassez des objets et armes au sol)", px + 18, listY + 12);
     }
     for (var i = 0; i < shown; i++) {
       var it = state.bag.contents[i];
       var ly = listY + i * lineH + 14;
+      var isEq = (it.kind === "arme") && (it.name === state.equipped);
+      // ligne de fond si équipée
+      if (isEq) {
+        ctx.fillStyle = "rgba(251,191,36,0.16)";
+        ctx.fillRect(px + 10, ly - lineH / 2 + 2, pw - 20, lineH - 4);
+      }
       // icône pixel
       ctx.fillStyle = it.color || "#fbbf24";
       if (it.kind === "arme") {
@@ -725,14 +790,32 @@
         ctx.arc(px + 28, ly - 2, 8, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.fillStyle = "#f1f5f9";
+      ctx.fillStyle = isEq ? "#fbbf24" : "#f1f5f9";
       ctx.textAlign = "left";
-      ctx.fillText(it.name, px + 50, ly);
-      ctx.fillStyle = "#64748b";
+      ctx.fillText(it.name + (isEq ? "  (équipé)" : ""), px + 50, ly);
+      ctx.fillStyle = it.kind === "arme" ? "#818cf8" : "#64748b";
       ctx.textAlign = "right";
-      ctx.fillText(it.kind, px + pw - 18, ly);
+      var suffix = it.kind === "arme" ? "arme (clic pour équiper)" : it.kind;
+      ctx.fillText(suffix, px + pw - 18, ly);
     }
     ctx.restore();
+  }
+
+  function handleBagClick(sx, sy) {
+    var L = bagLayout();
+    var n = state.bag.contents.length;
+    var shown = Math.min(n, L.maxLines);
+    for (var i = 0; i < shown; i++) {
+      var ly = L.listY + i * L.lineH + 14;
+      if (sy >= ly - L.lineH / 2 && sy < ly + L.lineH / 2 &&
+          sx >= L.px && sx <= L.px + L.pw) {
+        var it = state.bag.contents[i];
+        if (it.kind === "arme") {
+          state.equipped = (state.equipped === it.name) ? null : it.name;
+        }
+        return;
+      }
+    }
   }
 
   function roundRect(x, y, w, h, r) {

@@ -14,6 +14,14 @@ Ouvrez `index.html` dans un navigateur récent (Chrome, Firefox, Edge, Safari).
 - **Déplacement** : le personnage suit la souris.
 - **Tir** : appuyez sur **Espace** (le tir va vers la souris).
 - **Sac** : appuyez sur **A** pour ouvrir/fermer le sac. Les **objets et armes** ramassés au sol y sont rangés.
+- **Armes & tir** : dans le sac, **cliquez sur une arme** pour l'équiper (recliquez pour la déséquiper). L'arme équipée modifie le tir :
+  - **Mains nues** : dégâts 1, portée ~600, cadence ~3,3/s, dispersion 10 %.
+  - **Pistolet** : dégâts 2, portée ~1080, cadence ~4,5/s, dispersion 3 %.
+  - **Fusil** : dégâts 5, portée ~2240, cadence ~2,2/s, dispersion 1 %.
+  - **Arc** : dégâts 3, portée ~1400, cadence ~2,5/s, dispersion 2 %.
+  - **Couteau** : dégâts 2, portée ~208, cadence 4/s, dispersion 0 %.
+  - **Bâton** : dégâts 3, portée ~544, cadence 2/s, dispersion 6 %.
+  L'arme équipée s'affiche dans le HUD en haut à gauche.
 - **Zoom / dézoom** : molette de la souris.
 - **Pause** : touche **Échap**.
 - **Bâtiments** : cliquez sur la **porte** d'un bâtiment (quand vous êtes à proximité) pour y entrer ; cliquez sur **Sortir** pour ressortir.
