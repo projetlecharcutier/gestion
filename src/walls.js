@@ -50,8 +50,24 @@
     state.planks -= G.WALL_PLANKS;
     // Grace period : la planche ne bloque pas le joueur pendant un court delai
     // apres sa pose, pour eviter qu'il se retrouve coince dessus.
-    state.walls.push({ x: mx, y: my, w: w, h: h, hp: G.WALL_MAX_HP, orient: w > h ? "h" : "v", built: true, noBlockUntil: state.time + G.WALL_GRACE });
+    var wall = { x: mx, y: my, w: w, h: h, hp: G.WALL_MAX_HP, orient: w > h ? "h" : "v", built: true, noBlockUntil: state.time + G.WALL_GRACE };
+    G.shrinkWall(wall);
+    state.walls.push(wall);
     G.updateHud();
+  };
+
+  // Réduit l'emprise de collision d'un mur à la bounding box opaque réelle du
+  // PNG de la palissade (le rendu reste sur la boîte totale). Le mur est ancré
+  // bas-centre dans le rendu iso, mais sa collision AABB est centrée sur (cx,cy).
+  G.shrinkWall = function (m) {
+    var frame = m.orient === "v" ? "palissageNESO" : "palissageNoSe";
+    var bd = G.spriteBounds("wall", frame);
+    if (!bd) return;
+    var fw = bd.x1 - bd.x0, fh = bd.y1 - bd.y0;
+    if (fw <= 0 || fh <= 0) return;
+    var cx = m.x + m.w / 2, cy = m.y + m.h / 2;
+    m.w = m.w * fw; m.h = m.h * fh;
+    m.x = cx - m.w / 2; m.y = cy - m.h / 2;
   };
 
   // Teste si la boîte (cx,cy,cw,ch) chevauche une planche POSÉE par le joueur (wall.built).

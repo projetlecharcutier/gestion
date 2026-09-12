@@ -209,20 +209,21 @@
     var seg = wd.longW;
     var thick = wd.thick;
     var pad = 6;
+    function addWall(w) { G.shrinkWall(w); state.walls.push(w); }
     // Trou d'une palissade de largeur dans le mur nord : on omet un segment
     // pour créer une entrée dans la ville au démarrage.
     var gapIndex = Math.floor((G.TOWN_MAX - G.TOWN_MIN) / seg / 2);
     var i = 0;
     for (var x = G.TOWN_MIN; x < G.TOWN_MAX; x += seg) {
       if (i !== gapIndex) {
-        state.walls.push({ x: x, y: G.TOWN_MIN - pad, w: seg, h: thick, hp: G.WALL_MAX_HP, orient: "h", built: true });
+        addWall({ x: x, y: G.TOWN_MIN - pad, w: seg, h: thick, hp: G.WALL_MAX_HP, orient: "h", built: true });
       }
-      state.walls.push({ x: x, y: G.TOWN_MAX + pad - thick, w: seg, h: thick, hp: G.WALL_MAX_HP, orient: "h", built: true });
+      addWall({ x: x, y: G.TOWN_MAX + pad - thick, w: seg, h: thick, hp: G.WALL_MAX_HP, orient: "h", built: true });
       i++;
     }
     for (var y = G.TOWN_MIN; y < G.TOWN_MAX; y += seg) {
-      state.walls.push({ x: G.TOWN_MIN - pad, y: y, w: thick, h: seg, hp: G.WALL_MAX_HP, orient: "v", built: true });
-      state.walls.push({ x: G.TOWN_MAX + pad - thick, y: y, w: thick, h: seg, hp: G.WALL_MAX_HP, orient: "v", built: true });
+      addWall({ x: G.TOWN_MIN - pad, y: y, w: thick, h: seg, hp: G.WALL_MAX_HP, orient: "v", built: true });
+      addWall({ x: G.TOWN_MAX + pad - thick, y: y, w: thick, h: seg, hp: G.WALL_MAX_HP, orient: "v", built: true });
     }
   };
 
