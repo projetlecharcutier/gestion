@@ -74,6 +74,8 @@
         if (state.chopWall.hp <= 0) {
           var wi = state.walls.indexOf(state.chopWall);
           if (wi >= 0) state.walls.splice(wi, 1);
+          // Récupère les 4 planches qui formaient la palissade.
+          state.planks += G.WALL_PLANKS;
         }
       } else {
         // Récolte : 1 planche, arbre retiré.
