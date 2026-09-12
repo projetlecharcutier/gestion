@@ -306,7 +306,22 @@
         }
       }
       spawnHouses(G.randi(24, 66), true);
-      spawnHouses(20, false);
+      // Petits villages éparpillés à l'extérieur de la ville : chaque village
+      // est un cluster de 5 à 8 maisons collées, dispersé sur la carte.
+      var numVillages = G.randi(6, 10);
+      for (var v = 0; v < numVillages; v++) {
+        // Centre du village hors ville, suffisamment loin des murs.
+        var vx = Math.random() < 0.5 ? G.rand(80, G.TOWN_MIN - 200) : G.rand(G.TOWN_MAX + 200, G.WORLD - 80);
+        var vy = Math.random() < 0.5 ? G.rand(80, G.TOWN_MIN - 200) : G.rand(G.TOWN_MAX + 200, G.WORLD - 80);
+        // Place une première maison au centre, puis colle les autres autour.
+        var vHouses = [];
+        var first = placeHouseAt(vx, vy, false);
+        if (first) vHouses.push(state.buildings[state.buildings.length - 1]);
+        var vCount = G.randi(5, 8);
+        for (var vc = 1; vc < vCount; vc++) {
+          if (placeAdjacent(vHouses, false)) vHouses.push(state.buildings[state.buildings.length - 1]);
+        }
+      }
     }
     state.items = [
       // Équipement de départ en ville.

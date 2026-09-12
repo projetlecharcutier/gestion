@@ -68,7 +68,8 @@
     for (var i = 0; i < state.buildings.length; i++) {
       var b = state.buildings[i];
       if (b.isDecor) continue; // maisons décoratives : non cliquables
-      // Zone cliquable calibrée sur la taille du bâtiment (l'emprise sol + marge).
+      // Seuls la Mairie (coffre) et l'Hôpital (soin) sont cliquables.
+      if (!b.isMairie && b.name !== "Hôpital") continue;
       var clickR = Math.max(b.w, b.h) + 10;
       var cx = b.x + b.w / 2, cy = b.y + b.h / 2;
       var ddx = w[0] - cx, ddy = w[1] - cy;
@@ -84,8 +85,6 @@
             G.openMairieChest();
             return;
           }
-          G.enterBuilding(b);
-          return;
         }
       }
     }

@@ -40,6 +40,18 @@
   if (window.SC && dayFrame) dayWidget = window.SC.Widget(dayFrame);
   if (window.SC && nightFrame) nightWidget = window.SC.Widget(nightFrame);
 
+  // Boucle : quand une piste se termine, on la relance automatiquement.
+  function loopTrack(w) {
+    if (!w || !window.SC) return;
+    try {
+      w.bind(window.SC.Widget.Events.FINISH_PLAY, function () {
+        try { w.seek(0); w.play(); } catch (e) {}
+      });
+    } catch (e) {}
+  }
+  loopTrack(dayWidget);
+  loopTrack(nightWidget);
+
   function setVolume(w, vol) {
     if (w) try { w.setVolume(vol); } catch (e) {}
   }
