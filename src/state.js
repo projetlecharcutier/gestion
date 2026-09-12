@@ -59,6 +59,7 @@
     elapsed: 0,
     nextWaveAt: G.WAVE_EVERY,
     waveActive: false,
+    waveCount: 0,
     waveLeaveAt: 0,
     time: 0
   };

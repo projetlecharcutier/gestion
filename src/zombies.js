@@ -5,7 +5,8 @@
 
   G.spawnWave = function () {
     var state = G.state;
-    var count = G.ZOMBIE_PER_WAVE_BASE + state.day * 20;
+    var count = G.ZOMBIE_PER_WAVE_BASE * Math.pow(G.ZOMBIE_WAVE_GROWTH, state.day);
+    state.waveCount = Math.round(count);
     var side = G.randi(0, 3);
     var nbGroups = Math.ceil(count / G.GROUP_SIZE);
     state.zombieGroups = [];

@@ -40,6 +40,12 @@
     ctx.fillStyle = t.dayColor;
     ctx.font = "bold 16px Segoe UI, system-ui, sans-serif";
     ctx.fillText("Jour " + G.state.day, W - 14, 14);
+    var live = G.state.zombies.length;
+    if (G.state.waveActive) {
+      ctx.fillStyle = t.waveColor;
+      ctx.font = "bold 14px Segoe UI, system-ui, sans-serif";
+      ctx.fillText("Zombies : " + live + " / " + (G.state.waveCount || live), W - 14, 34);
+    }
     ctx.restore();
   };
 
