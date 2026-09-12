@@ -33,20 +33,21 @@
 
   G.drawBag = function () {
     var ctx = G.ctx;
+    var t = G.TEXTURES.bag;
     var L = G.bagLayout();
     var W = L.W, H = L.H, px = L.px, py = L.py, pw = L.pw, ph = L.ph;
     ctx.save();
-    ctx.fillStyle = "rgba(2,6,23,0.7)";
+    ctx.fillStyle = t.overlay;
     ctx.fillRect(0, 0, W, H);
 
-    ctx.fillStyle = "#1e293b";
-    ctx.strokeStyle = "#334155";
+    ctx.fillStyle = t.panelFill;
+    ctx.strokeStyle = t.panelStroke;
     ctx.lineWidth = 2;
     G.roundRect(px, py, pw, ph, 16);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = "#818cf8";
+    ctx.fillStyle = t.title;
     ctx.font = "bold 20px Segoe UI, system-ui, sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
@@ -54,16 +55,16 @@
 
     var eq = G.state.equipped || "Mains nues";
     var st = G.equippedStats();
-    ctx.fillStyle = "#fbbf24";
+    ctx.fillStyle = t.equipped;
     ctx.font = "bold 14px Segoe UI, system-ui, sans-serif";
     ctx.fillText("Équipé : " + eq, px + 18, py + 56);
-    ctx.fillStyle = "#94a3b8";
+    ctx.fillStyle = t.stats;
     ctx.font = "12px Segoe UI, system-ui, sans-serif";
     ctx.fillText("dégâts " + st.dmg + " · portée " + Math.round(st.speed * st.life) +
                   " · cadence " + (1 / st.cd).toFixed(1) + "/s · dispersion " + Math.round(st.spread * 100) + "%",
                   px + 18, py + 74);
     ctx.textAlign = "right";
-    ctx.fillStyle = "#94a3b8";
+    ctx.fillStyle = t.hint;
     ctx.font = "13px Segoe UI, system-ui, sans-serif";
     ctx.fillText("A fermer · clic sur une arme = équiper", px + pw - 18, py + 34);
 
@@ -73,7 +74,7 @@
     var n = G.state.bag.contents.length;
     var shown = Math.min(n, L.maxLines);
     if (n === 0) {
-      ctx.fillStyle = "#64748b";
+      ctx.fillStyle = t.empty;
       ctx.textAlign = "left";
       ctx.fillText("(vide — ramassez des objets et armes au sol)", px + 18, listY + 12);
     }
@@ -82,23 +83,23 @@
       var ly = listY + i * lineH + 14;
       var isEq = (it.kind === "arme") && (it.name === G.state.equipped);
       if (isEq) {
-        ctx.fillStyle = "rgba(251,191,36,0.16)";
+        ctx.fillStyle = t.equippedHighlight;
         ctx.fillRect(px + 10, ly - lineH / 2 + 2, pw - 20, lineH - 4);
       }
-      ctx.fillStyle = it.color || "#fbbf24";
+      ctx.fillStyle = it.color || t.defaultColor;
       if (it.kind === "arme") {
         ctx.fillRect(px + 20, ly - 6, 16, 7);
-        ctx.fillStyle = "#3b2a1a";
+        ctx.fillStyle = t.weaponHandle;
         ctx.fillRect(px + 26, ly + 1, 5, 6);
       } else {
         ctx.beginPath();
         ctx.arc(px + 28, ly - 2, 8, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.fillStyle = isEq ? "#fbbf24" : "#f1f5f9";
+      ctx.fillStyle = isEq ? t.equipped : t.itemText;
       ctx.textAlign = "left";
       ctx.fillText(it.name + (isEq ? "  (équipé)" : ""), px + 50, ly);
-      ctx.fillStyle = it.kind === "arme" ? "#818cf8" : "#64748b";
+      ctx.fillStyle = it.kind === "arme" ? t.weaponTag : t.objectTag;
       ctx.textAlign = "right";
       var suffix = it.kind === "arme" ? "arme (clic pour équiper)" : it.kind;
       ctx.fillText(suffix, px + pw - 18, ly);

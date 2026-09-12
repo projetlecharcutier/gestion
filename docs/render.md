@@ -1,7 +1,7 @@
 # Rendu — `src/render.js`
 
 ## Contrat
-Dessine tout (sol, objets, arbres, bâtiments, murs, zombies, joueur, projectiles, brouillard, viseur) et orchestre `render()`. Dépend de `config.js`, `state.js`, `projection.js`, `hud.js`, `bag.js`. C'est le plus gros fichier : à ne modifier que pour du dessin.
+Dessine tout (sol, objets, arbres, bâtiments, murs, zombies, joueur, projectiles, brouillard, viseur) et orchestre `render()`. Dépend de `config.js`, `state.js`, `projection.js`, `hud.js`, `bag.js`, **et des textures `G.TEXTURES`** (`src/textures/`). C'est le plus gros fichier : à ne modifier que pour du dessin. Les sprites et couleurs ne sont **pas** définis ici — ils viennent de `G.TEXTURES`.
 
 ## Exposé sur `G`
 - Helpers : `fillPoly(points, fill, stroke)`, `roundRect(x,y,w,h,r)`
@@ -18,8 +18,7 @@ Dessine tout (sol, objets, arbres, bâtiments, murs, zombies, joueur, projectile
 6. Sac (si ouvert), voile pause, game over
 
 ## Sprites
-- `PLAYER_SPRITE` / `PAL` (6×15) : h=cheveux, s=peau, b=corps, p=pantalons, f=pieds. Flip horizontal si `face<0`.
-- `ZOMBIE_SPRITE` / `ZPAL` (6×15) : palette verte.
+- `PLAYER_SPRITE`/`PAL` et `ZOMBIE_SPRITE`/`ZPAL` ont été déplacés vers `G.TEXTURES.player` et `G.TEXTURES.zombie` (`src/textures/`). Voir `docs/textures.md`.
 - Rendu pixelisé : `cell = zoom*0.5`, `imageSmoothingEnabled=false`.
 
 ## Culling

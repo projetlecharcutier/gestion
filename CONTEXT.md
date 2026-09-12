@@ -10,6 +10,8 @@ Ouvrir `index.html` dans un navigateur récent. Aucune dépendance, aucun build 
 
 Le code est découpé par **système**. Chaque fichier `(function(){ ... })()` expose ses fonctions sur `window.GAME` (alias `G`).
 
+Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fonctions de dessin dans `src/textures/`, exposées sur `G.TEXTURES`. Le rendu (`src/render.js`, `src/hud.js`, `src/bag.js`) les consomme sans les définir.
+
 ### Ordre de chargement (voir `index.html`)
 
 | # | Fichier | Rôle | Exposé sur `G` |
@@ -72,6 +74,28 @@ Schéma complet dans `src/state.js`. Champs clés :
 7. Caméra suit le joueur
 8. Refresh souris monde + `updateHud()`
 
+## Textures (`src/textures/`)
+
+Sprites pixel art et palettes de couleurs, isolés du rendu. Exposés sur `G.TEXTURES.<type>`.
+
+| Fichier | Type | Contenu |
+|---------|------|--------|
+| `src/textures/index.js` | — | initialise `G.TEXTURES` |
+| `src/textures/player.js` | joueur | sprite 6×15 + palette + ombre |
+| `src/textures/zombie.js` | zombie | sprite 6×15 + palette + ombre |
+| `src/textures/building.js` | bâtiment | faces, toit, porte |
+| `src/textures/wall.js` | mur | faces, dessus, seuils barre de vie |
+| `src/textures/tree.js` | arbre | tronc, ombre, feuillage par `kind` |
+| `src/textures/item.js` | objet au sol | ombre, reflet, poignée d'arme |
+| `src/textures/ground.js` | sol | tuiles ville/wild, bordure, fond ciel |
+| `src/textures/fog.js` | brouillard | couleur + arrêts du dégradé |
+| `src/textures/crosshair.js` | viseur | couleur + géométrie réticule |
+| `src/textures/projectile.js` | projectile | couleur repli, traîne, taille tête |
+| `src/textures/hud.js` | overlays HUD | barre de vie, horloge, hint, game over |
+| `src/textures/bag.js` | sac UI | panneau, titres, icônes |
+
+Voir `docs/textures.md` pour la spec.
+
 ## Points d'extension (où ajouter sans tout casser)
 
 - **Nouvelle arme** → ajouter une entrée dans `G.WEAPON_STATS` (`src/config.js`). Aucun autre fichier à toucher : `equippedStats`, le tir et le sac la prennent en compte automatiquement.
@@ -80,6 +104,7 @@ Schéma complet dans `src/state.js`. Champs clés :
 - **Comportement zombie** → `updateZombies` (`src/zombies.js`) ; nettoyer les morts via `cleanupZombies`.
 - **Nouveau HUD canvas** → `src/hud.js`, appeler dans `render()` (`src/render.js`).
 - **Nouvelle entrée clavier** → `src/input.js`.
+- **Changer un sprite / une couleur** → `src/textures/<type>.js` uniquement (le rendu les consomme).
 - **Nouveau système complet** → créer `src/<nom>.js`, l'ajouter à `index.html` avant `main.js`, exposer sur `G`, documenter ici.
 
 ## Specs détaillées par système

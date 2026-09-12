@@ -17,3 +17,4 @@ Chaque fichier ci-dessous documente un système : son contrat, ses entrées/sort
 | Rendu | [render.md](render.md) | `src/render.js` |
 | Entrées | [input.md](input.md) | `src/input.js` |
 | Boucle principale | [main.md](main.md) | `src/main.js` |
+| Textures (sprites & couleurs) | [textures.md](textures.md) | `src/textures/` |

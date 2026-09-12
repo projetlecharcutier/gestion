@@ -1,7 +1,7 @@
 # HUD & overlays — `src/hud.js`
 
 ## Contrat
-Met à jour le HUD DOM et dessine les overlays canvas (horloge, barre de vie joueur, hint de construction, game over). Dépend de `config.js`, `state.js`, `projection.js` (`proj`). Appelé depuis `render()` (`src/render.js`) et `update()` (`updateHud`).
+Met à jour le HUD DOM et dessine les overlays canvas (horloge, barre de vie joueur, hint de construction, game over). Dépend de `config.js`, `state.js`, `projection.js` (`proj`), **et des textures `G.TEXTURES.playerHpBar`/`clock`/`buildHint`/`gameOver`** (`src/textures/hud.js`). Couleurs et dimensions viennent des textures, pas du code.
 
 ## Exposé sur `G`
 - `updateHud()` — met à jour les éléments DOM : nom, zone, position, inventaire, arme, PV, planches

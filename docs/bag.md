@@ -1,7 +1,7 @@
 # Sac & inventaire — `src/bag.js`
 
 ## Contrat
-Disposition du panneau Sac, rendu du sac, clic pour équiper une arme. Dépend de `config.js` (via `equippedStats`), `state.js`, `render.js` (`G.roundRect`). Le sac s'ouvre/ferme via la touche A (`src/input.js`).
+Disposition du panneau Sac, rendu du sac, clic pour équiper une arme. Dépend de `config.js` (via `equippedStats`), `state.js`, `render.js` (`G.roundRect`), **et des textures `G.TEXTURES.bag`** (`src/textures/bag.js`). Le sac s'ouvre/ferme via la touche A (`src/input.js`).
 
 ## Exposé sur `G`
 - `bagLayout()` → `{ W, H, px, py, pw, ph, listY, lineH, maxLines }` — géométrie du panneau
