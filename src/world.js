@@ -41,6 +41,47 @@
     return false;
   };
 
+  // Fait poper `total` arbres de type `kind` hors de la ville, regroupés en
+  // clusters de 1 à 10 arbres. Les arbres d'un même cluster sont proches mais
+  // ne se superposent pas (distance minimale entre troncs = somme des rayons).
+  G.spawnTreeClusters = function (state, total, kind) {
+    var placed = 0;
+    var guard = 0;
+    while (placed < total && guard < total * 20) {
+      guard++;
+      // Centre du cluster hors de la ville.
+      var gx, gy;
+      if (Math.random() < 0.5) {
+        gx = G.rand(0, G.WORLD);
+        gy = Math.random() < 0.5 ? G.rand(0, G.TOWN_MIN - 40) : G.rand(G.TOWN_MAX + 40, G.WORLD);
+      } else {
+        gx = Math.random() < 0.5 ? G.rand(0, G.TOWN_MIN - 40) : G.rand(G.TOWN_MAX + 40, G.WORLD);
+        gy = G.rand(0, G.WORLD);
+      }
+      var count = G.randi(1, 10);
+      for (var j = 0; j < count && placed < total; j++) {
+        var r = G.rand(18, 36);
+        // Décalage du centre du cluster (rayon ~80 pour rester groupé).
+        var ang = Math.random() * Math.PI * 2;
+        var dist = Math.random() * 80;
+        var tx = gx + Math.cos(ang) * dist;
+        var ty = gy + Math.sin(ang) * dist;
+        if (tx < 0 || tx > G.WORLD || ty < 0 || ty > G.WORLD) continue;
+        if (G.inTown(tx, ty)) continue;
+        // Vérifie la non-superposition avec les arbres déjà placés.
+        var ok = true;
+        for (var k = 0; k < state.trees.length; k++) {
+          var o = state.trees[k];
+          var dx = tx - o.x, dy = ty - o.y;
+          if (Math.sqrt(dx * dx + dy * dy) < r + o.r) { ok = false; break; }
+        }
+        if (!ok) continue;
+        state.trees.push({ x: tx, y: ty, r: r, kind: kind, hp: 2 });
+        placed++;
+      }
+    }
+  };
+
   G.buildPerimeterWall = function () {
     var state = G.state;
     state.walls = [];
@@ -63,7 +104,7 @@
     var state = G.state;
     var c = G.WORLD / 2;
     state.buildings = [
-      G.makeBuilding(c - 420, c - 420, 120, 120, "Mairie", "Vous êtes à la mairie. Tout semble calme.", 76),
+      G.makeBuilding(c - 60, c - 60, 120, 120, "Mairie", "Vous êtes à la mairie. Tout semble calme.", 76),
       G.makeBuilding(c + 280, c - 400, 110, 110, "Auberge", "L'auberge sent la soupe chaude. Repos bien mérité.", 66),
       G.makeBuilding(c - 400, c + 260, 110, 110, "Forge", "La forge résonne du bruit de l'enclume.", 72),
       G.makeBuilding(c + 300, c + 280, 120, 100, "Marché", "Le marché grouille de marchandises.", 60),
@@ -115,17 +156,9 @@
       } while (G.nearBuilding(tx, ty, 30) && tries < 12);
       if (tries < 12) state.trees.push({ x: tx, y: ty, r: G.rand(14, 22), kind: "town", hp: 2 });
     }
-    for (i = 0; i < 1600; i++) {
-      var edge = Math.random() < 0.5;
-      if (edge) {
-        tx = G.rand(0, G.WORLD);
-        ty = Math.random() < 0.5 ? G.rand(0, G.TOWN_MIN - 40) : G.rand(G.TOWN_MAX + 40, G.WORLD);
-      } else {
-        tx = Math.random() < 0.5 ? G.rand(0, G.TOWN_MIN - 40) : G.rand(G.TOWN_MAX + 40, G.WORLD);
-        ty = G.rand(0, G.WORLD);
-      }
-      state.trees.push({ x: tx, y: ty, r: G.rand(18, 36), kind: "wild", hp: 2 });
-    }
+    // Forêt hors ville : les arbres wild popent par groupes de 1 à 10,
+    // regroupés spatialement et sans se superposer.
+    G.spawnTreeClusters(state, 1600, "wild");
     for (i = 0; i < 25; i++) {
       var side = G.randi(0, 3);
       if (side === 0) { tx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ty = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); }

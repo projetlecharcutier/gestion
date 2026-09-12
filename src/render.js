@@ -92,22 +92,11 @@
       var sp = G.SPRITES.tree[t.kind];
       var scale = z * 0.5;
       var dw = sp.w * scale, dh = sp.h * scale;
-      ctx.save();
-      ctx.fillStyle = tx_.shadow;
-      ctx.beginPath();
-      ctx.ellipse(s[0], s[1], dw * 0.3, dw * 0.12, 0, 0, Math.PI * 2);
-      ctx.fill();
       ctx.drawImage(sp.img, s[0] - dw / 2, s[1] - dh, dw, dh);
-      ctx.restore();
       return;
     }
     var r = t.r * 0.25 * z;
     if (r < 2) r = 2;
-    ctx.save();
-    ctx.fillStyle = tx_.shadow;
-    ctx.beginPath();
-    ctx.ellipse(s[0], s[1], r * 1.1, r * 0.5, 0, 0, Math.PI * 2);
-    ctx.fill();
     var trunkW = Math.max(2, r * 0.3);
     var trunkH = Math.max(4, r * 0.9);
     ctx.fillStyle = tx_.trunk;
@@ -128,7 +117,6 @@
         ctx.fillRect(s[0] + px * cell - cell / 2, cy + py * cell - cell / 2, cell, cell);
       }
     }
-    ctx.restore();
   };
 
   G.drawBuilding = function (b) {
