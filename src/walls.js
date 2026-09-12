@@ -14,8 +14,10 @@
     var spH = G.hasSprite("wall", "palissageNESO") ? G.SPRITES.wall.palissageNESO : null;
     var spV = G.hasSprite("wall", "palissageNoSe") ? G.SPRITES.wall.palissageNoSe : null;
     if (spH && spV) {
-      var longW = (spH.w + spV.h) * 0.25;
-      var thick = Math.min(spH.h, spV.w) * 0.25;
+      // 4x la taille du PNG (comme les bâtiments et arbres). Longueur = dimension
+      // la plus grande, épaisseur = dimension la plus petite (palissade fine).
+      var longW = Math.max(spH.w, spV.w, spH.h, spV.h) * 2;
+      var thick = Math.min(spH.w, spV.w, spH.h, spV.h) * 2 * 0.4;
       return { longW: longW || G.PLANK_LONG, thick: thick || G.PLANK_THICK };
     }
     return { longW: G.PLANK_LONG, thick: G.PLANK_THICK };

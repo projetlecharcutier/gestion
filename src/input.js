@@ -47,6 +47,23 @@
       return;
     }
 
+    for (var j = 0; j < state.items.length; j++) {
+      var it = state.items[j];
+      if (it.taken) continue;
+      var ix = w[0] - it.x, iy = w[1] - it.y;
+      var od = Math.sqrt(ix * ix + iy * iy);
+      if (od < 70) {
+        var px = p.x - it.x, py = p.y - it.y;
+        if (Math.sqrt(px * px + py * py) < 120) {
+          it.taken = true;
+          state.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });
+          state.inventory += 1;
+          G.updateHud();
+        }
+        return; // objet prioritaire sur les bâtiments
+      }
+    }
+
     for (var i = 0; i < state.buildings.length; i++) {
       var b = state.buildings[i];
       if (b.isDecor) continue; // maisons décoratives : non cliquables
@@ -68,22 +85,6 @@
           }
           G.enterBuilding(b);
           return;
-        }
-      }
-    }
-
-    for (var j = 0; j < state.items.length; j++) {
-      var it = state.items[j];
-      if (it.taken) continue;
-      var ix = w[0] - it.x, iy = w[1] - it.y;
-      var od = Math.sqrt(ix * ix + iy * iy);
-      if (od < 70) {
-        var px = p.x - it.x, py = p.y - it.y;
-        if (Math.sqrt(px * px + py * py) < 120) {
-          it.taken = true;
-          state.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });
-          state.inventory += 1;
-          G.updateHud();
         }
       }
     }
@@ -137,7 +138,6 @@
     state.playerName = v;
     G.startScreen.hidden = true;
     G.hud.hidden = false;
-    state.started = true;
     state.gameOver = false;
     state.gameOverCause = "";
     state.player.hp = G.PLAYER_MAX_HP;
@@ -161,9 +161,17 @@
     state.chest = [];
     state.chestOpen = false;
     if (G.chestScreen) G.chestScreen.hidden = true;
-    G.buildWorld();
-    G.spawnBirds();
-    G.updateHud();
+    // Attend que les assets (maisons, palissades, etc.) soient chargés avant de
+    // construire le monde et de démarrer : sinon les bâtiments décoratifs et murs
+    // ne spawnent pas.
+    function doBuild() {
+      G.buildWorld();
+      G.spawnBirds();
+      G.updateHud();
+      state.started = true;
+    }
+    if (G.assetsReady()) doBuild();
+    else G.loadAssets(doBuild);
     G.nameInput.blur();
   });
 
