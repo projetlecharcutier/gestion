@@ -115,18 +115,46 @@
     G.updateHud();
   };
 
+  // Récupère un objet du coffre (index) vers le sac.
+  G.withdrawItem = function (index) {
+    var state = G.state;
+    if (index < 0 || index >= state.chest.length) return;
+    var it = state.chest[index];
+    state.bag.contents.push(it);
+    state.inventory = state.bag.contents.length;
+    state.chest.splice(index, 1);
+    G.drawChest();
+    G.updateHud();
+  };
+
   // Affiche le contenu du coffre et du sac dans l'écran de coffre.
   G.drawChest = function () {
     var state = G.state;
     var vault = G.chestVault;
     var bag = G.chestBag;
+    // Coffre : boutons cliquables pour récupérer un objet vers le sac.
+    vault.innerHTML = "";
+    var vaultList = document.createElement("div");
+    vaultList.className = "chest__list";
     if (state.chest.length === 0) {
-      vault.textContent = "Coffre vide";
+      var emptyVault = document.createElement("p");
+      emptyVault.textContent = "Coffre vide";
+      vaultList.appendChild(emptyVault);
     } else {
-      vault.textContent = state.chest.map(function (it) {
-        return (it.kind === "arme" || it.kind === "outil") ? it.name : it.name;
-      }).join(", ");
+      for (var i = 0; i < state.chest.length; i++) {
+        var vi = state.chest[i];
+        var vbtn = document.createElement("button");
+        vbtn.type = "button";
+        vbtn.className = "btn chest__item";
+        vbtn.textContent = vi.name + (vi.kind === "arme" ? " (arme)" : vi.kind === "outil" ? " (outil)" : "");
+        (function (idx) {
+          vbtn.addEventListener("click", function () { G.withdrawItem(idx); });
+        })(i);
+        vaultList.appendChild(vbtn);
+      }
     }
+    vault.appendChild(vaultList);
+    // Sac : boutons cliquables pour déposer un objet vers le coffre.
     bag.innerHTML = "";
     var list = document.createElement("div");
     list.className = "chest__list";
