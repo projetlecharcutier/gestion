@@ -11,10 +11,10 @@
     state.zombieGroups = [];
     for (var g = 0; g < nbGroups; g++) {
       var lx, ly;
-      if (side === 0) { lx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ly = G.TOWN_MIN - G.rand(300, 2200); }
-      else if (side === 1) { lx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ly = G.TOWN_MAX + G.rand(300, 2200); }
-      else if (side === 2) { lx = G.TOWN_MIN - G.rand(300, 2200); ly = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
-      else { lx = G.TOWN_MAX + G.rand(300, 2200); ly = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
+      if (side === 0) { lx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ly = G.clamp(G.TOWN_MIN - G.rand(30, 220), 0, G.WORLD); }
+      else if (side === 1) { lx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ly = G.clamp(G.TOWN_MAX + G.rand(30, 220), 0, G.WORLD); }
+      else if (side === 2) { lx = G.clamp(G.TOWN_MIN - G.rand(30, 220), 0, G.WORLD); ly = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
+      else { lx = G.clamp(G.TOWN_MAX + G.rand(30, 220), 0, G.WORLD); ly = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
       var grp = { x: lx, y: ly, members: [] };
       state.zombieGroups.push(grp);
       var n = Math.min(G.GROUP_SIZE, count - g * G.GROUP_SIZE);
@@ -109,7 +109,7 @@
             if (md < bestD) { bestD = md; best = m; }
           }
           if (best) cible = { x: best.x + best.w / 2, y: best.y + best.h / 2, isPlayer: false, wall: best };
-          else cible = { x: 50000, y: 50000, isPlayer: false };
+          else cible = { x: G.WORLD / 2, y: G.WORLD / 2, isPlayer: false };
         }
         var ldx = cible.x - grp.x, ldy = cible.y - grp.y;
         var ld = Math.sqrt(ldx * ldx + ldy * ldy) || 1;
