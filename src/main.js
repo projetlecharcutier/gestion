@@ -26,7 +26,7 @@
       var tx = state.mouse.wx, ty = state.mouse.wy;
       var dx = tx - p.x, dy = ty - p.y;
       var dist = Math.sqrt(dx * dx + dy * dy);
-      if (state.mouse.inside && dist > G.PLAYER_W) {
+      if (state.mouse.inside && dist > G.PLAYER_W * 3) {
         var nx = dx / dist, ny = dy / dist;
         var stepX = p.x + nx * G.SPEED * dt;
         var stepY = p.y + ny * G.SPEED * dt;
