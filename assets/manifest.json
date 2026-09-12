@@ -11,15 +11,15 @@
     "NW":   { "src": "assets/sprites/player/NW.png",    "w": 32, "h": 48 }
   },
   "bird": {
-    "idle": { "src": "assets/sprites/bird/idle.png", "w": 24, "h": 24 },
-    "N":    { "src": "assets/sprites/bird/N.png",    "w": 24, "h": 24 },
-    "NE":   { "src": "assets/sprites/bird/NE.png",   "w": 24, "h": 24 },
-    "E":    { "src": "assets/sprites/bird/E.png",     "w": 24, "h": 24 },
-    "SE":   { "src": "assets/sprites/bird/SE.png",   "w": 24, "h": 24 },
-    "S":    { "src": "assets/sprites/bird/S.png",    "w": 24, "h": 24 },
-    "SW":   { "src": "assets/sprites/bird/SW.png",   "w": 24, "h": 24 },
-    "W":    { "src": "assets/sprites/bird/W.png",    "w": 24, "h": 24 },
-    "NW":   { "src": "assets/sprites/bird/NW.png",    "w": 24, "h": 24 }
+    "idle": { "src": "assets/sprites/bird/idle.png", "w": 64, "h": 64 },
+    "N":    { "src": "assets/sprites/bird/N.png",    "w": 64, "h": 64 },
+    "NE":   { "src": "assets/sprites/bird/NE.png",   "w": 64, "h": 64 },
+    "E":    { "src": "assets/sprites/bird/E.png",     "w": 64, "h": 64 },
+    "SE":   { "src": "assets/sprites/bird/SE.png",   "w": 64, "h": 64 },
+    "S":    { "src": "assets/sprites/bird/S.png",    "w": 64, "h": 64 },
+    "SW":   { "src": "assets/sprites/bird/SW.png",   "w": 64, "h": 64 },
+    "W":    { "src": "assets/sprites/bird/W.png",    "w": 64, "h": 64 },
+    "NW":   { "src": "assets/sprites/bird/NW.png",    "w": 64, "h": 64 }
   },
   "tree": {
     "town": { "src": "assets/sprites/tree/town.png", "w": 64, "h": 80 },

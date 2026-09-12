@@ -1,0 +1,4 @@
+# Place les PNG de l'oiseau (64x64) ici :
+#   idle.png  N.png  NE.png  E.png  SE.png  S.png  SW.png  W.png  NW.png
+#
+# Si tu n'as qu'un seul PNG, nomme-le idle.png (affiche quand l'oiseau est immobile).
