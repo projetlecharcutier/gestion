@@ -191,12 +191,13 @@
     // En ville : 8x plus qu'avant. Hors ville : ~100 maisons.
     var houseNames = G.houseNames();
     if (houseNames.length > 0) {
+      // Tente de placer une maison à (hx, hy). Refuse si superposition.
       function placeHouseAt(hx, hy, inTown) {
         var frame = houseNames[G.randi(0, houseNames.length - 1)];
         var sp = G.SPRITES.house[frame];
         if (!sp) return false;
         var side = sp.w * 2;
-        // Empêche la superposition avec les bâtiments existants.
+        if (hx < 20 || hx > G.WORLD - 20 || hy < 20 || hy > G.WORLD - 20) return false;
         for (var bi3 = 0; bi3 < state.buildings.length; bi3++) {
           var ob = state.buildings[bi3];
           if (hx - side / 2 < ob.x + ob.w && hx + side / 2 > ob.x &&
@@ -206,32 +207,51 @@
         state.buildings.push(G.makeHouse(hx, hy, sp));
         return true;
       }
-      function spawnClusters(total, inTown, clusterR) {
+      // Tente de coller une maison contre un bâtiment existant (4 côtés possibles).
+      function placeAdjacent(houses, inTown) {
+        for (var t = 0; t < 20; t++) {
+          var anchor = houses[G.randi(0, houses.length - 1)];
+          var frame = houseNames[G.randi(0, houseNames.length - 1)];
+          var sp = G.SPRITES.house[frame];
+          if (!sp) continue;
+          var side = sp.w * 2;
+          var sideA = anchor.w;
+          var dir = G.randi(0, 3); // 0=haut, 1=bas, 2=gauche, 3=droite
+          var hx, hy;
+          if (dir === 0) { hx = anchor.x + sideA / 2; hy = anchor.y - side / 2; }
+          else if (dir === 1) { hx = anchor.x + sideA / 2; hy = anchor.y + anchor.h + side / 2; }
+          else if (dir === 2) { hx = anchor.x - side / 2; hy = anchor.y + sideA / 2; }
+          else { hx = anchor.x + anchor.w + side / 2; hy = anchor.y + sideA / 2; }
+          if (placeHouseAt(hx, hy, inTown)) return true;
+        }
+        return false;
+      }
+      function spawnHouses(total, inTown) {
         var placed = 0, guard = 0;
-        while (placed < total && guard < total * 50) {
+        var houses = [];
+        while (placed < total && guard < total * 60) {
           guard++;
-          var gx, gy;
-          if (inTown) {
-            gx = G.rand(G.TOWN_MIN + 30, G.TOWN_MAX - 30);
-            gy = G.rand(G.TOWN_MIN + 30, G.TOWN_MAX - 30);
+          // 15% : bâtiment isolé (position aléatoire). 85% : collé à un existant.
+          var isolated = houses.length === 0 || Math.random() < 0.15;
+          var ok = false;
+          if (isolated) {
+            var gx, gy;
+            if (inTown) {
+              gx = G.rand(G.TOWN_MIN + 30, G.TOWN_MAX - 30);
+              gy = G.rand(G.TOWN_MIN + 30, G.TOWN_MAX - 30);
+            } else {
+              gx = Math.random() < 0.5 ? G.rand(40, G.TOWN_MIN - 60) : G.rand(G.TOWN_MAX + 60, G.WORLD - 40);
+              gy = Math.random() < 0.5 ? G.rand(40, G.TOWN_MIN - 60) : G.rand(G.TOWN_MAX + 60, G.WORLD - 40);
+            }
+            ok = placeHouseAt(gx, gy, inTown);
           } else {
-            gx = Math.random() < 0.5 ? G.rand(40, G.TOWN_MIN - 60) : G.rand(G.TOWN_MAX + 60, G.WORLD - 40);
-            gy = Math.random() < 0.5 ? G.rand(40, G.TOWN_MIN - 60) : G.rand(G.TOWN_MAX + 60, G.WORLD - 40);
+            ok = placeAdjacent(houses, inTown);
           }
-          if (G.nearBuilding(gx, gy, 10)) continue;
-          var n = G.randi(2, 5);
-          for (var h = 0; h < n && placed < total; h++) {
-            var ang = Math.random() * Math.PI * 2;
-            var dist = Math.random() * clusterR;
-            var hx = gx + Math.cos(ang) * dist;
-            var hy = gy + Math.sin(ang) * dist;
-            if (hx < 20 || hx > G.WORLD - 20 || hy < 20 || hy > G.WORLD - 20) continue;
-            if (placeHouseAt(hx, hy, inTown)) placed++;
-          }
+          if (ok) { houses.push(state.buildings[state.buildings.length - 1]); placed++; }
         }
       }
-      spawnClusters(G.randi(8, 22), true, 12);
-      spawnClusters(5, false, 12);
+      spawnHouses(G.randi(8, 22), true);
+      spawnHouses(5, false);
     }
     state.items = [
       // Équipement de départ en ville.
