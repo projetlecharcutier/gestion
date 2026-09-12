@@ -138,6 +138,31 @@
     var hPx = b.height * 0.25 * z;
     var A = G.proj(b.x, b.y), B = G.proj(b.x + b.w, b.y),
         C = G.proj(b.x + b.w, b.y + b.h), D = G.proj(b.x, b.y + b.h);
+    var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
+
+    // Sprite PNG si disponible : mairie, eglise (church) ou bâtiment générique.
+    var sprite = null;
+    if (b.isMairie && G.hasSprite("building", "mairie")) sprite = G.SPRITES.building.mairie;
+    else if (b.isChurch && G.hasSprite("church", "church")) sprite = G.SPRITES.church.church;
+    else if (G.hasSprite("building", "generic")) sprite = G.SPRITES.building.generic;
+    if (sprite) {
+      var scale = z * 0.5;
+      var dw = sprite.w * scale, dh = sprite.h * scale;
+      ctx.drawImage(sprite.img, cx - dw / 2, by - dh, dw, dh);
+      // Barre de vie de la mairie au-dessus du sprite.
+      if (b.isMairie) {
+        var ratio = b.hp / b.maxHp;
+        var col = ratio < 0.10 ? t.hpBar.low : (ratio < 0.30 ? t.hpBar.mid : t.hpBar.high);
+        var bw = Math.max(40, dw * 0.7);
+        var bby = by - dh - 8;
+        ctx.fillStyle = t.hpBar.bg;
+        ctx.fillRect(cx - bw / 2 - 1, bby - 1, bw + 2, 6);
+        ctx.fillStyle = col;
+        ctx.fillRect(cx - bw / 2, bby, bw * ratio, 4);
+      }
+      return;
+    }
+
     var At = [A[0], A[1] - hPx], Bt = [B[0], B[1] - hPx],
         Ct = [C[0], C[1] - hPx], Dt = [D[0], D[1] - hPx];
 

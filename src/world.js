@@ -13,6 +13,8 @@
       b.isMairie = true;
       b.hp = G.MAIRIE_MAX_HP;
       b.maxHp = G.MAIRIE_MAX_HP;
+    } else if (name === "Eglise") {
+      b.isChurch = true;
     }
     return b;
   };
@@ -51,7 +53,7 @@
       G.makeBuilding(c + 280, c - 400, 110, 110, "Auberge", "L'auberge sent la soupe chaude. Repos bien mérité.", 66),
       G.makeBuilding(c - 400, c + 260, 110, 110, "Forge", "La forge résonne du bruit de l'enclume.", 72),
       G.makeBuilding(c + 300, c + 280, 120, 100, "Marché", "Le marché grouille de marchandises.", 60),
-      G.makeBuilding(c - 150, c + 320, 90, 90, "Temple", "Le temple est silencieux et frais.", 88),
+      G.makeBuilding(c - 150, c + 320, 90, 90, "Eglise", "L'église est silencieuse et fraîche.", 88),
       G.makeBuilding(c + 120, c - 300, 90, 110, "Tour", "La vue depuis la tour couvre toute la ville.", 120),
       G.makeBuilding(c - 380, c + 300, 120, 100, "Hôpital", "Hôpital : payez une pièce d'or pour retrouver toute votre vie.", 84)
     ];
@@ -99,7 +101,7 @@
       } while (G.nearBuilding(tx, ty, 30) && tries < 12);
       if (tries < 12) state.trees.push({ x: tx, y: ty, r: G.rand(14, 22), kind: "town", hp: 2 });
     }
-    for (i = 0; i < 80; i++) {
+    for (i = 0; i < 100; i++) {
       var edge = Math.random() < 0.5;
       if (edge) {
         tx = G.rand(0, G.WORLD);
