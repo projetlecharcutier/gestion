@@ -143,3 +143,28 @@ canvas#game {
 .chest__list { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; }
 .chest__list p { color: #64748b; text-align: center; }
 .chest__item { text-align: left; }
+.sound-btn {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  z-index: 50;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+.sound-btn:hover { background: var(--accent-soft); }
+.sc-hidden {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  top: -9999px;
+  left: -9999px;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+}

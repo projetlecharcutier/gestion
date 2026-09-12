@@ -59,6 +59,7 @@
       state.mouse.wy = w[1];
     }
     G.updateHud();
+    G.updateMusic();
   }
   G.update = update;
 

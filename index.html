@@ -30,6 +30,18 @@
     <div class="hud__row"><span class="hud__hint">A = Ouvrir le sac · Z = Poser une planche · Cliquez la Mairie = coffre · Échap = pause · Molette = zoom · Espace = tir</span></div>
   </div>
 
+  <!-- Bouton son (haut à droite) -->
+  <button class="sound-btn" id="soundBtn" type="button" title="Activer/couper le son">Son : OFF</button>
+
+  <!-- Lecteurs SoundCloud invisibles (jour / nuit) -->
+  <iframe class="sc-hidden" id="scDay"
+    src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/cleclemusic/ivresse&auto_play=true&buying=false&sharing=false&download=false&show_artwork=false&show_playcount=false&show_user=false&hide_related=true&visual=false"
+    allow="autoplay" frameborder="0"></iframe>
+  <iframe class="sc-hidden" id="scNight"
+    src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/cleclemusic/snobisme-techno-sur-ms-20&auto_play=true&buying=false&sharing=false&download=false&show_artwork=false&show_playcount=false&show_user=false&hide_related=true&visual=false"
+    allow="autoplay" frameborder="0"></iframe>
+  <script src="https://w.soundcloud.com/player/api.js"></script>
+
   <div class="overlay" id="startScreen">
     <div class="panel">
       <h1>Flex</h1>
@@ -96,6 +108,7 @@
   <script src="src/hud.js"></script>
   <script src="src/render.js"></script>
   <script src="src/input.js"></script>
+  <script src="src/sound.js"></script>
   <script src="src/main.js"></script>
 </body>
 </html>
