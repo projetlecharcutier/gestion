@@ -18,13 +18,37 @@
   G.tryMove = function (nx, ny) {
     var p = G.state.player;
     var moved = false;
+    // Sous-pas : on avance vers (nx,ny) par incrément ≤ STEP px pour ne pas
+    // traverser une planche fine en un seul grand pas.
+    var STEP = 8;
+    var targetX = nx, targetY = ny;
+    while (p.x !== targetX || p.y !== targetY) {
+      var px = p.x, py = p.y;
+      var dxs = targetX - p.x, dys = targetY - p.y;
+      var len = Math.sqrt(dxs * dxs + dys * dys);
+      if (len <= STEP) {
+ if (G._stepMove(targetX, targetY)) moved = true; break;
+      }
+      var sx = p.x + (dxs / len) * STEP;
+      var sy = p.y + (dys / len) * STEP;
+      if (!G._stepMove(sx, sy)) break;
+      if (p.x === px && p.y === py) break; // aucun progres : stoppe pour eviter boucle infinie.
+      moved = true;
+    }
+    return moved;
+  };
+
+  // Avance d'un seul sous-pas (axe par axe, glisse le long des murs/planches).
+  G._stepMove = function (nx, ny) {
+    var p = G.state.player;
+    var advanced = false;
     var testX = p.x;
     var testY = ny;
     if (!G.aabbHitsBuildings(testX, testY) && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W) &&
         testX >= G.PLAYER_HALF && testX <= G.WORLD - G.PLAYER_HALF &&
         testY >= G.PLAYER_HALF && testY <= G.WORLD - G.PLAYER_HALF) {
       p.y = testY;
-      moved = true;
+      advanced = true;
     }
     testY = p.y;
     testX = nx;
@@ -32,9 +56,9 @@
         testX >= G.PLAYER_HALF && testX <= G.WORLD - G.PLAYER_HALF &&
         testY >= G.PLAYER_HALF && testY <= G.WORLD - G.PLAYER_HALF) {
       p.x = testX;
-      moved = true;
+      advanced = true;
     }
-    return moved;
+    return advanced;
   };
 
   G.clampPlayer = function () {

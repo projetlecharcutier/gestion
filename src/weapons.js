@@ -13,6 +13,7 @@
   G.handleShooting = function () {
     var state = G.state;
     if (state.inBuilding || state.paused || state.bag.open || state.chestOpen || state.gameOver || state.buildMode) return;
+    if (!state.equipped) return; // pas de tir sans arme équipée
     if (!state.keys.space || state.shootCd > 0) return;
     var p = state.player;
     var tx = state.mouse.wx, ty = state.mouse.wy;

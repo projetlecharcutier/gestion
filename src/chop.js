@@ -17,6 +17,22 @@
     return best;
   }
 
+  // Cherche la planche (built) la plus proche à portée de hache du joueur.
+  function nearestChoppableWall() {
+    var state = G.state;
+    var p = state.player;
+    var best = null, bestD = Infinity;
+    for (var i = 0; i < state.walls.length; i++) {
+      var m = state.walls[i];
+      if (!m.built) continue;
+      var cx = m.x + m.w / 2, cy = m.y + m.h / 2;
+      var dx = cx - p.x, dy = cy - p.y;
+      var d = Math.sqrt(dx * dx + dy * dy);
+      if (d < G.AXE_RANGE && d < bestD) { bestD = d; best = m; }
+    }
+    return best;
+  }
+
   // Appelé chaque frame depuis update(). Gère le décompte de récolte.
   G.updateChop = function (dt) {
     var state = G.state;
@@ -31,23 +47,42 @@
       return;
     }
     var target = nearestChoppableTree();
-    if (!target) {
+    var wall = nearestChoppableWall();
+    // Priorité : la planche si elle est plus proche que l'arbre.
+    var wallD = wall ? Math.hypot((wall.x + wall.w / 2) - G.state.player.x, (wall.y + wall.h / 2) - G.state.player.y) : Infinity;
+    var treeD = target ? Math.hypot(target.x - G.state.player.x, target.y - G.state.player.y) : Infinity;
+    var isWall = wallD <= treeD;
+    var cible = isWall ? wall : target;
+    if (!cible) {
       state.chopTarget = null;
+      state.chopWall = null;
       state.chopTimer = 0;
       return;
     }
-    // Continue le décompte si on vise le même arbre, sinon on relance.
-    if (state.chopTarget !== target) {
-      state.chopTarget = target;
+    // Continue le décompte si on vise la même cible, sinon on relance.
+    var same = isWall ? (state.chopWall === cible) : (state.chopTarget === cible && !state.chopWall);
+    if (!same) {
+      state.chopTarget = isWall ? null : cible;
+      state.chopWall = isWall ? cible : null;
       state.chopTimer = 0;
     }
     state.chopTimer += dt;
     if (state.chopTimer >= G.TREE_CHOP_TIME) {
-      // Récolte : 1 planche, arbre retiré.
-      state.planks += 1;
-      var idx = state.trees.indexOf(target);
-      if (idx >= 0) state.trees.splice(idx, 1);
+      if (isWall) {
+        // Destruction de planche : -10 PV, planche retirée si détruite.
+        state.chopWall.hp -= G.WALL_AXE_DMG;
+        if (state.chopWall.hp <= 0) {
+          var wi = state.walls.indexOf(state.chopWall);
+          if (wi >= 0) state.walls.splice(wi, 1);
+        }
+      } else {
+        // Récolte : 1 planche, arbre retiré.
+        state.planks += 1;
+        var idx = state.trees.indexOf(cible);
+        if (idx >= 0) state.trees.splice(idx, 1);
+      }
       state.chopTarget = null;
+      state.chopWall = null;
       state.chopTimer = 0;
       G.updateHud();
     }
@@ -56,7 +91,7 @@
   // Ratio d'avancement de la récolte (0..1) pour le cercle de décompte, ou -1 si inactif.
   G.chopProgress = function () {
     var state = G.state;
-    if (!state.axeEquipped || !state.chopTarget) return -1;
+    if (!state.axeEquipped || (!state.chopTarget && !state.chopWall)) return -1;
     return state.chopTimer / G.TREE_CHOP_TIME;
   };
 })();

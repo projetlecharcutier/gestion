@@ -61,6 +61,7 @@
     plankRotation: 0,
     axeEquipped: false,
     chopTarget: null,
+    chopWall: null,
     chopTimer: 0,
     clock: 8,
     day: 0,

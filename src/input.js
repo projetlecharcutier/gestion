@@ -150,6 +150,7 @@
     state.plankRotation = 0;
     state.axeEquipped = false;
     state.chopTarget = null;
+    state.chopWall = null;
     state.chopTimer = 0;
     state.chest = [];
     state.chestOpen = false;

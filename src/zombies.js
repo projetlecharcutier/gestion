@@ -154,12 +154,21 @@
             var sx = tx - z.x, sy = ty - z.y;
             var sd = Math.sqrt(sx * sx + sy * sy) || 1;
             if (sd > 4) {
+              // Sous-pas : ne pas traverser une planche fine en un seul pas.
               var zs = G.ZOMBIE_HALF;
-              var stepX = z.x + (sx / sd) * G.ZOMBIE_SPEED * dt;
-              var stepY = z.y + (sy / sd) * G.ZOMBIE_SPEED * dt;
-              // Collision par axe avec les planches posées (blocage total).
-              if (!G.aabbHitsWalls(stepX - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) z.x = stepX;
-              if (!G.aabbHitsWalls(z.x - zs, stepY - zs, G.ZOMBIE_W, G.ZOMBIE_W)) z.y = stepY;
+              var zStep = 8;
+              var zMove = G.ZOMBIE_SPEED * dt;
+              var done = 0;
+              while (done < zMove - 0.001) {
+                var inc = Math.min(zStep, zMove - done);
+                var stepX = z.x + (sx / sd) * inc;
+                var stepY = z.y + (sy / sd) * inc;
+                var blocked = true;
+                if (!G.aabbHitsWalls(stepX - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = stepX; blocked = false; }
+                if (!G.aabbHitsWalls(z.x - zs, stepY - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = stepY; blocked = false; }
+                if (blocked) break;
+                done += inc;
+              }
             }
           }
         }
