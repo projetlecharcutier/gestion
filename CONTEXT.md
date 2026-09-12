@@ -65,6 +65,8 @@ Schéma complet dans `src/state.js`. Champs clés :
 | `DAY_SECONDS` | 300 | 12h in-game = 5 min réel |
 | `WAVE_EVERY` | 420 | Vague toutes les 7 min |
 | `WAVE_LEAVE` | 600 | Repartent après 10 min |
+| `ZOMBIE_PER_WAVE_BASE` | 50 | Zombies à la 1ère vague |
+| `ZOMBIE_WAVE_GROWTH` | 2 | ×2 zombies chaque nuit (+100%) |
 
 ## Boucle de jeu (`src/main.js`)
 

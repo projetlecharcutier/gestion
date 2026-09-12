@@ -36,7 +36,7 @@ Ouvrez `index.html` dans un navigateur récent (Chrome, Firefox, Edge, Safari).
 
 - **Cycle jour/nuit** : 12h in-game = 5 min réel (24h = 10 min). L'heure s'affiche en haut (☀ le jour, 🌙 la nuit).
 - **Compteur de jours** en haut à droite (commence à **Jour 0**), s'incrémente à chaque cycle complet.
-- **Vagues de zombies** : une vague toutes les **7 min** la nuit ; **milliers de zombies** attaquent la ville et **repartent après 10 min**.
+- **Vagues de zombies** : une vague toutes les **7 min** la nuit ; **50 zombies** attaquent la ville la 1ère nuit et **doublent à chaque nuit** (+100%), et **repartent après 10 min**. Le **compteur de zombies** s'affiche en haut à droite pendant une vague.
 - **Zombies** : 2× plus lents que le joueur (on peut les fuir), n'attaquent qu'**à la main**. **Un coup de feu les tue**. Ils se déplacent en **petits groupes** (formation autour d'un chef) qui **fusionnent progressivement** quand ils sont proches.
 - **Cible des zombies** : ils attaquent le joueur s'il est à **150 px** autour d'eux ; sinon ils attaquent les **murs**.
 - **Murs** : la ville est entourée d'un mur de **1 planche d'épaisseur** au départ. Mur = **100 PV**. Les zombies font **-5 PV au mur toutes les 20 s**.

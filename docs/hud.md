@@ -5,7 +5,7 @@ Met à jour le HUD DOM et dessine les overlays canvas (horloge, barre de vie jou
 
 ## Exposé sur `G`
 - `updateHud()` — met à jour les éléments DOM : nom, zone, position, inventaire, arme, **hache**, PV, planches
-- `drawClock()` — horloge jour/nuit ☀/🌙 en haut centre + "⚠ Vague de zombies" si vague active + "Jour N" en haut à droite
+- `drawClock()` — horloge jour/nuit ☀/🌙 en haut centre + "⚠ Vague de zombies" si vague active + "Jour N" en haut à droite + **compteur zombies** (`Zombies : vivants / total`) en haut à droite pendant une vague
 - `drawPlayerHpBar()` — barre de vie au-dessus du joueur (couleur selon ratio)
 - `drawBuildHint()` — rectangle pointillé au curseur en mode pose de planche (taille selon `plankDims()`, vert/rouge selon planches), avec indice de rotation (Espace)
 - `drawChopProgress()` — cercle de décompte de récolte à côté du joueur quand une hache est équipée et un arbre ciblé (ratio via `G.chopProgress()`, couleurs `G.TEXTURES.chopProgress`)

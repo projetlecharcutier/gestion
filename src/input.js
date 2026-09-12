@@ -136,6 +136,7 @@
     state.elapsed = 0;
     state.nextWaveAt = G.WAVE_EVERY;
     state.waveActive = false;
+    state.waveCount = 0;
     state.zombies = [];
     state.zombieGroups = [];
     state.walls = [];
