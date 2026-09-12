@@ -53,6 +53,45 @@
     return false;
   };
 
+  // Grille spatiale des arbres pour les collisions en O(1) (40000+ arbres).
+  // Construite après le spawn des arbres via buildTreeGrid().
+  G.treeGrid = null;
+  G.TREE_CELL = 200;
+  G.buildTreeGrid = function () {
+    var cell = G.TREE_CELL;
+    var grid = {};
+    var trees = G.state.trees;
+    for (var i = 0; i < trees.length; i++) {
+      var t = trees[i];
+      var key = Math.floor(t.x / cell) + "," + Math.floor(t.y / cell);
+      if (!grid[key]) grid[key] = [];
+      grid[key].push(t);
+    }
+    G.treeGrid = grid;
+  };
+  // Teste si la boîte (x,y,half) chevauche le tronc d'un arbre (cercle de rayon r).
+  // Utilise la grille spatiale : ne vérifie que les arbres des cellules voisines.
+  G.hitsTree = function (x, y, half) {
+    var grid = G.treeGrid;
+    if (!grid) return false;
+    var cell = G.TREE_CELL;
+    var gx = Math.floor(x / cell), gy = Math.floor(y / cell);
+    for (var ix = -1; ix <= 1; ix++) {
+      for (var iy = -1; iy <= 1; iy++) {
+        var arr = grid[(gx + ix) + "," + (gy + iy)];
+        if (!arr) continue;
+        for (var n = 0; n < arr.length; n++) {
+          var t = arr[n];
+          // Cercle (t.x, t.y, t.r) vs boîte centrée (x, y) de demi-côté half.
+          var ddx = Math.max(Math.abs(t.x - x) - half, 0);
+          var ddy = Math.max(Math.abs(t.y - y) - half, 0);
+          if (ddx * ddx + ddy * ddy < t.r * t.r) return true;
+        }
+      }
+    }
+    return false;
+  };
+
   // Fait poper `total` arbres de type `kind` hors de la ville, regroupés en
   // clusters de 1 à 10 arbres. Les arbres d'un même cluster sont proches mais
   // ne se superposent pas (distance minimale entre troncs = somme des rayons).
@@ -247,5 +286,6 @@
     }
 
     state.zombies = [];
+    G.buildTreeGrid();
   };
 })();
