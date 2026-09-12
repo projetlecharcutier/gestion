@@ -14,15 +14,31 @@
     return { W: W, H: H, px: px, py: py, pw: pw, ph: ph, listY: listY, lineH: lineH, maxLines: maxLines };
   };
 
+  // Regroupe les objets identiques (meme nom + type) avec leur nombre.
+  // Retourne [{ name, kind, color, count, first }] ou first = index du
+  // premier exemplaire dans contents (pour l'equiper/deposer).
+  G.groupItems = function (list) {
+    var out = [];
+ var seen = {};
+    for (var i = 0; i < list.length; i++) {
+      var it = list[i];
+      var key = it.name + "|" + it.kind;
+      if (seen[key] !== undefined) { out[seen[key]].count++; }
+      else { seen[key] = out.length; out.push({ name: it.name, kind: it.kind, color: it.color, count: 1, first: i }); }
+    }
+    return out;
+  };
+
   G.handleBagClick = function (sx, sy) {
     var L = G.bagLayout();
-    var n = G.state.bag.contents.length;
+    var groups = G.groupItems(G.state.bag.contents);
+    var n = groups.length;
     var shown = Math.min(n, L.maxLines);
     for (var i = 0; i < shown; i++) {
       var ly = L.listY + i * L.lineH + 14;
       if (sy >= ly - L.lineH / 2 && sy < ly + L.lineH / 2 &&
           sx >= L.px && sx <= L.px + L.pw) {
-        var it = G.state.bag.contents[i];
+        var it = groups[i];
         if (it.kind === "arme") {
           // Un seul objet equipe a la fois : equiper une arme desequipe la hache.
           G.state.equipped = (G.state.equipped === it.name) ? null : it.name;
@@ -77,7 +93,8 @@
     var listY = L.listY, lineH = L.lineH;
     ctx.font = "15px Segoe UI, system-ui, sans-serif";
     ctx.textBaseline = "middle";
-    var n = G.state.bag.contents.length;
+    var groups = G.groupItems(G.state.bag.contents);
+    var n = groups.length;
     var shown = Math.min(n, L.maxLines);
     if (n === 0) {
       ctx.fillStyle = t.empty;
@@ -85,7 +102,7 @@
       ctx.fillText("(vide — ramassez des objets et armes au sol)", px + 18, listY + 12);
     }
     for (var i = 0; i < shown; i++) {
-      var it = G.state.bag.contents[i];
+      var it = groups[i];
       var ly = listY + i * lineH + 14;
       var isEq = ((it.kind === "arme") && (it.name === G.state.equipped)) ||
                  ((it.kind === "outil") && (it.name === "Hache") && G.state.axeEquipped);
@@ -110,7 +127,10 @@
       }
       ctx.fillStyle = isEq ? t.equipped : t.itemText;
       ctx.textAlign = "left";
-      ctx.fillText(it.name + (isEq ? "  (équipé)" : ""), px + 50, ly);
+      var label = it.name;
+      if (it.count > 1) label += " ×" + it.count;
+      if (isEq) label += "  (équipé)";
+      ctx.fillText(label, px + 50, ly);
       ctx.fillStyle = it.kind === "arme" ? t.weaponTag : (it.kind === "outil" ? t.weaponTag : t.objectTag);
       ctx.textAlign = "right";
       var suffix = it.kind === "arme" ? "arme (clic pour équiper)" :

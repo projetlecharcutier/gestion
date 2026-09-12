@@ -185,6 +185,7 @@
     for (var zj = state.zombies.length - 1; zj >= 0; zj--) {
       if (state.zombies[zj].hp <= 0) {
         var dz = state.zombies[zj];
+        if (G.playSfx) G.playSfx("zombie_die");
         if (dz.group && dz.group.members) {
           var idx = dz.group.members.indexOf(dz);
           if (idx >= 0) dz.group.members.splice(idx, 1);

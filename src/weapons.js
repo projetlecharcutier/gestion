@@ -19,6 +19,7 @@
     var tx = state.mouse.wx, ty = state.mouse.wy;
     var st = G.equippedStats();
     state.shootCd = st.cd;
+    if (G.playSfx) G.playSfx("shoot");
     var ax = tx - p.x, ay = ty - p.y;
     var ang = Math.atan2(ay, ax);
     var sp = (Math.random() * 2 - 1) * st.spread;

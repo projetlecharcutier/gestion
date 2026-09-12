@@ -161,7 +161,7 @@
     var state = G.state;
     var vault = G.chestVault;
     var bag = G.chestBag;
-    // Coffre : boutons cliquables pour récupérer un objet vers le sac.
+    // Coffre : objets groupés (même nom + type) avec leur nombre.
     vault.innerHTML = "";
     var vaultList = document.createElement("div");
     vaultList.className = "chest__list";
@@ -170,20 +170,24 @@
       emptyVault.textContent = "Coffre vide";
       vaultList.appendChild(emptyVault);
     } else {
-      for (var i = 0; i < state.chest.length; i++) {
-        var vi = state.chest[i];
+      var vGroups = G.groupItems(state.chest);
+      for (var gi = 0; gi < vGroups.length; gi++) {
+        var g = vGroups[gi];
         var vbtn = document.createElement("button");
         vbtn.type = "button";
         vbtn.className = "btn chest__item";
-        vbtn.textContent = vi.name + (vi.kind === "arme" ? " (arme)" : vi.kind === "outil" ? " (outil)" : "");
+        var vlabel = g.name;
+        if (g.count > 1) vlabel += " ×" + g.count;
+        vlabel += g.kind === "arme" ? " (arme)" : g.kind === "outil" ? " (outil)" : "";
+        vbtn.textContent = vlabel;
         (function (idx) {
           vbtn.addEventListener("click", function () { G.withdrawItem(idx); });
-        })(i);
+        })(g.first);
         vaultList.appendChild(vbtn);
       }
     }
     vault.appendChild(vaultList);
-    // Sac : boutons cliquables pour déposer un objet vers le coffre.
+    // Sac : objets groupés avec leur nombre.
     bag.innerHTML = "";
     var list = document.createElement("div");
     list.className = "chest__list";
@@ -192,15 +196,19 @@
       empty.textContent = "Sac vide";
       list.appendChild(empty);
     } else {
-      for (var i = 0; i < state.bag.contents.length; i++) {
-        var it = state.bag.contents[i];
+      var bGroups = G.groupItems(state.bag.contents);
+      for (var bi = 0; bi < bGroups.length; bi++) {
+        var bg = bGroups[bi];
         var btn = document.createElement("button");
         btn.type = "button";
         btn.className = "btn chest__item";
-        btn.textContent = it.name + (it.kind === "arme" ? " (arme)" : it.kind === "outil" ? " (outil)" : "");
+        var blabel = bg.name;
+        if (bg.count > 1) blabel += " ×" + bg.count;
+        blabel += bg.kind === "arme" ? " (arme)" : bg.kind === "outil" ? " (outil)" : "";
+        btn.textContent = blabel;
         (function (idx) {
           btn.addEventListener("click", function () { G.depositItem(idx); });
-        })(i);
+        })(bg.first);
         list.appendChild(btn);
       }
     }
