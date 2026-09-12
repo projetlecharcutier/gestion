@@ -78,6 +78,33 @@
     }
     next();
   }
+  // Sonde les sprites du personnage joueur : 3 états d'équipement
+  // (perso / persoHache / persoPistolet) × 3 directions (face / gauche / droite)
+  // = 9 PNG. Tolérant : charge ceux qui existent, ignore les 404.
+  // Stocke dans G.SPRITES.player sous les clés "perso_face", "persoHache_droite", etc.
+  // La taille w/h est lue sur l'image réellement chargée.
+  function probePlayer(onDone) {
+    var states = ["perso", "persoHache", "persoPistolet"];
+    var dirs = ["face", "gauche", "droite"];
+    var dir = "assets/sprites/player/";
+    G.SPRITES.player = G.SPRITES.player || {};
+    var toLoad = [];
+    for (var s = 0; s < states.length; s++)
+      for (var d = 0; d < dirs.length; d++) toLoad.push(states[s] + "_" + dirs[d]);
+    var loaded = 0;
+    function done() { loaded++; if (loaded >= toLoad.length) onDone(); }
+    for (var i = 0; i < toLoad.length; i++) {
+      (function (key) {
+        var img = new Image();
+        img.onload = function () {
+          G.SPRITES.player[key] = { img: img, w: img.naturalWidth || 32, h: img.naturalHeight || 48 };
+          done();
+        };
+        img.onerror = function () { done(); };
+        img.src = dir + key + ".png";
+      })(toLoad[i]);
+    }
+  }
   // Calcule la bounding box des pixels opaques d'un PNG (alpha > seuil).
   // Retourne {x0,y0,x1,y1} en pixels relatifs (0..w, 0..h) ou null si erreur.
   // Permet de baser les collisions sur le contenu visible réel plutôt que
@@ -125,6 +152,7 @@
     for (var ent in manifest) {
       if (!manifest.hasOwnProperty(ent)) continue;
       if (ent === "house") continue; // maisons chargées dynamiquement par probeHouses
+      if (ent === "player") continue; // perso chargé par probePlayer (3 états × 3 dirs)
       G.SPRITES[ent] = {};
       for (var frame in manifest[ent]) {
         if (!manifest[ent].hasOwnProperty(frame)) continue;
@@ -132,19 +160,20 @@
       }
     }
     function finish() { _ready = true; if (onReady) onReady(); }
+    function afterPlayer() { probeHouses(finish); }
     _total = entries.length;
-    if (_total === 0) { probeHouses(finish); return; }
+    if (_total === 0) { probePlayer(afterPlayer); return; }
     for (var i = 0; i < entries.length; i++) {
       (function (e) {
         var img = new Image();
         img.onload = function () {
           G.SPRITES[e.ent][e.frame] = { img: img, w: img.naturalWidth || e.def.w, h: img.naturalHeight || e.def.h };
           _loaded++;
-          if (_loaded >= _total) probeHouses(finish);
+          if (_loaded >= _total) probePlayer(afterPlayer);
         };
         img.onerror = function () {
           _loaded++;
-          if (_loaded >= _total) probeHouses(finish);
+          if (_loaded >= _total) probePlayer(afterPlayer);
         };
         img.src = e.def.src;
       })(entries[i]);
@@ -209,6 +238,28 @@
   G.spriteFor = function (ent, dx, dy) {
     var frame = G.dirFromAngle(dx, dy);
     if (G.hasSprite(ent, frame)) return G.SPRITES[ent][frame];
+    return null;
+  };
+
+  // Choisi le sprite du joueur selon l'équipement (hache / pistolet / mains nues)
+  // et la direction de déplacement (face / gauche / droite).
+  // dx,dy = vecteur de déplacement (0,0 = statique -> face).
+  // Retourne null si aucun sprite nouveau n'est disponible (le rendu fait alors
+  // repli sur le système 8-directions ou le fallback pixel art).
+  G.playerSprite = function (equipped, axeEquipped, dx, dy) {
+    // État d'équipement : hache > pistolet > perso.
+    var state = axeEquipped ? "persoHache" : (equipped ? "persoPistolet" : "perso");
+    // Direction : gauche (W, NW, SW) / droite (E, NE, SE) / face (immobile, N, S).
+    var dir = "face";
+    if (dx !== 0 || dy !== 0) {
+      var ang = Math.atan2(dy, dx) * 180 / Math.PI;
+      if (ang > 45 && ang < 135) dir = "face";       // vers le bas (S)
+      else if (ang < -45 && ang > -135) dir = "face"; // vers le haut (N)
+      else if (ang >= -45 && ang <= 45) dir = "droite"; // vers la droite (E)
+      else dir = "gauche";                              // vers la gauche (W)
+    }
+    var key = state + "_" + dir;
+    if (G.hasSprite("player", key)) return G.SPRITES.player[key];
     return null;
   };
 })();

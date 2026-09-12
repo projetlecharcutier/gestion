@@ -241,7 +241,10 @@
     // Direction de marche : vecteur de déplacement si en mouvement, sinon idle.
     var dx = p.moving ? (p.lastDx || 0) : 0;
     var dy = p.moving ? (p.lastDy || 0) : 0;
-    var sprite = G.spriteFor("player", dx, dy);
+    // Sprite du joueur : nouveau système (3 états × 3 directions) en priorité,
+    // repli sur le système 8-directions si le nouveau sprite manque.
+    var sprite = G.playerSprite ? G.playerSprite(G.state.equipped, G.state.axeEquipped, dx, dy) : null;
+    if (!sprite) sprite = G.spriteFor("player", dx, dy);
     ctx.save();
     ctx.fillStyle = G.TEXTURES.player.shadow;
     ctx.beginPath();
