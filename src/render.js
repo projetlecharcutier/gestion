@@ -295,19 +295,38 @@
     var ctx = G.ctx;
     var z = G.state.zoom;
     var t = G.TEXTURES.wall;
-    var A = G.proj(m.x, m.y), B = G.proj(m.x + m.w, m.y),
-        C = G.proj(m.x + m.w, m.y + m.h), D = G.proj(m.x, m.y + m.h);
+    // Sprite PNG si disponible : orient "h" -> diagonale NE-SO, "v" -> NO-SE (vue iso).
+    var frame = m.orient === "v" ? "NO_SE" : "NE_SO";
+    var sprite = G.hasSprite("barricade", frame) ? G.SPRITES.barricade[frame] : null;
+    var A = G.proj(m.x, m.y), C = G.proj(m.x + m.w, m.y + m.h);
+    var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
+    if (sprite) {
+      var scale = z * 0.5;
+      var dw = sprite.w * scale, dh = sprite.h * scale;
+      ctx.drawImage(sprite.img, cx - dw / 2, by - dh, dw, dh);
+      // Barre de vie au-dessus du sprite.
+      G.drawWallHpBar(m, cx, by - dh - 6, Math.max(18, dw * 0.7));
+      return;
+    }
+    // Fallback : rendu vectoriel iso (faces + toit).
+    var B = G.proj(m.x + m.w, m.y), D = G.proj(m.x, m.y + m.h);
     var hPx = Math.max(8, 18 * 0.25 * z);
     var At = [A[0], A[1] - hPx], Bt = [B[0], B[1] - hPx],
         Ct = [C[0], C[1] - hPx], Dt = [D[0], D[1] - hPx];
     G.fillPoly([B, C, Ct, Bt], t.faces.sideX.fill, t.faces.sideX.stroke);
     G.fillPoly([D, C, Ct, Dt], t.faces.sideY.fill, t.faces.sideY.stroke);
     G.fillPoly([At, Bt, Ct, Dt], t.top.fill, t.top.stroke);
-    var hp = m.hp, ratio = hp / G.WALL_MAX_HP;
-    var col = ratio < 0.10 ? t.hpBar.low : (ratio < 0.30 ? t.hpBar.mid : t.hpBar.high);
-    var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
     var bw = Math.max(18, m.w * 0.25 * z);
     if (m.orient === "v") bw = Math.max(18, m.h * 0.25 * z);
+    G.drawWallHpBar(m, cx, by - 2, bw);
+  };
+
+  // Barre de vie commune d une barricade (PNG ou vectorielle).
+  G.drawWallHpBar = function (m, cx, by, bw) {
+    var ctx = G.ctx;
+    var t = G.TEXTURES.wall;
+    var hp = m.hp, ratio = hp / G.WALL_MAX_HP;
+    var col = ratio < 0.10 ? t.hpBar.low : (ratio < 0.30 ? t.hpBar.mid : t.hpBar.high);
     ctx.fillStyle = t.hpBarBg;
     ctx.fillRect(cx - bw / 2 - 1, by - 2, bw + 2, 5);
     ctx.fillStyle = col;

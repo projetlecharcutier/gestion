@@ -29,5 +29,9 @@
   "building": {
     "mairie":  { "src": "assets/sprites/building/mairie.png",  "w": 128, "h": 128 },
     "generic": { "src": "assets/sprites/building/generic.png", "w": 96,  "h": 96 }
+  },
+  "barricade": {
+    "NE_SO": { "src": "assets/sprites/barricade/NE_SO.png", "w": 80, "h": 60 },
+    "NO_SE": { "src": "assets/sprites/barricade/NO_SE.png", "w": 60, "h": 80 }
   }
 }

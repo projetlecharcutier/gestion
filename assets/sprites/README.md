@@ -16,6 +16,9 @@ assets/sprites/
     town.png  edge.png  wild.png
   building/
     mairie.png  generic.png
+  barricade/
+    NE_SO.png   # diagonale NE-SO (mur orient "h" / axe X monde)
+    NO_SE.png   # diagonale NO-SE (mur orient "v" / axe Y monde)
 ```
 
 ## Format des PNG
