@@ -166,7 +166,8 @@
 
     // Sprite PNG si disponible : mairie, eglise (church), maison décorative
     // ou bâtiment générique. Le PNG est dessiné à la taille exacte de l'emprise
-    // sol du bâtiment (largeur du losange iso), ancré en bas-centre.
+    // sol du bâtiment (largeur du losange iso), ancré en bas-centre sur le bord
+    // SUD du losange au sol (le point le plus bas en Y écran).
     var sprite = null;
     if (b.isDecor && b.houseSprite) sprite = b.houseSprite;
     else if (b.isMairie && G.hasSprite("building", "mairie")) sprite = G.SPRITES.building.mairie;
@@ -176,13 +177,14 @@
       var losangeW = (b.w + b.h) * 0.5 * z;
       var dw = losangeW;
       var dh = dw * sprite.h / sprite.w;
-      ctx.drawImage(sprite.img, cx - dw / 2, by - dh, dw, dh);
+      var groundY = Math.max(C[1], D[1]);
+      ctx.drawImage(sprite.img, cx - dw / 2, groundY - dh, dw, dh);
       // Barre de vie de la mairie au-dessus du sprite (uniquement si endommagée).
       if (b.isMairie && b.hp < b.maxHp) {
         var ratio = b.hp / b.maxHp;
         var col = ratio < 0.10 ? t.hpBar.low : (ratio < 0.30 ? t.hpBar.mid : t.hpBar.high);
         var bw = Math.max(40, dw * 0.7);
-        var bby = by - dh - 8;
+        var bby = groundY - dh - 8;
         ctx.fillStyle = t.hpBar.bg;
         ctx.fillRect(cx - bw / 2 - 1, bby - 1, bw + 2, 6);
         ctx.fillStyle = col;
@@ -362,9 +364,11 @@
       var losangeW = (m.w + m.h) * 0.5 * z;
       var dw = losangeW;
       var dh = dw * sprite.h / sprite.w;
-      ctx.drawImage(sprite.img, cx - dw / 2, by - dh, dw, dh);
+      var B = G.proj(m.x + m.w, m.y), D = G.proj(m.x, m.y + m.h);
+      var groundY = Math.max(C[1], D[1]);
+      ctx.drawImage(sprite.img, cx - dw / 2, groundY - dh, dw, dh);
       // Barre de vie au-dessus du sprite.
-      G.drawWallHpBar(m, cx, by - dh - 6, Math.max(18, dw * 0.7));
+      G.drawWallHpBar(m, cx, groundY - dh - 6, Math.max(18, dw * 0.7));
       return;
     }
     // Fallback : rendu vectoriel iso (faces + toit).
