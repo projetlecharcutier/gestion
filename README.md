@@ -59,7 +59,10 @@ Ouvrez `index.html` dans un navigateur récent (Chrome, Firefox, Edge, Safari).
 
 - `index.html` — page et écrans (nom, pause, intérieur de bâtiment)
 - `style.css` — interface (HUD, panneaux, overlays)
-- `game.js` — moteur du jeu (projection iso, monde, ville, joueur, collisions, tir, murs, zombies, cycle jour/nuit, brouillard, zoom)
+- `src/` — moteur du jeu, découpé par système (voir `CONTEXT.md` pour la carte et `docs/` pour les specs)
+- `src/textures/` — sprites pixel art & palettes de couleurs par type d'objet (joueur, zombie, bâtiment, mur, arbre, sol, UI…)
+- `CONTEXT.md` — carte du projet (architecture, état global, points d'extension)
+- `docs/` — spec courte par système
 
 ## Technologies
 
