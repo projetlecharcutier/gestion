@@ -11,52 +11,93 @@
   var _ready = false;
 
   // Charge le manifeste puis toutes les images listées.
+  // Manifeste embarqué : repli quand assets/manifest.json est inaccessible
+  // (par ex. ouverture du jeu en file://, ouù XMLHttpRequest est bloqué par CORS).
+  // Les <img> restent utilisables en file://, donc les sprites se chargent quand même.
+  var FALLBACK_MANIFEST = {
+    player: {
+      idle: { src: "assets/sprites/player/idle.png", w: 32, h: 48 },
+      N: { src: "assets/sprites/player/N.png", w: 32, h: 48 },
+      NE: { src: "assets/sprites/player/NE.png", w: 32, h: 48 },
+      E: { src: "assets/sprites/player/E.png", w: 32, h: 48 },
+      SE: { src: "assets/sprites/player/SE.png", w: 32, h: 48 },
+      S: { src: "assets/sprites/player/S.png", w: 32, h: 48 },
+      SW: { src: "assets/sprites/player/SW.png", w: 32, h: 48 },
+      W: { src: "assets/sprites/player/W.png", w: 32, h: 48 },
+      NW: { src: "assets/sprites/player/NW.png", w: 32, h: 48 }
+    },
+    bird: {
+      idle: { src: "assets/sprites/bird/idle.png", w: 64, h: 64 },
+      N: { src: "assets/sprites/bird/N.png", w: 64, h: 64 },
+      NE: { src: "assets/sprites/bird/NE.png", w: 64, h: 64 },
+      E: { src: "assets/sprites/bird/E.png", w: 64, h: 64 },
+      SE: { src: "assets/sprites/bird/SE.png", w: 64, h: 64 },
+      S: { src: "assets/sprites/bird/S.png", w: 64, h: 64 },
+      SW: { src: "assets/sprites/bird/SW.png", w: 64, h: 64 },
+      W: { src: "assets/sprites/bird/W.png", w: 64, h: 64 },
+      NW: { src: "assets/sprites/bird/NW.png", w: 64, h: 64 }
+    },
+    tree: {
+      town: { src: "assets/sprites/tree/town.png", w: 64, h: 80 },
+      edge: { src: "assets/sprites/tree/edge.png", w: 64, h: 80 },
+      wild: { src: "assets/sprites/tree/wild.png", w: 64, h: 80 }
+    },
+    building: {
+      mairie: { src: "assets/sprites/building/mairie.png", w: 128, h: 128 },
+      generic: { src: "assets/sprites/building/generic.png", w: 96, h: 96 }
+    },
+    barricade: {
+      NE_SO: { src: "assets/sprites/barricade/NE_SO.png", w: 80, h: 60 },
+      NO_SE: { src: "assets/sprites/barricade/NO_SE.png", w: 60, h: 80 }
+    }
+  };
+  // Charge les images décrites par un manifeste (objet).
+  function loadManifest(manifest, onReady) {
+    var entries = [];
+    for (var ent in manifest) {
+      if (!manifest.hasOwnProperty(ent)) continue;
+      G.SPRITES[ent] = {};
+      for (var frame in manifest[ent]) {
+        if (!manifest[ent].hasOwnProperty(frame)) continue;
+        entries.push({ ent: ent, frame: frame, def: manifest[ent][frame] });
+      }
+    }
+    _total = entries.length;
+    if (_total === 0) { _ready = true; if (onReady) onReady(); return; }
+    for (var i = 0; i < entries.length; i++) {
+      (function (e) {
+        var img = new Image();
+        img.onload = function () {
+          G.SPRITES[e.ent][e.frame] = { img: img, w: e.def.w, h: e.def.h };
+          _loaded++;
+          if (_loaded >= _total) { _ready = true; if (onReady) onReady(); }
+        };
+        img.onerror = function () {
+          _loaded++;
+          if (_loaded >= _total) { _ready = true; if (onReady) onReady(); }
+        };
+        img.src = e.def.src;
+      })(entries[i]);
+    }
+  }
   G.loadAssets = function (onReady) {
     var req = new XMLHttpRequest();
     req.open("GET", "assets/manifest.json", true);
     req.onreadystatechange = function () {
       if (req.readyState !== 4) return;
       if (req.status !== 200 && req.status !== 0) {
-        // Manifeste indisponible : on démarre sans sprites PNG.
-        _ready = true;
-        if (onReady) onReady();
+        // Manifeste indisponible (ex. file://) : repli sur le manifeste embarqué.
+        loadManifest(FALLBACK_MANIFEST, onReady);
         return;
       }
       var manifest;
       try {
         manifest = JSON.parse(req.responseText);
       } catch (e) {
-        _ready = true;
-        if (onReady) onReady();
+        loadManifest(FALLBACK_MANIFEST, onReady);
         return;
       }
-      var entries = [];
-      for (var ent in manifest) {
-        if (!manifest.hasOwnProperty(ent)) continue;
-        G.SPRITES[ent] = {};
-        for (var frame in manifest[ent]) {
-          if (!manifest[ent].hasOwnProperty(frame)) continue;
-          entries.push({ ent: ent, frame: frame, def: manifest[ent][frame] });
-        }
-      }
-      _total = entries.length;
-      if (_total === 0) { _ready = true; if (onReady) onReady(); return; }
-      for (var i = 0; i < entries.length; i++) {
-        (function (e) {
-          var img = new Image();
-          img.onload = function () {
-            G.SPRITES[e.ent][e.frame] = { img: img, w: e.def.w, h: e.def.h };
-            _loaded++;
-            if (_loaded >= _total) { _ready = true; if (onReady) onReady(); }
-          };
-          img.onerror = function () {
-            // Image manquante : on n'enregistre pas le sprite (fallback JS).
-            _loaded++;
-            if (_loaded >= _total) { _ready = true; if (onReady) onReady(); }
-          };
-          img.src = e.def.src;
-        })(entries[i]);
-      }
+      loadManifest(manifest, onReady);
     };
     req.send();
   };
