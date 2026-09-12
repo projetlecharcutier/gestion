@@ -127,32 +127,48 @@
 
     G.buildPerimeterWall();
 
-    // Maisons décoratives (non cliquables) : 20 à 55 maisons en ville,
-    // choisies parmi les PNG de maisons disponibles (H1, H2, ...).
-    // Sans superposition avec les bâtiments existants ni entre elles.
+    // Maisons décoratives (non cliquables) : 20 à 55 maisons, réparties en petits
+    // tas (clusters de 2-5) en ville ET hors ville. Choisies parmi les PNG H1, H2, ...
     var houseNames = G.houseNames();
     if (houseNames.length > 0) {
-      var count = G.randi(20, 55);
+      var total = G.randi(20, 55);
       var placed = 0, guard = 0;
-      while (placed < count && guard < count * 30) {
-        guard++;
-        var hx = G.rand(G.TOWN_MIN + 20, G.TOWN_MAX - 20);
-        var hy = G.rand(G.TOWN_MIN + 20, G.TOWN_MAX - 20);
-        if (G.nearBuilding(hx, hy, 20)) continue;
+      function placeHouseAt(hx, hy) {
         var frame = houseNames[G.randi(0, houseNames.length - 1)];
         var sp = G.SPRITES.house[frame];
-        if (!sp) continue;
+        if (!sp) return false;
         var side = sp.w * 0.5;
-        // Vérifie la non-superposition avec les bâtiments déjà placés.
-        var ok = true;
         for (var bi3 = 0; bi3 < state.buildings.length; bi3++) {
           var ob = state.buildings[bi3];
-          if (hx - side / 2 < ob.x + ob.w + 8 && hx + side / 2 > ob.x - 8 &&
-              hy - side / 2 < ob.y + ob.h + 8 && hy + side / 2 > ob.y - 8) { ok = false; break; }
+          if (hx - side / 2 < ob.x + ob.w && hx + side / 2 > ob.x &&
+              hy - side / 2 < ob.y + ob.h && hy + side / 2 > ob.y) return false;
         }
-        if (!ok) continue;
         state.buildings.push(G.makeHouse(hx, hy, sp));
-        placed++;
+        return true;
+      }
+      while (placed < total && guard < total * 40) {
+        guard++;
+        // Centre du cluster : en ville ou hors ville.
+        var inTown = Math.random() < 0.6;
+        var gx, gy;
+        if (inTown) {
+          gx = G.rand(G.TOWN_MIN + 30, G.TOWN_MAX - 30);
+          gy = G.rand(G.TOWN_MIN + 30, G.TOWN_MAX - 30);
+        } else {
+          gx = Math.random() < 0.5 ? G.rand(40, G.TOWN_MIN - 60) : G.rand(G.TOWN_MAX + 60, G.WORLD - 40);
+          gy = Math.random() < 0.5 ? G.rand(40, G.TOWN_MIN - 60) : G.rand(G.TOWN_MAX + 60, G.WORLD - 40);
+        }
+        if (G.nearBuilding(gx, gy, 10)) continue;
+        var n = G.randi(2, 5);
+        for (var h = 0; h < n && placed < total; h++) {
+          var ang = Math.random() * Math.PI * 2;
+          var dist = Math.random() * 30;
+          var hx = gx + Math.cos(ang) * dist;
+          var hy = gy + Math.sin(ang) * dist;
+          if (hx < 20 || hx > G.WORLD - 20 || hy < 20 || hy > G.WORLD - 20) continue;
+          if (G.inTown(hx, hy) !== inTown) continue;
+          if (placeHouseAt(hx, hy)) placed++;
+        }
       }
     }
 

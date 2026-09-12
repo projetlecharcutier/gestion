@@ -50,10 +50,14 @@
     for (var i = 0; i < state.buildings.length; i++) {
       var b = state.buildings[i];
       if (b.isDecor) continue; // maisons décoratives : non cliquables
-      var ddx = w[0] - b.door.x, ddy = w[1] - b.door.y;
-      if (Math.sqrt(ddx * ddx + ddy * ddy) < 80) {
-        var pdx = p.x - b.door.x, pdy = p.y - b.door.y;
-        if (Math.sqrt(pdx * pdx + pdy * pdy) < 160) {
+      // Zone cliquable calibrée sur la taille du bâtiment (l'emprise sol + marge).
+      var clickR = Math.max(b.w, b.h) + 10;
+      var cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+      var ddx = w[0] - cx, ddy = w[1] - cy;
+      if (Math.sqrt(ddx * ddx + ddy * ddy) < clickR) {
+        var reach = clickR + 60;
+        var pdx = p.x - cx, pdy = p.y - cy;
+        if (Math.sqrt(pdx * pdx + pdy * pdy) < reach) {
           if (b.name === "Hôpital") {
             G.tryHealAtHospital();
             return;

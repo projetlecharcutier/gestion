@@ -108,15 +108,18 @@
           cible = { x: p.x, y: p.y, isPlayer: true };
         } else if (mairie) {
           // Cible la mairie ; attaque aussi les murs rencontrés sur le chemin.
-          var best = null, bestD = Infinity;
+          // La cible d'un mur est le point du bord le plus proche du groupe,
+          // pour que le zombie attaqué quand il est collé au mur.
+          var best = null, bestD = Infinity, bestPt = null;
           for (var j = 0; j < state.walls.length; j++) {
             var m = state.walls[j];
-            var mx = m.x + m.w / 2, my = m.y + m.h / 2;
-            var md = Math.sqrt((mx - grp.x) * (mx - grp.x) + (my - grp.y) * (my - grp.y));
-            if (md < bestD) { bestD = md; best = m; }
+            var clx = Math.max(m.x, Math.min(grp.x, m.x + m.w));
+            var cly = Math.max(m.y, Math.min(grp.y, m.y + m.h));
+            var md = Math.sqrt((clx - grp.x) * (clx - grp.x) + (cly - grp.y) * (cly - grp.y));
+            if (md < bestD) { bestD = md; best = m; bestPt = { x: clx, y: cly }; }
           }
-          if (best && bestD < 60) {
-            cible = { x: best.x + best.w / 2, y: best.y + best.h / 2, isPlayer: false, wall: best };
+          if (best && bestD < 40) {
+            cible = { x: bestPt.x, y: bestPt.y, isPlayer: false, wall: best };
           } else {
             cible = { x: mairie.x + mairie.w / 2, y: mairie.y + mairie.h / 2, isPlayer: false, mairie: mairie };
           }

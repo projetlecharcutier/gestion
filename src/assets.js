@@ -96,7 +96,7 @@
       (function (e) {
         var img = new Image();
         img.onload = function () {
-          G.SPRITES[e.ent][e.frame] = { img: img, w: e.def.w, h: e.def.h };
+          G.SPRITES[e.ent][e.frame] = { img: img, w: img.naturalWidth || e.def.w, h: img.naturalHeight || e.def.h };
           _loaded++;
           if (_loaded >= _total) probeHouses(finish);
         };
