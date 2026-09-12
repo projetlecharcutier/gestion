@@ -28,20 +28,17 @@
   G.buildPerimeterWall = function () {
     var state = G.state;
     state.walls = [];
-    var seg = 25;
-    var pad = 6;
-    var thick = 4;
     // Perimetre = barricades (memes objets que celles du joueur : built:true, bloquent joueur+zombies).
+    // Dimensions identiques aux planches du joueur : meme apparence et taille visuelle.
+    var seg = G.PLANK_LONG;
+    var thick = G.PLANK_THICK;
+    var pad = 6;
     for (var x = G.TOWN_MIN; x < G.TOWN_MAX; x += seg) {
       state.walls.push({ x: x, y: G.TOWN_MIN - pad, w: seg, h: thick, hp: G.WALL_MAX_HP, orient: "h", built: true });
-    }
-    for (var x = G.TOWN_MIN; x < G.TOWN_MAX; x += seg) {
       state.walls.push({ x: x, y: G.TOWN_MAX + pad - thick, w: seg, h: thick, hp: G.WALL_MAX_HP, orient: "h", built: true });
     }
     for (var y = G.TOWN_MIN; y < G.TOWN_MAX; y += seg) {
       state.walls.push({ x: G.TOWN_MIN - pad, y: y, w: thick, h: seg, hp: G.WALL_MAX_HP, orient: "v", built: true });
-    }
-    for (var y = G.TOWN_MIN; y < G.TOWN_MAX; y += seg) {
       state.walls.push({ x: G.TOWN_MAX + pad - thick, y: y, w: thick, h: seg, hp: G.WALL_MAX_HP, orient: "v", built: true });
     }
   };
