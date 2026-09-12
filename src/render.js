@@ -392,6 +392,63 @@
     ctx.restore();
   };
 
+  // Boussole : en bas a droite, indique la direction de la mairie au joueur.
+  G.drawCompass = function () {
+    var ctx = G.ctx;
+    var state = G.state;
+    var W = G.canvas.width / (window.devicePixelRatio || 1);
+    var H = G.canvas.height / (window.devicePixelRatio || 1);
+    // Trouve la mairie.
+    var mairie = null;
+    for (var i = 0; i < state.buildings.length; i++) {
+      if (state.buildings[i].isMairie) { mairie = state.buildings[i]; break; }
+    }
+    if (!mairie) return;
+    var p = state.player;
+    var mx = mairie.x + mairie.w / 2, my = mairie.y + mairie.h / 2;
+    var dx = mx - p.x, dy = my - p.y;
+    var ang = Math.atan2(dy, dx);
+    var cx = W - 56, cy = H - 56;
+    var r = 32;
+    ctx.save();
+    // Fond de la boussole.
+    ctx.fillStyle = "rgba(15,23,42,0.7)";
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#f8fafc";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Marqueurs cardinaux.
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "bold 11px Segoe UI, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("N", cx, cy - r + 8);
+    ctx.fillText("S", cx, cy + r - 8);
+    ctx.fillText("E", cx + r - 8, cy);
+    ctx.fillText("W", cx - r + 8, cy);
+    // Fleche pointant vers la mairie.
+    ctx.translate(cx, cy);
+    ctx.rotate(ang);
+    ctx.fillStyle = "#ef4444";
+    ctx.beginPath();
+    ctx.moveTo(r - 8, 0);
+    ctx.lineTo(0, -6);
+    ctx.lineTo(0, 6);
+    ctx.closePath();
+    ctx.fill();
+    // Queue de la fleche.
+    ctx.fillStyle = "#94a3b8";
+    ctx.beginPath();
+    ctx.moveTo(-(r - 8), 0);
+    ctx.lineTo(0, -4);
+    ctx.lineTo(0, 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  };
+
   G.render = function () {
     var ctx = G.ctx;
     var state = G.state;
@@ -457,6 +514,7 @@
     G.drawBuildHint();
     G.drawChopProgress();
     G.drawClock();
+    G.drawCompass();
 
     if (state.bag.open) G.drawBag();
 

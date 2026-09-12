@@ -21,7 +21,7 @@
 
     if (!state.gameOver) G.updateZombies(dt);
 
-    if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.gameOver) {
+    if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.gameOver && !state.buildMode) {
       var p = state.player;
       var tx = state.mouse.wx, ty = state.mouse.wy;
       var dx = tx - p.x, dy = ty - p.y;
@@ -37,6 +37,9 @@
       } else {
         p.moving = false;
       }
+    } else {
+      // En mode build : le personnage est fige (immobile).
+      if (state.buildMode) state.player.moving = false;
     }
 
     G.handleShooting();

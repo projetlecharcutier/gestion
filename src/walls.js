@@ -14,11 +14,15 @@
   };
 
   // Pose une planche au point cliqué. Les planches peuvent se superposer.
+  // En mode build le personnage est fige : on peut poser n'importe ou sur la carte.
   G.tryBuildWall = function (wx, wy) {
     var state = G.state;
     var p = state.player;
-    var dx = wx - p.x, dy = wy - p.y;
-    if (Math.sqrt(dx * dx + dy * dy) > G.WALL_BUILD_RANGE) return;
+    // Hors mode build : limite de portee autour du joueur. En mode build : pas de limite.
+    if (!state.buildMode) {
+      var dx = wx - p.x, dy = wy - p.y;
+      if (Math.sqrt(dx * dx + dy * dy) > G.WALL_BUILD_RANGE) return;
+    }
     if (state.planks < G.WALL_PLANKS) return;
     var dims = G.plankDims();
     var w = dims.w, h = dims.h;
