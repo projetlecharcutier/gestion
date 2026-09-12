@@ -11,9 +11,10 @@ Ouvrez `index.html` dans un navigateur récent (Chrome, Firefox, Edge, Safari).
 - Au démarrage, entrez votre nom.
 - Vous apparaissez au centre d'une carte de **100 000 × 100 000 px**.
 - Au centre se trouve une **ville de 5 000 × 5 000 px** (bâtiments plus petits).
-- **Déplacement** : le personnage suit la souris.
-- **Tir** : appuyez sur **Espace** (le tir va vers la souris).
-- **Sac** : appuyez sur **A** pour ouvrir/fermer le sac. Les **objets et armes** ramassés au sol y sont rangés.
+- **Déplacement** : le personnage suit la souris, mais s'arrête quand la souris est sur lui (hover).
+- **Tir** : appuyez sur **Espace** (le tir va vers la souris). Désactivé en mode pose de planche.
+- **Sac** : appuyez sur **A** pour ouvrir/fermer le sac. Les **objets, outils et armes** ramassés au sol y sont rangés.
+- **Rappel des touches (HUD haut gauche)** : `A : Ouvrir le sac`, `Z : Poser une planche / Entrer en mode pose de planche`.
 - **Armes & tir** : dans le sac, **cliquez sur une arme** pour l'équiper (recliquez pour la déséquiper). L'arme équipée modifie le tir :
   - **Mains nues** : dégâts 1, portée ~600, cadence ~3,3/s, dispersion 10 %.
   - **Pistolet** : dégâts 2, portée ~1080, cadence ~4,5/s, dispersion 3 %.
@@ -26,6 +27,7 @@ Ouvrez `index.html` dans un navigateur récent (Chrome, Firefox, Edge, Safari).
 - **Pause** : touche **Échap**.
 - **Bâtiments** : cliquez sur la **porte** d'un bâtiment (quand vous êtes à proximité) pour y entrer ; cliquez sur **Sortir** pour ressortir.
 - **Objets & armes** : cliquez sur un objet/une arme au sol (à proximité) pour le/la ramasser ; il/elle va dans le sac.
+- **Mode pose de planche** : appuyez sur **Z** pour l'activer/désactiver. En mode pose, le clic pose une planche (coût : 4 planches, portée limitée). **Espace** fait tourner la planche de 90° (horizontale/verticale). Les planches peuvent **se superposer**.
 - **Arbres** : quelques arbres en ville, beaucoup d'arbres (forêt) en dehors de la ville.
 - **Collisions** : le personnage est bloqué par les murs des bâtiments.
 - **Brouillard de guerre** : dans la ville, tout est visible ; hors de la ville, vous ne voyez qu'à **200 px** autour du personnage.
@@ -40,7 +42,8 @@ Ouvrez `index.html` dans un navigateur récent (Chrome, Firefox, Edge, Safari).
 - **Murs** : la ville est entourée d'un mur de **1 planche d'épaisseur** au départ. Mur = **100 PV**. Les zombies font **-5 PV au mur toutes les 20 s**.
 - **Barre de vie des murs** sous chaque mur ; **orange** à moins de 30 PV, **rouge** à moins de 10 PV.
 - **Joueur** : **100 PV**. **5 attaques de zombie = mort** (game over).
-- **Bois & murs** : on peut **débiter les arbres** (clic sur un arbre à proximité) pour obtenir des **planches**. Appuyez sur **B** puis cliquez pour **construire un mur** (4 planches par mur, à portée limitée).
+- **Récolte de planches (hache)** : des **haches** sont trouvées **hors de la ville**. Ramassez-en une, **équipez-la** dans le sac (cliquez dessus). Restez à côté d'un arbre (portée de hache) pendant **4 secondes** : un **cercle de décompte** apparaît à côté du personnage. **Chaque arbre donne 1 planche** (l'arbre disparaît).
+- **Bois & murs** : une fois des planches récoltées, appuyez sur **Z** puis cliquez pour **poser une planche** (4 planches par planche posée, à portée limitée). **Espace** pivote la planche.
 - **Armes au sol** : trouvées **uniquement en dehors de la ville** dès le début.
 - **Hôpital** : dans la ville ; cliquez sur sa porte avec une **pièce d'or** dans le sac pour **retrouver toute votre vie**.
 
@@ -51,8 +54,9 @@ Ouvrez `index.html` dans un navigateur récent (Chrome, Firefox, Edge, Safari).
 - Projection isométrique (vue de haut), caméra qui suit le joueur.
 - Bâtiments en 3D isométrique avec toit et porte (échelle réduite avec la ville), dont un **Hôpital**.
 - Objets et armes au sol ramassables, rangés dans le sac.
-- Arbres (forêt dense hors ville, quelques-uns en ville), abattables pour faire des planches.
-- Murs (planches) avec barre de vie, constructibles.
+- Arbres (forêt dense hors ville, quelques-uns en ville), récoltés à la hache (4 s/arbre) pour faire des planches.
+- Murs (planches) avec barre de vie, constructibles (mode pose de planche Z, rotation Espace, superposition possible).
+- Hache (outil hors ville) : récolte de planches avec cercle de décompte.
 - Zombies pixelisés, vagues nocturnes, cycle jour/nuit, compteur de jours.
 
 ## Fichiers

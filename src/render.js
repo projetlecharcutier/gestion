@@ -352,6 +352,7 @@
     G.drawFog();
     G.drawCrosshair();
     G.drawBuildHint();
+    G.drawChopProgress();
     G.drawClock();
 
     if (state.bag.open) G.drawBag();

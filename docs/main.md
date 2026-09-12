@@ -11,9 +11,9 @@ Logique par frame `update(dt)` et boucle `loop(now)`. Doit être chargé en **de
 1. `state.time += dt` ; lissage `zoom` vers `targetZoom` ; décrémente `shootCd`
 2. Si non paused/gameOver : `elapsed += dt` ; `clock` avance (`12/DAY_SECONDS * dt`) ; rollover 24h → `day++`
 3. `updateZombies(dt)` (sauf gameOver)
-4. Déplacement joueur suit la souris si `mouse.inside && dist>5` et non bloqué (bâtiment/pause/sac/gameOver) ; met à jour `face`
-5. `handleShooting()` → `updateProjectiles(dt)`
-6. `cleanupZombies()` + `cleanupWalls()`
+4. Déplacement joueur suit la souris si `mouse.inside && dist>PLAYER_W` (s'arrête quand la souris est sur le personnage) et non bloqué (bâtiment/pause/sac/gameOver) ; met à jour `face`
+5. `handleShooting()` → `updateProjectiles(dt)` (tir désactivé en mode pose de planche)
+6. `cleanupZombies()` + `cleanupWalls()` + `updateChop(dt)` (récolte hache)
 7. Caméra interpole vers le joueur (`dt*6`)
 8. Refresh souris monde (zoom a changé) + `updateHud()`
 

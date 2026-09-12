@@ -63,23 +63,6 @@
       }
     }
 
-    for (var ti = 0; ti < state.trees.length; ti++) {
-      var t = state.trees[ti];
-      var tdx = w[0] - t.x, tdy = w[1] - t.y;
-      if (Math.sqrt(tdx * tdx + tdy * tdy) < t.r * 0.6) {
-        var pdx2 = p.x - t.x, pdy2 = p.y - t.y;
-        if (Math.sqrt(pdx2 * pdx2 + pdy2 * pdy2) < G.WALL_BUILD_RANGE) {
-          t.hp -= 1;
-          if (t.hp <= 0) {
-            var gain = 2 + G.randi(0, 2);
-            state.planks += gain;
-            G.updateHud();
-          }
-          return;
-        }
-      }
-    }
-
     for (var j = 0; j < state.items.length; j++) {
       var it = state.items[j];
       if (it.taken) continue;
@@ -108,10 +91,16 @@
     var state = G.state;
     if (e.code === "Space") {
       e.preventDefault();
-      state.keys.space = true;
+      // En mode pose de planche, Espace fait tourner la planche (pas de tir).
+      if (state.started && state.buildMode && !state.paused && !state.inBuilding && !state.bag.open && !state.gameOver) {
+        G.rotatePlank();
+      } else {
+        state.keys.space = true;
+      }
     }
     if (e.code === "Escape") {
       if (state.started && state.bag.open) { state.bag.open = false; return; }
+      if (state.started && state.buildMode) { state.buildMode = false; return; }
       if (state.started) G.togglePause();
     }
     if (e.code === "KeyA" || e.key === "a" || e.key === "A" || e.key === "q" || e.key === "Q") {
@@ -119,7 +108,8 @@
         state.bag.open = !state.bag.open;
       }
     }
-    if (e.code === "KeyB" || e.key === "b" || e.key === "B") {
+    // Z : mode pose de planche (activation / désactivation).
+    if (e.code === "KeyZ" || e.key === "z" || e.key === "Z" || e.key === "w" || e.key === "W") {
       if (state.started && !state.paused && !state.inBuilding && !state.bag.open && !state.gameOver) {
         state.buildMode = !state.buildMode;
       }
@@ -150,6 +140,10 @@
     state.zombieGroups = [];
     state.walls = [];
     state.buildMode = false;
+    state.plankRotation = 0;
+    state.axeEquipped = false;
+    state.chopTarget = null;
+    state.chopTimer = 0;
     G.buildWorld();
     G.updateHud();
     G.nameInput.blur();

@@ -11,6 +11,7 @@
     G.hudPos.textContent = "(" + Math.round(p.x) + ", " + Math.round(p.y) + ")";
     G.hudInv.textContent = String(state.inventory);
     G.hudWeapon.textContent = state.equipped || "Mains nues";
+    if (G.hudAxe) G.hudAxe.textContent = state.axeEquipped ? "oui" : "non";
     G.hudHp.textContent = String(Math.round(state.player.hp));
     G.hudPlanks.textContent = String(state.planks);
   };
@@ -64,18 +65,51 @@
     var ctx = G.ctx;
     var t = G.TEXTURES.buildHint;
     var s = G.proj(G.state.mouse.wx, G.state.mouse.wy);
+    var dims = G.plankDims();
+    var z = G.state.zoom;
+    var pw = dims.w * 0.25 * z, ph = dims.h * 0.25 * z;
     ctx.save();
     ctx.strokeStyle = G.state.planks >= G.WALL_PLANKS ? t.ok : t.nok;
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 2;
-    ctx.strokeRect(s[0] - 30, s[1] - 18, 60, 36);
+    ctx.strokeRect(s[0] - pw / 2, s[1] - ph / 2, pw, ph);
     ctx.setLineDash([]);
     ctx.fillStyle = t.textColor;
     ctx.font = "12px Segoe UI, system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(G.state.planks >= G.WALL_PLANKS ?
-      "Construire (" + G.state.planks + " planches)" :
-      "Pas assez de planches (" + G.state.planks + "/" + G.WALL_PLANKS + ")", s[0], s[1] - 26);
+      "Poser une planche (" + G.state.planks + " planches) · Espace = rotation" :
+      "Pas assez de planches (" + G.state.planks + "/" + G.WALL_PLANKS + ")", s[0], s[1] - ph / 2 - 8);
+    ctx.restore();
+  };
+
+  G.drawChopProgress = function () {
+    var prog = G.chopProgress();
+    if (prog < 0) return;
+    var ctx = G.ctx;
+    var t = G.TEXTURES.chopProgress;
+    var p = G.state.player;
+    var base = G.proj(p.x, p.y);
+    var z = G.state.zoom;
+    var r = t.radius;
+    var cx = base[0] + 18 + r;
+    var cy = base[1] - 24 * z * 0.5 - r;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = t.bg;
+    ctx.lineWidth = t.lineWidth;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2);
+    ctx.strokeStyle = t.ringDone;
+    ctx.lineWidth = t.lineWidth;
+    ctx.stroke();
+    ctx.fillStyle = t.ring;
+    ctx.font = "bold 12px Segoe UI, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(Math.ceil((1 - prog) * G.TREE_CHOP_TIME) + "s", cx, cy);
     ctx.restore();
   };
 

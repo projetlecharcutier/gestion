@@ -5,7 +5,7 @@ Stats de l'arme équipée, tir du joueur, déplacement des projectiles et collis
 
 ## Exposé sur `G`
 - `equippedStats()` → stats de l'arme équipée (ou "Mains nues" par défaut)
-- `handleShooting()` — tire si `state.keys.space` et `shootCd <= 0`, en respectant bloqueurs (bâtiment/pause/sac/game over). **Ne décrémente pas `shootCd`** (fait dans `update`).
+- `handleShooting()` — tire si `state.keys.space` et `shootCd <= 0`, en respectant bloqueurs (bâtiment/pause/sac/game over/**mode pose de planche**). **Ne décrémente pas `shootCd`** (fait dans `update`).
 - `updateProjectiles(dt)` — déplace les projectiles, gère la traîne, teste collision (rayon 14 px) avec zombies, retire hors-monde/vie-finie.
 
 ## Projectile

@@ -25,6 +25,8 @@
         var it = G.state.bag.contents[i];
         if (it.kind === "arme") {
           G.state.equipped = (G.state.equipped === it.name) ? null : it.name;
+        } else if (it.kind === "outil" && it.name === "Hache") {
+          G.state.axeEquipped = !G.state.axeEquipped;
         }
         return;
       }
@@ -81,7 +83,8 @@
     for (var i = 0; i < shown; i++) {
       var it = G.state.bag.contents[i];
       var ly = listY + i * lineH + 14;
-      var isEq = (it.kind === "arme") && (it.name === G.state.equipped);
+      var isEq = ((it.kind === "arme") && (it.name === G.state.equipped)) ||
+                 ((it.kind === "outil") && (it.name === "Hache") && G.state.axeEquipped);
       if (isEq) {
         ctx.fillStyle = t.equippedHighlight;
         ctx.fillRect(px + 10, ly - lineH / 2 + 2, pw - 20, lineH - 4);
@@ -91,6 +94,11 @@
         ctx.fillRect(px + 20, ly - 6, 16, 7);
         ctx.fillStyle = t.weaponHandle;
         ctx.fillRect(px + 26, ly + 1, 5, 6);
+      } else if (it.kind === "outil" && it.name === "Hache") {
+        // Icône hache : tête + manche.
+        ctx.fillRect(px + 22, ly - 7, 12, 6);
+        ctx.fillStyle = t.weaponHandle;
+        ctx.fillRect(px + 27, ly - 1, 4, 9);
       } else {
         ctx.beginPath();
         ctx.arc(px + 28, ly - 2, 8, 0, Math.PI * 2);
@@ -99,9 +107,11 @@
       ctx.fillStyle = isEq ? t.equipped : t.itemText;
       ctx.textAlign = "left";
       ctx.fillText(it.name + (isEq ? "  (équipé)" : ""), px + 50, ly);
-      ctx.fillStyle = it.kind === "arme" ? t.weaponTag : t.objectTag;
+      ctx.fillStyle = it.kind === "arme" ? t.weaponTag : (it.kind === "outil" ? t.weaponTag : t.objectTag);
       ctx.textAlign = "right";
-      var suffix = it.kind === "arme" ? "arme (clic pour équiper)" : it.kind;
+      var suffix = it.kind === "arme" ? "arme (clic pour équiper)" :
+                   (it.kind === "outil" && it.name === "Hache") ? "outil (clic pour équiper)" :
+                   it.kind;
       ctx.fillText(suffix, px + pw - 18, ly);
     }
     ctx.restore();

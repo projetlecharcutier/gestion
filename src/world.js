@@ -73,7 +73,11 @@
       { x: G.TOWN_MIN - 14000, y: c + 15000, taken: false, name: "Couteau", color: "#cbd5e1", kind: "arme" },
       { x: G.TOWN_MIN - 6000, y: G.TOWN_MIN - 4000, taken: false, name: "Relique", color: "#a855f7", kind: "objet" },
       { x: G.TOWN_MAX + 7000, y: G.TOWN_MAX + 5000, taken: false, name: "Cristal", color: "#38bdf8", kind: "objet" },
-      { x: c + 9000, y: c - 12000, taken: false, name: "Potion", color: "#ef4444", kind: "objet" }
+      { x: c + 9000, y: c - 12000, taken: false, name: "Potion", color: "#ef4444", kind: "objet" },
+      // Haches : disponibles uniquement en dehors de la ville.
+      { x: G.TOWN_MIN - 3500, y: c + 1800, taken: false, name: "Hache", color: "#b45309", kind: "outil" },
+      { x: G.TOWN_MAX + 4200, y: c - 2200, taken: false, name: "Hache", color: "#b45309", kind: "outil" },
+      { x: c - 7000, y: G.TOWN_MAX + 6000, taken: false, name: "Hache", color: "#b45309", kind: "outil" }
     ];
 
     state.trees = [];

@@ -21,14 +21,15 @@ Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fo
 | 3 | `src/projection.js` | Projection iso monde↔écran, limites visibles, `inTown` | `proj`, `unproj`, `viewW/H`, `visibleWorldBounds`, `inTown` |
 | 4 | `src/world.js` | Génération : bâtiments, mur de périmètre, objets, arbres | `buildWorld`, `makeBuilding`, `nearBuilding`, `buildPerimeterWall` |
 | 5 | `src/player.js` | Déplacement, collisions, entrée bâtiment, soin hôpital, pause | `tryMove`, `aabbHitsBuildings`, `clampPlayer`, `enterBuilding`, `leaveBuilding`, `togglePause`, `tryHealAtHospital`, `hasGoldPiece` |
-| 6 | `src/walls.js` | Construction de murs (B + clic) + nettoyage murs détruits | `tryBuildWall`, `cleanupWalls` |
-| 7 | `src/weapons.js` | Stats arme équipée, tir, déplacement projectiles | `equippedStats`, `handleShooting`, `updateProjectiles` |
-| 8 | `src/zombies.js` | Vagues, groupes qui fusionnent, IA zombies | `spawnWave`, `mergeGroups`, `updateZombies`, `cleanupZombies` |
-| 9 | `src/bag.js` | Sac : disposition, rendu, clic équiper | `bagLayout`, `handleBagClick`, `drawBag` |
-| 10 | `src/hud.js` | HUD DOM + overlays canvas | `updateHud`, `drawClock`, `drawPlayerHpBar`, `drawBuildHint`, `drawGameOver` |
-| 11 | `src/render.js` | Tout le dessin + `render()` | `drawGround/Item/Tree/Building/Player/Wall/Zombie/Projectiles/Fog/Crosshair`, `fillPoly`, `roundRect`, `render` |
-| 12 | `src/input.js` | Entrées (souris, molette, clavier) + formulaire démarrage | resize interne, listeners |
-| 13 | `src/main.js` | Logique par frame `update(dt)` + `loop()` | `update`, `loop` |
+| 6 | `src/walls.js` | Construction de planches/murs (Z + clic) + rotation + nettoyage murs détruits | `tryBuildWall`, `cleanupWalls`, `plankDims`, `rotatePlank` |
+| 7 | `src/chop.js` | Récolte de planches à la hache (décompte près d'un arbre) | `updateChop`, `chopProgress` |
+| 8 | `src/weapons.js` | Stats arme équipée, tir, déplacement projectiles | `equippedStats`, `handleShooting`, `updateProjectiles` |
+| 9 | `src/zombies.js` | Vagues, groupes qui fusionnent, IA zombies | `spawnWave`, `mergeGroups`, `updateZombies`, `cleanupZombies` |
+| 10 | `src/bag.js` | Sac : disposition, rendu, clic équiper (armes & hache) | `bagLayout`, `handleBagClick`, `drawBag` |
+| 11 | `src/hud.js` | HUD DOM + overlays canvas (dont cercle de décompte hache) | `updateHud`, `drawClock`, `drawPlayerHpBar`, `drawBuildHint`, `drawChopProgress`, `drawGameOver` |
+| 12 | `src/render.js` | Tout le dessin + `render()` | `drawGround/Item/Tree/Building/Player/Wall/Zombie/Projectiles/Fog/Crosshair`, `fillPoly`, `roundRect`, `render` |
+| 13 | `src/input.js` | Entrées (souris, molette, clavier) + formulaire démarrage | resize interne, listeners |
+| 14 | `src/main.js` | Logique par frame `update(dt)` + `loop()` | `update`, `loop` |
 
 ## État global : `G.state`
 
@@ -39,7 +40,8 @@ Schéma complet dans `src/state.js`. Champs clés :
 - `mouse { sx, sy, wx, wy, inside }` — écran (s*) + monde (w*)
 - `items[]`, `buildings[]`, `trees[]`, `walls[]`, `zombies[]`, `zombieGroups[]`
 - `bag { open, contents[] }`, `equipped` (nom arme ou null), `projectiles[]`
-- `planks`, `inventory`, `shootCd`, `buildMode`
+- `planks`, `inventory`, `shootCd`, `buildMode`, `plankRotation` (0=horizontal, 1=vertical)
+- `axeEquipped` (bool), `chopTarget` (arbre visé ou null), `chopTimer` (accumulateur s)
 - `clock` (0..24), `day`, `elapsed`, `nextWaveAt`, `waveActive`, `waveLeaveAt`
 
 ## Constantes importantes (`src/config.js`)
@@ -55,7 +57,10 @@ Schéma complet dans `src/state.js`. Champs clés :
 | `ZOMBIE_PLAYER_DMG` | 20 | 5 coups = mort (100 PV) |
 | `WALL_MAX_HP` | 100 | PV d'un mur |
 | `PLAYER_MAX_HP` | 100 | PV joueur |
-| `WALL_PLANKS` | 4 | Planches / mur construit |
+| `WALL_PLANKS` | 4 | Planches / planche posée |
+| `PLANK_LONG/THICK` | 120 / 24 | Dimensions d'une planche posée (px) |
+| `TREE_CHOP_TIME` | 4 | Temps de récolte d'un arbre (s) |
+| `AXE_RANGE` | 120 | Portée de la hache (px) |
 | `WEAPON_STATS` | — | Table des armes (dmg, portée, cd, spread, color) |
 | `DAY_SECONDS` | 300 | 12h in-game = 5 min réel |
 | `WAVE_EVERY` | 420 | Vague toutes les 7 min |
@@ -69,8 +74,8 @@ Schéma complet dans `src/state.js`. Champs clés :
 2. Cycle jour/nuit (incrémente `clock`, `day`)
 3. `updateZombies(dt)`
 4. Déplacement joueur (suit la souris) si pas en bâtiment/pause/sac/game over
-5. `handleShooting()` → `updateProjectiles(dt)`
-6. `cleanupZombies()` + `cleanupWalls()`
+5. `handleShooting()` → `updateProjectiles(dt)` (tir désactivé en mode pose de planche)
+6. `cleanupZombies()` + `cleanupWalls()` + `updateChop(dt)` (récolte hache)
 7. Caméra suit le joueur
 8. Refresh souris monde + `updateHud()`
 
@@ -91,7 +96,7 @@ Sprites pixel art et palettes de couleurs, isolés du rendu. Exposés sur `G.TEX
 | `src/textures/fog.js` | brouillard | couleur + arrêts du dégradé |
 | `src/textures/crosshair.js` | viseur | couleur + géométrie réticule |
 | `src/textures/projectile.js` | projectile | couleur repli, traîne, taille tête |
-| `src/textures/hud.js` | overlays HUD | barre de vie, horloge, hint, game over |
+| `src/textures/hud.js` | overlays HUD | barre de vie, horloge, hint, game over, **cercle de décompte hache** |
 | `src/textures/bag.js` | sac UI | panneau, titres, icônes |
 
 Voir `docs/textures.md` pour la spec.
@@ -99,6 +104,7 @@ Voir `docs/textures.md` pour la spec.
 ## Points d'extension (où ajouter sans tout casser)
 
 - **Nouvelle arme** → ajouter une entrée dans `G.WEAPON_STATS` (`src/config.js`). Aucun autre fichier à toucher : `equippedStats`, le tir et le sac la prennent en compte automatiquement.
+- **Nouvel outil** (comme la hache) → ajouter un objet `kind:"outil"` dans `buildWorld` (`src/world.js`), gérer l'équipement dans `handleBagClick` (`src/bag.js`) via un booléen dédié, et la logique métier dans un nouveau `src/<nom>.js` (modèle : `src/chop.js`).
 - **Nouvel objet ramassable** → `state.items[]` dans `buildWorld` (`src/world.js`) ; ramassage géré dans le clic (`src/input.js`).
 - **Nouveau bâtiment** → `state.buildings[]` dans `buildWorld` (`src/world.js`) ; rendu auto (`src/render.js`).
 - **Comportement zombie** → `updateZombies` (`src/zombies.js`) ; nettoyer les morts via `cleanupZombies`.

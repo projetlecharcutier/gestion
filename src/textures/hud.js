@@ -31,6 +31,15 @@
     textColor: "#e2e8f0"
   };
 
+  // Cercle de décompte de récolte (hache) à côté du joueur.
+  G.TEXTURES.chopProgress = {
+    bg: "rgba(2,6,23,0.6)",
+    ring: "#a16207",
+    ringDone: "#fbbf24",
+    radius: 14,
+    lineWidth: 3
+  };
+
   // Écran de game over.
   G.TEXTURES.gameOver = {
     veil: "rgba(2,6,23,0.8)",
