@@ -73,19 +73,19 @@
       var count = G.randi(1, 10);
       for (var j = 0; j < count && placed < total; j++) {
         var r = G.rand(18, 36);
-        // Décalage du centre du cluster (rayon ~80 pour rester groupé).
+        // Décalage du centre du cluster : très serré pour que les PNG se touchent.
         var ang = Math.random() * Math.PI * 2;
-        var dist = Math.random() * 80;
+        var dist = Math.random() * 24;
         var tx = gx + Math.cos(ang) * dist;
         var ty = gy + Math.sin(ang) * dist;
         if (tx < 0 || tx > G.WORLD || ty < 0 || ty > G.WORLD) continue;
         if (G.inTown(tx, ty)) continue;
-        // Vérifie la non-superposition avec les arbres déjà placés.
+        // Vérifie la non-superposition des troncs (les PNG peuvent se toucher).
         var ok = true;
         for (var k = 0; k < state.trees.length; k++) {
           var o = state.trees[k];
           var dx = tx - o.x, dy = ty - o.y;
-          if (Math.sqrt(dx * dx + dy * dy) < r + o.r) { ok = false; break; }
+          if (Math.sqrt(dx * dx + dy * dy) < (r + o.r) * 0.5) { ok = false; break; }
         }
         if (!ok) continue;
         state.trees.push({ x: tx, y: ty, r: r, kind: kind, hp: 2 });
@@ -199,7 +199,7 @@
     }
     // Forêt hors ville : les arbres wild popent par groupes de 1 à 10,
     // regroupés spatialement et sans se superposer.
-    G.spawnTreeClusters(state, 1600, "wild");
+    G.spawnTreeClusters(state, 4800, "wild");
     for (i = 0; i < 25; i++) {
       var side = G.randi(0, 3);
       if (side === 0) { tx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ty = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); }
