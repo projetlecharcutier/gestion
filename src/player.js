@@ -61,6 +61,71 @@
     G.buildingScreen.hidden = true;
   };
 
+  // Coffre de la mairie : déposer des objets du sac.
+  G.openMairieChest = function () {
+    var state = G.state;
+    state.chestOpen = true;
+    state.paused = false;
+    G.pauseScreen.hidden = true;
+    G.drawChest();
+    G.chestScreen.hidden = false;
+  };
+
+  G.closeChest = function () {
+    G.state.chestOpen = false;
+    G.chestScreen.hidden = true;
+  };
+
+  // Dépose un objet du sac (index) dans le coffre de la mairie.
+  G.depositItem = function (index) {
+    var state = G.state;
+    if (index < 0 || index >= state.bag.contents.length) return;
+    var it = state.bag.contents[index];
+    // Déséquipe si on dépose l'arme équipée ou la hache.
+    if (it.kind === "arme" && state.equipped === it.name) state.equipped = null;
+    if (it.kind === "outil" && it.name === "Hache") state.axeEquipped = false;
+    state.chest.push(it);
+    state.bag.contents.splice(index, 1);
+    state.inventory = state.bag.contents.length;
+    G.drawChest();
+    G.updateHud();
+  };
+
+  // Affiche le contenu du coffre et du sac dans l'écran de coffre.
+  G.drawChest = function () {
+    var state = G.state;
+    var vault = G.chestVault;
+    var bag = G.chestBag;
+    if (state.chest.length === 0) {
+      vault.textContent = "Coffre vide";
+    } else {
+      vault.textContent = state.chest.map(function (it) {
+        return (it.kind === "arme" || it.kind === "outil") ? it.name : it.name;
+      }).join(", ");
+    }
+    bag.innerHTML = "";
+    var list = document.createElement("div");
+    list.className = "chest__list";
+    if (state.bag.contents.length === 0) {
+      var empty = document.createElement("p");
+      empty.textContent = "Sac vide";
+      list.appendChild(empty);
+    } else {
+      for (var i = 0; i < state.bag.contents.length; i++) {
+        var it = state.bag.contents[i];
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn chest__item";
+        btn.textContent = it.name + (it.kind === "arme" ? " (arme)" : it.kind === "outil" ? " (outil)" : "");
+        (function (idx) {
+          btn.addEventListener("click", function () { G.depositItem(idx); });
+        })(i);
+        list.appendChild(btn);
+      }
+    }
+    bag.appendChild(list);
+  };
+
   G.togglePause = function () {
     if (G.state.inBuilding) return;
     G.state.paused = !G.state.paused;

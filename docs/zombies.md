@@ -16,8 +16,8 @@ Vagues nocturnes, organisation en petits groupes qui fusionnent, IA (cible joueu
 ## Règles clés
 - Vague toutes les `WAVE_EVERY` (7 min), repartent après `WAVE_LEAVE` (10 min).
 - Taille : `ZOMBIE_PER_WAVE_BASE` (50) × `ZOMBIE_WAVE_GROWTH`^(jour) → 50, 100, 200, 400… Le HUD affiche le compteur `Zombies : vivants / total`.
-- Cible : joueur si `distP < ZOMBIE_ATTACK_RANGE` (150), sinon mur le plus proche, sinon centre ville.
-- Dégâts joueur : `ZOMBIE_PLAYER_DMG` (20) → 5 coups = mort. Dégâts mur : `ZOMBIE_WALL_DMG` (5) toutes les `ZOMBIE_WALL_CD` (20 s).
+- Cible : joueur si `distP < ZOMBIE_ATTACK_RANGE` (150), sinon **Mairie** (centre-ville) ; attaquent aussi un mur rencontré sur le chemin (< 60 px). Si la Mairie tombe à 0 PV → `gameOver` (`gameOverCause: "mairie"`).
+- Dégâts joueur : `ZOMBIE_PLAYER_DMG` (20) → 5 coups = mort. Dégâts mur/mairie : `ZOMBIE_WALL_DMG` (5) toutes les `ZOMBIE_WALL_CD` (20 s).
 - Zombies 2× plus lents que le joueur (`ZOMBIE_SPEED = SPEED/2`).
 
 ## Étendre

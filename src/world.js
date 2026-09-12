@@ -4,11 +4,17 @@
   var G = window.GAME = window.GAME || {};
 
   G.makeBuilding = function (x, y, w, h, name, msg, height) {
-    return {
+    var b = {
       x: x, y: y, w: w, h: h,
       name: name, msg: msg, height: height || 350,
       door: { x: x + w / 2, y: y + h }
     };
+    if (name === "Mairie") {
+      b.isMairie = true;
+      b.hp = G.MAIRIE_MAX_HP;
+      b.maxHp = G.MAIRIE_MAX_HP;
+    }
+    return b;
   };
 
   G.nearBuilding = function (x, y, pad) {

@@ -14,6 +14,11 @@
     if (G.hudAxe) G.hudAxe.textContent = state.axeEquipped ? "oui" : "non";
     G.hudHp.textContent = String(Math.round(state.player.hp));
     G.hudPlanks.textContent = String(state.planks);
+    if (G.hudMairie) {
+      var mairie = null;
+      for (var i = 0; i < state.buildings.length; i++) { if (state.buildings[i].isMairie) { mairie = state.buildings[i]; break; } }
+      G.hudMairie.textContent = mairie ? String(Math.round(mairie.hp)) : "—";
+    }
   };
 
   G.drawClock = function () {
@@ -132,10 +137,11 @@
     ctx.font = "bold 40px Segoe UI, system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("Vous êtes mort", W / 2, H / 2 - 20);
+    var dead = G.state.gameOverCause === "mairie";
+    ctx.fillText(dead ? "La Mairie est détruite" : "Vous êtes mort", W / 2, H / 2 - 20);
     ctx.fillStyle = t.text;
     ctx.font = "18px Segoe UI, system-ui, sans-serif";
-    ctx.fillText("Vous avez survécu jusqu'au jour " + G.state.day, W / 2, H / 2 + 20);
+    ctx.fillText((dead ? "Les zombies ont rasé la ville. " : "") + "Vous avez survécu jusqu'au jour " + G.state.day, W / 2, H / 2 + 20);
     ctx.fillStyle = t.hint;
     ctx.font = "14px Segoe UI, system-ui, sans-serif";
     ctx.fillText("Rechargez la page pour recommencer", W / 2, H / 2 + 48);

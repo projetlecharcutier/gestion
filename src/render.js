@@ -120,7 +120,7 @@
   G.drawBuilding = function (b) {
     var ctx = G.ctx;
     var z = G.state.zoom;
-    var t = G.TEXTURES.building;
+    var t = b.isMairie ? G.TEXTURES.mairie : G.TEXTURES.building;
     var hPx = b.height * 0.25 * z;
     var A = G.proj(b.x, b.y), B = G.proj(b.x + b.w, b.y),
         C = G.proj(b.x + b.w, b.y + b.h), D = G.proj(b.x, b.y + b.h);
@@ -131,6 +131,18 @@
     G.fillPoly([D, C, Ct, Dt], t.faces.sideY.fill, t.faces.sideY.stroke);
     G.fillPoly([At, Bt, Ct, Dt], t.roof.fill, t.roof.stroke);
 
+    // Bandeau blanc pour la mairie.
+    if (b.isMairie && t.trim) {
+      ctx.strokeStyle = t.trim;
+      ctx.lineWidth = Math.max(1.5, z * 0.25);
+      ctx.beginPath();
+      ctx.moveTo(Bt[0], Bt[1] + hPx * 0.5);
+      ctx.lineTo(Ct[0], Ct[1] + hPx * 0.5);
+      ctx.moveTo(Dt[0], Dt[1] + hPx * 0.5);
+      ctx.lineTo(Ct[0], Ct[1] + hPx * 0.5);
+      ctx.stroke();
+    }
+
     var door = G.proj(b.door.x, b.door.y);
     var dw = 12 * z * 0.25, dh = 26 * z * 0.25;
     if (dw < 3) dw = 3; if (dh < 6) dh = 6;
@@ -139,6 +151,19 @@
     ctx.strokeStyle = t.door.stroke;
     ctx.lineWidth = 1;
     ctx.strokeRect(door[0] - dw / 2, door[1] - dh, dw, dh);
+
+    // Barre de vie de la mairie.
+    if (b.isMairie) {
+      var ratio = b.hp / b.maxHp;
+      var col = ratio < 0.10 ? t.hpBar.low : (ratio < 0.30 ? t.hpBar.mid : t.hpBar.high);
+      var cx = (A[0] + C[0]) / 2;
+      var by = Math.min(At[1], Bt[1], Ct[1], Dt[1]) - 8;
+      var bw = Math.max(40, b.w * 0.4 * z);
+      ctx.fillStyle = t.hpBar.bg;
+      ctx.fillRect(cx - bw / 2 - 1, by - 1, bw + 2, 6);
+      ctx.fillStyle = col;
+      ctx.fillRect(cx - bw / 2, by, bw * ratio, 4);
+    }
   };
 
   G.drawPlayer = function () {

@@ -6,7 +6,7 @@ Dessine tout (sol, objets, arbres, bâtiments, murs, zombies, joueur, projectile
 ## Exposé sur `G`
 - Helpers : `fillPoly(points, fill, stroke)`, `roundRect(x,y,w,h,r)`
 - `drawGround()` — tuiles iso (ville vs hors ville) + bordure de ville
-- `drawItem(it)`, `drawTree(t)`, `drawBuilding(b)`, `drawWall(m)`, `drawZombie(z)`, `drawPlayer()`, `drawProjectiles()`, `drawFog()`, `drawCrosshair()`
+- `drawItem(it)`, `drawTree(t)`, `drawBuilding(b)` (texture mairie bleu/blanc/rouge + barre de vie si `b.isMairie`), `drawWall(m)`, `drawZombie(z)`, `drawPlayer()`, `drawProjectiles()`, `drawFog()`, `drawCrosshair()`
 - `render()` — cycle de dessin complet (appelé par `loop`)
 
 ## Ordre de `render()`

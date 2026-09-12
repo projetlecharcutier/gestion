@@ -41,11 +41,12 @@ Ouvrez `index.html` dans un navigateur récent (Chrome, Firefox, Edge, Safari).
 - **Cible des zombies** : ils attaquent le joueur s'il est à **150 px** autour d'eux ; sinon ils attaquent les **murs**.
 - **Murs** : la ville est entourée d'un mur de **1 planche d'épaisseur** au départ. Mur = **100 PV**. Les zombies font **-5 PV au mur toutes les 20 s**.
 - **Barre de vie des murs** sous chaque mur ; **orange** à moins de 30 PV, **rouge** à moins de 10 PV.
-- **Joueur** : **100 PV**. **5 attaques de zombie = mort** (game over).
+- **Joueur** : **100 PV**. **5 attaques de zombie = mort** (game over). **Mairie détruite = game over** aussi.
 - **Récolte de planches (hache)** : des **haches** sont trouvées **hors de la ville**. Ramassez-en une, **équipez-la** dans le sac (cliquez dessus). Restez à côté d'un arbre (portée de hache) pendant **4 secondes** : un **cercle de décompte** apparaît à côté du personnage. **Chaque arbre donne 1 planche** (l'arbre disparaît).
 - **Bois & murs** : une fois des planches récoltées, appuyez sur **Z** puis cliquez pour **poser une planche** (4 planches par planche posée, à portée limitée). **Espace** pivote la planche.
 - **Armes au sol** : trouvées **uniquement en dehors de la ville** dès le début.
 - **Hôpital** : dans la ville ; cliquez sur sa porte avec une **pièce d'or** dans le sac pour **retrouver toute votre vie**.
+- **🏛️ Mairie** : bâtiment central (bleu, blanc et rouge), **1000 PV**. Cliquez sur sa porte pour ouvrir le **coffre** et y **déposer des objets** (armes, planches, argent…). Les zombies convergent vers la mairie et l'attaquent : **si elle est détruite, fin de partie**. Ses PV s'affichent dans le HUD.
 
 ## Caractéristiques
 

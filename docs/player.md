@@ -12,6 +12,9 @@ Déplacement + collisions bâtiments, entrée/sortie de bâtiment, soin à l'hô
 - `togglePause()` — bascule `state.paused` + écran pause (sauf si dans un bâtiment)
 - `hasGoldPiece()` → index d'une "Pièce" dans `state.bag.contents` (ou -1)
 - `tryHealAtHospital()` — soigne contre 1 pièce, ou ouvre le sac si PV max / pas de pièce
+- `openMairieChest()` / `closeChest()` — ouvre/ferme l'écran du coffre de la Mairie
+- `depositItem(index)` — dépose un objet du sac dans le coffre (déséquipe l'arme/hache déposée)
+- `drawChest()` — affiche le contenu du coffre et la liste du sac dans l'écran de coffre
 
 ## Contraintes
 - `tryMove` déplace en Y puis en X séparément (permet de longer les murs).

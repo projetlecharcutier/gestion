@@ -21,7 +21,7 @@
 
     if (!state.gameOver) G.updateZombies(dt);
 
-    if (!state.inBuilding && !state.paused && !state.bag.open && !state.gameOver) {
+    if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.gameOver) {
       var p = state.player;
       var tx = state.mouse.wx, ty = state.mouse.wy;
       var dx = tx - p.x, dy = ty - p.y;
