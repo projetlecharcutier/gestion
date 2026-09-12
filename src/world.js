@@ -93,21 +93,22 @@
   // Le rendu dessine le PNG ancré bas-centre : largeur monde = sp.w*2,
   // hauteur monde = sp.h*2. Le contenu opaque occupe la fraction
   // [x0..x1]×[y0..y1] du PNG. On en déduit :
-  //   - rad : demi-largeur monde du contenu opaque (rayon du losange).
-  //   - cy  : centre Y monde (le PNG est ancré bas à t.y, donc le centre du
-  //           contenu opaque est à t.y - (1 - (y0+y1)/2) * sp.h*2).
-  // Retourne {rad, cy} ou null si pas de sprite.
+  //   - rx : demi-largeur monde du contenu opaque.
+  //   - ry : demi-hauteur monde du contenu opaque.
+  //   - cy : centre Y monde (le PNG est ancré bas à t.y, donc le centre du
+  //          contenu opaque est à t.y - (1 - (y0+y1)/2) * sp.h*2).
+  // Retourne {rx, ry, cy} ou null si pas de sprite.
   G.treeBounds = function (kind) {
     if (!G.hasSprite("tree", kind)) return null;
     var sp = G.SPRITES.tree[kind];
     var b = G.spriteBounds("tree", kind) || { x0: 0, y0: 0, x1: 1, y1: 1 };
     var opaqueW = (b.x1 - b.x0) * sp.w * 2;
     var opaqueH = (b.y1 - b.y0) * sp.h * 2;
-    return { rad: Math.max(opaqueW, opaqueH) / 2, cy: -(1 - (b.y0 + b.y1) / 2) * sp.h * 2 };
+    return { rx: opaqueW / 2, ry: opaqueH / 2, cy: -(1 - (b.y0 + b.y1) / 2) * sp.h * 2 };
   };
   // Teste si la boîte centrée (x,y) de demi-côté half chevauche un arbre.
-  // La zone non-marchable = losange (distance de Manhattan) centré sur le
-  // contenu opaque réel du PNG (t.cx, t.y+t.cy) de rayon t.rad.
+  // La zone non-marchable = losange elliptique (Manhattan normalisé) centré sur
+  // le contenu opaque réel du PNG (t.x, t.y+t.cy) de demi-axes (t.rx, t.ry).
   // Utilise la grille spatiale : ne vérifie que les arbres des cellules voisines.
   G.hitsTree = function (x, y, half) {
     var grid = G.treeGrid;
@@ -120,11 +121,13 @@
         if (!arr) continue;
         for (var n = 0; n < arr.length; n++) {
           var t = arr[n];
-          if (t.rad) {
-            // Losange centré (t.x, t.y + t.cy) de rayon t.rad vs boîte demi-côté half.
-            var ddx = Math.max(Math.abs(t.x - x) - half, 0);
-            var ddy = Math.max(Math.abs((t.y + t.cy) - y) - half, 0);
-            if (ddx + ddy < t.rad) return true;
+          if (t.rx) {
+            // Losange elliptique centré (t.x, t.y + t.cy) de demi-axes (t.rx, t.ry)
+            // vs boîte demi-côté half. Chevauchement si la distance L1 normalisée
+            // du centre à la boîte est < 1.
+            var ddx = Math.max(Math.abs(t.x - x) - half, 0) / t.rx;
+            var ddy = Math.max(Math.abs((t.y + t.cy) - y) - half, 0) / t.ry;
+            if (ddx + ddy < 1) return true;
           } else {
             // Repli (pas de PNG) : cercle (t.x, t.y, t.r).
             var cx = Math.max(Math.abs(t.x - x) - half, 0);
@@ -169,7 +172,7 @@
       grid[key].push(o);
       state.trees.push({
         x: tx, y: ty, r: r, kind: kind, hp: 2,
-        rad: b ? b.rad : 0, cy: b ? b.cy : 0
+        rx: b ? b.rx : 0, ry: b ? b.ry : 0, cy: b ? b.cy : 0
       });
     }
     var placed = 0;
@@ -363,7 +366,7 @@
       } while (G.nearBuilding(tx, ty, 30) && tries < 12);
       if (tries < 12) {
         var tb = G.treeBounds("town");
-        state.trees.push({ x: tx, y: ty, r: G.rand(56, 88), kind: "town", hp: 2, rad: tb ? tb.rad : 0, cy: tb ? tb.cy : 0 });
+        state.trees.push({ x: tx, y: ty, r: G.rand(56, 88), kind: "town", hp: 2, rx: tb ? tb.rx : 0, ry: tb ? tb.ry : 0, cy: tb ? tb.cy : 0 });
       }
     }
     // Forêt hors ville : les arbres wild popent par groupes de 1 à 10,
@@ -376,7 +379,7 @@
       else if (side === 2) { tx = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
       else { tx = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
       var eb = G.treeBounds("edge");
-      state.trees.push({ x: tx, y: ty, r: G.rand(64, 112), kind: "edge", hp: 2, rad: eb ? eb.rad : 0, cy: eb ? eb.cy : 0 });
+      state.trees.push({ x: tx, y: ty, r: G.rand(64, 112), kind: "edge", hp: 2, rx: eb ? eb.rx : 0, ry: eb ? eb.ry : 0, cy: eb ? eb.cy : 0 });
     }
 
     state.zombies = [];
