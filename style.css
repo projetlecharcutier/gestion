@@ -98,6 +98,13 @@ canvas#game {
   color: var(--text-muted);
   font-size: 0.95rem;
 }
+.panel__intro {
+  margin: 0 0 18px;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: left;
+}
 
 #nameInput {
   width: 100%;

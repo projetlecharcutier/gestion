@@ -127,7 +127,7 @@
   G.startForm.addEventListener("submit", function (e) {
     e.preventDefault();
     var v = G.nameInput.value.trim();
-    if (!v) return;
+    if (!v) v = "Habitant";
     var state = G.state;
     state.playerName = v;
     G.startScreen.hidden = true;
