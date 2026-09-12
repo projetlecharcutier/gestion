@@ -20,7 +20,7 @@
   // Appelé chaque frame depuis update(). Gère le décompte de récolte.
   G.updateChop = function (dt) {
     var state = G.state;
-    if (!state.started || state.paused || state.gameOver || state.inBuilding || state.bag.open) {
+    if (!state.started || state.paused || state.gameOver || state.inBuilding || state.bag.open || state.chestOpen) {
       state.chopTarget = null;
       state.chopTimer = 0;
       return;

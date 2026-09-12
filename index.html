@@ -17,6 +17,7 @@
     </div>
     <div class="hud__row">
       <span>Vie : <b id="hudHp">100</b></span>
+      <span>Mairie : <b id="hudMairie">1000</b></span>
       <span>Planches : <b id="hudPlanks">0</b></span>
     </div>
     <div class="hud__row">
@@ -26,7 +27,7 @@
     <div class="hud__row">
       <span>Inventaire : <b id="hudInv">0</b></span>
     </div>
-    <div class="hud__row"><span class="hud__hint">A = Ouvrir le sac · Z = Poser une planche · Échap = pause · Molette = zoom · Espace = tir</span></div>
+    <div class="hud__row"><span class="hud__hint">A = Ouvrir le sac · Z = Poser une planche · Cliquez la Mairie = coffre · Échap = pause · Molette = zoom · Espace = tir</span></div>
   </div>
 
   <div class="overlay" id="startScreen">
@@ -53,6 +54,16 @@
       <h2 id="buildingName">—</h2>
       <p class="panel__sub" id="buildingMsg">—</p>
       <button class="btn btn--primary" id="leaveBuildingBtn" type="button">Sortir</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="chestScreen" hidden>
+    <div class="panel">
+      <h2>🏛️ Coffre de la Mairie</h2>
+      <p class="panel__sub">Déposez vos objets ici. Cliquez sur un objet du sac pour le déposer.</p>
+      <div class="chest__vault" id="chestVault">Coffre vide</div>
+      <div class="chest__bag" id="chestBag"></div>
+      <button class="btn btn--primary" id="closeChestBtn" type="button">Fermer</button>
     </div>
   </div>
 

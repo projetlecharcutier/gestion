@@ -15,6 +15,7 @@
   G.hudAxe = document.getElementById("hudAxe");
   G.hudHp = document.getElementById("hudHp");
   G.hudPlanks = document.getElementById("hudPlanks");
+  G.hudMairie = document.getElementById("hudMairie");
   G.startScreen = document.getElementById("startScreen");
   G.startForm = document.getElementById("startForm");
   G.nameInput = document.getElementById("nameInput");
@@ -24,6 +25,10 @@
   G.buildingName = document.getElementById("buildingName");
   G.buildingMsg = document.getElementById("buildingMsg");
   G.leaveBuildingBtn = document.getElementById("leaveBuildingBtn");
+  G.chestScreen = document.getElementById("chestScreen");
+  G.chestVault = document.getElementById("chestVault");
+  G.chestBag = document.getElementById("chestBag");
+  G.closeChestBtn = document.getElementById("closeChestBtn");
 
   G.state = {
     started: false,
@@ -45,6 +50,9 @@
     zombies: [],
     zombieGroups: [],
     bag: { open: false, contents: [] },
+    chest: [],
+    chestOpen: false,
+    gameOverCause: "",
     equipped: null,
     projectiles: [],
     keys: {},

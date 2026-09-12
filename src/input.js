@@ -29,7 +29,7 @@
 
   G.canvas.addEventListener("click", function (e) {
     var state = G.state;
-    if (!state.started || state.paused || state.inBuilding || state.gameOver) return;
+    if (!state.started || state.paused || state.inBuilding || state.gameOver || state.chestOpen) return;
     var rect = G.canvas.getBoundingClientRect();
     var sx = e.clientX - rect.left;
     var sy = e.clientY - rect.top;
@@ -55,6 +55,10 @@
         if (Math.sqrt(pdx * pdx + pdy * pdy) < 160) {
           if (b.name === "Hôpital") {
             G.tryHealAtHospital();
+            return;
+          }
+          if (b.isMairie) {
+            G.openMairieChest();
             return;
           }
           G.enterBuilding(b);
@@ -99,6 +103,7 @@
       }
     }
     if (e.code === "Escape") {
+      if (state.started && state.chestOpen) { G.closeChest(); return; }
       if (state.started && state.bag.open) { state.bag.open = false; return; }
       if (state.started && state.buildMode) { state.buildMode = false; return; }
       if (state.started) G.togglePause();
@@ -129,6 +134,7 @@
     G.hud.hidden = false;
     state.started = true;
     state.gameOver = false;
+    state.gameOverCause = "";
     state.player.hp = G.PLAYER_MAX_HP;
     state.planks = 0;
     state.clock = 8;
@@ -145,6 +151,9 @@
     state.axeEquipped = false;
     state.chopTarget = null;
     state.chopTimer = 0;
+    state.chest = [];
+    state.chestOpen = false;
+    if (G.chestScreen) G.chestScreen.hidden = true;
     G.buildWorld();
     G.updateHud();
     G.nameInput.blur();
@@ -152,4 +161,5 @@
 
   G.resumeBtn.addEventListener("click", G.togglePause);
   G.leaveBuildingBtn.addEventListener("click", G.leaveBuilding);
+  G.closeChestBtn.addEventListener("click", G.closeChest);
 })();

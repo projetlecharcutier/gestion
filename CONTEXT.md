@@ -57,6 +57,7 @@ Schéma complet dans `src/state.js`. Champs clés :
 | `ZOMBIE_PLAYER_DMG` | 20 | 5 coups = mort (100 PV) |
 | `WALL_MAX_HP` | 100 | PV d'un mur |
 | `PLAYER_MAX_HP` | 100 | PV joueur |
+| `MAIRIE_MAX_HP` | 1000 | PV de la Mairie (game over à 0) |
 | `WALL_PLANKS` | 4 | Planches / planche posée |
 | `PLANK_LONG/THICK` | 120 / 24 | Dimensions d'une planche posée (px) |
 | `TREE_CHOP_TIME` | 4 | Temps de récolte d'un arbre (s) |

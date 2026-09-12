@@ -93,6 +93,11 @@
     }
 
     var p = state.player;
+    // La mairie est la cible principale des zombies (centre-ville).
+    var mairie = null;
+    for (var mi0 = 0; mi0 < state.buildings.length; mi0++) {
+      if (state.buildings[mi0].isMairie) { mairie = state.buildings[mi0]; break; }
+    }
     if (state.zombieGroups) {
       for (var gi = 0; gi < state.zombieGroups.length; gi++) {
         var grp = state.zombieGroups[gi];
@@ -101,7 +106,8 @@
         var distP = Math.sqrt(pdx * pdx + pdy * pdy);
         if (distP < G.ZOMBIE_ATTACK_RANGE) {
           cible = { x: p.x, y: p.y, isPlayer: true };
-        } else {
+        } else if (mairie) {
+          // Cible la mairie ; attaque aussi les murs rencontrés sur le chemin.
           var best = null, bestD = Infinity;
           for (var j = 0; j < state.walls.length; j++) {
             var m = state.walls[j];
@@ -109,8 +115,13 @@
             var md = Math.sqrt((mx - grp.x) * (mx - grp.x) + (my - grp.y) * (my - grp.y));
             if (md < bestD) { bestD = md; best = m; }
           }
-          if (best) cible = { x: best.x + best.w / 2, y: best.y + best.h / 2, isPlayer: false, wall: best };
-          else cible = { x: G.WORLD / 2, y: G.WORLD / 2, isPlayer: false };
+          if (best && bestD < 60) {
+            cible = { x: best.x + best.w / 2, y: best.y + best.h / 2, isPlayer: false, wall: best };
+          } else {
+            cible = { x: mairie.x + mairie.w / 2, y: mairie.y + mairie.h / 2, isPlayer: false, mairie: mairie };
+          }
+        } else {
+          cible = { x: G.WORLD / 2, y: G.WORLD / 2, isPlayer: false };
         }
         var ldx = cible.x - grp.x, ldy = cible.y - grp.y;
         var ld = Math.sqrt(ldx * ldx + ldy * ldy) || 1;
@@ -130,10 +141,14 @@
             if (cible.isPlayer && z.atkCd <= 0) {
               z.atkCd = G.ZOMBIE_ATTACK_CD;
               p.hp -= G.ZOMBIE_PLAYER_DMG;
-              if (p.hp <= 0) { p.hp = 0; state.gameOver = true; }
+              if (p.hp <= 0) { p.hp = 0; state.gameOver = true; state.gameOverCause = "player"; }
             } else if (!cible.isPlayer && cible.wall && z.wallCd <= 0) {
               z.wallCd = G.ZOMBIE_WALL_CD;
               cible.wall.hp -= G.ZOMBIE_WALL_DMG;
+            } else if (!cible.isPlayer && cible.mairie && z.wallCd <= 0) {
+              z.wallCd = G.ZOMBIE_WALL_CD;
+              cible.mairie.hp -= G.ZOMBIE_WALL_DMG;
+              if (cible.mairie.hp <= 0) { cible.mairie.hp = 0; state.gameOver = true; state.gameOverCause = "mairie"; }
             }
           } else {
             var sx = tx - z.x, sy = ty - z.y;
