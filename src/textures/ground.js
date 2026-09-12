@@ -5,8 +5,8 @@
   G.TEXTURES = G.TEXTURES || {};
 
   G.TEXTURES.ground = {
-    town: { fill: "#3b4a5a", stroke: "#46566a" },
-    wild: { fill: "#27452a", stroke: "#33543a" },
+    town: { fill: "#84c573", stroke: "#7ab568" },
+    wild: { fill: "#84c573", stroke: "#7ab568" },
     border: "#8aa0c0", // contour du rectangle de ville
     // Couleur de fond (ciel) selon l'heure.
     skyNight: "#84c573",
