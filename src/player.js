@@ -220,28 +220,4 @@
     G.state.paused = !G.state.paused;
     G.pauseScreen.hidden = !G.state.paused;
   };
-
-  G.hasGoldPiece = function () {
-    for (var i = 0; i < G.state.bag.contents.length; i++) {
-      if (G.state.bag.contents[i].name === "Pièce") return i;
-    }
-    return -1;
-  };
-
-  G.tryHealAtHospital = function () {
-    var state = G.state;
-    if (state.player.hp >= G.PLAYER_MAX_HP) {
-      state.bag.open = true;
-      return;
-    }
-    var idx = G.hasGoldPiece();
-    if (idx < 0) {
-      state.bag.open = true;
-      return;
-    }
-    state.bag.contents.splice(idx, 1);
-    state.inventory = Math.max(0, state.inventory - 1);
-    state.player.hp = G.PLAYER_MAX_HP;
-    G.updateHud();
-  };
 })();

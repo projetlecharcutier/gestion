@@ -233,7 +233,6 @@
     state.buildings = [
       G.makeBuilding(c - 60, c - 60, 120, 120, "Mairie", "Vous êtes à la mairie. Tout semble calme.", 76),
       G.makeBuilding(c - 150, c + 320, 90, 90, "Eglise", "L'église est silencieuse et fraîche.", 88),
-      G.makeBuilding(c - 380, c + 300, 120, 100, "Hôpital", "Hôpital : payez une pièce d'or pour retrouver toute votre vie.", 84)
     ];
 
     G.buildPerimeterWall();

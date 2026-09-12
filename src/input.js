@@ -68,8 +68,7 @@
     for (var i = 0; i < state.buildings.length; i++) {
       var b = state.buildings[i];
       if (b.isDecor) continue; // maisons décoratives : non cliquables
-      // Seuls la Mairie (coffre) et l'Hôpital (soin) sont cliquables.
-      if (!b.isMairie && b.name !== "Hôpital") continue;
+      if (!b.isMairie) continue; // seule la Mairie est cliquable (coffre)
       var clickR = Math.max(b.w, b.h) + 10;
       var cx = b.x + b.w / 2, cy = b.y + b.h / 2;
       var ddx = w[0] - cx, ddy = w[1] - cy;
@@ -77,14 +76,8 @@
         var reach = clickR + 60;
         var pdx = p.x - cx, pdy = p.y - cy;
         if (Math.sqrt(pdx * pdx + pdy * pdy) < reach) {
-          if (b.name === "Hôpital") {
-            G.tryHealAtHospital();
-            return;
-          }
-          if (b.isMairie) {
-            G.openMairieChest();
-            return;
-          }
+          G.openMairieChest();
+          return;
         }
       }
     }
