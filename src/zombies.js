@@ -138,8 +138,12 @@
             var sx = tx - z.x, sy = ty - z.y;
             var sd = Math.sqrt(sx * sx + sy * sy) || 1;
             if (sd > 4) {
-              z.x += (sx / sd) * G.ZOMBIE_SPEED * dt;
-              z.y += (sy / sd) * G.ZOMBIE_SPEED * dt;
+              var zs = G.ZOMBIE_HALF;
+              var stepX = z.x + (sx / sd) * G.ZOMBIE_SPEED * dt;
+              var stepY = z.y + (sy / sd) * G.ZOMBIE_SPEED * dt;
+              // Collision par axe avec les planches posées (blocage total).
+              if (!G.aabbHitsWalls(stepX - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) z.x = stepX;
+              if (!G.aabbHitsWalls(z.x - zs, stepY - zs, G.ZOMBIE_W, G.ZOMBIE_W)) z.y = stepY;
             }
           }
         }

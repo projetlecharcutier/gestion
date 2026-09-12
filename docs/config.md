@@ -7,7 +7,7 @@ Expose toutes les constantes du jeu et des helpers mathématiques/temporels sur 
 - Dimensions : `WORLD`, `TOWN`, `TOWN_MIN`, `TOWN_MAX`
 - Joueur : `PLAYER_W`, `PLAYER_H`, `PLAYER_HALF`, `SPEED`, `FOG_RADIUS`, `TS` (taille tuile)
 - Armes : `WEAPON_STATS` — `{ nom: { speed, life, cd, dmg, color, spread, label } }`
-- Cycle jour/nuit & zombies : `DAY_SECONDS`, `NIGHT_SECONDS`, `CYCLE_SECONDS`, `WAVE_EVERY`, `WAVE_LEAVE`, `ZOMBIE_SPEED`, `ZOMBIE_ATTACK_RANGE`, `ZOMBIE_PLAYER_DMG`, `ZOMBIE_WALL_DMG`, `ZOMBIE_WALL_CD`, `ZOMBIE_ATTACK_CD`, `ZOMBIE_HP`, `ZOMBIE_PER_WAVE_BASE`
+- Cycle jour/nuit & zombies : `DAY_SECONDS`, `NIGHT_SECONDS`, `CYCLE_SECONDS`, `WAVE_EVERY`, `WAVE_LEAVE`, `ZOMBIE_SPEED`, `ZOMBIE_W`, `ZOMBIE_HALF`, `ZOMBIE_ATTACK_RANGE`, `ZOMBIE_PLAYER_DMG`, `ZOMBIE_WALL_DMG`, `ZOMBIE_WALL_CD`, `ZOMBIE_ATTACK_CD`, `ZOMBIE_HP`, `ZOMBIE_PER_WAVE_BASE`
 - Murs : `WALL_MAX_HP`, `WALL_PLANKS`, `WALL_BUILD_RANGE`, `PLAYER_MAX_HP`
 - Planches : `PLANK_LONG` (120), `PLANK_THICK` (24) — dimensions d'une planche posée
 - Récolte hache : `TREE_CHOP_TIME` (4 s), `AXE_RANGE` (120 px)

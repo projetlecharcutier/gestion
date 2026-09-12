@@ -28,8 +28,20 @@
       if (mx < b.x + b.w && mx + w > b.x && my < b.y + b.h && my + h > b.y) return;
     }
     state.planks -= G.WALL_PLANKS;
-    state.walls.push({ x: mx, y: my, w: w, h: h, hp: G.WALL_MAX_HP, orient: w > h ? "h" : "v" });
+    state.walls.push({ x: mx, y: my, w: w, h: h, hp: G.WALL_MAX_HP, orient: w > h ? "h" : "v", built: true });
     G.updateHud();
+  };
+
+  // Teste si la boîte (cx,cy,cw,ch) chevauche une planche POSÉE par le joueur (wall.built).
+  // Le mur de périmètre (sans `built`) reste traversable.
+  G.aabbHitsWalls = function (cx, cy, cw, ch) {
+    var walls = G.state.walls;
+    for (var i = 0; i < walls.length; i++) {
+      var m = walls[i];
+      if (!m.built) continue;
+      if (cx < m.x + m.w && cx + cw > m.x && cy < m.y + m.h && cy + ch > m.y) return true;
+    }
+    return false;
   };
 
   // Fait tourner la planche de 90° (en mode pose).

@@ -20,7 +20,7 @@
     var moved = false;
     var testX = p.x;
     var testY = ny;
-    if (!G.aabbHitsBuildings(testX, testY) &&
+    if (!G.aabbHitsBuildings(testX, testY) && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W) &&
         testX >= G.PLAYER_HALF && testX <= G.WORLD - G.PLAYER_HALF &&
         testY >= G.PLAYER_HALF && testY <= G.WORLD - G.PLAYER_HALF) {
       p.y = testY;
@@ -28,7 +28,7 @@
     }
     testY = p.y;
     testX = nx;
-    if (!G.aabbHitsBuildings(testX, testY) &&
+    if (!G.aabbHitsBuildings(testX, testY) && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W) &&
         testX >= G.PLAYER_HALF && testX <= G.WORLD - G.PLAYER_HALF &&
         testY >= G.PLAYER_HALF && testY <= G.WORLD - G.PLAYER_HALF) {
       p.x = testX;

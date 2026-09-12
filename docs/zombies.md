@@ -1,7 +1,7 @@
 # Zombies — `src/zombies.js`
 
 ## Contrat
-Vagues nocturnes, organisation en petits groupes qui fusionnent, IA (cible joueur/mur, attaque), nettoyage des morts. Dépend de `config.js` (toutes les constantes `ZOMBIE_*`, `GROUP_*`), `state.js`. Appelé depuis `update()` (`src/main.js`).
+Vagues nocturnes, organisation en petits groupes qui fusionnent, IA (cible joueur/mur, attaque), nettoyage des morts. Dépend de `config.js` (toutes les constantes `ZOMBIE_*`, `GROUP_*`), `state.js`, `walls.js` (`aabbHitsWalls`). Appelé depuis `update()` (`src/main.js`).
 
 ## Exposé sur `G`
 - `spawnWave()` — crée `count = ZOMBIE_PER_WAVE_BASE + day*20` zombies répartis en groupes (`GROUP_SIZE`) le long d'un côté de la ville
@@ -18,6 +18,7 @@ Vagues nocturnes, organisation en petits groupes qui fusionnent, IA (cible joueu
 - Cible : joueur si `distP < ZOMBIE_ATTACK_RANGE` (150), sinon mur le plus proche, sinon centre ville.
 - Dégâts joueur : `ZOMBIE_PLAYER_DMG` (20) → 5 coups = mort. Dégâts mur : `ZOMBIE_WALL_DMG` (5) toutes les `ZOMBIE_WALL_CD` (20 s).
 - Zombies 2× plus lents que le joueur (`ZOMBIE_SPEED = SPEED/2`).
+- **Collisions planches** : le déplacement de chaque zombie teste `aabbHitsWalls` par axe (boîte `ZOMBIE_W`), donc les planches posées par le joueur (`built: true`) bloquent les zombies. Le mur de périmètre reste traversable.
 
 ## Étendre
 - **Variante de zombie** : ajouter un `z.kind`/`z.variant` et brancher dans `updateZombies` + `drawZombie`.

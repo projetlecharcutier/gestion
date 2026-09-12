@@ -1,11 +1,11 @@
 # Joueur — `src/player.js`
 
 ## Contrat
-Déplacement + collisions bâtiments, entrée/sortie de bâtiment, soin à l'hôpital, pause. Dépend de `config.js`, `state.js`.
+Déplacement + collisions bâtiments et planches posées, entrée/sortie de bâtiment, soin à l'hôpital, pause. Dépend de `config.js`, `state.js`, `walls.js` (`aabbHitsWalls`).
 
 ## Exposé sur `G`
 - `aabbHitsBuildings(x, y)` → bool — AABB joueur (PLAYER_W) contre un bâtiment
-- `tryMove(nx, ny)` → bool — déplacement axe par axe (glisse le long des murs), borne au monde
+- `tryMove(nx, ny)` → bool — déplacement axe par axe (glisse le long des murs/bâtiments/planches), borne au monde. Teste `aabbHitsBuildings` **et** `aabbHitsWalls` (planches posées par le joueur).
 - `clampPlayer()` — borne le joueur dans le monde
 - `enterBuilding(b)` — ouvre l'écran bâtiment, fige `state.inBuilding`
 - `leaveBuilding()` — repositionne le joueur devant la porte, ferme l'écran
