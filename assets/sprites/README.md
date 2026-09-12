@@ -20,9 +20,9 @@ assets/sprites/
     church.png                 # église (batiment dédié, 128x128)
   house/                      # maisons décoratives (non cliquables)
     H1.png  H2.png  H3.png ... # détection auto : H1, H2, ... jusqu'au 1er manquant
-  barricade/
-    NE_SO.png   # diagonale NE-SO (mur orient "h" / axe X monde)
-    NO_SE.png   # diagonale NO-SE (mur orient "v" / axe Y monde)
+  wall/                       # palissades
+    palissageNESO.png  # diagonale NE-SO (mur orient "h" / axe X monde)
+    palissageNoSe.png  # diagonale NO-SE (mur orient "v" / axe Y monde)
 ```
 
 ## Format des PNG

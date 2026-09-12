@@ -7,10 +7,24 @@
   G.PLANK_LONG = 120;
   G.PLANK_THICK = 24;
 
+  // Renvoie les dimensions (longW, thick) d'une palissade adaptées au PNG :
+  // longW = longueur de la palissade, thick = épaisseur, en unités monde.
+  // Repli sur les constantes si les PNG ne sont pas disponibles.
+  G.wallSpriteDims = function () {
+    var spH = G.hasSprite("wall", "palissageNESO") ? G.SPRITES.wall.palissageNESO : null;
+    var spV = G.hasSprite("wall", "palissageNoSe") ? G.SPRITES.wall.palissageNoSe : null;
+    if (spH && spV) {
+      var longW = (spH.w + spV.h) * 0.25;
+      var thick = Math.min(spH.h, spV.w) * 0.25;
+      return { longW: longW || G.PLANK_LONG, thick: thick || G.PLANK_THICK };
+    }
+    return { longW: G.PLANK_LONG, thick: G.PLANK_THICK };
+  };
   G.plankDims = function () {
+    var d = G.wallSpriteDims();
     // Selon state.plankRotation (0 = horizontal, 1 = vertical).
-    if (G.state.plankRotation) return { w: G.PLANK_THICK, h: G.PLANK_LONG };
-    return { w: G.PLANK_LONG, h: G.PLANK_THICK };
+    if (G.state.plankRotation) return { w: d.thick, h: d.longW };
+    return { w: d.longW, h: d.thick };
   };
 
   // Pose une planche au point cliqué. Les planches peuvent se superposer.

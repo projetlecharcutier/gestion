@@ -312,14 +312,17 @@
     var ctx = G.ctx;
     var z = G.state.zoom;
     var t = G.TEXTURES.wall;
-    // Sprite PNG si disponible : orient "h" -> diagonale NE-SO, "v" -> NO-SE (vue iso).
-    var frame = m.orient === "v" ? "NO_SE" : "NE_SO";
-    var sprite = G.hasSprite("barricade", frame) ? G.SPRITES.barricade[frame] : null;
+    // Sprite PNG si disponible : orient "h" -> palissageNESO (NE-SO),
+    // "v" -> palissageNoSe (NO-SE). Dessiné à la taille du mur (losange iso),
+    // ancré en bas-centre : la palissade correspond à sa taille de collision.
+    var frame = m.orient === "v" ? "palissageNoSe" : "palissageNESO";
+    var sprite = G.hasSprite("wall", frame) ? G.SPRITES.wall[frame] : null;
     var A = G.proj(m.x, m.y), C = G.proj(m.x + m.w, m.y + m.h);
     var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
     if (sprite) {
-      var scale = z * 0.5;
-      var dw = sprite.w * scale, dh = sprite.h * scale;
+      var losangeW = (m.w + m.h) * 0.5 * z;
+      var dw = losangeW;
+      var dh = dw * sprite.h / sprite.w;
       ctx.drawImage(sprite.img, cx - dw / 2, by - dh, dw, dh);
       // Barre de vie au-dessus du sprite.
       G.drawWallHpBar(m, cx, by - dh - 6, Math.max(18, dw * 0.7));

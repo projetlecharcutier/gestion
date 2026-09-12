@@ -49,9 +49,9 @@
     church: {
       church: { src: "assets/sprites/church/church.png", w: 128, h: 128 }
     },
-    barricade: {
-      NE_SO: { src: "assets/sprites/barricade/NE_SO.png", w: 80, h: 60 },
-      NO_SE: { src: "assets/sprites/barricade/NO_SE.png", w: 60, h: 80 }
+    wall: {
+      palissageNESO: { src: "assets/sprites/wall/palissageNESO.png", w: 80, h: 60 },
+      palissageNoSe: { src: "assets/sprites/wall/palissageNoSe.png", w: 60, h: 80 }
     }
   };
   // Sonde les maisons house/H1.png, H2.png, ... jusqu'au premier fichier
