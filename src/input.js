@@ -49,6 +49,7 @@
 
     for (var i = 0; i < state.buildings.length; i++) {
       var b = state.buildings[i];
+      if (b.isDecor) continue; // maisons décoratives : non cliquables
       var ddx = w[0] - b.door.x, ddy = w[1] - b.door.y;
       if (Math.sqrt(ddx * ddx + ddy * ddy) < 80) {
         var pdx = p.x - b.door.x, pdy = p.y - b.door.y;

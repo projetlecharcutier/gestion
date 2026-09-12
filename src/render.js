@@ -128,11 +128,12 @@
         C = G.proj(b.x + b.w, b.y + b.h), D = G.proj(b.x, b.y + b.h);
     var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
 
-    // Sprite PNG si disponible : mairie, eglise (church) ou bâtiment générique.
-    // Le PNG est dessiné à la taille exacte de l'emprise sol du bâtiment
-    // (largeur du losange iso), ancré en bas-centre : le PNG donne la taille de l'objet.
+    // Sprite PNG si disponible : mairie, eglise (church), maison décorative
+    // ou bâtiment générique. Le PNG est dessiné à la taille exacte de l'emprise
+    // sol du bâtiment (largeur du losange iso), ancré en bas-centre.
     var sprite = null;
-    if (b.isMairie && G.hasSprite("building", "mairie")) sprite = G.SPRITES.building.mairie;
+    if (b.isDecor && b.houseSprite) sprite = b.houseSprite;
+    else if (b.isMairie && G.hasSprite("building", "mairie")) sprite = G.SPRITES.building.mairie;
     else if (b.isChurch && G.hasSprite("church", "church")) sprite = G.SPRITES.church.church;
     else if (G.hasSprite("building", "generic")) sprite = G.SPRITES.building.generic;
     if (sprite) {

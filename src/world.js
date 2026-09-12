@@ -3,6 +3,18 @@
   "use strict";
   var G = window.GAME = window.GAME || {};
 
+  // Crée un bâtiment décoratif (maison) à partir d'un sprite de maison (H1, H2, ...).
+  // Non cliquable, sans rôle. Le PNG donne la taille de l'objet sur la carte.
+  G.makeHouse = function (x, y, sprite) {
+    var side = sprite.w * 0.5;
+    var b = {
+      x: x - side / 2, y: y - side / 2, w: side, h: side,
+      name: "Maison", msg: "", height: sprite.h,
+      isDecor: true, houseSprite: sprite,
+      door: { x: x, y: y + side / 2 }
+    };
+    return b;
+  };
   G.makeBuilding = function (x, y, w, h, name, msg, height) {
     var b = {
       x: x, y: y, w: w, h: h,
@@ -114,6 +126,35 @@
     ];
 
     G.buildPerimeterWall();
+
+    // Maisons décoratives (non cliquables) : 20 à 55 maisons en ville,
+    // choisies parmi les PNG de maisons disponibles (H1, H2, ...).
+    // Sans superposition avec les bâtiments existants ni entre elles.
+    var houseNames = G.houseNames();
+    if (houseNames.length > 0) {
+      var count = G.randi(20, 55);
+      var placed = 0, guard = 0;
+      while (placed < count && guard < count * 30) {
+        guard++;
+        var hx = G.rand(G.TOWN_MIN + 20, G.TOWN_MAX - 20);
+        var hy = G.rand(G.TOWN_MIN + 20, G.TOWN_MAX - 20);
+        if (G.nearBuilding(hx, hy, 20)) continue;
+        var frame = houseNames[G.randi(0, houseNames.length - 1)];
+        var sp = G.SPRITES.house[frame];
+        if (!sp) continue;
+        var side = sp.w * 0.5;
+        // Vérifie la non-superposition avec les bâtiments déjà placés.
+        var ok = true;
+        for (var bi3 = 0; bi3 < state.buildings.length; bi3++) {
+          var ob = state.buildings[bi3];
+          if (hx - side / 2 < ob.x + ob.w + 8 && hx + side / 2 > ob.x - 8 &&
+              hy - side / 2 < ob.y + ob.h + 8 && hy + side / 2 > ob.y - 8) { ok = false; break; }
+        }
+        if (!ok) continue;
+        state.buildings.push(G.makeHouse(hx, hy, sp));
+        placed++;
+      }
+    }
 
     state.items = [
       // Équipement de départ en ville.

@@ -54,30 +54,55 @@
       NO_SE: { src: "assets/sprites/barricade/NO_SE.png", w: 60, h: 80 }
     }
   };
-  // Charge les images décrites par un manifeste (objet).
+  // Sonde les maisons house/H1.png, H2.png, ... jusqu'au premier fichier
+  // manquant. Permet d'ajouter des PNG en incrémentant le numéro sans
+  // toucher au manifeste : tous les H1..Hn trouvés sont chargés automatiquement.
+  // La dimension w/h est lue sur l'image réellement chargée (donne la taille de
+  // l'objet sur la carte). Appelle onDone(frames) avec la liste des frames OK.
+  function probeHouses(onDone) {
+    var frames = {};
+    var n = 1;
+    var dir = "assets/sprites/house/";
+    G.SPRITES.house = {};
+    function next() {
+      var name = "H" + n;
+      var img = new Image();
+      img.onload = function () {
+        frames[name] = { src: dir + name + ".png", w: img.naturalWidth || 96, h: img.naturalHeight || 96 };
+        G.SPRITES.house[name] = { img: img, w: frames[name].w, h: frames[name].h };
+        n++;
+        next();
+      };
+      img.onerror = function () { onDone(frames); };
+      img.src = dir + name + ".png";
+    }
+    next();
+  }
   function loadManifest(manifest, onReady) {
     var entries = [];
     for (var ent in manifest) {
       if (!manifest.hasOwnProperty(ent)) continue;
+      if (ent === "house") continue; // maisons chargées dynamiquement par probeHouses
       G.SPRITES[ent] = {};
       for (var frame in manifest[ent]) {
         if (!manifest[ent].hasOwnProperty(frame)) continue;
         entries.push({ ent: ent, frame: frame, def: manifest[ent][frame] });
       }
     }
+    function finish() { _ready = true; if (onReady) onReady(); }
     _total = entries.length;
-    if (_total === 0) { _ready = true; if (onReady) onReady(); return; }
+    if (_total === 0) { probeHouses(finish); return; }
     for (var i = 0; i < entries.length; i++) {
       (function (e) {
         var img = new Image();
         img.onload = function () {
           G.SPRITES[e.ent][e.frame] = { img: img, w: e.def.w, h: e.def.h };
           _loaded++;
-          if (_loaded >= _total) { _ready = true; if (onReady) onReady(); }
+          if (_loaded >= _total) probeHouses(finish);
         };
         img.onerror = function () {
           _loaded++;
-          if (_loaded >= _total) { _ready = true; if (onReady) onReady(); }
+          if (_loaded >= _total) probeHouses(finish);
         };
         img.src = e.def.src;
       })(entries[i]);
@@ -103,6 +128,13 @@
       loadManifest(manifest, onReady);
     };
     req.send();
+  };
+  // Liste les noms de maisons disponibles (H1, H2, ...). Vide tant que les
+  // assets ne sont pas chargés.
+  G.houseNames = function () {
+    var out = [];
+ if (G.SPRITES.house) for (var k in G.SPRITES.house) if (G.SPRITES.house.hasOwnProperty(k)) out.push(k);
+    return out;
   };
 
   G.assetsReady = function () { return _ready; };

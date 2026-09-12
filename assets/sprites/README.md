@@ -18,6 +18,8 @@ assets/sprites/
     mairie.png  generic.png   # mairie (128x128) + batiments genériques (96x96)
   church/
     church.png                 # église (batiment dédié, 128x128)
+  house/                      # maisons décoratives (non cliquables)
+    H1.png  H2.png  H3.png ... # détection auto : H1, H2, ... jusqu'au 1er manquant
   barricade/
     NE_SO.png   # diagonale NE-SO (mur orient "h" / axe X monde)
     NO_SE.png   # diagonale NO-SE (mur orient "v" / axe Y monde)
