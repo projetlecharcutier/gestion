@@ -195,6 +195,13 @@
         var frame = houseNames[G.randi(0, houseNames.length - 1)];
         var sp = G.SPRITES.house[frame];
         if (!sp) return false;
+        var side = sp.w * 2;
+        // Empêche la superposition avec les bâtiments existants.
+        for (var bi3 = 0; bi3 < state.buildings.length; bi3++) {
+          var ob = state.buildings[bi3];
+          if (hx - side / 2 < ob.x + ob.w && hx + side / 2 > ob.x &&
+              hy - side / 2 < ob.y + ob.h && hy + side / 2 > ob.y) return false;
+        }
         if (inTown !== undefined && G.inTown(hx, hy) !== inTown) return false;
         state.buildings.push(G.makeHouse(hx, hy, sp));
         return true;
@@ -223,8 +230,8 @@
           }
         }
       }
-      spawnClusters(G.randi(80, 220), true, 12);
-      spawnClusters(50, false, 12);
+      spawnClusters(G.randi(8, 22), true, 12);
+      spawnClusters(5, false, 12);
     }
     state.items = [
       // Équipement de départ en ville.
