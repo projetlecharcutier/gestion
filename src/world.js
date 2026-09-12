@@ -16,6 +16,20 @@
     } else if (name === "Eglise") {
       b.isChurch = true;
     }
+    // Si un sprite PNG est disponible, le PNG donne la taille de l'objet sur la carte :
+    // on redimensionne l'emprise sol (w = h = largeur du PNG / 2, en unités monde)
+    // et on dérive la hauteur visuelle du ratio du PNG.
+    var sp = null;
+    if (b.isMairie && G.hasSprite("building", "mairie")) sp = G.SPRITES.building.mairie;
+    else if (b.isChurch && G.hasSprite("church", "church")) sp = G.SPRITES.church.church;
+    else if (G.hasSprite("building", "generic")) sp = G.SPRITES.building.generic;
+    if (sp) {
+      var side = sp.w * 0.5;
+      b.w = side; b.h = side;
+      b.x = x - side / 2; b.y = y - side / 2;
+      b.door = { x: b.x + b.w / 2, y: b.y + b.h };
+      b.height = sp.h;
+    }
     return b;
   };
 

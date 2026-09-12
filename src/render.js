@@ -141,13 +141,16 @@
     var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
 
     // Sprite PNG si disponible : mairie, eglise (church) ou bâtiment générique.
+    // Le PNG est dessiné à la taille exacte de l'emprise sol du bâtiment
+    // (largeur du losange iso), ancré en bas-centre : le PNG donne la taille de l'objet.
     var sprite = null;
     if (b.isMairie && G.hasSprite("building", "mairie")) sprite = G.SPRITES.building.mairie;
     else if (b.isChurch && G.hasSprite("church", "church")) sprite = G.SPRITES.church.church;
     else if (G.hasSprite("building", "generic")) sprite = G.SPRITES.building.generic;
     if (sprite) {
-      var scale = z * 0.5;
-      var dw = sprite.w * scale, dh = sprite.h * scale;
+      var losangeW = (b.w + b.h) * 0.5 * z;
+      var dw = losangeW;
+      var dh = dw * sprite.h / sprite.w;
       ctx.drawImage(sprite.img, cx - dw / 2, by - dh, dw, dh);
       // Barre de vie de la mairie au-dessus du sprite.
       if (b.isMairie) {
