@@ -101,7 +101,7 @@
       } while (G.nearBuilding(tx, ty, 30) && tries < 12);
       if (tries < 12) state.trees.push({ x: tx, y: ty, r: G.rand(14, 22), kind: "town", hp: 2 });
     }
-    for (i = 0; i < 100; i++) {
+    for (i = 0; i < 1600; i++) {
       var edge = Math.random() < 0.5;
       if (edge) {
         tx = G.rand(0, G.WORLD);
