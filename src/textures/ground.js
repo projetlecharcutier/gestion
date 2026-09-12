@@ -9,7 +9,7 @@
     wild: { fill: "#27452a", stroke: "#33543a" },
     border: "#8aa0c0", // contour du rectangle de ville
     // Couleur de fond (ciel) selon l'heure.
-    skyNight: "#0a1020",
-    skyDay: "#0e1a30"
+    skyNight: "#84c573",
+    skyDay: "#84c573"
   };
 })();

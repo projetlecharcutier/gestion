@@ -53,7 +53,7 @@
   G.BIRD_HP = 1;
   G.BIRD_W = 10;
   G.BIRD_HALF = 5;
-  G.BIRD_COUNT = 6;
+  G.BIRD_COUNT = 20;
   G.BIRD_HIT_R = 14;
   // Objets droppables par les oiseaux.
   G.BIRD_DROPS = [
