@@ -167,6 +167,17 @@
     function doBuild() {
       G.buildWorld();
       G.spawnBirds();
+      // Repositionne le joueur à un endroit libre (hors bâtiments et arbres)
+      // pour éviter qu'il soit coincé au démarrage.
+      var p = state.player;
+      p.x = G.WORLD / 2; p.y = G.WORLD / 2 + 140;
+      var tries = 0;
+      while (G.aabbHitsBuildings(p.x, p.y) || G.hitsTree(p.x, p.y, G.PLAYER_HALF)) {
+        p.x = G.rand(G.TOWN_MIN + 40, G.TOWN_MAX - 40);
+        p.y = G.rand(G.TOWN_MIN + 40, G.TOWN_MAX - 40);
+        if (++tries > 200) break;
+      }
+      state.camera.x = p.x; state.camera.y = p.y;
       G.updateHud();
       state.started = true;
     }
