@@ -5,6 +5,21 @@
 
   // Crée un bâtiment décoratif (maison) à partir d'un sprite de maison (H1, H2, ...).
   // Non cliquable, sans rôle. Le PNG donne la taille de l'objet sur la carte.
+  // Réduit l'emprise de collision d'un bâtiment à la bounding box opaque réelle
+  // du PNG (le rendu reste sur la boîte totale). Le PNG est ancré bas-centre :
+  // en monde la boîte opaque va de cx ± w*(x1-x0)/2 en X, et de
+  // (y_base - h*y1) à (y_base - h*y0) en Y où y_base = centre.y + h/2.
+  // Modifie b.x/y/w/h en place pour ne créer qu'une seule zone de collision.
+  function shrinkToOpaque(b, ent, frame) {
+    var bd = G.spriteBounds(ent, frame);
+    if (!bd) return;
+    var cx = b.x + b.w / 2, by = b.y + b.h / 2;
+    var fw = bd.x1 - bd.x0, fh = bd.y1 - bd.y0;
+    if (fw <= 0 || fh <= 0) return;
+    b.w = b.w * fw; b.h = b.h * fh;
+    b.x = cx - b.w / 2; b.y = by - b.h / 2;
+  }
+
   G.makeHouse = function (x, y, sprite) {
     var side = sprite.w * 2;
     var b = {
@@ -41,6 +56,10 @@
       b.x = x - side / 2; b.y = y - side / 2;
       b.door = { x: b.x + b.w / 2, y: b.y + b.h };
       b.height = sp.h;
+      // Réduit la collision à la zone opaque réelle du PNG.
+      if (b.isMairie) shrinkToOpaque(b, "building", "mairie");
+      else if (b.isChurch) shrinkToOpaque(b, "church", "church");
+      else shrinkToOpaque(b, "building", "generic");
     }
     return b;
   };
@@ -69,19 +88,26 @@
     }
     G.treeGrid = grid;
   };
-  // Rayon monde du losange de collision d'un arbre. Le rendu dessine le PNG
-  // sur dw = sp.w*2*z pixels ; un losange monde de rayon R projette sur un
-  // losange écran de largeur R*z. Pour coller à la largeur du PNG il faut
-  // R = sp.w*2. Retourne R (en unités monde) ou null si pas de sprite.
-  G.treeRadius = function (kind) {
+  // Calcule la zone de collision d'un arbre basée sur le contenu opaque réel
+  // du PNG (et non sa boîte totale, souvent 98% transparente en pixel art).
+  // Le rendu dessine le PNG ancré bas-centre : largeur monde = sp.w*2,
+  // hauteur monde = sp.h*2. Le contenu opaque occupe la fraction
+  // [x0..x1]×[y0..y1] du PNG. On en déduit :
+  //   - rad : demi-largeur monde du contenu opaque (rayon du losange).
+  //   - cy  : centre Y monde (le PNG est ancré bas à t.y, donc le centre du
+  //           contenu opaque est à t.y - (1 - (y0+y1)/2) * sp.h*2).
+  // Retourne {rad, cy} ou null si pas de sprite.
+  G.treeBounds = function (kind) {
     if (!G.hasSprite("tree", kind)) return null;
     var sp = G.SPRITES.tree[kind];
-    return Math.max(sp.w, sp.h) * 2;
+    var b = G.spriteBounds("tree", kind) || { x0: 0, y0: 0, x1: 1, y1: 1 };
+    var opaqueW = (b.x1 - b.x0) * sp.w * 2;
+    var opaqueH = (b.y1 - b.y0) * sp.h * 2;
+    return { rad: Math.max(opaqueW, opaqueH) / 2, cy: -(1 - (b.y0 + b.y1) / 2) * sp.h * 2 };
   };
   // Teste si la boîte centrée (x,y) de demi-côté half chevauche un arbre.
-  // La zone non-marchable = losange (distance de Manhattan) centré sur (t.x,t.y)
-  // de rayon t.rad, ce qui correspond strictement à l'empreinte écran du PNG
-  // (sans les coins vides qu'une AABB créerait en projection iso).
+  // La zone non-marchable = losange (distance de Manhattan) centré sur le
+  // contenu opaque réel du PNG (t.cx, t.y+t.cy) de rayon t.rad.
   // Utilise la grille spatiale : ne vérifie que les arbres des cellules voisines.
   G.hitsTree = function (x, y, half) {
     var grid = G.treeGrid;
@@ -95,10 +121,9 @@
         for (var n = 0; n < arr.length; n++) {
           var t = arr[n];
           if (t.rad) {
-            // Losange centré (t.x, t.y) de rayon t.rad vs boîte demi-côté half :
-            // chevauchement si la distance L1 du centre à la boîte <= t.rad.
+            // Losange centré (t.x, t.y + t.cy) de rayon t.rad vs boîte demi-côté half.
             var ddx = Math.max(Math.abs(t.x - x) - half, 0);
-            var ddy = Math.max(Math.abs(t.y - y) - half, 0);
+            var ddy = Math.max(Math.abs((t.y + t.cy) - y) - half, 0);
             if (ddx + ddy < t.rad) return true;
           } else {
             // Repli (pas de PNG) : cercle (t.x, t.y, t.r).
@@ -137,14 +162,14 @@
       return false;
     }
     function addTree(tx, ty, r) {
-      var rad = G.treeRadius(kind);
+      var b = G.treeBounds(kind);
       var o = { x: tx, y: ty, r: r };
       var key = gkey(tx, ty);
       if (!grid[key]) grid[key] = [];
       grid[key].push(o);
       state.trees.push({
         x: tx, y: ty, r: r, kind: kind, hp: 2,
-        rad: rad || 0
+        rad: b ? b.rad : 0, cy: b ? b.cy : 0
       });
     }
     var placed = 0;
@@ -234,7 +259,9 @@
               hy - side / 2 < ob.y + ob.h && hy + side / 2 > ob.y) return false;
         }
         if (inTown !== undefined && G.inTown(hx, hy) !== inTown) return false;
-        state.buildings.push(G.makeHouse(hx, hy, sp));
+        var h = G.makeHouse(hx, hy, sp);
+        shrinkToOpaque(h, "house", frame);
+        state.buildings.push(h);
         return true;
       }
       // Tente de coller une maison contre un bâtiment existant (4 côtés possibles).
@@ -323,8 +350,8 @@
         tries++;
       } while (G.nearBuilding(tx, ty, 30) && tries < 12);
       if (tries < 12) {
-        var tr = G.treeRadius("town");
-        state.trees.push({ x: tx, y: ty, r: G.rand(56, 88), kind: "town", hp: 2, rad: tr || 0 });
+        var tb = G.treeBounds("town");
+        state.trees.push({ x: tx, y: ty, r: G.rand(56, 88), kind: "town", hp: 2, rad: tb ? tb.rad : 0, cy: tb ? tb.cy : 0 });
       }
     }
     // Forêt hors ville : les arbres wild popent par groupes de 1 à 10,
@@ -336,8 +363,8 @@
       else if (side === 1) { tx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ty = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); }
       else if (side === 2) { tx = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
       else { tx = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
-      var er = G.treeRadius("edge");
-      state.trees.push({ x: tx, y: ty, r: G.rand(64, 112), kind: "edge", hp: 2, rad: er || 0 });
+      var eb = G.treeBounds("edge");
+      state.trees.push({ x: tx, y: ty, r: G.rand(64, 112), kind: "edge", hp: 2, rad: eb ? eb.rad : 0, cy: eb ? eb.cy : 0 });
     }
 
     state.zombies = [];

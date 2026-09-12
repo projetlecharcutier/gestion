@@ -78,6 +78,48 @@
     }
     next();
   }
+  // Calcule la bounding box des pixels opaques d'un PNG (alpha > seuil).
+  // Retourne {x0,y0,x1,y1} en pixels relatifs (0..w, 0..h) ou null si erreur.
+  // Permet de baser les collisions sur le contenu visible réel plutôt que
+  // sur la boîte totale du PNG (souvent très aérée en pixel art : 2% opaque).
+  function opaqueBounds(img) {
+    try {
+      var cv = document.createElement("canvas");
+      cv.width = img.naturalWidth || img.width;
+      cv.height = img.naturalHeight || img.height;
+      if (!cv.width || !cv.height) return null;
+      var cx = cv.getContext("2d");
+      cx.drawImage(img, 0, 0);
+      var d = cx.getImageData(0, 0, cv.width, cv.height);
+      var data = d.data;
+      var w = cv.width, h = cv.height;
+      var minx = w, maxx = -1, miny = h, maxy = -1;
+      for (var y = 0; y < h; y++) {
+        for (var x = 0; x < w; x++) {
+          if (data[(y * w + x) * 4 + 3] > 10) {
+            if (x < minx) minx = x; if (x > maxx) maxx = x;
+            if (y < miny) miny = y; if (y > maxy) maxy = y;
+          }
+        }
+      }
+      if (maxx < 0) return null;
+      return { x0: minx, y0: miny, x1: maxx, y1: maxy };
+    } catch (e) { return null; }
+  }
+  // Renvoie la bounding box opaque (en fraction 0..1 du PNG) d'un sprite,
+  // ou {x0:0,y0:0,x1:1,y1:1} si indisponible (repli sur boîte totale).
+  G.spriteBounds = function (ent, frame) {
+    if (!G.hasSprite(ent, frame)) return null;
+    var sp = G.SPRITES[ent][frame];
+    if (!sp.bounds) {
+      var b = opaqueBounds(sp.img);
+      sp.bounds = b ?
+        { x0: b.x0 / sp.w, y0: b.y0 / sp.h, x1: (b.x1 + 1) / sp.w, y1: (b.y1 + 1) / sp.h } :
+        { x0: 0, y0: 0, x1: 1, y1: 1 };
+    }
+    return sp.bounds;
+  };
+
   function loadManifest(manifest, onReady) {
     var entries = [];
     for (var ent in manifest) {
