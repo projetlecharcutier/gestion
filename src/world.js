@@ -276,7 +276,7 @@
           if (ok) { houses.push(state.buildings[state.buildings.length - 1]); placed++; }
         }
       }
-      spawnHouses(G.randi(8, 22), true);
+      spawnHouses(G.randi(24, 66), true);
       spawnHouses(20, false);
     }
     state.items = [

@@ -74,12 +74,41 @@
     G.buildingScreen.hidden = false;
   };
 
+  // Cherche une position libre (hors bâtiments/arbres/murs) près de (x, y).
+  // Si inTown est vrai, la position doit rester dans la ville. Recherche en
+  // spirale par pas croissants autour du point pour trouver la plus proche.
+  G.findFreeSpotNear = function (x, y, inTown) {
+    var p = G.state.player;
+    var step = 20, maxR = 400;
+    for (var r = 0; r <= maxR; r += step) {
+      for (var ang = 0; ang < Math.PI * 2; ang += Math.PI / 4) {
+        var cx = x + Math.cos(ang) * r;
+        var cy = y + Math.sin(ang) * r;
+        if (cx < G.PLAYER_HALF || cx > G.WORLD - G.PLAYER_HALF) continue;
+        if (cy < G.PLAYER_HALF || cy > G.WORLD - G.PLAYER_HALF) continue;
+        if (inTown && !G.inTown(cx, cy)) continue;
+        if (G.aabbHitsBuildings(cx, cy)) continue;
+        if (G.hitsTree(cx, cy, G.PLAYER_HALF)) continue;
+        if (G.aabbHitsWalls(cx - G.PLAYER_HALF, cy - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true)) continue;
+        return { x: cx, y: cy };
+      }
+    }
+    return null;
+  };
   G.leaveBuilding = function () {
     var b = G.state.inBuilding;
     if (b) {
-      G.state.player.x = b.door.x;
-      G.state.player.y = b.door.y + 140;
-      G.clampPlayer();
+      // Sort en bas de la porte, puis cherche une position libre à proximité
+      // (reste dans la ville pour ne pas se retrouver hors des murs).
+      var spot = G.findFreeSpotNear(b.door.x, b.door.y + 60, true);
+      if (spot) {
+        G.state.player.x = spot.x;
+        G.state.player.y = spot.y;
+      } else {
+        G.state.player.x = b.door.x;
+        G.state.player.y = b.door.y + 60;
+        G.clampPlayer();
+      }
     }
     G.state.inBuilding = null;
     G.buildingScreen.hidden = true;
