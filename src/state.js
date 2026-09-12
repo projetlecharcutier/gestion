@@ -49,6 +49,7 @@
     walls: [],
     zombies: [],
     zombieGroups: [],
+    birds: [],
     bag: { open: false, contents: [] },
     chest: [],
     chestOpen: false,

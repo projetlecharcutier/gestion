@@ -319,6 +319,40 @@
     ctx.restore();
   };
 
+  G.drawBird = function (b) {
+    var ctx = G.ctx;
+    var t = G.TEXTURES.bird;
+    var base = G.proj(b.x, b.y);
+    var zoom = G.state.zoom;
+    var cell = zoom * 0.5;
+    if (cell < 1.2) cell = 1.2;
+    var cols = 8, rows = 8;
+    var ox = base[0] - (cols / 2) * cell;
+    var oy = base[1] - rows * cell;
+    ctx.save();
+    ctx.fillStyle = t.shadow;
+    ctx.beginPath();
+    ctx.ellipse(base[0], base[1], cols / 2 * cell, cell * 1.0, 0, 0, Math.PI * 2);
+    ctx.fill();
+    var sprite = t.sprite;
+    var palette = t.palette;
+    // Animation des ailes : on alterne le sprite de la derniere ligne selon le battement.
+    var flap = Math.sin(b.wing) > 0;
+    for (var r = 0; r < rows; r++) {
+      var line = sprite[r];
+      for (var c = 0; c < cols; c++) {
+        var ch = line.charAt(c);
+        if (ch === ".") continue;
+        // Ailes (w) : si battement bas, on decale verticalement pour simuler le vol.
+        ctx.fillStyle = palette[ch];
+        var yy = oy + r * cell;
+        if (ch === "w" && !flap) yy -= cell * 0.8;
+        ctx.fillRect(ox + c * cell, yy, cell + 0.5, cell + 0.5);
+      }
+    }
+    ctx.restore();
+  };
+
   G.render = function () {
     var ctx = G.ctx;
     var state = G.state;
@@ -354,6 +388,10 @@
       if (zb.x < bnds.minX || zb.x > bnds.maxX || zb.y < bnds.minY || zb.y > bnds.maxY) continue;
       drawables.push({ depth: zb.x + zb.y, type: "zombie", ref: zb });
     }
+    for (var bi2 = 0; bi2 < state.birds.length; bi2++) {
+      var bd = state.birds[bi2];
+      drawables.push({ depth: bd.x + bd.y + 100000, type: "bird", ref: bd });
+    }
     var pDepth = state.player.x + state.player.y;
 
     drawables.sort(function (a, b) { return a.depth - b.depth; });
@@ -370,6 +408,7 @@
       else if (d.type === "tree") G.drawTree(d.ref);
       else if (d.type === "wall") G.drawWall(d.ref);
       else if (d.type === "zombie") G.drawZombie(d.ref);
+      else if (d.type === "bird") G.drawBird(d.ref);
     }
     if (!drewPlayer) { G.drawPlayer(); G.drawPlayerHpBar(); }
 

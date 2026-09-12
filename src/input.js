@@ -145,6 +145,7 @@
     state.waveCount = 0;
     state.zombies = [];
     state.zombieGroups = [];
+    state.birds = [];
     state.walls = [];
     state.buildMode = false;
     state.plankRotation = 0;
@@ -156,6 +157,7 @@
     state.chestOpen = false;
     if (G.chestScreen) G.chestScreen.hidden = true;
     G.buildWorld();
+    G.spawnBirds();
     G.updateHud();
     G.nameInput.blur();
   });

@@ -49,6 +49,25 @@
   G.WALL_AXE_DMG = 10;
   G.ZOMBIE_PER_WAVE_BASE = 50;
   G.ZOMBIE_WAVE_GROWTH = 2;
+  G.BIRD_SPEED = 220;
+  G.BIRD_HP = 1;
+  G.BIRD_W = 10;
+  G.BIRD_HALF = 5;
+  G.BIRD_COUNT = 6;
+  G.BIRD_HIT_R = 14;
+  // Objets droppables par les oiseaux.
+  G.BIRD_DROPS = [
+    { name: "Pistolet", color: "#94a3b8", kind: "arme" },
+    { name: "Fusil", color: "#64748b", kind: "arme" },
+    { name: "Arc", color: "#a16207", kind: "arme" },
+    { name: "Couteau", color: "#cbd5e1", kind: "arme" },
+    { name: "Bâton", color: "#7c5e3c", kind: "arme" },
+    { name: "Hache", color: "#b45309", kind: "outil" },
+    { name: "Pièce", color: "#fbbf24", kind: "objet" },
+    { name: "Potion", color: "#ef4444", kind: "objet" },
+    { name: "Nourriture", color: "#f59e0b", kind: "objet" },
+    { name: "Gemme", color: "#22d3ee", kind: "objet" }
+  ];
 
   G.GROUP_SIZE = 8;
   G.GROUP_FORMATION = 90;

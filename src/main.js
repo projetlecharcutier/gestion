@@ -41,7 +41,9 @@
     G.handleShooting();
     G.updateProjectiles(dt);
     G.cleanupZombies();
+    G.cleanupBirds();
     G.cleanupWalls();
+    G.updateBirds(dt);
     G.updateChop(dt);
 
     state.camera.x += (state.player.x - state.camera.x) * Math.min(1, dt * 6);

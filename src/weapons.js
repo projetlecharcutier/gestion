@@ -35,7 +35,7 @@
     if (state.projectiles.length > 120) state.projectiles.shift();
   };
 
-  // Déplacement des projectiles + collisions avec zombies. Appelé depuis update().
+  // Déplacement des projectiles + collisions avec zombies et oiseaux. Appelé depuis update().
   G.updateProjectiles = function (dt) {
     var state = G.state;
     for (var i = state.projectiles.length - 1; i >= 0; i--) {
@@ -53,6 +53,19 @@
           z.hp -= pr.dmg;
           hitZ = true;
           break;
+        }
+      }
+      // Collision avec un oiseau : le tue et dropppe un objet.
+      if (!hitZ) {
+        for (var bi = 0; bi < state.birds.length; bi++) {
+          var b = state.birds[bi];
+          var bdx = pr.x - b.x, bdy = pr.y - b.y;
+          if (Math.sqrt(bdx * bdx + bdy * bdy) < G.BIRD_HIT_R) {
+            b.hp -= pr.dmg;
+            if (b.hp <= 0) G.birdDrop(b.x, b.y);
+            hitZ = true;
+            break;
+          }
         }
       }
       if (hitZ || pr.life <= 0 || pr.x < 0 || pr.x > G.WORLD || pr.y < 0 || pr.y > G.WORLD) {
