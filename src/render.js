@@ -315,7 +315,7 @@
     // Sprite PNG si disponible : orient "h" -> palissageNESO (NE-SO),
     // "v" -> palissageNoSe (NO-SE). Dessiné à la taille du mur (losange iso),
     // ancré en bas-centre : la palissade correspond à sa taille de collision.
-    var frame = m.orient === "v" ? "palissageNoSe" : "palissageNESO";
+    var frame = m.orient === "v" ? "palissageNESO" : "palissageNoSe";
     var sprite = G.hasSprite("wall", frame) ? G.SPRITES.wall[frame] : null;
     var A = G.proj(m.x, m.y), C = G.proj(m.x + m.w, m.y + m.h);
     var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;

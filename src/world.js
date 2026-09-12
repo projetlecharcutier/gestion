@@ -275,8 +275,8 @@
     }
     // Forêt hors ville : les arbres wild popent par groupes de 1 à 10,
     // regroupés spatialement et sans se superposer.
-    G.spawnTreeClusters(state, 48000, "wild");
-    for (i = 0; i < 100; i++) {
+    G.spawnTreeClusters(state, 2400, "wild");
+    for (i = 0; i < 5; i++) {
       var side = G.randi(0, 3);
       if (side === 0) { tx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ty = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); }
       else if (side === 1) { tx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ty = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); }
