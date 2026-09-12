@@ -6,7 +6,7 @@
   // Crée un bâtiment décoratif (maison) à partir d'un sprite de maison (H1, H2, ...).
   // Non cliquable, sans rôle. Le PNG donne la taille de l'objet sur la carte.
   G.makeHouse = function (x, y, sprite) {
-    var side = sprite.w * 0.5;
+    var side = sprite.w * 2;
     var b = {
       x: x - side / 2, y: y - side / 2, w: side, h: side,
       name: "Maison", msg: "", height: sprite.h,
@@ -36,7 +36,7 @@
     else if (b.isChurch && G.hasSprite("church", "church")) sp = G.SPRITES.church.church;
     else if (G.hasSprite("building", "generic")) sp = G.SPRITES.building.generic;
     if (sp) {
-      var side = sp.w * 0.5;
+      var side = sp.w * 2;
       b.w = side; b.h = side;
       b.x = x - side / 2; b.y = y - side / 2;
       b.door = { x: b.x + b.w / 2, y: b.y + b.h };
@@ -57,11 +57,37 @@
   // clusters de 1 à 10 arbres. Les arbres d'un même cluster sont proches mais
   // ne se superposent pas (distance minimale entre troncs = somme des rayons).
   G.spawnTreeClusters = function (state, total, kind) {
+    // Grille spatiale pour vérifier la proximité en O(1) (gère 48000+ arbres).
+    var cell = 150;
+    var grid = {};
+    function gkey(cx, cy) { return Math.floor(cx / cell) + "," + Math.floor(cy / cell); }
+    function nearTree(tx, ty, r) {
+      var gx = Math.floor(tx / cell), gy = Math.floor(ty / cell);
+      for (var ix = -1; ix <= 1; ix++) {
+        for (var iy = -1; iy <= 1; iy++) {
+          var key = (gx + ix) + "," + (gy + iy);
+          var arr = grid[key];
+          if (!arr) continue;
+          for (var n = 0; n < arr.length; n++) {
+            var o = arr[n];
+            var dx = tx - o.x, dy = ty - o.y;
+            if (Math.sqrt(dx * dx + dy * dy) < (r + o.r) * 0.2) return true;
+        }
+        }
+      }
+      return false;
+    }
+    function addTree(tx, ty, r) {
+      var o = { x: tx, y: ty, r: r };
+      var key = gkey(tx, ty);
+      if (!grid[key]) grid[key] = [];
+      grid[key].push(o);
+      state.trees.push({ x: tx, y: ty, r: r, kind: kind, hp: 2 });
+    }
     var placed = 0;
     var guard = 0;
-    while (placed < total && guard < total * 20) {
+    while (placed < total && guard < total * 6) {
       guard++;
-      // Centre du cluster hors de la ville.
       var gx, gy;
       if (Math.random() < 0.5) {
         gx = G.rand(0, G.WORLD);
@@ -72,27 +98,19 @@
       }
       var count = G.randi(1, 10);
       for (var j = 0; j < count && placed < total; j++) {
-        var r = G.rand(18, 36);
-        // Décalage du centre du cluster : très serré pour que les PNG se touchent.
+        var r = G.rand(72, 144);
         var ang = Math.random() * Math.PI * 2;
-        var dist = Math.random() * 24;
+        var dist = Math.random() * 16;
         var tx = gx + Math.cos(ang) * dist;
         var ty = gy + Math.sin(ang) * dist;
         if (tx < 0 || tx > G.WORLD || ty < 0 || ty > G.WORLD) continue;
         if (G.inTown(tx, ty)) continue;
-        // Vérifie la non-superposition des troncs (les PNG peuvent se toucher).
-        var ok = true;
-        for (var k = 0; k < state.trees.length; k++) {
-          var o = state.trees[k];
-          var dx = tx - o.x, dy = ty - o.y;
-          if (Math.sqrt(dx * dx + dy * dy) < (r + o.r) * 0.5) { ok = false; break; }
-        }
-        if (!ok) continue;
-        state.trees.push({ x: tx, y: ty, r: r, kind: kind, hp: 2 });
+        if (nearTree(tx, ty, r)) continue;
+        addTree(tx, ty, r);
         placed++;
       }
     }
-  };
+    };
 
   G.buildPerimeterWall = function () {
     var state = G.state;
@@ -130,49 +148,51 @@
 
     // Maisons décoratives (non cliquables) : 20 à 55 maisons, réparties en petits
     // tas (clusters de 2-5) en ville ET hors ville. Choisies parmi les PNG H1, H2, ...
+    // Maisons décoratives (non cliquables) en petits tas, en ville ET hors ville.
+    // En ville : 8x plus qu'avant. Hors ville : ~100 maisons.
     var houseNames = G.houseNames();
     if (houseNames.length > 0) {
-      var total = G.randi(20, 55);
-      var placed = 0, guard = 0;
-      function placeHouseAt(hx, hy) {
+      function placeHouseAt(hx, hy, inTown) {
         var frame = houseNames[G.randi(0, houseNames.length - 1)];
         var sp = G.SPRITES.house[frame];
         if (!sp) return false;
-        var side = sp.w * 0.5;
+        var side = sp.w * 2;
         for (var bi3 = 0; bi3 < state.buildings.length; bi3++) {
           var ob = state.buildings[bi3];
           if (hx - side / 2 < ob.x + ob.w && hx + side / 2 > ob.x &&
               hy - side / 2 < ob.y + ob.h && hy + side / 2 > ob.y) return false;
         }
+        if (inTown !== undefined && G.inTown(hx, hy) !== inTown) return false;
         state.buildings.push(G.makeHouse(hx, hy, sp));
         return true;
       }
-      while (placed < total && guard < total * 40) {
-        guard++;
-        // Centre du cluster : en ville ou hors ville.
-        var inTown = Math.random() < 0.6;
-        var gx, gy;
-        if (inTown) {
-          gx = G.rand(G.TOWN_MIN + 30, G.TOWN_MAX - 30);
-          gy = G.rand(G.TOWN_MIN + 30, G.TOWN_MAX - 30);
-        } else {
-          gx = Math.random() < 0.5 ? G.rand(40, G.TOWN_MIN - 60) : G.rand(G.TOWN_MAX + 60, G.WORLD - 40);
-          gy = Math.random() < 0.5 ? G.rand(40, G.TOWN_MIN - 60) : G.rand(G.TOWN_MAX + 60, G.WORLD - 40);
-        }
-        if (G.nearBuilding(gx, gy, 10)) continue;
-        var n = G.randi(2, 5);
-        for (var h = 0; h < n && placed < total; h++) {
-          var ang = Math.random() * Math.PI * 2;
-          var dist = Math.random() * 30;
-          var hx = gx + Math.cos(ang) * dist;
-          var hy = gy + Math.sin(ang) * dist;
-          if (hx < 20 || hx > G.WORLD - 20 || hy < 20 || hy > G.WORLD - 20) continue;
-          if (G.inTown(hx, hy) !== inTown) continue;
-          if (placeHouseAt(hx, hy)) placed++;
+      function spawnClusters(total, inTown, clusterR) {
+        var placed = 0, guard = 0;
+        while (placed < total && guard < total * 50) {
+          guard++;
+          var gx, gy;
+          if (inTown) {
+            gx = G.rand(G.TOWN_MIN + 30, G.TOWN_MAX - 30);
+            gy = G.rand(G.TOWN_MIN + 30, G.TOWN_MAX - 30);
+          } else {
+            gx = Math.random() < 0.5 ? G.rand(40, G.TOWN_MIN - 60) : G.rand(G.TOWN_MAX + 60, G.WORLD - 40);
+            gy = Math.random() < 0.5 ? G.rand(40, G.TOWN_MIN - 60) : G.rand(G.TOWN_MAX + 60, G.WORLD - 40);
+          }
+          if (G.nearBuilding(gx, gy, 10)) continue;
+          var n = G.randi(2, 5);
+          for (var h = 0; h < n && placed < total; h++) {
+            var ang = Math.random() * Math.PI * 2;
+            var dist = Math.random() * clusterR;
+            var hx = gx + Math.cos(ang) * dist;
+            var hy = gy + Math.sin(ang) * dist;
+            if (hx < 20 || hx > G.WORLD - 20 || hy < 20 || hy > G.WORLD - 20) continue;
+            if (placeHouseAt(hx, hy, inTown)) placed++;
+          }
         }
       }
+      spawnClusters(G.randi(160, 440), true, 20);
+      spawnClusters(100, false, 20);
     }
-
     state.items = [
       // Équipement de départ en ville.
       { x: c - 60, y: c - 40, taken: false, name: "Pistolet", color: "#94a3b8", kind: "arme" },
@@ -212,18 +232,18 @@
         ty = G.rand(G.TOWN_MIN + 40, G.TOWN_MAX - 40);
         tries++;
       } while (G.nearBuilding(tx, ty, 30) && tries < 12);
-      if (tries < 12) state.trees.push({ x: tx, y: ty, r: G.rand(14, 22), kind: "town", hp: 2 });
+      if (tries < 12) state.trees.push({ x: tx, y: ty, r: G.rand(56, 88), kind: "town", hp: 2 });
     }
     // Forêt hors ville : les arbres wild popent par groupes de 1 à 10,
     // regroupés spatialement et sans se superposer.
-    G.spawnTreeClusters(state, 4800, "wild");
+    G.spawnTreeClusters(state, 48000, "wild");
     for (i = 0; i < 25; i++) {
       var side = G.randi(0, 3);
       if (side === 0) { tx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ty = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); }
       else if (side === 1) { tx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ty = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); }
       else if (side === 2) { tx = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
       else { tx = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
-      state.trees.push({ x: tx, y: ty, r: G.rand(16, 28), kind: "edge", hp: 2 });
+      state.trees.push({ x: tx, y: ty, r: G.rand(64, 112), kind: "edge", hp: 2 });
     }
 
     state.zombies = [];

@@ -90,7 +90,7 @@
     // Sprite PNG si disponible (ancré en bas-centre sur la position de l'arbre).
     if (G.hasSprite("tree", t.kind)) {
       var sp = G.SPRITES.tree[t.kind];
-      var scale = z * 0.5;
+      var scale = z * 2;
       var dw = sp.w * scale, dh = sp.h * scale;
       ctx.drawImage(sp.img, s[0] - dw / 2, s[1] - dh, dw, dh);
       return;
