@@ -141,8 +141,8 @@
       var dw = losangeW;
       var dh = dw * sprite.h / sprite.w;
       ctx.drawImage(sprite.img, cx - dw / 2, by - dh, dw, dh);
-      // Barre de vie de la mairie au-dessus du sprite.
-      if (b.isMairie) {
+      // Barre de vie de la mairie au-dessus du sprite (uniquement si endommagée).
+      if (b.isMairie && b.hp < b.maxHp) {
         var ratio = b.hp / b.maxHp;
         var col = ratio < 0.10 ? t.hpBar.low : (ratio < 0.30 ? t.hpBar.mid : t.hpBar.high);
         var bw = Math.max(40, dw * 0.7);
@@ -183,8 +183,8 @@
     ctx.lineWidth = 1;
     ctx.strokeRect(door[0] - dw / 2, door[1] - dh, dw, dh);
 
-    // Barre de vie de la mairie.
-    if (b.isMairie) {
+    // Barre de vie de la mairie (uniquement si endommagée).
+    if (b.isMairie && b.hp < b.maxHp) {
       var ratio = b.hp / b.maxHp;
       var col = ratio < 0.10 ? t.hpBar.low : (ratio < 0.30 ? t.hpBar.mid : t.hpBar.high);
       var cx = (A[0] + C[0]) / 2;
@@ -343,6 +343,7 @@
 
   // Barre de vie commune d une barricade (PNG ou vectorielle).
   G.drawWallHpBar = function (m, cx, by, bw) {
+    if (m.hp >= G.WALL_MAX_HP) return; // masquée si pas encore endommagé
     var ctx = G.ctx;
     var t = G.TEXTURES.wall;
     var hp = m.hp, ratio = hp / G.WALL_MAX_HP;
