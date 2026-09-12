@@ -32,6 +32,7 @@
         var stepY = p.y + ny * G.SPEED * dt;
         G.tryMove(stepX, stepY);
         p.moving = true;
+        p.lastDx = nx; p.lastDy = ny;
         if (nx < 0) p.face = -1; else if (nx > 0) p.face = 1;
       } else {
         p.moving = false;
@@ -67,5 +68,7 @@
     G.render();
     requestAnimationFrame(loop);
   }
+  // Lance le chargement asynchrone des sprites PNG (tolérant aux images manquantes).
+  G.loadAssets(function () { /* sprites prêts ou manquants : le rendu fait fallback */ });
   requestAnimationFrame(loop);
 })();

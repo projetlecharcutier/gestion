@@ -87,6 +87,20 @@
     var tx_ = G.TEXTURES.tree;
     var s = G.proj(t.x, t.y);
     var z = G.state.zoom;
+    // Sprite PNG si disponible (ancré en bas-centre sur la position de l'arbre).
+    if (G.hasSprite("tree", t.kind)) {
+      var sp = G.SPRITES.tree[t.kind];
+      var scale = z * 0.5;
+      var dw = sp.w * scale, dh = sp.h * scale;
+      ctx.save();
+      ctx.fillStyle = tx_.shadow;
+      ctx.beginPath();
+      ctx.ellipse(s[0], s[1], dw * 0.3, dw * 0.12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.drawImage(sp.img, s[0] - dw / 2, s[1] - dh, dw, dh);
+      ctx.restore();
+      return;
+    }
     var r = t.r * 0.25 * z;
     if (r < 2) r = 2;
     ctx.save();
@@ -169,26 +183,36 @@
   G.drawPlayer = function () {
     var ctx = G.ctx;
     var p = G.state.player;
-    var t = G.TEXTURES.player;
     var base = G.proj(p.x, p.y);
     var z = G.state.zoom;
+    // Direction de marche : vecteur de déplacement si en mouvement, sinon idle.
+    var dx = p.moving ? (p.lastDx || 0) : 0;
+    var dy = p.moving ? (p.lastDy || 0) : 0;
+    var sprite = G.spriteFor("player", dx, dy);
+    ctx.save();
+    ctx.fillStyle = G.TEXTURES.player.shadow;
+    ctx.beginPath();
+    ctx.ellipse(base[0], base[1], 9 * z * 0.5, 4 * z * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    if (sprite) {
+      // Sprite PNG : ancré en bas-centre sur la position projetée, mis à l'échelle du zoom.
+      var scale = z * 0.5;
+      var dw = sprite.w * scale, dh = sprite.h * scale;
+      ctx.drawImage(sprite.img, base[0] - dw / 2, base[1] - dh, dw, dh);
+      return;
+    }
+    // Fallback : sprite pixel art JS (ancien rendu, gauche/droite par miroir).
+    var t = G.TEXTURES.player;
     var cell = z * 0.5;
     if (cell < 1.2) cell = 1.2;
     var cols = 6, rows = 15;
     var ox = base[0] - (cols / 2) * cell;
     var oy = base[1] - rows * cell;
-
-    ctx.save();
-    ctx.fillStyle = t.shadow;
-    ctx.beginPath();
-    ctx.ellipse(base[0], base[1], cols / 2 * cell, cell * 1.4, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    var sprite = t.sprite;
+    var spr = t.sprite;
     var palette = t.palette;
     for (var r = 0; r < rows; r++) {
-      var line = sprite[r];
+      var line = spr[r];
       for (var c = 0; c < cols; c++) {
         var ch = line.charAt(c);
         if (ch === ".") continue;
@@ -324,6 +348,23 @@
     var t = G.TEXTURES.bird;
     var base = G.proj(b.x, b.y);
     var zoom = G.state.zoom;
+    // Sprite PNG si disponible : direction selon le vecteur de vol.
+    var sprite = G.spriteFor("bird", b.vx, b.vy);
+    ctx.save();
+    ctx.fillStyle = t.shadow;
+    ctx.beginPath();
+    ctx.ellipse(base[0], base[1], 8 * zoom * 0.5, 4 * zoom * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (sprite) {
+      var scale = zoom * 0.5;
+      var dw = sprite.w * scale, dh = sprite.h * scale;
+      // L'oiseau vole : on l'ancre en bas-centre, légèrement au-dessus du sol.
+      ctx.drawImage(sprite.img, base[0] - dw / 2, base[1] - dh, dw, dh);
+      ctx.restore();
+      return;
+    }
+    ctx.restore();
+    // Fallback : sprite pixel art JS avec animation d'ailes.
     var cell = zoom * 0.5;
     if (cell < 1.2) cell = 1.2;
     var cols = 8, rows = 8;
@@ -334,16 +375,14 @@
     ctx.beginPath();
     ctx.ellipse(base[0], base[1], cols / 2 * cell, cell * 1.0, 0, 0, Math.PI * 2);
     ctx.fill();
-    var sprite = t.sprite;
+    var spr = t.sprite;
     var palette = t.palette;
-    // Animation des ailes : on alterne le sprite de la derniere ligne selon le battement.
     var flap = Math.sin(b.wing) > 0;
     for (var r = 0; r < rows; r++) {
-      var line = sprite[r];
+      var line = spr[r];
       for (var c = 0; c < cols; c++) {
         var ch = line.charAt(c);
         if (ch === ".") continue;
-        // Ailes (w) : si battement bas, on decale verticalement pour simuler le vol.
         ctx.fillStyle = palette[ch];
         var yy = oy + r * cell;
         if (ch === "w" && !flap) yy -= cell * 0.8;
