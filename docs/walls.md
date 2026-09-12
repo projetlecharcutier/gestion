@@ -6,12 +6,13 @@ Construction de planches/murs (mode pose de planche : Z + clic) avec rotation, e
 ## Exposé sur `G`
 - `PLANK_LONG` (120), `PLANK_THICK` (24) — dimensions d'une planche posée (px).
 - `plankDims()` — `{ w, h }` selon `state.plankRotation` (0 = horizontale `w>h`, 1 = verticale `h>w`).
-- `tryBuildWall(wx, wy)` — pose une planche si : à portée du joueur, assez de planches, pas sur bâtiment. Consomme `WALL_PLANKS` planches. Les planches **peuvent se superposer** (pas de test mur-vs-mur).
+- `tryBuildWall(wx, wy)` — pose une planche si : à portée du joueur, assez de planches, pas sur bâtiment. Consomme `WALL_PLANKS` planches. La planche est marquée `built: true`. Les planches **peuvent se superposer** (pas de test mur-vs-mur).
+- `aabbHitsWalls(cx, cy, cw, ch)` — teste si une boîte chevauche une planche **posée par le joueur** (`wall.built`). Les murs de périmètre (sans `built`) ne bloquent pas.
 - `rotatePlank()` — bascule `state.plankRotation` entre 0 et 1 (rotation 90°).
 - `cleanupWalls()` — retire les murs à `hp <= 0`. Appelé chaque frame.
 
 ## Structure d'un mur
-`{ x, y, w, h, hp, orient }` — `orient` \"h\" ou \"v\" (dérivé de `w>h` au moment de la pose, détermine la largeur de la barre de vie au rendu).
+`{ x, y, w, h, hp, orient, built? }` — `orient` "h" ou "v" (dérivé de `w>h` au moment de la pose, détermine la largeur de la barre de vie au rendu). `built: true` uniquement pour les planches **posées par le joueur** ; absent pour le mur de périmètre. **Seules les planches `built` bloquent le déplacement** (joueur et zombies, via `aabbHitsWalls`).
 
 ## Contraintes
 - Activation du mode pose : touche **Z** (avec `w`/`W` comme fallback AZERTY) gérée dans `src/input.js`.
@@ -19,6 +20,7 @@ Construction de planches/murs (mode pose de planche : Z + clic) avec rotation, e
 - Portée de construction : `WALL_BUILD_RANGE` (180 px) autour du joueur.
 - Coût : 4 planches par planche posée.
 - Anti-chevauchement : pas de construction **sur bâtiment** ; la superposition de planches entre elles est autorisée.
+- **Blocage** : seules les planches posées par le joueur (`built: true`) bloquent le joueur (`tryMove`) et les zombies (`updateZombies`). Le mur de périmètre reste traversable.
 
 ## Étendre
 - **Réparer un mur** : ajouter une fonction qui incrémente `wall.hp` (borné à `WALL_MAX_HP`) contre des planches.
