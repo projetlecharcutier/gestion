@@ -4,8 +4,8 @@
   "use strict";
   var G = window.GAME = window.GAME || {};
 
-  G.WORLD = 100000;
-  G.TOWN = 5000;
+  G.WORLD = 10000;
+  G.TOWN = 1000;
   G.TOWN_MIN = (G.WORLD - G.TOWN) / 2;
   G.TOWN_MAX = G.TOWN_MIN + G.TOWN;
 

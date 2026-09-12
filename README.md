@@ -9,8 +9,8 @@ Ouvrez `index.html` dans un navigateur récent (Chrome, Firefox, Edge, Safari).
 ## Comment jouer
 
 - Au démarrage, entrez votre nom.
-- Vous apparaissez au centre d'une carte de **100 000 × 100 000 px**.
-- Au centre se trouve une **ville de 5 000 × 5 000 px** (bâtiments plus petits).
+- Vous apparaissez au centre d'une carte de **10 000 × 10 000 px**.
+- Au centre se trouve une **ville de 1 000 × 1 000 px** (bâtiments plus petits).
 - **Déplacement** : le personnage suit la souris, mais s'arrête quand la souris est sur lui (hover).
 - **Tir** : appuyez sur **Espace** (le tir va vers la souris). Désactivé en mode pose de planche.
 - **Sac** : appuyez sur **A** pour ouvrir/fermer le sac. Les **objets, outils et armes** ramassés au sol y sont rangés.
@@ -52,7 +52,7 @@ Ouvrez `index.html` dans un navigateur récent (Chrome, Firefox, Edge, Safari).
 - Personnage pixelisé : **6 px de large × 15 px de haut**.
 - Rendu très pixelisé (zoom par défaut plus important).
 - Projection isométrique (vue de haut), caméra qui suit le joueur.
-- Bâtiments en 3D isométrique avec toit et porte (échelle réduite avec la ville), dont un **Hôpital**.
+- Bâtiments en 3D isométrique avec toit et porte (**≤ 20× la taille du joueur**, soit ≤ 120 px), dont un **Hôpital**.
 - Objets et armes au sol ramassables, rangés dans le sac.
 - Arbres (forêt dense hors ville, quelques-uns en ville), récoltés à la hache (4 s/arbre) pour faire des planches.
 - Murs (planches) avec barre de vie, constructibles (mode pose de planche Z, rotation Espace, superposition possible).

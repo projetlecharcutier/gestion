@@ -48,9 +48,9 @@ Schéma complet dans `src/state.js`. Champs clés :
 
 | Constante | Valeur | Sens |
 |-----------|--------|------|
-| `WORLD` | 100000 | Taille carte (px) |
-| `TOWN` | 5000 | Taille ville (px) |
-| `PLAYER_W/H` | 6 / 15 | Sprite joueur |
+| `WORLD` | 10000 | Taille carte (px) |
+| `TOWN` | 1000 | Taille ville (px) |
+| `PLAYER_W/H` | 6 / 15 | Sprite joueur (bâtiments ≤ `PLAYER_W*20` = 120 px) |
 | `SPEED` | 260 | Vitesse joueur (px/s) |
 | `FOG_RADIUS` | 200 | Visibilité hors ville (px) |
 | `ZOMBIE_SPEED` | 130 | Moitié du joueur |
