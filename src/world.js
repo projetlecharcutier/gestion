@@ -69,7 +69,16 @@
     }
     G.treeGrid = grid;
   };
-  // Teste si la boîte (x,y,half) chevauche le tronc d'un arbre (cercle de rayon r).
+  // Dimensions monde du PNG d'un arbre (ancré bas-centre comme le rendu).
+  // Le rendu utilise scale = z*2 et proj sx=(wx-wy)*0.5*z : dw pixels = sp.w*4
+  // unités monde. Retourne {pw, ph} ou null si pas de sprite.
+  G.treeDims = function (kind) {
+    if (!G.hasSprite("tree", kind)) return null;
+    var sp = G.SPRITES.tree[kind];
+    return { pw: sp.w * 4, ph: sp.h * 4 };
+  };
+  // Teste si la boîte centrée (x,y) de demi-côté half chevauche un arbre.
+  // La zone non-marchable = rectangle du PNG ancré bas-centre (bas à t.y, t.ph).
   // Utilise la grille spatiale : ne vérifie que les arbres des cellules voisines.
   G.hitsTree = function (x, y, half) {
     var grid = G.treeGrid;
@@ -82,10 +91,16 @@
         if (!arr) continue;
         for (var n = 0; n < arr.length; n++) {
           var t = arr[n];
-          // Cercle (t.x, t.y, t.r) vs boîte centrée (x, y) de demi-côté half.
-          var ddx = Math.max(Math.abs(t.x - x) - half, 0);
-          var ddy = Math.max(Math.abs(t.y - y) - half, 0);
-          if (ddx * ddx + ddy * ddy < t.r * t.r) return true;
+          if (t.pw && t.ph) {
+            // AABB bas-centre : [t.x-pw/2, t.x+pw/2] × [t.y-ph, t.y].
+            if (x + half > t.x - t.pw / 2 && x - half < t.x + t.pw / 2 &&
+                y + half > t.y - t.ph && y - half < t.y) return true;
+          } else {
+            // Repli (pas de PNG) : cercle (t.x, t.y, t.r).
+            var ddx = Math.max(Math.abs(t.x - x) - half, 0);
+            var ddy = Math.max(Math.abs(t.y - y) - half, 0);
+            if (ddx * ddx + ddy * ddy < t.r * t.r) return true;
+          }
         }
       }
     }
@@ -117,11 +132,15 @@
       return false;
     }
     function addTree(tx, ty, r) {
+      var dims = G.treeDims(kind);
       var o = { x: tx, y: ty, r: r };
       var key = gkey(tx, ty);
       if (!grid[key]) grid[key] = [];
       grid[key].push(o);
-      state.trees.push({ x: tx, y: ty, r: r, kind: kind, hp: 2 });
+      state.trees.push({
+        x: tx, y: ty, r: r, kind: kind, hp: 2,
+        pw: dims ? dims.pw : 0, ph: dims ? dims.ph : 0
+      });
     }
     var placed = 0;
     var guard = 0;
@@ -160,9 +179,16 @@
     var seg = wd.longW;
     var thick = wd.thick;
     var pad = 6;
+    // Trou d'une palissade de largeur dans le mur nord : on omet un segment
+    // pour créer une entrée dans la ville au démarrage.
+    var gapIndex = Math.floor((G.TOWN_MAX - G.TOWN_MIN) / seg / 2);
+    var i = 0;
     for (var x = G.TOWN_MIN; x < G.TOWN_MAX; x += seg) {
-      state.walls.push({ x: x, y: G.TOWN_MIN - pad, w: seg, h: thick, hp: G.WALL_MAX_HP, orient: "h", built: true });
+      if (i !== gapIndex) {
+        state.walls.push({ x: x, y: G.TOWN_MIN - pad, w: seg, h: thick, hp: G.WALL_MAX_HP, orient: "h", built: true });
+      }
       state.walls.push({ x: x, y: G.TOWN_MAX + pad - thick, w: seg, h: thick, hp: G.WALL_MAX_HP, orient: "h", built: true });
+      i++;
     }
     for (var y = G.TOWN_MIN; y < G.TOWN_MAX; y += seg) {
       state.walls.push({ x: G.TOWN_MIN - pad, y: y, w: thick, h: seg, hp: G.WALL_MAX_HP, orient: "v", built: true });
@@ -251,7 +277,7 @@
         }
       }
       spawnHouses(G.randi(8, 22), true);
-      spawnHouses(5, false);
+      spawnHouses(20, false);
     }
     state.items = [
       // Équipement de départ en ville.
@@ -292,7 +318,10 @@
         ty = G.rand(G.TOWN_MIN + 40, G.TOWN_MAX - 40);
         tries++;
       } while (G.nearBuilding(tx, ty, 30) && tries < 12);
-      if (tries < 12) state.trees.push({ x: tx, y: ty, r: G.rand(56, 88), kind: "town", hp: 2 });
+      if (tries < 12) {
+        var td = G.treeDims("town");
+        state.trees.push({ x: tx, y: ty, r: G.rand(56, 88), kind: "town", hp: 2, pw: td ? td.pw : 0, ph: td ? td.ph : 0 });
+      }
     }
     // Forêt hors ville : les arbres wild popent par groupes de 1 à 10,
     // regroupés spatialement et sans se superposer.
@@ -303,7 +332,8 @@
       else if (side === 1) { tx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ty = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); }
       else if (side === 2) { tx = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
       else { tx = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
-      state.trees.push({ x: tx, y: ty, r: G.rand(64, 112), kind: "edge", hp: 2 });
+      var ed = G.treeDims("edge");
+      state.trees.push({ x: tx, y: ty, r: G.rand(64, 112), kind: "edge", hp: 2, pw: ed ? ed.pw : 0, ph: ed ? ed.ph : 0 });
     }
 
     state.zombies = [];
