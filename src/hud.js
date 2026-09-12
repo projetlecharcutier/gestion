@@ -10,7 +10,9 @@
     G.hudZone.textContent = G.inTown(p.x, p.y) ? "Ville" : "Hors ville";
     G.hudPos.textContent = "(" + Math.round(p.x) + ", " + Math.round(p.y) + ")";
     G.hudInv.textContent = String(state.inventory);
-    G.hudWeapon.textContent = state.equipped || "Mains nues";
+    // Un seul objet equipe a la fois : arme OU hache.
+    if (state.axeEquipped) G.hudWeapon.textContent = "Hache";
+    else G.hudWeapon.textContent = state.equipped || "Mains nues";
     if (G.hudAxe) G.hudAxe.textContent = state.axeEquipped ? "oui" : "non";
     G.hudHp.textContent = String(Math.round(state.player.hp));
     G.hudPlanks.textContent = String(state.planks);

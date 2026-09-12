@@ -24,9 +24,13 @@
           sx >= L.px && sx <= L.px + L.pw) {
         var it = G.state.bag.contents[i];
         if (it.kind === "arme") {
+          // Un seul objet equipe a la fois : equiper une arme desequipe la hache.
           G.state.equipped = (G.state.equipped === it.name) ? null : it.name;
+          if (G.state.equipped) G.state.axeEquipped = false;
         } else if (it.kind === "outil" && it.name === "Hache") {
+          // Un seul objet equipe a la fois : equiper la hache desequipe l'arme.
           G.state.axeEquipped = !G.state.axeEquipped;
+          if (G.state.axeEquipped) G.state.equipped = null;
         }
         return;
       }
