@@ -12,6 +12,7 @@
   G.hudPos = document.getElementById("hudPos");
   G.hudInv = document.getElementById("hudInv");
   G.hudWeapon = document.getElementById("hudWeapon");
+  G.hudAxe = document.getElementById("hudAxe");
   G.hudHp = document.getElementById("hudHp");
   G.hudPlanks = document.getElementById("hudPlanks");
   G.startScreen = document.getElementById("startScreen");
@@ -49,6 +50,10 @@
     keys: {},
     shootCd: 0,
     buildMode: false,
+    plankRotation: 0,
+    axeEquipped: false,
+    chopTarget: null,
+    chopTimer: 0,
     clock: 8,
     day: 0,
     elapsed: 0,

@@ -26,7 +26,7 @@
       var tx = state.mouse.wx, ty = state.mouse.wy;
       var dx = tx - p.x, dy = ty - p.y;
       var dist = Math.sqrt(dx * dx + dy * dy);
-      if (state.mouse.inside && dist > 5) {
+      if (state.mouse.inside && dist > G.PLAYER_W) {
         var nx = dx / dist, ny = dy / dist;
         var stepX = p.x + nx * G.SPEED * dt;
         var stepY = p.y + ny * G.SPEED * dt;
@@ -42,6 +42,7 @@
     G.updateProjectiles(dt);
     G.cleanupZombies();
     G.cleanupWalls();
+    G.updateChop(dt);
 
     state.camera.x += (state.player.x - state.camera.x) * Math.min(1, dt * 6);
     state.camera.y += (state.player.y - state.camera.y) * Math.min(1, dt * 6);

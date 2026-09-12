@@ -14,7 +14,7 @@ Dessine tout (sol, objets, arbres, bâtiments, murs, zombies, joueur, projectile
 2. Si non démarré → retour
 3. `drawGround` + objets au sol
 4. Drawables (bâtiments, arbres visibles, murs, zombies visibles) triés par profondeur `x+y`, joueur inséré à sa profondeur
-5. Projectiles, brouillard, viseur, hint build, horloge
+5. Projectiles, brouillard, viseur, hint build, **cercle de décompte hache** (`drawChopProgress`), horloge
 6. Sac (si ouvert), voile pause, game over
 
 ## Sprites

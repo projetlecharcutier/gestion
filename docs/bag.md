@@ -5,13 +5,13 @@ Disposition du panneau Sac, rendu du sac, clic pour équiper une arme. Dépend d
 
 ## Exposé sur `G`
 - `bagLayout()` → `{ W, H, px, py, pw, ph, listY, lineH, maxLines }` — géométrie du panneau
-- `handleBagClick(sx, sy)` — équipe/déséquipe l'arme cliquée (`state.equipped` = nom ou null)
+- `handleBagClick(sx, sy)` — équipe/déséquipe l'arme cliquée (`state.equipped` = nom ou null), ou bascule la hache (`kind==="outil"`, `name=="Hache"` → `state.axeEquipped`)
 - `drawBag()` — dessine le panneau (titre, arme équipée + stats, liste des objets)
 
 ## Contraintes
-- Le clic ne fait quelque chose que pour `kind === "arme"` ; les objets sont juste affichés.
+- Le clic agit sur `kind === "arme"` (équipement d'arme) et sur `kind === "outil"` `name === "Hache"` (équipement de hache) ; les autres objets sont juste affichés.
 - `maxLines` adapte le nombre d'objets affichés à la taille du panneau (scroll non géré).
-- Le sac bloque le déplacement et le tir (testé dans `update`/`handleShooting`).
+- Le sac bloque le déplacement, le tir et la récolte (testé dans `update`/`handleShooting`/`updateChop`).
 
 ## Étendre
 - **Empiler / utiliser un objet** : ajouter une action au clic pour `kind === "objet"` (ex. boire une Potion).

@@ -12,7 +12,7 @@
   // shootCd est décrémenté une fois par update() dans main.js ; ici on ne fait que tirer.
   G.handleShooting = function () {
     var state = G.state;
-    if (state.inBuilding || state.paused || state.bag.open || state.gameOver) return;
+    if (state.inBuilding || state.paused || state.bag.open || state.gameOver || state.buildMode) return;
     if (!state.keys.space || state.shootCd > 0) return;
     var p = state.player;
     var tx = state.mouse.wx, ty = state.mouse.wy;

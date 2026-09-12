@@ -10,6 +10,7 @@ Chaque fichier ci-dessous documente un système : son contrat, ses entrées/sort
 | Monde (génération) | [world.md](world.md) | `src/world.js` |
 | Joueur | [player.md](player.md) | `src/player.js` |
 | Murs & construction | [walls.md](walls.md) | `src/walls.js` |
+| Récolte de planches (hache) | [chop.md](chop.md) | `src/chop.js` |
 | Armes & projectiles | [weapons.md](weapons.md) | `src/weapons.js` |
 | Zombies | [zombies.md](zombies.md) | `src/zombies.js` |
 | Sac & inventaire | [bag.md](bag.md) | `src/bag.js` |
