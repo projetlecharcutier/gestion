@@ -6,7 +6,8 @@
 
   // Spawn un oiseau avec une direction aléatoire (4 axes cardinaux).
   G.spawnBird = function () {
-    var ang = G.randi(0, 3) * (Math.PI / 2); // 0, 90, 180, 270 deg
+    // 4 directions diagonales (45, 135, 225, 315 deg) pour matcher les PNG dispo.
+    var ang = G.randi(0, 3) * (Math.PI / 2) + Math.PI / 4;
     var b = {
       x: G.rand(G.BIRD_HALF, G.WORLD - G.BIRD_HALF),
       y: G.rand(G.BIRD_HALF, G.WORLD - G.BIRD_HALF),

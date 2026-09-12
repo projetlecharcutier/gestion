@@ -369,6 +369,8 @@
     var zoom = G.state.zoom;
     // Sprite PNG si disponible : direction selon le vecteur de vol.
     var sprite = G.spriteFor("bird", b.vx, b.vy);
+    // Si la direction exacte n'a pas de PNG, on retombe sur idle si dispo.
+    if (!sprite && G.hasSprite("bird", "idle")) sprite = G.SPRITES.bird.idle;
     ctx.save();
     ctx.fillStyle = t.shadow;
     ctx.beginPath();
