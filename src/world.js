@@ -69,16 +69,19 @@
     }
     G.treeGrid = grid;
   };
-  // Dimensions monde du PNG d'un arbre (ancré bas-centre comme le rendu).
-  // Le rendu utilise scale = z*2 et proj sx=(wx-wy)*0.5*z : dw pixels = sp.w*4
-  // unités monde. Retourne {pw, ph} ou null si pas de sprite.
-  G.treeDims = function (kind) {
+  // Rayon monde du losange de collision d'un arbre. Le rendu dessine le PNG
+  // sur dw = sp.w*2*z pixels ; un losange monde de rayon R projette sur un
+  // losange écran de largeur R*z. Pour coller à la largeur du PNG il faut
+  // R = sp.w*2. Retourne R (en unités monde) ou null si pas de sprite.
+  G.treeRadius = function (kind) {
     if (!G.hasSprite("tree", kind)) return null;
     var sp = G.SPRITES.tree[kind];
-    return { pw: sp.w * 4, ph: sp.h * 4 };
+    return Math.max(sp.w, sp.h) * 2;
   };
   // Teste si la boîte centrée (x,y) de demi-côté half chevauche un arbre.
-  // La zone non-marchable = rectangle du PNG ancré bas-centre (bas à t.y, t.ph).
+  // La zone non-marchable = losange (distance de Manhattan) centré sur (t.x,t.y)
+  // de rayon t.rad, ce qui correspond strictement à l'empreinte écran du PNG
+  // (sans les coins vides qu'une AABB créerait en projection iso).
   // Utilise la grille spatiale : ne vérifie que les arbres des cellules voisines.
   G.hitsTree = function (x, y, half) {
     var grid = G.treeGrid;
@@ -91,15 +94,17 @@
         if (!arr) continue;
         for (var n = 0; n < arr.length; n++) {
           var t = arr[n];
-          if (t.pw && t.ph) {
-            // AABB bas-centre : [t.x-pw/2, t.x+pw/2] × [t.y-ph, t.y].
-            if (x + half > t.x - t.pw / 2 && x - half < t.x + t.pw / 2 &&
-                y + half > t.y - t.ph && y - half < t.y) return true;
-          } else {
-            // Repli (pas de PNG) : cercle (t.x, t.y, t.r).
+          if (t.rad) {
+            // Losange centré (t.x, t.y) de rayon t.rad vs boîte demi-côté half :
+            // chevauchement si la distance L1 du centre à la boîte <= t.rad.
             var ddx = Math.max(Math.abs(t.x - x) - half, 0);
             var ddy = Math.max(Math.abs(t.y - y) - half, 0);
-            if (ddx * ddx + ddy * ddy < t.r * t.r) return true;
+            if (ddx + ddy < t.rad) return true;
+          } else {
+            // Repli (pas de PNG) : cercle (t.x, t.y, t.r).
+            var cx = Math.max(Math.abs(t.x - x) - half, 0);
+            var cy = Math.max(Math.abs(t.y - y) - half, 0);
+            if (cx * cx + cy * cy < t.r * t.r) return true;
           }
         }
       }
@@ -132,14 +137,14 @@
       return false;
     }
     function addTree(tx, ty, r) {
-      var dims = G.treeDims(kind);
+      var rad = G.treeRadius(kind);
       var o = { x: tx, y: ty, r: r };
       var key = gkey(tx, ty);
       if (!grid[key]) grid[key] = [];
       grid[key].push(o);
       state.trees.push({
         x: tx, y: ty, r: r, kind: kind, hp: 2,
-        pw: dims ? dims.pw : 0, ph: dims ? dims.ph : 0
+        rad: rad || 0
       });
     }
     var placed = 0;
@@ -319,8 +324,8 @@
         tries++;
       } while (G.nearBuilding(tx, ty, 30) && tries < 12);
       if (tries < 12) {
-        var td = G.treeDims("town");
-        state.trees.push({ x: tx, y: ty, r: G.rand(56, 88), kind: "town", hp: 2, pw: td ? td.pw : 0, ph: td ? td.ph : 0 });
+        var tr = G.treeRadius("town");
+        state.trees.push({ x: tx, y: ty, r: G.rand(56, 88), kind: "town", hp: 2, rad: tr || 0 });
       }
     }
     // Forêt hors ville : les arbres wild popent par groupes de 1 à 10,
@@ -332,8 +337,8 @@
       else if (side === 1) { tx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ty = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); }
       else if (side === 2) { tx = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
       else { tx = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
-      var ed = G.treeDims("edge");
-      state.trees.push({ x: tx, y: ty, r: G.rand(64, 112), kind: "edge", hp: 2, pw: ed ? ed.pw : 0, ph: ed ? ed.ph : 0 });
+      var er = G.treeRadius("edge");
+      state.trees.push({ x: tx, y: ty, r: G.rand(64, 112), kind: "edge", hp: 2, rad: er || 0 });
     }
 
     state.zombies = [];
