@@ -49,6 +49,7 @@
     G.cleanupWalls();
     G.updateBirds(dt);
     G.updateChop(dt);
+    G.updateFloaters(dt);
 
     state.camera.x += (state.player.x - state.camera.x) * Math.min(1, dt * 6);
     state.camera.y += (state.player.y - state.camera.y) * Math.min(1, dt * 6);

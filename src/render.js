@@ -3,6 +3,42 @@
   "use strict";
   var G = window.GAME = window.GAME || {};
 
+  // Texte flottant au-dessus du joueur (ex: "+ Pièce") pendant 3 s.
+  G.addFloater = function (name) {
+    G.state.floaters.push({ text: "+ " + name, t: 3 });
+  };
+  G.updateFloaters = function (dt) {
+    var f = G.state.floaters;
+    for (var i = f.length - 1; i >= 0; i--) {
+      f[i].t -= dt;
+      if (f[i].t <= 0) f.splice(i, 1);
+    }
+  };
+  G.drawFloaters = function () {
+    var ctx = G.ctx;
+    var p = G.state.player;
+    var base = G.proj(p.x, p.y);
+    var z = G.state.zoom;
+    var f = G.state.floaters;
+    for (var i = 0; i < f.length; i++) {
+      var fl = f[i];
+      var rise = (3 - fl.t) * 14;
+      var alpha = fl.t > 2 ? 1 : Math.max(0, fl.t / 2);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = "bold 16px Segoe UI, system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillStyle = "#fff";
+      ctx.strokeStyle = "rgba(2,6,23,0.8)";
+      ctx.lineWidth = 3;
+      var x = base[0], y = base[1] - (28 + rise) * z * 0.5;
+      ctx.strokeText(fl.text, x, y);
+      ctx.fillText(fl.text, x, y);
+      ctx.restore();
+    }
+  };
+
   G.fillPoly = function (points, fill, stroke) {
     var ctx = G.ctx;
     ctx.beginPath();
@@ -551,6 +587,7 @@
     if (!drewPlayer) { G.drawPlayer(); G.drawPlayerHpBar(); }
 
     G.drawProjectiles();
+    G.drawFloaters();
     G.drawFog();
     G.drawCrosshair();
     G.drawBuildHint();

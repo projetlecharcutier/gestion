@@ -64,6 +64,7 @@
     chopTarget: null,
     chopWall: null,
     chopTimer: 0,
+    floaters: [],
     clock: 8,
     day: 0,
     elapsed: 0,

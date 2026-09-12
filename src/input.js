@@ -58,6 +58,7 @@
           it.taken = true;
           state.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });
           state.inventory += 1;
+          if (G.addFloater) G.addFloater(it.name);
           G.updateHud();
         }
         return; // objet prioritaire sur les bâtiments

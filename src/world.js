@@ -232,9 +232,6 @@
     var c = G.WORLD / 2;
     state.buildings = [
       G.makeBuilding(c - 60, c - 60, 120, 120, "Mairie", "Vous êtes à la mairie. Tout semble calme.", 76),
-      G.makeBuilding(c + 280, c - 400, 110, 110, "Auberge", "L'auberge sent la soupe chaude. Repos bien mérité.", 66),
-      G.makeBuilding(c - 400, c + 260, 110, 110, "Forge", "La forge résonne du bruit de l'enclume.", 72),
-      G.makeBuilding(c + 300, c + 280, 120, 100, "Marché", "Le marché grouille de marchandises.", 60),
       G.makeBuilding(c - 150, c + 320, 90, 90, "Eglise", "L'église est silencieuse et fraîche.", 88),
       G.makeBuilding(c - 380, c + 300, 120, 100, "Hôpital", "Hôpital : payez une pièce d'or pour retrouver toute votre vie.", 84)
     ];
