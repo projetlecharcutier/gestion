@@ -106,6 +106,21 @@
     for (var i = 0; i < state.buildings.length; i++) {
       var b = state.buildings[i];
       if (b.isDecor) continue;
+      if (b.isChurch) {
+        // L'eglise est cliquable : depot de relique (+100 or) + son church.mp3.
+        var clickRc = Math.max(b.w, b.h) / 2 + 10;
+        var cxc = b.x + b.w / 2, cyc = b.y + b.h / 2;
+        var ddxc = w[0] - cxc, ddyc = w[1] - cyc;
+        if (Math.sqrt(ddxc * ddxc + ddyc * ddyc) < clickRc) {
+          var reachc = clickRc + 60;
+          var pdxc = p.x - cxc, pdyc = p.y - cyc;
+          if (Math.sqrt(pdxc * pdxc + pdyc * pdyc) < reachc) {
+            G.openChurch();
+            return;
+          }
+        }
+        continue;
+      }
       if (!b.isMairie) continue;
       var clickR = Math.max(b.w, b.h) + 10;
       var cx = b.x + b.w / 2, cy = b.y + b.h / 2;

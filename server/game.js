@@ -124,6 +124,7 @@
       shootCd: 0,
       planks: 0,
       inventory: 0,
+      gold: 0,
       chopTarget: null,
       chopWall: null,
       chopTimer: 0
@@ -197,6 +198,18 @@
           }
           break;
         }
+      }
+    }
+    // Dépot de relique à l'église : +100 pièces d'or si une relique est dans le sac.
+    if (input.churchDeposit) {
+      var ri = -1;
+      for (var ci = 0; ci < p.bag.contents.length; ci++) {
+        if (p.bag.contents[ci].name === "Relique") { ri = ci; break; }
+      }
+      if (ri >= 0) {
+        p.bag.contents.splice(ri, 1);
+        p.inventory = p.bag.contents.length;
+        p.gold = (p.gold || 0) + 100;
       }
     }
     // Équipement : un seul objet équipé à la fois.
@@ -357,7 +370,8 @@
           equipped: p.equipped, axeEquipped: p.axeEquipped,
           lastDx: p.lastDx || 0, lastDy: p.lastDy || 0,
           bag: p.bag.contents, inventory: p.bag.contents.length,
-          planks: p.planks || 0
+          planks: p.planks || 0,
+          gold: p.gold || 0
         };
       }),
       zombies: state.zombies.map(function (z) {

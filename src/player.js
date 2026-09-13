@@ -123,6 +123,30 @@
     G.chestScreen.hidden = false;
   };
 
+  // Eglise : clic pour y déposer une relique (gagne 100 pièces d'or) et
+  // déclencher le son de cloche. Fonctionne en local ; en réseau, le client
+  // joue juste le son (le dépôt est validé côté serveur).
+  G.openChurch = function () {
+    var state = G.state;
+    if (G.playSfx) G.playSfx("church");
+    if (G.netConnected && G.netConnected()) {
+      G.netInput({ churchDeposit: true });
+      return;
+    }
+    // Local : cherche une relique dans le sac.
+    var idx = -1;
+    for (var i = 0; i < state.bag.contents.length; i++) {
+      if (state.bag.contents[i].name === "Relique") { idx = i; break; }
+    }
+    if (idx >= 0) {
+      state.bag.contents.splice(idx, 1);
+      state.inventory = state.bag.contents.length;
+      state.gold = (state.gold || 0) + 100;
+      if (G.addFloater) G.addFloater("100 pièces d'or");
+      G.updateHud();
+    }
+  };
+
   G.closeChest = function () {
     G.state.chestOpen = false;
     G.chestScreen.hidden = true;

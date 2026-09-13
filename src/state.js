@@ -16,6 +16,7 @@
   G.hudHp = document.getElementById("hudHp");
   G.hudPlanks = document.getElementById("hudPlanks");
   G.hudMairie = document.getElementById("hudMairie");
+  G.hudGold = document.getElementById("hudGold");
   G.startScreen = document.getElementById("startScreen");
   G.startForm = document.getElementById("startForm");
   G.nameInput = document.getElementById("nameInput");
@@ -43,6 +44,7 @@
     mouse: { sx: 0, sy: 0, wx: G.WORLD / 2, wy: G.WORLD / 2, inside: false },
     inventory: 0,
     planks: 0,
+    gold: 0,
     items: [],
     buildings: [],
     walls: [],

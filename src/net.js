@@ -140,6 +140,7 @@
           // Sac / inventaire / planches gérés côté serveur (autorité).
           if (p.bag) { state.bag.contents = p.bag; state.inventory = p.inventory; }
           if (p.planks !== undefined) state.planks = p.planks;
+          if (p.gold !== undefined) state.gold = p.gold;
         } else {
           state.remotePlayers.push(p);
         }
