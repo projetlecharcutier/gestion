@@ -45,7 +45,8 @@ canvas#game {
   font-size: 0.9rem;
   line-height: 1.5;
   pointer-events: none;
-  min-width: 240px;
+  min-width: 220px;
+  max-width: 340px;
 }
 
 .hud__row {
@@ -63,6 +64,16 @@ canvas#game {
 .hud__hint {
   color: var(--text-muted);
   font-size: 0.78rem;
+}
+.hud__hint-block {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+}
+.hud__hint-line {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
 }
 
 .hud[hidden] { display: none; }
