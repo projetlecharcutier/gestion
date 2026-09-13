@@ -170,7 +170,7 @@
       var dw = losangeW;
       var dh = dw * sprite.h / sprite.w;
       var groundY = Math.max(C[1], D[1]);
-      ctx.drawImage(sprite.img, cx - dw / 2, groundY - dh, dw, dh);
+      ctx.drawImage(G.animImg(sprite, G.state.time), cx - dw / 2, groundY - dh, dw, dh);
       // Barre de vie de la mairie au-dessus du sprite (uniquement si endommagée).
       if (b.isMairie && b.hp < b.maxHp) {
         var ratio = b.hp / b.maxHp;
@@ -249,7 +249,7 @@
       // Sprite PNG : ancré en bas-centre sur la position projetée, mis à l'échelle du zoom.
       var scale = z * 0.5;
       var dw = sprite.w * scale, dh = sprite.h * scale;
-      ctx.drawImage(sprite.img, base[0] - dw / 2, base[1] - dh, dw, dh);
+      ctx.drawImage(G.animImg(sprite, G.state.time), base[0] - dw / 2, base[1] - dh, dw, dh);
       return;
     }
     // Fallback : sprite pixel art JS (ancien rendu, gauche/droite par miroir).
@@ -296,10 +296,10 @@
         ctx.save();
         ctx.translate(base[0], base[1]);
         ctx.scale(-1, 1);
-        ctx.drawImage(sprite.img, -dw / 2, -dh, dw, dh);
+        ctx.drawImage(G.animImg(sprite, G.state.time), -dw / 2, -dh, dw, dh);
         ctx.restore();
       } else {
-        ctx.drawImage(sprite.img, base[0] - dw / 2, base[1] - dh, dw, dh);
+        ctx.drawImage(G.animImg(sprite, G.state.time), base[0] - dw / 2, base[1] - dh, dw, dh);
       }
     }
     // Nom + barre de vie.
@@ -408,7 +408,7 @@
       var dh = dw * sprite.h / sprite.w;
       var B = G.proj(m.x + m.w, m.y), D = G.proj(m.x, m.y + m.h);
       var groundY = Math.max(C[1], D[1]);
-      ctx.drawImage(sprite.img, cx - dw / 2, groundY - dh, dw, dh);
+      ctx.drawImage(G.animImg(sprite, G.state.time), cx - dw / 2, groundY - dh, dw, dh);
       // Barre de vie au-dessus du sprite.
       G.drawWallHpBar(m, cx, groundY - dh - 6, Math.max(18, dw * 0.7));
       return;
@@ -486,7 +486,7 @@
       var scale = zoom * 0.5;
       var dw = sprite.w * scale, dh = sprite.h * scale;
       // L'oiseau vole : on l'ancre en bas-centre, légèrement au-dessus du sol.
-      ctx.drawImage(sprite.img, base[0] - dw / 2, base[1] - dh, dw, dh);
+      ctx.drawImage(G.animImg(sprite, G.state.time), base[0] - dw / 2, base[1] - dh, dw, dh);
       ctx.restore();
       return;
     }

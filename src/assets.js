@@ -10,6 +10,57 @@
   var _total = 0;
   var _ready = false;
 
+  // Animation par frames : convention <base>-0.png, <base>-1.png, ...
+  // Si un sprite de base possede des frames -N (depuis 0), il est anime :
+  // le rendu les parcourt en boucle selon le temps. Une seule image = statique.
+  var ANIM_FPS = 8; // vitesse du cycle d'animation (frames/seconde)
+
+  // Renvoie l'image (HTMLImageElement) a dessiner pour un sprite donne,
+  // en parcourant les frames d'animation si elles existent, sinon l'image
+  // statique. `sprite` = { img, w, h, frames?: [img,...] }, `time` = secondes.
+  G.animImg = function (sprite, time) {
+    if (!sprite) return null;
+    if (sprite.frames && sprite.frames.length > 1) {
+      var i = Math.floor((time || 0) * ANIM_FPS) % sprite.frames.length;
+      return sprite.frames[i];
+    }
+    return sprite.img;
+  };
+
+  // Renvoie le nombre de frames d'animation d'un sprite (1 = statique).
+  G.animCount = function (sprite) {
+    if (!sprite) return 0;
+    return (sprite.frames && sprite.frames.length) ? sprite.frames.length : 1;
+  };
+
+  // Sonde les frames d'animation <base>-0.png, <base>-1.png, ... dans `dir`.
+  // Stocke le tableau d'images dans sprite.frames si au moins -0 existe.
+  // Tolere les manquants (s'arrete a la premiere frame absente). Appele
+  // onDone(frames) avec le tableau (vide si aucune frame d'animation).
+  function probeAnimFrames(sprite, dir, base, onDone) {
+    var frames = [];
+    var n = 0;
+    function next() {
+      var img = new Image();
+      img.onload = function () {
+        if (img.naturalWidth > 0) {
+          frames.push(img);
+          n++;
+          next();
+        } else {
+          sprite.frames = frames.length > 0 ? frames : null;
+          onDone(frames);
+        }
+      };
+      img.onerror = function () {
+        sprite.frames = frames.length > 0 ? frames : null;
+        onDone(frames);
+      };
+      img.src = dir + base + "-" + n + ".png";
+    }
+    next();
+  }
+
   // Charge le manifeste puis toutes les images listées.
   // Manifeste embarqué : repli quand assets/manifest.json est inaccessible
   // (par ex. ouverture du jeu en file://, ouù XMLHttpRequest est bloqué par CORS).
@@ -67,14 +118,20 @@
       img.onload = function () {
         if (img.naturalWidth > 0) {
           frames[name] = { src: dir + name + ".png", w: img.naturalWidth, h: img.naturalHeight };
-          G.SPRITES.house[name] = { img: img, w: frames[name].w, h: frames[name].h };
+          var sp = { img: img, w: frames[name].w, h: frames[name].h };
+          G.SPRITES.house[name] = sp;
           consecMiss = 0;
+          probeAnimFrames(sp, dir, name, function () {
+            n++;
+            if (consecMiss >= MAX_MISS) { onDone(frames); return; }
+            next();
+          });
         } else {
           consecMiss++;
+          n++;
+          if (consecMiss >= MAX_MISS) { onDone(frames); return; }
+          next();
         }
-        n++;
-        if (consecMiss >= MAX_MISS) { onDone(frames); return; }
-        next();
       };
       img.onerror = function () {
         consecMiss++;
@@ -120,9 +177,12 @@
         img.onload = function () {
           if (img.naturalWidth > 0) {
             frames[lowerName] = { src: dir + name, w: img.naturalWidth, h: img.naturalHeight };
-            G.SPRITES.foret[lowerName] = { img: img, w: img.naturalWidth, h: img.naturalHeight };
+            var sp = { img: img, w: img.naturalWidth, h: img.naturalHeight };
+            G.SPRITES.foret[lowerName] = sp;
+            probeAnimFrames(sp, dir, lowerName, function () { n++; next(); });
+          } else {
+            n++; next();
           }
-          n++; next();
         };
         img.onerror = function () {
           ci++; tryCand();
@@ -152,8 +212,9 @@
       (function (key) {
         var img = new Image();
         img.onload = function () {
-          G.SPRITES.player[key] = { img: img, w: img.naturalWidth || 32, h: img.naturalHeight || 48 };
-          done();
+          var sp = { img: img, w: img.naturalWidth || 32, h: img.naturalHeight || 48 };
+          G.SPRITES.player[key] = sp;
+          probeAnimFrames(sp, dir, key, function () { done(); });
         };
         img.onerror = function () { done(); };
         img.src = dir + key + ".png";
@@ -223,9 +284,14 @@
       (function (e) {
         var img = new Image();
         img.onload = function () {
-          G.SPRITES[e.ent][e.frame] = { img: img, w: img.naturalWidth || e.def.w, h: img.naturalHeight || e.def.h };
-          _loaded++;
-          if (_loaded >= _total) probePlayer(afterPlayer);
+          var sp = { img: img, w: img.naturalWidth || e.def.w, h: img.naturalHeight || e.def.h };
+          G.SPRITES[e.ent][e.frame] = sp;
+          var dir = e.def.src.substring(0, e.def.src.lastIndexOf("/") + 1);
+          var base = e.frame;
+          probeAnimFrames(sp, dir, base, function () {
+            _loaded++;
+            if (_loaded >= _total) probePlayer(afterPlayer);
+          });
         };
         img.onerror = function () {
           _loaded++;
