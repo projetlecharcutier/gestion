@@ -70,8 +70,15 @@
   };
 
   // Bascule la musique selon le cycle jour/nuit. Appelé depuis update().
+  // Ne joue aucune musique tant que la partie n'a pas démarré (menu d'accueil).
   G.updateMusic = function () {
     if (!enabled) return;
+    if (!G.state.started) {
+      if (dayWidget) try { dayWidget.pause(); } catch (e) {}
+      if (nightWidget) try { nightWidget.pause(); } catch (e) {}
+      currentTrack = null;
+      return;
+    }
     var night = G.isNight(G.state.clock);
     var want = night ? "night" : "day";
     if (want === currentTrack) return;

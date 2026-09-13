@@ -102,23 +102,24 @@
  // ou puisse passer sous la forêt (bas du PNG).
  // Retourne {rx, solTop} où rx = demi-largeur opaque, solTop = hauteur de
  // la zone bloquante depuis le sol (t.y), ou null si pas de sprite.
+  // Calcule la zone de collision d'une forêt, identique à la logique des
+  // bâtiments : boîte AABB basée sur le contenu opaque réel du PNG. Le rendu
+  // dessine le PNG bas-centre sur (t.x, t.y) : largeur monde = sp.w*2,
+  // hauteur monde = sp.h*2. La zone non-marchable = boîte opaque complète
+  // ancrée bas-centre : [t.x - rx, t.x + rx] x [t.y - oh, t.y].
+  // Même approche que shrinkToOpaque/aabbHitsBuildings : pas de logique dédiée.
+  // Retourne {rx, oh} (rx = demi-largeur opaque, oh = hauteur opaque) ou null.
   G.treeBounds = function (kind) {
     if (!G.hasSprite("tree", kind)) return null;
     var sp = G.SPRITES.tree[kind];
     var b = G.spriteBounds("tree", kind) || { x0: 0, y0: 0, x1: 1, y1: 1 };
     var opaqueW = (b.x1 - b.x0) * sp.w * 2;
-    // Hauteur bloquante au sol : on prend une fraction de la hauteur opaque
-    // (le bas du contenu) pour représenter l'empreinte au sol, pas tout le
-    // feuillage. ~25% de la hauteur opaque, avec un minimum sensible.
     var opaqueH = (b.y1 - b.y0) * sp.h * 2;
-    var solTop = Math.max(opaqueH * 0.25, 16);
-    return { rx: opaqueW / 2, solTop: solTop, cy: 0 };
+    return { rx: opaqueW / 2, oh: opaqueH };
   };
-  // Teste si la boîte centrée (x,y) de demi-côté half chevauche un arbre.
-  // La zone non-marchable = boîte rectangulaire ancrée au sol : 
-  // X dans [t.x - t.rx, t.x + t.rx], Y dans [t.y - t.solTop, t.y].
-  // Le joueur ne peut pas marcher sur l'empreinte au sol de la forêt,
-  // mais le feuillage (haut du PNG) ne le bloque pas.
+  // Teste si la boîte centrée (x,y) de demi-côté half chevauche une forêt.
+  // Même logique que aabbHitsBuildings : AABB standard sur la boîte opaque
+  // du PNG ancrée bas-centre. [t.x - rx, t.x + rx] x [t.y - oh, t.y].
   G.hitsTree = function (x, y, half) {
     var grid = G.treeGrid;
     if (!grid) return false;
@@ -131,9 +132,10 @@
         for (var n = 0; n < arr.length; n++) {
           var t = arr[n];
           if (t.rx) {
-            // Boîte rectangulaire au sol : [t.x - rx, t.x + rx] x [t.y - solTop, t.y].
+            // AABB : boîte joueur [x-half, x+half] x [y-half, y+half] vs
+            // boîte forêt [t.x-rx, t.x+rx] x [t.y-oh, t.y].
             if (x + half > t.x - t.rx && x - half < t.x + t.rx &&
-                y + half > t.y - t.solTop && y - half < t.y) return true;
+                y + half > t.y - t.oh && y - half < t.y) return true;
           } else {
             // Repli (pas de PNG) : cercle (t.x, t.y, t.r).
             var cx = Math.max(Math.abs(t.x - x) - half, 0);
@@ -178,7 +180,7 @@
       grid[key].push(o);
       state.trees.push({
         x: tx, y: ty, r: r, kind: kind, hp: 2,
-        rx: b ? b.rx : 0, solTop: b ? b.solTop : 0, cy: 0
+        rx: b ? b.rx : 0, oh: b ? b.oh : 0
       });
     }
     var placed = 0;
@@ -372,7 +374,7 @@
       } while (G.nearBuilding(tx, ty, 30) && tries < 12);
       if (tries < 12) {
         var tb = G.treeBounds("town");
-        state.trees.push({ x: tx, y: ty, r: G.rand(56, 88), kind: "town", hp: 2, rx: tb ? tb.rx : 0, solTop: tb ? tb.solTop : 0, cy: 0 });
+        state.trees.push({ x: tx, y: ty, r: G.rand(56, 88), kind: "town", hp: 2, rx: tb ? tb.rx : 0, oh: tb ? tb.oh : 0 });
       }
     }
     // Forêt hors ville : les arbres wild popent par groupes de 1 à 10,
@@ -385,7 +387,7 @@
       else if (side === 2) { tx = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
       else { tx = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
       var eb = G.treeBounds("edge");
-      state.trees.push({ x: tx, y: ty, r: G.rand(64, 112), kind: "edge", hp: 2, rx: eb ? eb.rx : 0, solTop: eb ? eb.solTop : 0, cy: 0 });
+      state.trees.push({ x: tx, y: ty, r: G.rand(64, 112), kind: "edge", hp: 2, rx: eb ? eb.rx : 0, oh: eb ? eb.oh : 0 });
     }
 
     state.zombies = [];
