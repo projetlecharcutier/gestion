@@ -56,19 +56,32 @@
   // l'objet sur la carte). Appelle onDone(frames) avec la liste des frames OK.
   function probeHouses(onDone) {
     var frames = {};
-    var n = 1;
     var dir = "assets/sprites/house/";
     G.SPRITES.house = {};
+    var n = 1;
+    var consecMiss = 0;
+    var MAX_MISS = 3; // tolere jusqu'a 3 numeros consecutifs manquants
     function next() {
       var name = "H" + n;
       var img = new Image();
       img.onload = function () {
-        frames[name] = { src: dir + name + ".png", w: img.naturalWidth || 96, h: img.naturalHeight || 96 };
-        G.SPRITES.house[name] = { img: img, w: frames[name].w, h: frames[name].h };
+        if (img.naturalWidth > 0) {
+          frames[name] = { src: dir + name + ".png", w: img.naturalWidth, h: img.naturalHeight };
+          G.SPRITES.house[name] = { img: img, w: frames[name].w, h: frames[name].h };
+          consecMiss = 0;
+        } else {
+          consecMiss++;
+        }
         n++;
+        if (consecMiss >= MAX_MISS) { onDone(frames); return; }
         next();
       };
-      img.onerror = function () { onDone(frames); };
+      img.onerror = function () {
+        consecMiss++;
+        n++;
+        if (consecMiss >= MAX_MISS) { onDone(frames); return; }
+        next();
+      };
       img.src = dir + name + ".png";
     }
     next();
