@@ -30,6 +30,10 @@
   G.CYCLE_SECONDS = G.DAY_SECONDS * 2;
   G.WAVE_EVERY = 420;
   G.WAVE_LEAVE = 600;
+  // Cycle jour/nuit des zombies : vague a minuit, retraite a 8h.
+  G.NIGHT_WAVE_HOUR = 0;   // heure (jeu) de spawn de la vague
+  G.ZOMBIE_RETREAT_HOUR = 8; // heure (jeu) de retraite des zombies
+  G.ZOMBIE_RETREAT_DIST = 700; // distance de retraite hors de la ville
   G.ZOMBIE_SPEED = 117;
   G.ZOMBIE_W = 6;
   G.ZOMBIE_HALF = 3;

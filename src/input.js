@@ -191,6 +191,9 @@
     state.nextWaveAt = G.WAVE_EVERY;
     state.waveActive = false;
     state.waveCount = 0;
+    state.waveSpawnedForDay = false;
+    state.zombieMode = "retreat";
+    state.waveMsgTimer = 0;
     state.zombies = [];
     state.zombieGroups = [];
     state.birds = [];

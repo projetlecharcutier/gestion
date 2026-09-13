@@ -39,10 +39,10 @@
     ctx.fillStyle = night ? t.night : t.day;
     ctx.font = "bold 22px Segoe UI, system-ui, sans-serif";
     ctx.fillText((night ? "🌙 " : "☀ ") + hh + ":" + mm, W / 2, 12);
-    if (G.state.waveActive) {
+    if (G.state.waveMsgTimer > 0) {
       ctx.fillStyle = t.waveColor;
       ctx.font = "bold 14px Segoe UI, system-ui, sans-serif";
-      ctx.fillText("⚠ Vague de zombies", W / 2, 40);
+      ctx.fillText("⚠ Vague de zombies !", W / 2, 40);
     }
     ctx.textAlign = "right";
     ctx.fillStyle = t.dayColor;

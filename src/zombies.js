@@ -76,20 +76,27 @@
 
   G.updateZombies = function (dt) {
     var state = G.state;
-    if (!state.waveActive) {
-      if (state.elapsed >= state.nextWaveAt) {
-        G.spawnWave();
-        state.waveActive = true;
-        state.waveLeaveAt = state.elapsed + G.WAVE_LEAVE;
-        state.groupMergeTimer = 0;
-      }
-    } else {
-      if (state.elapsed >= state.waveLeaveAt) {
-        state.zombies = [];
-        state.zombieGroups = [];
-        state.waveActive = false;
-        state.nextWaveAt = state.elapsed + G.WAVE_EVERY;
-      }
+    // Cycle jour/nuit : les vagues sont pilotees par l'horloge (minuit = spawn,
+    // 8h = retraite), pas par un simple timer d'elapsed.
+    var prevClock = state.clock - (12 / G.DAY_SECONDS) * dt;
+    if (prevClock < 0) prevClock += 24;
+    // Minuit (passage a 0h) : spawn d'une nouvelle vague + message.
+    var crossedMidnight = prevClock > 22 && state.clock < 2;
+    if (crossedMidnight && !state.waveSpawnedForDay) {
+      G.spawnWave();
+      state.waveActive = true;
+      state.waveSpawnedForDay = true;
+      state.zombieMode = "attack";
+      state.groupMergeTimer = 0;
+      state.waveMsgTimer = 8; // message "Vague de zombies" affiche 8 s
+    }
+    if (state.waveMsgTimer > 0) state.waveMsgTimer -= dt;
+    // 8h : les zombies se retirent loin de la ville (n'attaquent plus la mairie)
+    // et on rearme le drapeau de vague pour la nuit suivante.
+    var crossedMorning = prevClock < 8 && state.clock >= 8;
+    if (crossedMorning) {
+      if (state.waveActive) state.zombieMode = "retreat";
+      state.waveSpawnedForDay = false;
     }
 
     if (state.waveActive && state.zombieGroups) {
@@ -148,6 +155,7 @@
       }
     }
     if (state.zombieGroups) {
+      var retreating = state.zombieMode === "retreat";
       for (var gi = 0; gi < state.zombieGroups.length; gi++) {
         var grp = state.zombieGroups[gi];
         var cible = null;
@@ -155,6 +163,16 @@
         var distP = Math.sqrt(pdx * pdx + pdy * pdy);
         if (distP < G.ZOMBIE_ATTACK_RANGE) {
           cible = { x: p.x, y: p.y, isPlayer: true };
+        } else if (retreating) {
+          // Mode retraite (apres 8h) : s'eloigne de la ville, n'attaque pas la
+          // mairie. Cible un point a ZOMBIE_RETREAT_DIST hors de la ville, dans
+          // la direction opposee au centre-ville.
+          var tcx = (G.TOWN_MIN + G.TOWN_MAX) / 2;
+          var rdx = grp.x - tcx, rdy = grp.y - tcx;
+          var rlen = Math.sqrt(rdx * rdx + rdy * rdy) || 1;
+          cible = { x: tcx + (rdx / rlen) * (G.TOWN / 2 + G.ZOMBIE_RETREAT_DIST),
+                    y: tcx + (rdy / rlen) * (G.TOWN / 2 + G.ZOMBIE_RETREAT_DIST),
+                    isPlayer: false, retreat: true };
         } else if (mairie) {
           // Cible la mairie ; attaque aussi les murs rencontrés sur le chemin.
           // La cible d'un mur est le point du bord le plus proche du groupe,

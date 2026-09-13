@@ -80,6 +80,9 @@
     waveActive: false,
     waveCount: 0,
     waveLeaveAt: 0,
+    waveSpawnedForDay: false,
+    zombieMode: "retreat",
+    waveMsgTimer: 0,
     time: 0
   };
 })();

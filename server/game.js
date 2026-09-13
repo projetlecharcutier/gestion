@@ -78,6 +78,9 @@
       waveActive: false,
       waveCount: 0,
       waveLeaveAt: 0,
+      waveSpawnedForDay: false,
+      zombieMode: "retreat",
+      waveMsgTimer: 0,
       time: 0,
       startTimer: 0,
       floaters: []
@@ -392,7 +395,8 @@
       mairieHp: mairieHp(),
       mairieMaxHp: G.MAIRIE_MAX_HP,
       waveCount: state.waveCount || 0,
-      waveActive: state.waveActive || false
+      waveActive: state.waveActive || false,
+      waveMsgTimer: state.waveMsgTimer || 0
     };
   }
 
