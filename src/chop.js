@@ -1,4 +1,5 @@
-// Récolte de planches à la hache : rester à côté d'un arbre pendant TREE_CHOP_TIME.
+// Récolte de planches à la hache : s'équiper de la hache et maintenir
+// Espace pendant TREE_CHOP_TIME à proximité d'une forêt ou d'une palissade.
 (function () {
   "use strict";
   var G = window.GAME = window.GAME || {};
@@ -47,6 +48,12 @@
     }
     if (!state.axeEquipped) {
       state.chopTarget = null;
+      state.chopWall = null;
+      state.chopTimer = 0;
+      return;
+    }
+    // Pas d'action automatique : il faut maintenir Espace pour utiliser la hache.
+    if (!state.keys || !state.keys.space) {
       state.chopTimer = 0;
       return;
     }
@@ -100,7 +107,7 @@
   // Ratio d'avancement de la récolte (0..1) pour le cercle de décompte, ou -1 si inactif.
   G.chopProgress = function () {
     var state = G.state;
-    if (!state.axeEquipped || (!state.chopTarget && !state.chopWall)) return -1;
+    if (!state.axeEquipped || (!state.keys || !state.keys.space) || (!state.chopTarget && !state.chopWall)) return -1;
     return state.chopTimer / G.TREE_CHOP_TIME;
   };
 })();
