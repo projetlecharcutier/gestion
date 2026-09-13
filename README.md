@@ -72,3 +72,33 @@ Ouvrez `index.html` dans un navigateur récent (Chrome, Firefox, Edge, Safari).
 ## Technologies
 
 HTML, CSS et JavaScript natif (vanilla) sur un `<canvas>`. Aucune build, aucun paquet, aucune dépendance externe.
+
+## Mode multijoueur
+
+Le jeu est jouable en **multijoueur** (jusqu'à 20 joueurs) via un serveur Node.js léger.
+
+### Lancer le serveur
+
+```bash
+cd server
+npm install        # installe ws
+npm start          # écoute sur le port PORT (8080 par défaut)
+```
+
+### Rejoindre une partie
+
+Ouvrez `index.html` dans un navigateur pendant que le serveur tourne. Le menu d'accueil affiche :
+
+- l'**heure dans le monde** du serveur (jour/nuit),
+- le **nombre de joueurs connectés** et leur nom,
+- le statut (en attente, départ dans Xs, partie en cours).
+
+Entrez votre nom et cliquez sur **Lancer une partie** pour rejoindre.
+
+### Règles de la partie serveur
+
+- Une **partie unique** est hébergée par le serveur.
+- La partie se **lance 30 s** après l'arrivée du premier joueur.
+- Si **aucun joueur n'est connecté**, la partie est arrêtée (relancée à la prochaine connexion).
+- Si la **mairie est détruite**, la partie redémarre automatiquement.
+- Les places (max 20) sont **libérées à la déconnexion**.

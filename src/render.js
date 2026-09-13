@@ -281,6 +281,56 @@
     }
   };
 
+  // Dessine un autre joueur (multijoueur). Repli simple : ombre + sprite local
+  // (mêmes textures que le joueur) + nom au-dessus. Uniquement pour le rendu.
+  G.drawRemotePlayer = function (rp) {
+    var ctx = G.ctx;
+    var base = G.proj(rp.x, rp.y);
+    var z = G.state.zoom;
+    ctx.save();
+    ctx.fillStyle = G.TEXTURES.player.shadow;
+    ctx.beginPath();
+    ctx.ellipse(base[0], base[1], 9 * z * 0.5, 4 * z * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    var dx = rp.moving ? (rp.lastDx || 0) : 0;
+    var dy = rp.moving ? (rp.lastDy || 0) : 0;
+    var sprite = G.playerSprite ? G.playerSprite(rp.equipped, rp.axeEquipped, dx, dy) : null;
+    if (!sprite) sprite = G.spriteFor("player", dx, dy);
+    if (sprite) {
+      var scale = z * 0.5;
+      var dw = sprite.w * scale, dh = sprite.h * scale;
+      if (rp.face < 0) {
+        ctx.save();
+        ctx.translate(base[0], base[1]);
+        ctx.scale(-1, 1);
+        ctx.drawImage(sprite.img, -dw / 2, -dh, dw, dh);
+        ctx.restore();
+      } else {
+        ctx.drawImage(sprite.img, base[0] - dw / 2, base[1] - dh, dw, dh);
+      }
+    }
+    // Nom + barre de vie.
+    ctx.save();
+    ctx.font = "bold 11px monospace";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#fff";
+    ctx.strokeStyle = "rgba(0,0,0,0.7)";
+    ctx.lineWidth = 3;
+    var ny = base[1] - (sprite ? sprite.h * z * 0.5 + 14 : 30);
+    ctx.strokeText(rp.name, base[0], ny);
+    ctx.fillText(rp.name, base[0], ny);
+    if (rp.hp !== undefined && rp.hp < G.PLAYER_MAX_HP) {
+      var bw = 28, bh = 4;
+      var bx = base[0] - bw / 2, by = ny + 4;
+      ctx.fillStyle = "#3a0a0a";
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.fillStyle = "#e23b3b";
+      ctx.fillRect(bx, by, bw * (rp.hp / G.PLAYER_MAX_HP), bh);
+    }
+    ctx.restore();
+  };
+
   G.drawProjectiles = function () {
     var ctx = G.ctx;
     var t = G.TEXTURES.projectile;
@@ -573,6 +623,13 @@
       var bd = state.birds[bi2];
       drawables.push({ depth: bd.x + bd.y + 100000, type: "bird", ref: bd });
     }
+    // Autres joueurs (multijoueur) : affichés comme le joueur local.
+    if (state.remotePlayers) {
+      for (var rpi = 0; rpi < state.remotePlayers.length; rpi++) {
+        var rp = state.remotePlayers[rpi];
+        drawables.push({ depth: rp.x + rp.y, type: "player", ref: rp });
+      }
+    }
     var pDepth = state.player.x + state.player.y;
 
     drawables.sort(function (a, b) { return a.depth - b.depth; });
@@ -590,6 +647,7 @@
       else if (d.type === "wall") G.drawWall(d.ref);
       else if (d.type === "zombie") G.drawZombie(d.ref);
       else if (d.type === "bird") G.drawBird(d.ref);
+      else if (d.type === "player") G.drawRemotePlayer(d.ref);
     }
     if (!drewPlayer) { G.drawPlayer(); G.drawPlayerHpBar(); }
 

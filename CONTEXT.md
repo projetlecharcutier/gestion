@@ -119,3 +119,46 @@ Voir `docs/textures.md` pour la spec.
 ## Specs détaillées par système
 
 Voir `docs/` : une spec courte par système (contrats, entrées/sorties, contraintes).
+
+## Mode multijoueur (client-serveur)
+
+Le jeu fonctionne en mode **client-serveur** : un serveur Node.js héberge une **partie unique** (max 20 joueurs), les clients se connectent en WebSocket et ne font que le rendu + envoi des inputs. Le serveur est **autorité** sur la simulation (déplacement, collisions, zombies, projectiles, mairie, récolte, vagues, game over).
+
+### Serveur (`server/`)
+
+| Fichier | Rôle |
+|---------|------|
+| `server/index.js` | Serveur WebSocket (ws), boucle 20 Hz, broadcast lobby (2 Hz) + état de jeu (10 Hz), gestion connexions/déconnexions, redémarrage auto |
+| `server/game.js` | État du monde + simulation. Charge les modules `src/*.js` partagés via `eval` (stub DOM), gère joueurs, vagues, game over |
+| `server/dom-stub.js` | Stub DOM + assets (`hasSprite→false`, canvas factice) pour exécuter `buildWorld()` sans navigateur |
+| `server/package.json` | Dépendance : `ws` uniquement |
+
+### Client (`src/net.js`)
+
+| Fonction | Rôle |
+|----------|------|
+| `G.netConnect()` | Connexion WebSocket au serveur (auto-détection hôte/port) |
+| `G.netJoin(name)` | Rejoint la partie (envoie `join`) |
+| `G.netInput(input)` | Envoie un input (`dx,dy,fire,build,buildWall,aimX,aimY,pickup,equip,toggleAxe,rotate`) |
+| `G.netHandle(msg)` | Traite `lobby` / `joined` / `state` / `restart` / `full` |
+| `G.applyRemoteState(s)` | Applique l'état serveur au state local (interpolation position joueur, sac, équipement, planches) |
+| `G.updateLobbyDisplay()` | Affiche le lobby dans le menu d'accueil (heure, joueurs connectés, statut) |
+
+### Cycle de vie de la partie (serveur)
+
+1. **Aucun joueur connecté** → partie arrêtée (en attente).
+2. **Un joueur rejoint** → compte à rebours de **30 s** avant le lancement (visible dans le lobby).
+3. **Partie lancée** → simulation active, vagues de zombies la nuit, mairie attaquable.
+4. **Mairie détruite (PV ≤ 0)** → game over, redémarrage auto après 10 s si des joueurs sont présents.
+5. **Places** : max 20, libérées à la déconnexion (non réservées).
+
+### Lancer le serveur
+
+```bash
+cd server
+npm install
+npm start          # écoute sur PORT (8080 par défaut)
+# ou : PORT=3030 npm start
+```
+
+Le client se connecte automatiquement à `ws://<hote>:8080` (ou le port du serveur). En développement local, ouvrir `index.html` dans un navigateur pendant que le serveur tourne. Le menu d'accueil affiche le lobby (heure du monde, joueurs connectés, statut) avant de rejoindre.
