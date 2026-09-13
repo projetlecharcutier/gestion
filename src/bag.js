@@ -29,6 +29,10 @@
     return out;
   };
 
+  // Detecte le double-clic : si deux clics sur la meme ligne en < 350 ms,
+  // on force l'equipement de l'arme (sans bascule) et on ferme le sac.
+  var _bagLastClick = { idx: -1, time: 0 };
+
   G.handleBagClick = function (sx, sy) {
     var L = G.bagLayout();
     var groups = G.groupItems(G.state.bag.contents);
@@ -39,20 +43,26 @@
       if (sy >= ly - L.lineH / 2 && sy < ly + L.lineH / 2 &&
           sx >= L.px && sx <= L.px + L.pw) {
         var it = groups[i];
+        var now = (typeof performance !== "undefined" ? performance.now() : Date.now());
+        var isDbl = (_bagLastClick.idx === i && (now - _bagLastClick.time) < 350);
+        _bagLastClick = { idx: i, time: now };
         if (it.kind === "arme") {
-          // Un seul objet équipé à la fois.
-          var newEq = (G.state.equipped === it.name) ? null : it.name;
-          if (G.netConnected && G.netConnected()) {
-            G.netInput({ equip: newEq });
+          var newEq;
+          if (isDbl) {
+            // Double-clic : force l'equipement (pas de bascule) + ferme le sac.
+            newEq = it.name;
+            G.state.bag.open = false;
+          } else {
+            newEq = (G.state.equipped === it.name) ? null : it.name;
           }
+          if (G.netConnected && G.netConnected()) G.netInput({ equip: newEq });
           G.state.equipped = newEq;
           if (G.state.equipped) G.state.axeEquipped = false;
         } else if (it.kind === "outil" && it.name === "Hache") {
-          if (G.netConnected && G.netConnected()) {
-            G.netInput({ toggleAxe: true });
-          }
+          if (G.netConnected && G.netConnected()) G.netInput({ toggleAxe: true });
           G.state.axeEquipped = !G.state.axeEquipped;
           if (G.state.axeEquipped) G.state.equipped = null;
+          if (isDbl) G.state.bag.open = false;
         }
         return;
       }

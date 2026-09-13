@@ -78,22 +78,34 @@
     if (!G.state.buildMode || !G.state.mouse.inside) return;
     var ctx = G.ctx;
     var t = G.TEXTURES.buildHint;
-    var s = G.proj(G.state.mouse.wx, G.state.mouse.wy);
     var dims = G.plankDims();
-    var z = G.state.zoom;
-    var pw = dims.w * 0.25 * z, ph = dims.h * 0.25 * z;
+    var w = dims.w, h = dims.h;
+    // Centre de la palissade en coords monde.
+    var cxw = G.state.mouse.wx, cyw = G.state.mouse.wy;
+    // Losange iso : projette les 4 coins de l'emprise (comme drawWall).
+    var A = G.proj(cxw - w / 2, cyw - h / 2),
+        B = G.proj(cxw + w / 2, cyw - h / 2),
+        C = G.proj(cxw + w / 2, cyw + h / 2),
+        D = G.proj(cxw - w / 2, cyw + h / 2);
     ctx.save();
     ctx.strokeStyle = G.state.planks >= G.WALL_PLANKS ? t.ok : t.nok;
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 2;
-    ctx.strokeRect(s[0] - pw / 2, s[1] - ph / 2, pw, ph);
+    ctx.beginPath();
+    ctx.moveTo(A[0], A[1]);
+    ctx.lineTo(B[0], B[1]);
+    ctx.lineTo(C[0], C[1]);
+    ctx.lineTo(D[0], D[1]);
+    ctx.closePath();
+    ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = t.textColor;
     ctx.font = "12px Segoe UI, system-ui, sans-serif";
     ctx.textAlign = "center";
+    var by = Math.min(A[1], B[1]);
     ctx.fillText(G.state.planks >= G.WALL_PLANKS ?
-      "Poser une planche (" + G.state.planks + " planches) · Clic droit = rotation" :
-      "Pas assez de planches (" + G.state.planks + "/" + G.WALL_PLANKS + ")", s[0], s[1] - ph / 2 - 8);
+      "Poser une planche (" + G.state.planks + " planches) · Molette = rotation · Clic droit = annuler" :
+      "Pas assez de planches (" + G.state.planks + "/" + G.WALL_PLANKS + ")", (A[0] + C[0]) / 2, by - 8);
     ctx.restore();
   };
 

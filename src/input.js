@@ -47,10 +47,9 @@
       state.actionHeld = true;
       e.preventDefault();
     } else if (e.button === 2) {
-      // Clic droit : en mode build = rotation de la palissade, sinon = sac.
+      // Clic droit : en mode build = sortir du mode construction, sinon = sac.
       if (state.buildMode && !state.paused && !state.inBuilding && !state.gameOver) {
-        if (G.netConnected && G.netConnected()) G.netInput({ rotate: true });
-        G.rotatePlank();
+        state.buildMode = false;
       } else if (!state.bag.open) {
         state.bag.open = true;
       } else if (state.bag.open) {
@@ -139,6 +138,12 @@
   G.canvas.addEventListener("wheel", function (e) {
     if (!G.state.started) return;
     e.preventDefault();
+    // En mode build : la molette tourne la palissade (pas de zoom).
+    if (G.state.buildMode && !G.state.paused && !G.state.inBuilding && !G.state.gameOver) {
+      if (G.netConnected && G.netConnected()) G.netInput({ rotate: true });
+      G.rotatePlank();
+      return;
+    }
     var factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
     G.state.targetZoom = G.clamp(G.state.targetZoom * factor, 1, 40);
   }, { passive: false });
