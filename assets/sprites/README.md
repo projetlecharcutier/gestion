@@ -1,101 +1,79 @@
-# Assets / Sprites (approche A — Aseprite PNG)
+# Assets / Sprites (Aseprite PNG)
 
-Les sprites sont charges par `src/assets.js` au demarrage du jeu.
+Sprites charges par `src/assets.js` au demarrage.
 
 ## Structure
 
 ```
 assets/sprites/
-  player/
-    idle.png        # statique (face camera)
-    N.png  NE.png  E.png  SE.png  S.png  SW.png  W.png  NW.png
-  bird/
-    idle.png
-    N.png  NE.png  E.png  SE.png  S.png  SW.png  W.png  NW.png
-  tree/
-    town.png  edge.png  wild.png
-  building/
-    mairie.png  generic.png   # mairie (128x128) + batiments genériques (96x96)
-  church/
-    church.png                 # église (batiment dédié, 128x128)
-  house/                      # maisons décoratives (non cliquables)
-    H1.png  H2.png  H3.png ... # détection auto : H1, H2, ... jusqu'au 1er manquant
-  wall/                       # palissades
-    palissageNESO.png  # diagonale NE-SO (mur orient "h" / axe X monde)
-    palissageNoSe.png  # diagonale NO-SE (mur orient "v" / axe Y monde)
+  player/   idle.png  N.png  NE.png  E.png  SE.png  S.png  SW.png  W.png  NW.png
+  bird/     idle.png  N.png  NE.png  E.png  SE.png  S.png  SW.png  W.png  NW.png
+  tree/     foret.png  foret1.png  foret2.png ...   # forêts (variantes)
+  building/ mairie.png  generic.png
+  church/   church.png
+  house/    H1.png  H2.png ...                      # maisons (variantes, auto)
+  wall/     palissageNESO.png  palissageNoSe.png
 ```
 
-## Format des PNG
+## Animation
 
-- **PNG transparent** (alpha), pixel art.
-- **Une seule frame par fichier** pour les directions statiques (idle + 8 dirs).
+**Regle :** ajoute des frames `<base>-0.png`, `<base>-1.png`, ... pour animer.
+Si `-0.png` existe -> l'objet est anime (cycle a 8 fps). Sinon -> statique.
+**Rien a declarer** : le jeu detecte tout seul.
 
-## Animation par frames (automatique)
-
-N'importe quel sprite peut etre anime en ajoutant des frames numerotees depuis 0,
-separees du nom de base par un tiret : `<base>-0.png`, `<base>-1.png`, ...
-
-Le jeu detecte automatiquement les frames au chargement. Si `-0.png` existe,
-l'objet est anime (cycle a 8 fps) ; sinon il reste statique sur `<base>.png`.
-
-Exemples :
+### Exemple concret : oiseau qui bat des ailes
 
 ```
 assets/sprites/bird/
-  SE.png            # statique : 1 image pour la direction SE
-  SE-0.png          # anime : 3 frames -> ailes qui battent
-  SE-1.png
-  SE-2.png
+  SE.png        <- SE-0.png absent ? oiseau SE statique
+  SE-0.png      <- -0 present ? animé : 3 frames
+  SE-1.png         frame 0 : ailes en haut
+  SE-2.png         frame 1 : ailes au milieu
+                   frame 2 : ailes en bas
+                   -> cycle 0,1,2,0,1,2... a 8 fps
+```
 
+### Exemple concret : maison animée (variante H1)
+
+```
 assets/sprites/house/
-  H1.png            # statique : maison H1 immobile
-  H1-0.png          # anime : la variante H1 s'anime (fumee de cheminee, etc.)
+  H1.png        <- H2, H3... restent statiques
+  H1-0.png      <- H1 animé seule (fumée de cheminée)
   H1-1.png
+```
 
+### Exemple concret : mairie animée
+
+```
 assets/sprites/building/
-  mairie.png        # statique
-  mairie-0.png      # anime (ex : drapeau qui ondule)
+  mairie-0.png  <- drapeau qui ondule
   mairie-1.png
 ```
 
-Regles :
-- La numrotation commence a **0** (`-0`, `-1`, ...).
-- Toutes les frames d'une animation ont la **meme taille**.
-- Le chargement s'arrete a la premiere frame absante (tolere les trous : 3
-  absences consecutives avant abandon).
-- Combine avec les **variantes** : `H1`/`H2`/... = maisons differentes
-  (choix aleatoire), `H1-0`/`H1-1` = frames d'animation de H1.
-- Aucune config : deposes les PNG, le reste est automatique.
+## Règles
 
-## Manifeste : assets/manifest.json
+- Numérotation depuis **0** (`-0`, `-1`, ...).
+- Toutes les frames d'une animation ont la **même taille**.
+- Chargement auto : s'arrête à la 1re frame absente (tolère 3 absences consécutives).
+- Combinable avec les **variantes** : `H1`/`H2` = maisons différentes (choix aléatoire) ; `H1-0`/`H1-1` = animation de H1.
+- Vitesse du cycle : `ANIM_FPS = 8` dans `src/assets.js` (modifiable).
 
-Decrit les frames de chaque sprite. Exemple :
+## Variantes vs animation
 
-```json
-{
-  "player": {
-    "idle":  { "src": "assets/sprites/player/idle.png", "w": 32, "h": 48 },
-    "N":     { "src": "assets/sprites/player/N.png",    "w": 32, "h": 48 },
-    "NE":    { "src": "assets/sprites/player/NE.png",   "w": 32, "h": 48 },
-    "E":     { "src": "assets/sprites/player/E.png",     "w": 32, "h": 48 },
-    "SE":    { "src": "assets/sprites/player/SE.png",   "w": 32, "h": 48 },
-    "S":     { "src": "assets/sprites/player/S.png",    "w": 32, "h": 48 },
-    "SW":    { "src": "assets/sprites/player/SW.png",   "w": 32, "h": 48 },
-    "W":     { "src": "assets/sprites/player/W.png",    "w": 32, "h": 48 },
-    "NW":    { "src": "assets/sprites/player/NW.png",    "w": 32, "h": 48 }
-  },
-  "bird": { ...meme structure... }
-}
-```
+| Convention | Sens | Exemple |
+|------------|------|---------|
+| `<base>.png` | 1 objet statique | `SE.png` |
+| `<base>1.png`, `<base>2.png`... | **variantes** (objets différents, choix aléatoire) | `H1.png`, `H2.png` |
+| `<base>-0.png`, `<base>-1.png`... | **animation** (frames d'un même objet, cycle) | `SE-0.png`, `SE-1.png`, `SE-2.png` |
+| `<base>1-0.png`, `<base>1-1.png`... | variante 1 **animée** | `H1-0.png`, `H1-1.png` |
+
+## Manifeste
+
+`assets/manifest.json` decrit les frames de base. Les frames d'animation (`-N`) ne
+s'y declarrent pas : elles sont detectees automatiquement.
 
 ## Directions
 
-8 directions tous les 45 degres, calculees a partir de l'angle de deplacement
-`atan2(dy, dx)` :
-- N  = haut (vers y decroissant)
-- S  = bas (vers y croissant)
-- E  = droite (x croissant)
-- W  = gauche (x decroissant)
-- NE / SE / SW / NW = diagonales
-
-Si le personnage est immobile, on affiche `idle`.
+8 directions tous les 45° (calculees via `atan2(dy, dx)`) :
+N (haut) · S (bas) · E (droite) · W (gauche) · NE · SE · SW · NW.
+Immobile -> `idle`.
