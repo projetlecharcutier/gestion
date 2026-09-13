@@ -43,7 +43,10 @@
     var p = state.player;
 
     if (state.buildMode) {
-      G.tryBuildWall(w[0], w[1]);
+      // En ligne : on stocke la cible pour que main.js l'envoie au serveur.
+      // Hors-ligne : on appelle directement tryBuildWall.
+      if (G.netConnected && G.netConnected()) state._buildWall = { wx: w[0], wy: w[1] };
+      else G.tryBuildWall(w[0], w[1]);
       return;
     }
 
@@ -55,11 +58,16 @@
       if (od < 70) {
         var px = p.x - it.x, py = p.y - it.y;
         if (Math.sqrt(px * px + py * py) < 120) {
-          it.taken = true;
-          state.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });
-          state.inventory += 1;
-          if (G.addFloater) G.addFloater(it.name);
-          G.updateHud();
+          if (G.netConnected && G.netConnected()) {
+            // Mode multijoueur : le serveur est autorité du ramassage.
+            G.netInput({ pickup: { x: Math.round(it.x), y: Math.round(it.y) } });
+          } else {
+            it.taken = true;
+            state.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });
+            state.inventory += 1;
+            if (G.addFloater) G.addFloater(it.name);
+            G.updateHud();
+          }
         }
         return; // objet prioritaire sur les bâtiments
       }
@@ -96,6 +104,7 @@
       e.preventDefault();
       // En mode pose de planche, Espace fait tourner la planche (pas de tir).
       if (state.started && state.buildMode && !state.paused && !state.inBuilding && !state.bag.open && !state.gameOver) {
+        if (G.netConnected && G.netConnected()) G.netInput({ rotate: true });
         G.rotatePlank();
       } else {
         state.keys.space = true;
@@ -154,14 +163,19 @@
     state.chest = [];
     state.chestOpen = false;
     if (G.chestScreen) G.chestScreen.hidden = true;
-    // Attend que les assets (maisons, palissades, etc.) soient chargés avant de
-    // construire le monde et de démarrer : sinon les bâtiments décoratifs et murs
-    // ne spawnent pas.
+    // Mode multijoueur : on rejoint la partie hébergée par le serveur. Le
+    // serveur construit le monde et pilote la simulation ; le client reçoit la
+    // carte au message "joined" (voir net.js).
+    if (G.netConnected && G.netConnected()) {
+      G.netJoin(v);
+      state.started = true; // le rendu démarre ; l'état réel arrive via net.
+      G.nameInput.blur();
+      return;
+    }
+    // Fallback hors-ligne : on construit le monde localement.
     function doBuild() {
       G.buildWorld();
       G.spawnBirds();
-      // Repositionne le joueur à un endroit libre (hors bâtiments et arbres)
-      // pour éviter qu'il soit coincé au démarrage.
       var p = state.player;
       p.x = G.WORLD / 2; p.y = G.WORLD / 2 + 140;
       var tries = 0;

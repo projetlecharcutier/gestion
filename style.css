@@ -106,6 +106,21 @@ canvas#game {
   text-align: left;
 }
 
+.lobby {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 0 0 14px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  min-height: 40px;
+}
+.lobby__info b { color: var(--text); }
+.lobby__status { color: var(--accent-soft); margin-top: 4px; }
+.lobby__names { margin-top: 6px; font-size: 0.82rem; opacity: 0.85; }
+
 #nameInput {
   width: 100%;
   padding: 12px 14px;

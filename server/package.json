@@ -1,0 +1,15 @@
+{
+  "name": "flex-survival-server",
+  "version": "1.0.0",
+  "description": "Serveur multijoueur mono-partie pour Flex Survival (Node.js + ws).",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "ws": "^8.21.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

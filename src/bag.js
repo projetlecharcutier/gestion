@@ -40,11 +40,17 @@
           sx >= L.px && sx <= L.px + L.pw) {
         var it = groups[i];
         if (it.kind === "arme") {
-          // Un seul objet equipe a la fois : equiper une arme desequipe la hache.
-          G.state.equipped = (G.state.equipped === it.name) ? null : it.name;
+          // Un seul objet équipé à la fois.
+          var newEq = (G.state.equipped === it.name) ? null : it.name;
+          if (G.netConnected && G.netConnected()) {
+            G.netInput({ equip: newEq });
+          }
+          G.state.equipped = newEq;
           if (G.state.equipped) G.state.axeEquipped = false;
         } else if (it.kind === "outil" && it.name === "Hache") {
-          // Un seul objet equipe a la fois : equiper la hache desequipe l'arme.
+          if (G.netConnected && G.netConnected()) {
+            G.netInput({ toggleAxe: true });
+          }
           G.state.axeEquipped = !G.state.axeEquipped;
           if (G.state.axeEquipped) G.state.equipped = null;
         }
