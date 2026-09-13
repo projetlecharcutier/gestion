@@ -37,11 +37,6 @@
       W: { src: "assets/sprites/bird/W.png", w: 64, h: 64 },
       NW: { src: "assets/sprites/bird/NW.png", w: 64, h: 64 }
     },
-    tree: {
-      town: { src: "assets/sprites/tree/town.png", w: 64, h: 80 },
-      edge: { src: "assets/sprites/tree/edge.png", w: 64, h: 80 },
-      wild: { src: "assets/sprites/tree/wild.png", w: 64, h: 80 }
-    },
     building: {
       mairie: { src: "assets/sprites/building/mairie.png", w: 128, h: 128 },
       generic: { src: "assets/sprites/building/generic.png", w: 96, h: 96 }
@@ -75,6 +70,53 @@
       };
       img.onerror = function () { onDone(frames); };
       img.src = dir + name + ".png";
+    }
+    next();
+  }
+
+  // Sonde les forêts foret/foret1.png, foret2.png, ... (casse insensible :
+  // Foret2.png est aussi accepté). Permet d'ajouter des PNG en incrémentant le
+  // numéro. La dimension w/h est lue sur l'image chargée (donne la taille de
+  // l'objet sur la carte, comme les maisons).
+  function probeForets(onDone) {
+    var frames = {};
+    var n = 0;
+    var dir = "assets/sprites/tree/";
+    G.SPRITES.foret = {};
+    // Charge en séquence : foret (ou Foret, sans numéro), puis foret1, foret2,
+    // ... avec variantes de casse. S'arrête dès qu'un numéro n'a AUCUNE
+    // variante de casse disponible (2 échecs consécutifs sur le même numéro).
+    // Le n=0 ("foret.png") est optionnel : s'il manque, on passe au n=1.
+    function next() {
+      var candidates = [];
+      if (n === 0) candidates = ["foret.png", "Foret.png"];
+      else candidates = ["foret" + n + ".png", "Foret" + n + ".png", "FORET" + n + ".png"];
+      var ci = 0;
+      var found = false;
+      function tryCand() {
+        if (ci >= candidates.length) {
+          // Aucune variante pour ce numéro : si on a déjà trouvé au moins une
+          // forêt avant, on s'arrête. Sinon et n==0, on tente le n=1.
+          if (n === 0) { n = 1; next(); return; }
+          onDone(frames);
+          return;
+        }
+        var name = candidates[ci];
+        var lowerName = name.toLowerCase().replace(".png", "");
+        var img = new Image();
+        img.onload = function () {
+          if (img.naturalWidth > 0) {
+            frames[lowerName] = { src: dir + name, w: img.naturalWidth, h: img.naturalHeight };
+            G.SPRITES.foret[lowerName] = { img: img, w: img.naturalWidth, h: img.naturalHeight };
+          }
+          n++; next();
+        };
+        img.onerror = function () {
+          ci++; tryCand();
+        };
+        img.src = dir + name;
+      }
+      tryCand();
     }
     next();
   }
@@ -160,7 +202,8 @@
       }
     }
     function finish() { _ready = true; if (onReady) onReady(); }
-    function afterPlayer() { probeHouses(finish); }
+    function afterHouses() { probeForets(finish); }
+    function afterPlayer() { probeHouses(afterHouses); }
     _total = entries.length;
     if (_total === 0) { probePlayer(afterPlayer); return; }
     for (var i = 0; i < entries.length; i++) {
@@ -205,6 +248,14 @@
   G.houseNames = function () {
     var out = [];
  if (G.SPRITES.house) for (var k in G.SPRITES.house) if (G.SPRITES.house.hasOwnProperty(k)) out.push(k);
+    return out;
+  };
+
+  // Liste les noms de forêts disponibles (foret, foret1, foret2, ...). Vide tant
+  // que les assets ne sont pas chargés.
+  G.foretNames = function () {
+    var out = [];
+    if (G.SPRITES.foret) for (var k in G.SPRITES.foret) if (G.SPRITES.foret.hasOwnProperty(k)) out.push(k);
     return out;
   };
 

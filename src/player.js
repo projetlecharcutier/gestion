@@ -44,7 +44,7 @@
     var advanced = false;
     var testX = p.x;
     var testY = ny;
-    if (!G.aabbHitsBuildings(testX, testY) && !G.hitsTree(testX, testY, G.PLAYER_HALF) && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true) &&
+    if (!G.aabbHitsBuildings(testX, testY) && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true) &&
         testX >= G.PLAYER_HALF && testX <= G.WORLD - G.PLAYER_HALF &&
         testY >= G.PLAYER_HALF && testY <= G.WORLD - G.PLAYER_HALF) {
       p.y = testY;
@@ -52,7 +52,7 @@
     }
     testY = p.y;
     testX = nx;
-    if (!G.aabbHitsBuildings(testX, testY) && !G.hitsTree(testX, testY, G.PLAYER_HALF) && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true) &&
+    if (!G.aabbHitsBuildings(testX, testY) && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true) &&
         testX >= G.PLAYER_HALF && testX <= G.WORLD - G.PLAYER_HALF &&
         testY >= G.PLAYER_HALF && testY <= G.WORLD - G.PLAYER_HALF) {
       p.x = testX;
@@ -88,7 +88,6 @@
         if (cy < G.PLAYER_HALF || cy > G.WORLD - G.PLAYER_HALF) continue;
         if (inTown && !G.inTown(cx, cy)) continue;
         if (G.aabbHitsBuildings(cx, cy)) continue;
-        if (G.hitsTree(cx, cy, G.PLAYER_HALF)) continue;
         if (G.aabbHitsWalls(cx - G.PLAYER_HALF, cy - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true)) continue;
         return { x: cx, y: cy };
       }

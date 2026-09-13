@@ -1,4 +1,4 @@
-// Génération du monde : bâtiments, murs de périmètre, objets, arbres.
+// Génération du monde : bâtiments, murs de périmètre, objets, forêts.
 (function () {
   "use strict";
   var G = window.GAME = window.GAME || {};
@@ -72,144 +72,151 @@
     return false;
   };
 
-  // Grille spatiale des arbres pour les collisions en O(1) (40000+ arbres).
-  // Construite après le spawn des arbres via buildTreeGrid().
-  G.treeGrid = null;
-  G.TREE_CELL = 200;
-  G.buildTreeGrid = function () {
-    var cell = G.TREE_CELL;
+  // Crée une forêt : objet de type bâtiment (isForet:true, isDecor:true,
+  // isChoppable:true) avec la même logique de collision qu'un bâtiment :
+  // emprise sol = largeur du PNG * 2 (ancré bas-centre), réduite à la boîte
+  // opaque réelle du PNG via shrinkToOpaque. Les forêts vont dans
+  // state.buildings[] : elles collident donc comme n'importe quel bâtiment.
+  // Repli dimension 128 si pas de sprite (côté serveur sans PNG).
+  G.makeForet = function (x, y, frame) {
+    var sp = G.SPRITES.foret && G.SPRITES.foret[frame];
+    var side = sp ? sp.w * 2 : 128;
+    var b = {
+      x: x - side / 2, y: y - side / 2, w: side, h: side,
+      name: "Forêt", msg: "", height: sp ? sp.h : 80,
+      isForet: true, isDecor: true, isChoppable: true,
+      hp: 2, maxHp: 2, foretFrame: frame,
+      door: { x: x, y: y + side / 2 }
+    };
+    if (sp) shrinkToOpaque(b, "foret", frame);
+    return b;
+  };
+
+  // Grille spatiale des bâtiments (forêts + maisons + mairie) pour des
+  // collisions en O(1) avec plusieurs milliers de forêts. Construite après
+  // buildWorld() via rebuildBuildingGrid().
+  G.buildingGrid = null;
+  G.BUILDING_CELL = 256;
+  G.rebuildBuildingGrid = function () {
+    var cell = G.BUILDING_CELL;
     var grid = {};
-    var trees = G.state.trees;
-    for (var i = 0; i < trees.length; i++) {
-      var t = trees[i];
-      var key = Math.floor(t.x / cell) + "," + Math.floor(t.y / cell);
-      if (!grid[key]) grid[key] = [];
-      grid[key].push(t);
+    var blds = G.state.buildings;
+    for (var i = 0; i < blds.length; i++) {
+      var b = blds[i];
+      var minCx = Math.floor(b.x / cell), maxCx = Math.floor((b.x + b.w) / cell);
+      var minCy = Math.floor(b.y / cell), maxCy = Math.floor((b.y + b.h) / cell);
+      for (var cx = minCx; cx <= maxCx; cx++) {
+        for (var cy = minCy; cy <= maxCy; cy++) {
+          var key = cx + "," + cy;
+          if (!grid[key]) grid[key] = [];
+          grid[key].push(b);
+        }
+      }
     }
-    G.treeGrid = grid;
+    G.buildingGrid = grid;
   };
-  // Calcule la zone de collision d'un arbre basée sur le contenu opaque réel
-  // du PNG (et non sa boîte totale, souvent 98% transparente en pixel art).
-  // Le rendu dessine le PNG ancré bas-centre : largeur monde = sp.w*2,
-  // hauteur monde = sp.h*2. Le contenu opaque occupe la fraction
-  // [x0..x1]×[y0..y1] du PNG. On en déduit :
-  // Calcule la zone de collision d'un arbre/forêt ancrée au SOL (bord
-  // inférieur du PNG). Le rendu dessine le PNG bas-centre sur (t.x, t.y) :
- // largeur monde = sp.w*2, hauteur monde = sp.h*2. La zone non-marchable
- // est une boîte rectangulaire à l'empreinte au sol : toute la largeur
- // opaque du PNG, sur une faible hauteur remontant depuis le sol (t.y).
- // Cela évite que le joueur soit bloqué dans le feuillage (haut du PNG)
- // ou puisse passer sous la forêt (bas du PNG).
- // Retourne {rx, solTop} où rx = demi-largeur opaque, solTop = hauteur de
- // la zone bloquante depuis le sol (t.y), ou null si pas de sprite.
-  // Calcule la zone de collision d'une forêt, identique à la logique des
-  // bâtiments : boîte AABB basée sur le contenu opaque réel du PNG. Le rendu
-  // dessine le PNG bas-centre sur (t.x, t.y) : largeur monde = sp.w*2,
-  // hauteur monde = sp.h*2. La zone non-marchable = boîte opaque complète
-  // ancrée bas-centre : [t.x - rx, t.x + rx] x [t.y - oh, t.y].
-  // Même approche que shrinkToOpaque/aabbHitsBuildings : pas de logique dédiée.
-  // Retourne {rx, oh} (rx = demi-largeur opaque, oh = hauteur opaque) ou null.
-  G.treeBounds = function (kind) {
-    if (!G.hasSprite("tree", kind)) return null;
-    var sp = G.SPRITES.tree[kind];
-    var b = G.spriteBounds("tree", kind) || { x0: 0, y0: 0, x1: 1, y1: 1 };
-    var opaqueW = (b.x1 - b.x0) * sp.w * 2;
-    var opaqueH = (b.y1 - b.y0) * sp.h * 2;
-    return { rx: opaqueW / 2, oh: opaqueH };
-  };
-  // Teste si la boîte centrée (x,y) de demi-côté half chevauche une forêt.
-  // Même logique que aabbHitsBuildings : AABB standard sur la boîte opaque
-  // du PNG ancrée bas-centre. [t.x - rx, t.x + rx] x [t.y - oh, t.y].
-  G.hitsTree = function (x, y, half) {
-    var grid = G.treeGrid;
+
+  // Teste si la boîte centrée (x,y) de demi-côté half chevauche une forêt
+  // (bâtiment avec isForet). AABB standard, identique à aabbHitsBuildings
+  // mais filtré sur les forêts uniquement (les zombies traversent les
+  // autres bâtiments pour atteindre la mairie).
+  G.aabbHitsForets = function (x, y, half) {
+    var grid = G.buildingGrid;
     if (!grid) return false;
-    var cell = G.TREE_CELL;
-    var gx = Math.floor(x / cell), gy = Math.floor(y / cell);
-    for (var ix = -1; ix <= 1; ix++) {
-      for (var iy = -1; iy <= 1; iy++) {
-        var arr = grid[(gx + ix) + "," + (gy + iy)];
+    var cell = G.BUILDING_CELL;
+    var minCx = Math.floor((x - half) / cell), maxCx = Math.floor((x + half) / cell);
+    var minCy = Math.floor((y - half) / cell), maxCy = Math.floor((y + half) / cell);
+    for (var cx = minCx; cx <= maxCx; cx++) {
+      for (var cy = minCy; cy <= maxCy; cy++) {
+        var arr = grid[cx + "," + cy];
         if (!arr) continue;
         for (var n = 0; n < arr.length; n++) {
-          var t = arr[n];
-          if (t.rx) {
-            // AABB : boîte joueur [x-half, x+half] x [y-half, y+half] vs
-            // boîte forêt [t.x-rx, t.x+rx] x [t.y-oh, t.y].
-            if (x + half > t.x - t.rx && x - half < t.x + t.rx &&
-                y + half > t.y - t.oh && y - half < t.y) return true;
-          } else {
-            // Repli (pas de PNG) : cercle (t.x, t.y, t.r).
-            var cx = Math.max(Math.abs(t.x - x) - half, 0);
-            var cy = Math.max(Math.abs(t.y - y) - half, 0);
-            if (cx * cx + cy * cy < t.r * t.r) return true;
-          }
+          var b = arr[n];
+          if (!b.isForet) continue;
+          if (x + half > b.x && x - half < b.x + b.w &&
+              y + half > b.y && y - half < b.y + b.h) return true;
         }
       }
     }
     return false;
   };
 
-  // Fait poper `total` arbres de type `kind` hors de la ville, regroupés en
-  // clusters de 1 à 10 arbres. Les arbres d'un même cluster sont proches mais
-  // ne se superposent pas (distance minimale entre troncs = somme des rayons).
-  G.spawnTreeClusters = function (state, total, kind) {
-    // Grille spatiale pour vérifier la proximité en O(1) (gère 48000+ arbres).
-    var cell = 150;
+  // Fait poper `total` forêts, regroupées en clusters de 1 à 10 (même
+  // distribution que l'ancien système d'arbres). Les forêts vont dans
+  // state.buildings[] avec isForet. Si inTown est vrai, elles sont placées
+  // en ville ; sinon hors ville. Les forêts d'un même cluster sont proches
+  // mais ne se superposent pas.
+  G.spawnForets = function (state, total, inTown) {
+    var names = G.foretNames();
+    if (names.length === 0) return;
+    // Grille spatiale pour vérifier la superposition en O(1).
+    var cell = 200;
     var grid = {};
     function gkey(cx, cy) { return Math.floor(cx / cell) + "," + Math.floor(cy / cell); }
-    function nearTree(tx, ty, r) {
-      var gx = Math.floor(tx / cell), gy = Math.floor(ty / cell);
-      for (var ix = -1; ix <= 1; ix++) {
-        for (var iy = -1; iy <= 1; iy++) {
-          var key = (gx + ix) + "," + (gy + iy);
-          var arr = grid[key];
+    // Pré-remplit la grille avec les bâtiments existants (mairie, église,
+    // maisons) pour éviter qu'une forêt ne se superpose à ceux-ci.
+    for (var bi0 = 0; bi0 < state.buildings.length; bi0++) {
+      var ob0 = state.buildings[bi0];
+      var k0 = gkey(ob0.x, ob0.y);
+      if (!grid[k0]) grid[k0] = [];
+      grid[k0].push(ob0);
+    }
+    function nearForet(tx, ty, half) {
+      var minCx = Math.floor((tx - half) / cell), maxCx = Math.floor((tx + half) / cell);
+      var minCy = Math.floor((ty - half) / cell), maxCy = Math.floor((ty + half) / cell);
+      for (var cx = minCx; cx <= maxCx; cx++) {
+        for (var cy = minCy; cy <= maxCy; cy++) {
+          var arr = grid[cx + "," + cy];
           if (!arr) continue;
           for (var n = 0; n < arr.length; n++) {
             var o = arr[n];
-            var dx = tx - o.x, dy = ty - o.y;
-            if (Math.sqrt(dx * dx + dy * dy) < (r + o.r) * 0.2) return true;
-        }
+            if (tx + half > o.x && tx - half < o.x + o.w &&
+                ty + half > o.y && ty - half < o.y + o.h) return true;
+          }
         }
       }
       return false;
     }
-    function addTree(tx, ty, r) {
-      var b = G.treeBounds(kind);
-      var o = { x: tx, y: ty, r: r };
-      var key = gkey(tx, ty);
+    function addForet(tx, ty, frame) {
+      var f = G.makeForet(tx, ty, frame);
+      var key = gkey(f.x, f.y);
       if (!grid[key]) grid[key] = [];
-      grid[key].push(o);
-      state.trees.push({
-        x: tx, y: ty, r: r, kind: kind, hp: 2,
-        rx: b ? b.rx : 0, oh: b ? b.oh : 0
-      });
+      grid[key].push(f);
+      state.buildings.push(f);
     }
     var placed = 0;
     var guard = 0;
-    while (placed < total && guard < total * 6) {
+    while (placed < total && guard < total * 8) {
       guard++;
       var gx, gy;
-      if (Math.random() < 0.5) {
-        gx = G.rand(0, G.WORLD);
-        gy = Math.random() < 0.5 ? G.rand(0, G.TOWN_MIN - 40) : G.rand(G.TOWN_MAX + 40, G.WORLD);
+      if (inTown) {
+        gx = G.rand(G.TOWN_MIN + 40, G.TOWN_MAX - 40);
+        gy = G.rand(G.TOWN_MIN + 40, G.TOWN_MAX - 40);
+      } else if (Math.random() < 0.5) {
+        gx = G.rand(40, G.WORLD - 40);
+        gy = Math.random() < 0.5 ? G.rand(40, G.TOWN_MIN - 40) : G.rand(G.TOWN_MAX + 40, G.WORLD - 40);
       } else {
-        gx = Math.random() < 0.5 ? G.rand(0, G.TOWN_MIN - 40) : G.rand(G.TOWN_MAX + 40, G.WORLD);
-        gy = G.rand(0, G.WORLD);
+        gx = Math.random() < 0.5 ? G.rand(40, G.TOWN_MIN - 40) : G.rand(G.TOWN_MAX + 40, G.WORLD - 40);
+        gy = G.rand(40, G.WORLD - 40);
       }
       var count = G.randi(1, 10);
       for (var j = 0; j < count && placed < total; j++) {
-        var r = G.rand(72, 144);
+        var frame = names[G.randi(0, names.length - 1)];
+        var sp = G.SPRITES.foret && G.SPRITES.foret[frame];
+        var side = sp ? sp.w * 2 : 128;
+        var half = side / 2;
         var ang = Math.random() * Math.PI * 2;
-        var dist = Math.random() * 16;
+        var dist = Math.random() * Math.max(side * 0.6, 20);
         var tx = gx + Math.cos(ang) * dist;
         var ty = gy + Math.sin(ang) * dist;
-        if (tx < 0 || tx > G.WORLD || ty < 0 || ty > G.WORLD) continue;
-        if (G.inTown(tx, ty)) continue;
-        if (nearTree(tx, ty, r)) continue;
-        addTree(tx, ty, r);
+        if (tx < half || tx > G.WORLD - half || ty < half || ty > G.WORLD - half) continue;
+        if (!inTown && G.inTown(tx, ty)) continue;
+        if (nearForet(tx, ty, half)) continue;
+        addForet(tx, ty, frame);
         placed++;
       }
     }
-    };
+  };
 
   G.buildPerimeterWall = function () {
     var state = G.state;
@@ -379,34 +386,24 @@
       { x: c - 1400, y: G.TOWN_MAX + 1200, taken: false, name: "Hache", color: "#b45309", kind: "outil" }
     ];
 
-    state.trees = [];
-    var i, tx, ty, tries;
-    for (i = 0; i < 5; i++) {
-      tries = 0;
-      do {
-        tx = G.rand(G.TOWN_MIN + 40, G.TOWN_MAX - 40);
-        ty = G.rand(G.TOWN_MIN + 40, G.TOWN_MAX - 40);
-        tries++;
-      } while (G.nearBuilding(tx, ty, 30) && tries < 12);
-      if (tries < 12) {
-        var tb = G.treeBounds("town");
-        state.trees.push({ x: tx, y: ty, r: G.rand(56, 88), kind: "town", hp: 2, rx: tb ? tb.rx : 0, oh: tb ? tb.oh : 0 });
-      }
-    }
-    // Forêt hors ville : les arbres wild popent par groupes de 1 à 10,
-    // regroupés spatialement et sans se superposer.
-    G.spawnTreeClusters(state, 2400, "wild");
-    for (i = 0; i < 5; i++) {
-      var side = G.randi(0, 3);
-      if (side === 0) { tx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ty = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); }
-      else if (side === 1) { tx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ty = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); }
-      else if (side === 2) { tx = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
-      else { tx = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
-      var eb = G.treeBounds("edge");
-      state.trees.push({ x: tx, y: ty, r: G.rand(64, 112), kind: "edge", hp: 2, rx: eb ? eb.rx : 0, oh: eb ? eb.oh : 0 });
+    // Forêts : mêmes règles de distribution que l'ancien système d'arbres
+    // (clusters de 1 à 10, ~5 en ville, 2400 hors ville, 5 en lisière), mais
+    // comme bâtiments (isForet) avec collision identique aux bâtiments.
+    G.spawnForets(state, 5, true);
+    G.spawnForets(state, 2400, false);
+    // Lisière : quelques forêts juste autour des murs (4 côtés).
+    var names = G.foretNames();
+    for (var fi = 0; fi < 5 && names.length > 0; fi++) {
+      var fs = G.randi(0, 3);
+      var ftx, fty;
+      if (fs === 0) { ftx = G.rand(G.TOWN_MIN, G.TOWN_MAX); fty = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); }
+      else if (fs === 1) { ftx = G.rand(G.TOWN_MIN, G.TOWN_MAX); fty = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); }
+      else if (fs === 2) { ftx = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); fty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
+      else { ftx = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); fty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
+      if (!G.nearBuilding(ftx, fty, 10)) state.buildings.push(G.makeForet(ftx, fty, names[G.randi(0, names.length - 1)]));
     }
 
     state.zombies = [];
-    G.buildTreeGrid();
+    G.rebuildBuildingGrid();
   };
 })();

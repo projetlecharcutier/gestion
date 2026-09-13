@@ -179,7 +179,7 @@
       var p = state.player;
       p.x = G.WORLD / 2; p.y = G.WORLD / 2 + 140;
       var tries = 0;
-      while (G.aabbHitsBuildings(p.x, p.y) || G.hitsTree(p.x, p.y, G.PLAYER_HALF)) {
+      while (G.aabbHitsBuildings(p.x, p.y)) {
         p.x = G.rand(G.TOWN_MIN + 40, G.TOWN_MAX - 40);
         p.y = G.rand(G.TOWN_MIN + 40, G.TOWN_MAX - 40);
         if (++tries > 200) break;

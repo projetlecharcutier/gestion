@@ -92,6 +92,8 @@
     var PATH_COLOR = "#fffabc";
     for (var bi = 0; bi < state.buildings.length; bi++) {
       var b = state.buildings[bi];
+      // Pas de jaune sous les forêts (éléments naturels, pas des bâtiments).
+      if (b.isForet) continue;
       var A = G.proj(b.x, b.y), B = G.proj(b.x + b.w, b.y),
           C = G.proj(b.x + b.w, b.y + b.h), D = G.proj(b.x, b.y + b.h);
       ctx.fillStyle = PATH_COLOR;
@@ -141,43 +143,6 @@
     ctx.restore();
   };
 
-  G.drawTree = function (t) {
-    var ctx = G.ctx;
-    var tx_ = G.TEXTURES.tree;
-    var s = G.proj(t.x, t.y);
-    var z = G.state.zoom;
-    // Sprite PNG si disponible (ancré en bas-centre sur la position de l'arbre).
-    if (G.hasSprite("tree", t.kind)) {
-      var sp = G.SPRITES.tree[t.kind];
-      var scale = z * 2;
-      var dw = sp.w * scale, dh = sp.h * scale;
-      ctx.drawImage(sp.img, s[0] - dw / 2, s[1] - dh, dw, dh);
-      return;
-    }
-    var r = t.r * 0.25 * z;
-    if (r < 2) r = 2;
-    var trunkW = Math.max(2, r * 0.3);
-    var trunkH = Math.max(4, r * 0.9);
-    ctx.fillStyle = tx_.trunk;
-    ctx.fillRect(s[0] - trunkW / 2, s[1] - trunkH, trunkW, trunkH);
-    var fol = tx_.foliage[t.kind] || tx_.foliage.wild;
-    var foliage = fol.light;
-    var dark = fol.dark;
-    var cy = s[1] - trunkH - r * 0.5;
-    ctx.fillStyle = foliage;
-    ctx.beginPath();
-    ctx.arc(s[0], cy, r, 0, Math.PI * 2);
-    ctx.fill();
-    var cell = Math.max(2, r * 0.28);
-    for (var py = -1; py <= 1; py++) {
-      for (var px = -2; px <= 2; px++) {
-        if (Math.abs(px) + Math.abs(py) > 2) continue;
-        if (((px + py) & 1) === 0) ctx.fillStyle = dark; else ctx.fillStyle = foliage;
-        ctx.fillRect(s[0] + px * cell - cell / 2, cy + py * cell - cell / 2, cell, cell);
-      }
-    }
-  };
-
   G.drawBuilding = function (b) {
     var ctx = G.ctx;
     var z = G.state.zoom;
@@ -187,12 +152,13 @@
         C = G.proj(b.x + b.w, b.y + b.h), D = G.proj(b.x, b.y + b.h);
     var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
 
-    // Sprite PNG si disponible : mairie, eglise (church), maison décorative
-    // ou bâtiment générique. Le PNG est dessiné à la taille exacte de l'emprise
-    // sol du bâtiment (largeur du losange iso), ancré en bas-centre sur le bord
-    // SUD du losange au sol (le point le plus bas en Y écran).
+    // Sprite PNG si disponible : forêt, mairie, eglise (church), maison
+    // décorative ou bâtiment générique. Le PNG est dessiné à la taille exacte
+    // de l'emprise sol du bâtiment (largeur du losange iso), ancré en bas-centre
+    // sur le bord SUD du losange au sol (le point le plus bas en Y écran).
     var sprite = null;
-    if (b.isDecor && b.houseSprite) sprite = b.houseSprite;
+    if (b.isForet && b.foretFrame && G.hasSprite("foret", b.foretFrame)) sprite = G.SPRITES.foret[b.foretFrame];
+    else if (b.isDecor && b.houseSprite) sprite = b.houseSprite;
     else if (b.isMairie && G.hasSprite("building", "mairie")) sprite = G.SPRITES.building.mairie;
     else if (b.isChurch && G.hasSprite("church", "church")) sprite = G.SPRITES.church.church;
     else if (G.hasSprite("building", "generic")) sprite = G.SPRITES.building.generic;
@@ -623,15 +589,12 @@
     for (var i = 0; i < state.items.length; i++) G.drawItem(state.items[i]);
 
     var drawables = [];
+    var bnds = G.visibleWorldBounds();
     for (var bi = 0; bi < state.buildings.length; bi++) {
       var bld = state.buildings[bi];
+      // Culling : ignore les bâtiments (forêts, maisons) hors écran.
+      if (bld.x + bld.w < bnds.minX || bld.x > bnds.maxX || bld.y + bld.h < bnds.minY || bld.y > bnds.maxY) continue;
       drawables.push({ depth: bld.x + bld.y, type: "building", ref: bld });
-    }
-    var bnds = G.visibleWorldBounds();
-    for (var ti = 0; ti < state.trees.length; ti++) {
-      var tr = state.trees[ti];
-      if (tr.x < bnds.minX || tr.x > bnds.maxX || tr.y < bnds.minY || tr.y > bnds.maxY) continue;
-      drawables.push({ depth: tr.x + tr.y, type: "tree", ref: tr });
     }
     for (var wi = 0; wi < state.walls.length; wi++) {
       var m = state.walls[wi];
@@ -666,7 +629,6 @@
         drewPlayer = true;
       }
       if (d.type === "building") G.drawBuilding(d.ref);
-      else if (d.type === "tree") G.drawTree(d.ref);
       else if (d.type === "wall") G.drawWall(d.ref);
       else if (d.type === "zombie") G.drawZombie(d.ref);
       else if (d.type === "bird") G.drawBird(d.ref);

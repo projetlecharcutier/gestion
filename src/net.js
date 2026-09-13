@@ -64,19 +64,15 @@
       G.updateLobbyDisplay();
     } else if (msg.type === "joined") {
       playerId = msg.playerId;
-      // Applique la carte reçue (bâtiments, arbres) à l'état local.
+      // Applique la carte reçue (bâtiments, forêts) à l'état local. Les forêts
+      // sont des bâtiments (isForet) envoyés dans msg.map.buildings : aucune
+      // logique d'arbres séparée. On reconstruit la grille de collision des
+      // bâtiments côté client pour les forêts (le serveur n'a pas les PNG).
       if (msg.map) {
         var state = G.state;
         state.buildings = msg.map.buildings || [];
-        state.trees = msg.map.trees || [];
-        // Recalcule les bornes de collision (rx, oh) côté client depuis
-        // les sprites PNG, car le serveur ne les envoie pas.
-        for (var ti = 0; ti < state.trees.length; ti++) {
-          var tb = G.treeBounds(state.trees[ti].kind);
-          state.trees[ti].rx = tb ? tb.rx : 0;
-          state.trees[ti].oh = tb ? tb.oh : 0;
-        }
-        G.buildTreeGrid();
+        _applyForetsCollision(state.buildings);
+        G.rebuildBuildingGrid();
       }
       if (msg.clock !== undefined) G.state.clock = msg.clock;
       // Démarre le rendu du jeu (le serveur pilote la simulation).
@@ -89,13 +85,8 @@
       // Redémarrage de partie : recharge la carte.
       if (msg.map) {
         G.state.buildings = msg.map.buildings || [];
-        G.state.trees = msg.map.trees || [];
-        for (var ri = 0; ri < G.state.trees.length; ri++) {
-          var rb = G.treeBounds(G.state.trees[ri].kind);
-          G.state.trees[ri].rx = rb ? rb.rx : 0;
-          G.state.trees[ri].oh = rb ? rb.oh : 0;
-        }
-        G.buildTreeGrid();
+        _applyForetsCollision(G.state.buildings);
+        G.rebuildBuildingGrid();
       }
       if (msg.clock !== undefined) G.state.clock = msg.clock;
       G.state.gameOver = false;
@@ -155,6 +146,23 @@
       }
     }
   };
+
+  // Les forêts reçues du serveur n'ont pas leurs bornes PNG (le serveur n'a
+  // pas d'images). On recalcule ici l'emprise de collision de chaque forêt à
+  // partir des sprites PNG côté client, en appelant makeForet (qui applique
+  // shrinkToOpaque). On remplace la forêt par sa version recalculée à la même
+  // position.
+  function _applyForetsCollision(buildings) {
+    for (var i = 0; i < buildings.length; i++) {
+      var b = buildings[i];
+      if (!b.isForet) continue;
+      var frame = b.foretFrame;
+      if (!frame || !G.hasSprite("foret", frame)) continue;
+      var cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+      var fresh = G.makeForet(cx, cy, frame);
+      buildings[i] = fresh;
+    }
+  }
 
   // Met à jour l'affichage du lobby dans le menu d'accueil.
   G.updateLobbyDisplay = function () {

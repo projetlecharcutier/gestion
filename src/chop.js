@@ -3,14 +3,18 @@
   "use strict";
   var G = window.GAME = window.GAME || {};
 
-  // Cherche l'arbre le plus proche à portée de hache du joueur.
+  // Cherche la forêt (bâtiment isForet) la plus proche à portée de hache
+  // du joueur. Les forêts sont des bâtiments ; on filtre sur isForet.
   function nearestChoppableTree() {
     var state = G.state;
     var p = state.player;
     var best = null, bestD = Infinity;
-    for (var i = 0; i < state.trees.length; i++) {
-      var t = state.trees[i];
-      var dx = t.x - p.x, dy = t.y - p.y;
+    var blds = state.buildings;
+    for (var i = 0; i < blds.length; i++) {
+      var t = blds[i];
+      if (!t.isForet) continue;
+      var cx = t.x + t.w / 2, cy = t.y + t.h / 2;
+      var dx = cx - p.x, dy = cy - p.y;
       var d = Math.sqrt(dx * dx + dy * dy);
       if (d < G.AXE_RANGE && d < bestD) { bestD = d; best = t; }
     }
@@ -50,7 +54,7 @@
     var wall = nearestChoppableWall();
     // Priorité : la planche si elle est plus proche que l'arbre.
     var wallD = wall ? Math.hypot((wall.x + wall.w / 2) - G.state.player.x, (wall.y + wall.h / 2) - G.state.player.y) : Infinity;
-    var treeD = target ? Math.hypot(target.x - G.state.player.x, target.y - G.state.player.y) : Infinity;
+    var treeD = target ? Math.hypot((target.x + target.w / 2) - G.state.player.x, (target.y + target.h / 2) - G.state.player.y) : Infinity;
     var isWall = wallD <= treeD;
     var cible = isWall ? wall : target;
     if (!cible) {
@@ -78,10 +82,13 @@
           state.planks += G.WALL_PLANKS;
         }
       } else {
-        // Récolte : 1 planche, arbre retiré.
+        // Récolte : 1 planche, forêt retirée des bâtiments.
         state.planks += 1;
-        var idx = state.trees.indexOf(cible);
-        if (idx >= 0) state.trees.splice(idx, 1);
+        var idx = state.buildings.indexOf(cible);
+        if (idx >= 0) {
+          state.buildings.splice(idx, 1);
+          if (G.buildingGrid) G.rebuildBuildingGrid();
+        }
       }
       state.chopTarget = null;
       state.chopWall = null;

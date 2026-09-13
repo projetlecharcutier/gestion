@@ -53,8 +53,6 @@
       planks: 0,
       items: [],
       buildings: [],
-      trees: [],
-      paths: [],
       walls: [],
       zombies: [],
       zombieGroups: [],
@@ -130,7 +128,7 @@
       chopTimer: 0
     };
     var tries = 0;
-    while (G.aabbHitsBuildings(p.x, p.y) || G.hitsTree(p.x, p.y, G.PLAYER_HALF)) {
+    while (G.aabbHitsBuildings(p.x, p.y)) {
       p.x = G.rand(G.TOWN_MIN + 40, G.TOWN_MAX - 40);
       p.y = G.rand(G.TOWN_MIN + 40, G.TOWN_MAX - 40);
       if (++tries > 200) break;
@@ -410,12 +408,10 @@
         return {
           x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h),
           name: b.name, isMairie: b.isMairie, isChurch: b.isChurch, isDecor: b.isDecor,
+          isForet: b.isForet || false, foretFrame: b.foretFrame || null,
           houseSprite: b.houseSprite ? b.houseSprite : null,
           hp: b.hp, maxHp: b.maxHp, height: b.height
         };
-      }),
-      trees: state.trees.map(function (t) {
-        return { x: Math.round(t.x), y: Math.round(t.y), kind: t.kind, hp: t.hp };
       })
     };
   }

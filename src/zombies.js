@@ -167,8 +167,8 @@
                 var stepX = z.x + (sx / sd) * inc;
                 var stepY = z.y + (sy / sd) * inc;
                 var blocked = true;
-                if (!G.aabbHitsWalls(stepX - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.hitsTree(stepX, z.y, zs)) { z.x = stepX; blocked = false; }
-                if (!G.aabbHitsWalls(z.x - zs, stepY - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.hitsTree(z.x, stepY, zs)) { z.y = stepY; blocked = false; }
+                if (!G.aabbHitsWalls(stepX - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(stepX, z.y, zs)) { z.x = stepX; blocked = false; }
+                if (!G.aabbHitsWalls(z.x - zs, stepY - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(z.x, stepY, zs)) { z.y = stepY; blocked = false; }
                 if (blocked) break;
                 done += inc;
               }

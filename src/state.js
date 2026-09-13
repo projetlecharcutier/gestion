@@ -45,8 +45,6 @@
     planks: 0,
     items: [],
     buildings: [],
-    trees: [],
-    paths: [],
     walls: [],
     zombies: [],
     zombieGroups: [],
