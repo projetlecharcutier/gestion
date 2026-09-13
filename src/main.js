@@ -16,7 +16,7 @@
         var tx = state.mouse.wx, ty = state.mouse.wy;
         var ddx = tx - p.x, ddy = ty - p.y;
         var dist = Math.sqrt(ddx * ddx + ddy * ddy);
-        if (dist > G.PLAYER_W * 12) { dx = ddx / dist; dy = ddy / dist; }
+        if (dist > 0.001) { dx = ddx / dist; dy = ddy / dist; }
       }
       // Action (clic gauche maintenu) : tir si arme équipée, sinon la hache.
       // Bloqué en mode build (le clic gauche pose la palissade).
@@ -56,7 +56,7 @@
           var tx = state.mouse.wx, ty = state.mouse.wy;
           var dx = tx - p.x, dy = ty - p.y;
           var dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist > G.PLAYER_W * 12) {
+          if (dist > 0.001) {
             var nx = dx / dist, ny = dy / dist;
             var stepX = p.x + nx * G.SPEED * dt;
             var stepY = p.y + ny * G.SPEED * dt;
