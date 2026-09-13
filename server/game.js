@@ -246,7 +246,7 @@
     // Déplacement de chaque joueur (validation côté serveur).
     for (var i = 0; i < state.players.length; i++) {
       var p = state.players[i];
-      if (!p.alive || p._build) continue;
+      if (!p.alive) continue;
       if (p._dx !== undefined && p._dy !== undefined) {
         var dx = p._dx, dy = p._dy;
         var dist = Math.sqrt(dx * dx + dy * dy);

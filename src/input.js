@@ -47,8 +47,11 @@
       state.actionHeld = true;
       e.preventDefault();
     } else if (e.button === 2) {
-      // Clic droit : menu rapide / Sac.
-      if (!state.bag.open && !state.buildMode) {
+      // Clic droit : en mode build = rotation de la palissade, sinon = sac.
+      if (state.buildMode && !state.paused && !state.inBuilding && !state.gameOver) {
+        if (G.netConnected && G.netConnected()) G.netInput({ rotate: true });
+        G.rotatePlank();
+      } else if (!state.bag.open) {
         state.bag.open = true;
       } else if (state.bag.open) {
         state.bag.open = false;
@@ -129,14 +132,8 @@
     var state = G.state;
     if (e.code === "Space") {
       e.preventDefault();
-      // Espace = avancer (vers la souris). En mode pose de planche, Espace
-      // fait tourner la planche à la place.
-      if (state.started && state.buildMode && !state.paused && !state.inBuilding && !state.bag.open && !state.gameOver) {
-        if (G.netConnected && G.netConnected()) G.netInput({ rotate: true });
-        G.rotatePlank();
-      } else {
-        state.keys.space = true;
-      }
+      // Espace = avancer (vers la souris), y compris en mode build.
+      state.keys.space = true;
     }
     if (e.code === "Escape") {
       if (state.started && state.chestOpen) { G.closeChest(); return; }

@@ -91,7 +91,7 @@
     ctx.font = "12px Segoe UI, system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(G.state.planks >= G.WALL_PLANKS ?
-      "Poser une planche (" + G.state.planks + " planches) · Espace = rotation" :
+      "Poser une planche (" + G.state.planks + " planches) · Clic droit = rotation" :
       "Pas assez de planches (" + G.state.planks + "/" + G.WALL_PLANKS + ")", s[0], s[1] - ph / 2 - 8);
     ctx.restore();
   };

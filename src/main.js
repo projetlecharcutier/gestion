@@ -10,8 +10,8 @@
     var state = G.state;
     var p = state.player;
     var dx = 0, dy = 0, fire = false, build = false, buildWall = null;
-    // Déplacement : Espace maintenu + souris dirige.
-    if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.gameOver && !state.buildMode) {
+    // Déplacement : Espace maintenu + souris dirige (autorisé en mode build).
+    if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.gameOver) {
       if (state.keys.space && state.mouse.inside) {
         var tx = state.mouse.wx, ty = state.mouse.wy;
         var ddx = tx - p.x, ddy = ty - p.y;
@@ -19,7 +19,8 @@
         if (dist > G.PLAYER_W * 12) { dx = ddx / dist; dy = ddy / dist; }
       }
       // Action (clic gauche maintenu) : tir si arme équipée, sinon la hache.
-      fire = !!state.actionHeld;
+      // Bloqué en mode build (le clic gauche pose la palissade).
+      if (!state.buildMode) fire = !!state.actionHeld;
     }
     if (state.buildMode) build = true;
     if (state._buildWall) { buildWall = state._buildWall; state._buildWall = null; }
@@ -48,9 +49,9 @@
         if (state.clock >= 24) { state.clock -= 24; state.day += 1; }
       }
       if (!state.gameOver) G.updateZombies(dt);
-      if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.gameOver && !state.buildMode) {
+      if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.gameOver) {
         var p = state.player;
-        // Déplacement : Espace maintenu + souris dirige (plus de mouvement auto).
+        // Déplacement : Espace maintenu + souris dirige (autorisé en mode build).
         if (state.keys.space && state.mouse.inside) {
           var tx = state.mouse.wx, ty = state.mouse.wy;
           var dx = tx - p.x, dy = ty - p.y;
@@ -65,7 +66,7 @@
           } else { p.moving = false; }
         } else { p.moving = false; }
       } else {
-        if (state.buildMode) state.player.moving = false;
+        state.player.moving = false;
       }
       G.handleShooting();
       G.updateProjectiles(dt);
