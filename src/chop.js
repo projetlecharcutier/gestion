@@ -52,8 +52,9 @@
       state.chopTimer = 0;
       return;
     }
-    // Pas d'action automatique : il faut maintenir Espace pour utiliser la hache.
-    if (!state.keys || !state.keys.space) {
+    // Action manuelle : il faut maintenir le clic gauche (actionHeld) pour
+    // utiliser la hache.
+    if (!state.actionHeld) {
       state.chopTimer = 0;
       return;
     }
@@ -107,7 +108,7 @@
   // Ratio d'avancement de la récolte (0..1) pour le cercle de décompte, ou -1 si inactif.
   G.chopProgress = function () {
     var state = G.state;
-    if (!state.axeEquipped || (!state.keys || !state.keys.space) || (!state.chopTarget && !state.chopWall)) return -1;
+    if (!state.axeEquipped || !state.actionHeld || (!state.chopTarget && !state.chopWall)) return -1;
     return state.chopTimer / G.TREE_CHOP_TIME;
   };
 })();

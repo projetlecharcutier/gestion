@@ -56,6 +56,7 @@
     equipped: null,
     projectiles: [],
     keys: {},
+    actionHeld: false,
     shootCd: 0,
     buildMode: false,
     plankRotation: 0,

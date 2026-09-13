@@ -63,6 +63,7 @@
       equipped: null,
       projectiles: [],
       keys: {},
+      actionHeld: false,
       shootCd: 0,
       buildMode: false,
       plankRotation: 0,
@@ -273,7 +274,7 @@
         var ang = Math.atan2(p._aimY ? p._aimY - p.y : 0, p._aimX ? p._aimX - p.x : 1);
         state.projectiles.push({
           x: p.x, y: p.y, vx: Math.cos(ang) * st.speed, vy: Math.sin(ang) * st.speed,
-          life: st.life, owner: p.id
+          life: st.life, owner: p.id, dmg: st.dmg, color: st.color, trail: []
         });
       }
       if (p.shootCd > 0) p.shootCd -= dt;
@@ -293,9 +294,8 @@
       var oldChop = { px: state.player.x, py: state.player.y, ax: state.axeEquipped,
                       pl: state.planks, inB: state.inBuilding, bagO: state.bag.open,
                       chO: state.chestOpen, chT: state.chopTarget, chW: state.chopWall, chTi: state.chopTimer,
-                      ks: state.keys ? state.keys.space : undefined };
-      if (!state.keys) state.keys = {};
-      state.keys.space = !!p._fire;
+                      ah: state.actionHeld };
+      state.actionHeld = !!p._fire;
       state.player.x = p.x; state.player.y = p.y;
       state.axeEquipped = p.axeEquipped;
       state.planks = p.planks || 0;
@@ -315,7 +315,7 @@
       state.inBuilding = oldChop.inB; state.bag.open = oldChop.bagO;
       state.chestOpen = oldChop.chO; state.chopTarget = oldChop.chT;
       state.chopWall = oldChop.chW; state.chopTimer = oldChop.chTi;
-      state.keys.space = oldChop.ks;
+      state.actionHeld = oldChop.ah;
       // Réinitialise les flags d'input consommés.
       p._dx = undefined; p._dy = undefined;
       p._fire = false; p._build = false; p._openBag = false;

@@ -10,17 +10,19 @@
     var state = G.state;
     var p = state.player;
     var dx = 0, dy = 0, fire = false, build = false, buildWall = null;
+    // Déplacement : Espace maintenu + souris dirige.
     if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.gameOver && !state.buildMode) {
-      var tx = state.mouse.wx, ty = state.mouse.wy;
-      var ddx = tx - p.x, ddy = ty - p.y;
-      var dist = Math.sqrt(ddx * ddx + ddy * ddy);
-      if (state.mouse.inside && dist > G.PLAYER_W * 12) {
-        dx = ddx / dist; dy = ddy / dist;
+      if (state.keys.space && state.mouse.inside) {
+        var tx = state.mouse.wx, ty = state.mouse.wy;
+        var ddx = tx - p.x, ddy = ty - p.y;
+        var dist = Math.sqrt(ddx * ddx + ddy * ddy);
+        if (dist > G.PLAYER_W * 12) { dx = ddx / dist; dy = ddy / dist; }
       }
+      // Action (clic gauche maintenu) : tir si arme équipée, sinon la hache.
+      fire = !!state.actionHeld;
     }
     if (state.buildMode) build = true;
     if (state._buildWall) { buildWall = state._buildWall; state._buildWall = null; }
-    fire = !!state.keys.space;
     G.netInput({
       dx: dx, dy: dy, fire: fire, build: build, buildWall: buildWall,
       aimX: state.mouse.wx, aimY: state.mouse.wy
@@ -48,16 +50,19 @@
       if (!state.gameOver) G.updateZombies(dt);
       if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.gameOver && !state.buildMode) {
         var p = state.player;
-        var tx = state.mouse.wx, ty = state.mouse.wy;
-        var dx = tx - p.x, dy = ty - p.y;
-        var dist = Math.sqrt(dx * dx + dy * dy);
-        if (state.mouse.inside && dist > G.PLAYER_W * 12) {
-          var nx = dx / dist, ny = dy / dist;
-          var stepX = p.x + nx * G.SPEED * dt;
-          var stepY = p.y + ny * G.SPEED * dt;
-          G.tryMove(stepX, stepY);
-          p.moving = true; p.lastDx = nx; p.lastDy = ny;
-          if (nx < 0) p.face = -1; else if (nx > 0) p.face = 1;
+        // Déplacement : Espace maintenu + souris dirige (plus de mouvement auto).
+        if (state.keys.space && state.mouse.inside) {
+          var tx = state.mouse.wx, ty = state.mouse.wy;
+          var dx = tx - p.x, dy = ty - p.y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist > G.PLAYER_W * 12) {
+            var nx = dx / dist, ny = dy / dist;
+            var stepX = p.x + nx * G.SPEED * dt;
+            var stepY = p.y + ny * G.SPEED * dt;
+            G.tryMove(stepX, stepY);
+            p.moving = true; p.lastDx = nx; p.lastDy = ny;
+            if (nx < 0) p.face = -1; else if (nx > 0) p.face = 1;
+          } else { p.moving = false; }
         } else { p.moving = false; }
       } else {
         if (state.buildMode) state.player.moving = false;

@@ -1,4 +1,5 @@
-// Entrées : resize canvas, souris (mouvement, clic), molette, clavier, formulaire de démarrage.
+// Entrées : resize canvas, souris (mouvement, clic gauche=action, clic droit=sac),
+// clavier (Espace=avancer), formulaire de démarrage.
 (function () {
   "use strict";
   var G = window.GAME = window.GAME || {};
@@ -27,9 +28,44 @@
 
   G.canvas.addEventListener("mouseleave", function () { G.state.mouse.inside = false; });
 
+  // Clic gauche = action (tir si arme équipée, OU utiliser la hache si
+  // hache équipée). On gère l'état maintenu (mousedown/mouseup) pour que le
+  // tir/hache se répète tant que le bouton est enfoncé.
+  G.canvas.addEventListener("mousedown", function (e) {
+    var state = G.state;
+    if (!state.started || state.paused || state.inBuilding || state.gameOver || state.chestOpen) return;
+    if (e.button === 0) {
+      // Clic gauche : action.
+      if (state.buildMode) {
+        // En build, le clic gauche pose la planche.
+        var rect = G.canvas.getBoundingClientRect();
+        var w = G.unproj(e.clientX - rect.left, e.clientY - rect.top);
+        if (G.netConnected && G.netConnected()) state._buildWall = { wx: w[0], wy: w[1] };
+        else G.tryBuildWall(w[0], w[1]);
+        return;
+      }
+      state.actionHeld = true;
+      e.preventDefault();
+    } else if (e.button === 2) {
+      // Clic droit : menu rapide / Sac.
+      if (!state.bag.open && !state.buildMode) {
+        state.bag.open = true;
+      } else if (state.bag.open) {
+        state.bag.open = false;
+      }
+      e.preventDefault();
+    }
+  });
+  G.canvas.addEventListener("mouseup", function (e) {
+    if (e.button === 0) G.state.actionHeld = false;
+  });
+  G.canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+  // Clic gauche gère aussi le ramassage d'objets et la mairie (clic simple).
   G.canvas.addEventListener("click", function (e) {
     var state = G.state;
     if (!state.started || state.paused || state.inBuilding || state.gameOver || state.chestOpen) return;
+    if (state.buildMode) return; // géré par mousedown
     var rect = G.canvas.getBoundingClientRect();
     var sx = e.clientX - rect.left;
     var sy = e.clientY - rect.top;
@@ -42,14 +78,6 @@
     var w = G.unproj(sx, sy);
     var p = state.player;
 
-    if (state.buildMode) {
-      // En ligne : on stocke la cible pour que main.js l'envoie au serveur.
-      // Hors-ligne : on appelle directement tryBuildWall.
-      if (G.netConnected && G.netConnected()) state._buildWall = { wx: w[0], wy: w[1] };
-      else G.tryBuildWall(w[0], w[1]);
-      return;
-    }
-
     for (var j = 0; j < state.items.length; j++) {
       var it = state.items[j];
       if (it.taken) continue;
@@ -59,7 +87,6 @@
         var px = p.x - it.x, py = p.y - it.y;
         if (Math.sqrt(px * px + py * py) < 120) {
           if (G.netConnected && G.netConnected()) {
-            // Mode multijoueur : le serveur est autorité du ramassage.
             G.netInput({ pickup: { x: Math.round(it.x), y: Math.round(it.y) } });
           } else {
             it.taken = true;
@@ -69,14 +96,14 @@
             G.updateHud();
           }
         }
-        return; // objet prioritaire sur les bâtiments
+        return;
       }
     }
 
     for (var i = 0; i < state.buildings.length; i++) {
       var b = state.buildings[i];
-      if (b.isDecor) continue; // maisons décoratives : non cliquables
-      if (!b.isMairie) continue; // seule la Mairie est cliquable (coffre)
+      if (b.isDecor) continue;
+      if (!b.isMairie) continue;
       var clickR = Math.max(b.w, b.h) + 10;
       var cx = b.x + b.w / 2, cy = b.y + b.h / 2;
       var ddx = w[0] - cx, ddy = w[1] - cy;
@@ -102,7 +129,8 @@
     var state = G.state;
     if (e.code === "Space") {
       e.preventDefault();
-      // En mode pose de planche, Espace fait tourner la planche (pas de tir).
+      // Espace = avancer (vers la souris). En mode pose de planche, Espace
+      // fait tourner la planche à la place.
       if (state.started && state.buildMode && !state.paused && !state.inBuilding && !state.bag.open && !state.gameOver) {
         if (G.netConnected && G.netConnected()) G.netInput({ rotate: true });
         G.rotatePlank();
@@ -115,11 +143,6 @@
       if (state.started && state.bag.open) { state.bag.open = false; return; }
       if (state.started && state.buildMode) { state.buildMode = false; return; }
       if (state.started) G.togglePause();
-    }
-    if (e.code === "KeyA" || e.key === "a" || e.key === "A" || e.key === "q" || e.key === "Q") {
-      if (state.started && !state.paused && !state.inBuilding && !state.gameOver) {
-        state.bag.open = !state.bag.open;
-      }
     }
     // Z : mode pose de planche (activation / désactivation).
     if (e.code === "KeyZ" || e.key === "z" || e.key === "Z" || e.key === "w" || e.key === "W") {

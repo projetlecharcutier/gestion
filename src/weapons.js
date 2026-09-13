@@ -8,13 +8,13 @@
     return G.WEAPON_STATS[name] || G.WEAPON_STATS["Mains nues"];
   };
 
-  // Gère le tir quand Espace est enfoncé. Appelé depuis update().
-  // shootCd est décrémenté une fois par update() dans main.js ; ici on ne fait que tirer.
+  // Gère le tir quand le clic gauche est maintenu (actionHeld). Appelé depuis
+  // update(). shootCd est décrémenté une fois par update() dans main.js.
   G.handleShooting = function () {
     var state = G.state;
     if (state.inBuilding || state.paused || state.bag.open || state.chestOpen || state.gameOver || state.buildMode) return;
     if (!state.equipped) return; // pas de tir sans arme équipée
-    if (!state.keys.space || state.shootCd > 0) return;
+    if (!state.actionHeld || state.shootCd > 0) return;
     var p = state.player;
     var tx = state.mouse.wx, ty = state.mouse.wy;
     var st = G.equippedStats();
