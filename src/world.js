@@ -390,7 +390,90 @@
       state.trees.push({ x: tx, y: ty, r: G.rand(64, 112), kind: "edge", hp: 2, rx: eb ? eb.rx : 0, oh: eb ? eb.oh : 0 });
     }
 
+    // Génère les chemins (couleur #fffabc) : sous les bâtiments + relier les
+    // bâtiments proches entre eux + un chemin de la mairie à l'ouverture de
+    // la muraille (nord) qui s'estompe hors de la ville. Les chemins ne sont
+    // qu'un décor au sol (aucun obstacle).
+    G.buildPaths();
+
     state.zombies = [];
     G.buildTreeGrid();
+  };
+
+  // Génère state.paths = liste de polylignes (tableaux de points [x,y]) avec
+  // une largeur et un facteur de fondu (alpha) pour l'estompage progressif.
+  G.buildPaths = function () {
+    var state = G.state;
+    var PATH_W = 20;
+    var paths = [];
+    var buildings = state.buildings;
+
+    function jitter(a, b, amt) {
+      // Point intermédiaire entre a et b avec un décalage perpendiculaire aléatoire.
+      var mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+      var dx = b[0] - a[0], dy = b[1] - a[1];
+      var len = Math.sqrt(dx * dx + dy * dy) || 1;
+      var nx = -dy / len, ny = dx / len;
+      var off = (Math.random() - 0.5) * 2 * amt;
+      return [mx + nx * off, my + ny * off];
+    }
+
+    function makePath(a, b, fade) {
+      // Polyligne avec 1-2 points intermédiaires aléatoires pour éviter les
+      // lignes droites. `fade` = alpha de fondu (1 = plein, <1 = estompé).
+      var pts = [a];
+      var n = 1 + Math.floor(Math.random() * 2);
+      for (var k = 0; k < n; k++) {
+        var t = (k + 1) / (n + 1);
+        var px = a[0] + (b[0] - a[0]) * t;
+        var py = a[1] + (b[1] - a[1]) * t;
+        var j = jitter([px, py], b, 30);
+        pts.push(j);
+      }
+      pts.push(b);
+      paths.push({ pts: pts, w: PATH_W, fade: fade });
+    }
+
+    function buildingCenter(b) {
+      return [b.x + b.w / 2, b.y + b.h / 2];
+    }
+
+    // 1. Chemins entre bâtiments proches (distance < seuil).
+    var LINK_DIST = 600;
+    for (var i = 0; i < buildings.length; i++) {
+      for (var j = i + 1; j < buildings.length; j++) {
+        var ba = buildings[i], bb = buildings[j];
+        var ca = buildingCenter(ba), cb = buildingCenter(bb);
+        var d = Math.sqrt((ca[0]-cb[0])*(ca[0]-cb[0]) + (ca[1]-cb[1])*(ca[1]-cb[1]));
+        if (d < LINK_DIST) makePath(ca, cb, 1);
+      }
+    }
+
+    // 2. Chemin de la mairie à l'ouverture de la muraille (nord), puis
+    // s'estompe progressivement hors de la ville.
+    var mairie = null;
+    for (var mi = 0; mi < buildings.length; mi++) {
+      if (buildings[mi].isMairie) { mairie = buildings[mi]; break; }
+    }
+    if (mairie) {
+      var mc = buildingCenter(mairie);
+      // L'ouverture est au milieu du mur nord : (TOWN_MIN + TOWN/2, TOWN_MIN).
+      var gapX = G.TOWN_MIN + G.TOWN / 2;
+      var gapY = G.TOWN_MIN;
+      makePath(mc, [gapX, gapY], 1);
+      // Prolonge le chemin vers le nord (hors ville) avec un fondu progressif.
+      var steps = 8;
+      var prev = [gapX, gapY];
+      for (var s = 1; s <= steps; s++) {
+        var fade = 1 - s / steps;
+        var nx = prev[0] + (Math.random() - 0.5) * 60;
+        var ny = prev[1] - 120;
+        makePath(prev, [nx, ny], fade);
+        prev = [nx, ny];
+        if (ny < 80) break;
+      }
+    }
+
+    state.paths = paths;
   };
 })();

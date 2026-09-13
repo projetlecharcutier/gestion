@@ -76,6 +76,7 @@
           state.trees[ti].rx = tb ? tb.rx : 0;
           state.trees[ti].oh = tb ? tb.oh : 0;
         }
+        G.buildPaths();
         G.buildTreeGrid();
       }
       if (msg.clock !== undefined) G.state.clock = msg.clock;
@@ -95,6 +96,7 @@
           G.state.trees[ri].rx = rb ? rb.rx : 0;
           G.state.trees[ri].oh = rb ? rb.oh : 0;
         }
+        G.buildPaths();
         G.buildTreeGrid();
       }
       if (msg.clock !== undefined) G.state.clock = msg.clock;

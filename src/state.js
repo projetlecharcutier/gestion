@@ -46,6 +46,7 @@
     items: [],
     buildings: [],
     trees: [],
+    paths: [],
     walls: [],
     zombies: [],
     zombieGroups: [],

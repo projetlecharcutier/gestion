@@ -80,6 +80,57 @@
     var c1 = G.proj(G.TOWN_MIN, G.TOWN_MIN), c2 = G.proj(G.TOWN_MAX, G.TOWN_MIN),
         c3 = G.proj(G.TOWN_MAX, G.TOWN_MAX), c4 = G.proj(G.TOWN_MIN, G.TOWN_MAX);
     G.fillPoly([c1, c2, c3, c4], null, tx_.border);
+
+    G.drawPaths();
+  };
+
+  // Dessine les chemins (#fffabc) au sol : largeur 20px, polylignes avec fondu.
+  // Dessine aussi la couleur #fffabc sous chaque bâtiment (empreinte au sol).
+  // Appelé depuis drawGround, avant les bâtiments (chemins au fond, pas d'obstacle).
+  G.drawPaths = function () {
+    var ctx = G.ctx;
+    var state = G.state;
+    var z = G.state.zoom;
+    var PATH_COLOR = "#fffabc";
+
+    // 1. Couleur sous les bâtiments (empreinte au sol, losange iso).
+    for (var bi = 0; bi < state.buildings.length; bi++) {
+      var b = state.buildings[bi];
+      var A = G.proj(b.x, b.y), B = G.proj(b.x + b.w, b.y),
+          C = G.proj(b.x + b.w, b.y + b.h), D = G.proj(b.x, b.y + b.h);
+      ctx.fillStyle = PATH_COLOR;
+      ctx.beginPath();
+      ctx.moveTo(A[0], A[1]);
+      ctx.lineTo(B[0], B[1]);
+      ctx.lineTo(C[0], C[1]);
+      ctx.lineTo(D[0], D[1]);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 2. Chemins (polylignes projetées, largeur monde 20px).
+    if (!state.paths) return;
+    for (var pi = 0; pi < state.paths.length; pi++) {
+      var p = state.paths[pi];
+      var pts = p.pts;
+      if (!pts || pts.length < 2) continue;
+      var fade = p.fade !== undefined ? p.fade : 1;
+      ctx.save();
+      ctx.globalAlpha = fade;
+      ctx.strokeStyle = PATH_COLOR;
+      ctx.lineWidth = p.w * z * 0.5;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      var s0 = G.proj(pts[0][0], pts[0][1]);
+      ctx.moveTo(s0[0], s0[1]);
+      for (var k = 1; k < pts.length; k++) {
+        var sp = G.proj(pts[k][0], pts[k][1]);
+        ctx.lineTo(sp[0], sp[1]);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
   };
 
   G.drawItem = function (it) {
