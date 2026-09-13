@@ -84,25 +84,28 @@
     G.drawPaths();
   };
 
-  // Dessine la couleur #fffabc sous chaque bâtiment (empreinte au sol, losange
-  // iso). Appelé depuis drawGround, avant les bâtiments (décor au fond).
+  // Dessine la couleur #fffabc sous chaque bâtiment (empreinte au sol,
+  // losange iso). Appelé depuis drawGround, avant les bâtiments (décor au
+  // fond). Dépasse de 15 px autour du bâtiment avec des bords arrondis.
   G.drawPaths = function () {
     var ctx = G.ctx;
     var state = G.state;
     var PATH_COLOR = "#fffabc";
+    var PAD = 15;
+    var RADIUS = 12;
     for (var bi = 0; bi < state.buildings.length; bi++) {
       var b = state.buildings[bi];
       // Pas de jaune sous les forêts (éléments naturels, pas des bâtiments).
       if (b.isForet) continue;
       var A = G.proj(b.x, b.y), B = G.proj(b.x + b.w, b.y),
           C = G.proj(b.x + b.w, b.y + b.h), D = G.proj(b.x, b.y + b.h);
+      // Bounding box écran du losange, agrandie de PAD px.
+      var minX = Math.min(A[0], B[0], C[0], D[0]) - PAD;
+      var maxX = Math.max(A[0], B[0], C[0], D[0]) + PAD;
+      var minY = Math.min(A[1], B[1], C[1], D[1]) - PAD;
+      var maxY = Math.max(A[1], B[1], C[1], D[1]) + PAD;
       ctx.fillStyle = PATH_COLOR;
-      ctx.beginPath();
-      ctx.moveTo(A[0], A[1]);
-      ctx.lineTo(B[0], B[1]);
-      ctx.lineTo(C[0], C[1]);
-      ctx.lineTo(D[0], D[1]);
-      ctx.closePath();
+      G.roundRect(minX, minY, maxX - minX, maxY - minY, RADIUS);
       ctx.fill();
     }
   };
