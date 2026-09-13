@@ -8,6 +8,12 @@
   var playerId = null;
   var connected = false;
 
+  // Reconciliation equipement : horodatage du dernier input equip/toggleAxe
+  // envoye + valeur attendue, pour eviter que l'etat serveur (10 Hz) ecrase la
+  // valeur optimistic du client avant que le serveur n'ait traite l'input.
+  var equipSentAt = 0;
+  var pendingEquip = null; // nom d'arme attendu (null = desequipe / hache)
+
   // URL du serveur : ws://hote:port. Détecte automatiquement l'hôte courant
   // (utile en dev local et en hébergement). En file://, fallback sur localhost.
   function serverUrl() {
@@ -50,6 +56,15 @@
 
   // Envoie un input (déplacement, tir, etc.).
   G.netInput = function (input) {
+    // Marque le debut de la fenetre de reconciliation pour equip/toggleAxe.
+    if (input.equip !== undefined) {
+      equipSentAt = (typeof performance !== "undefined" ? performance.now() : Date.now());
+      pendingEquip = input.equip; // null (desequipe) ou nom d'arme
+    }
+    if (input.toggleAxe) {
+      equipSentAt = (typeof performance !== "undefined" ? performance.now() : Date.now());
+      pendingEquip = null; // bascule hache : on attend axeEquipped cote serveur
+    }
     input.type = "input";
     G.netSend(input);
   };
@@ -136,8 +151,23 @@
           state.player.moving = p.moving;
           state.player.lastDx = p.lastDx || 0;
           state.player.lastDy = p.lastDy || 0;
-          state.equipped = p.equipped;
-          state.axeEquipped = p.axeEquipped;
+          // Reconciliation equipement : le serveur est autorite, mais on garde
+          // la valeur optimistic du client pendant un court delai apres un
+          // double-clic/equipement pour eviter le scintillement (l'etat serveur
+          // arrive avant que l'input equip soit traite). On ne reaffiche donc
+          // pas "Mains nues" par erreur.
+          var nowEq = (typeof performance !== "undefined" ? performance.now() : Date.now());
+          var pending = (equipSentAt !== 0) && (nowEq - equipSentAt < 600);
+          if (!pending) {
+            state.equipped = p.equipped;
+            state.axeEquipped = p.axeEquipped;
+          } else if (p.equipped !== undefined) {
+            if (pendingEquip !== null && p.equipped === pendingEquip) {
+              equipSentAt = 0; pendingEquip = null;
+              state.equipped = p.equipped;
+              state.axeEquipped = p.axeEquipped;
+            }
+          }
           // Sac / inventaire / planches gérés côté serveur (autorité).
           if (p.bag) { state.bag.contents = p.bag; state.inventory = p.inventory; }
           if (p.planks !== undefined) state.planks = p.planks;

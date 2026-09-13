@@ -44,7 +44,12 @@
         else G.tryBuildWall(w[0], w[1]);
         return;
       }
-      state.actionHeld = true;
+      // On n'arme pas l'action (tir/hache) tant qu'un menu (sac/coffre/eglise)
+      // est ouvert : evite un tir accidentel au moment ou le double-clic ferme
+      // le sac et equipe une arme.
+      if (!state.bag.open && !state.chestOpen && !state.churchOpen) {
+        state.actionHeld = true;
+      }
       e.preventDefault();
     } else if (e.button === 2) {
       // Clic droit : en mode build = sortir du mode construction, sinon = sac.

@@ -59,10 +59,19 @@
           G.state.equipped = newEq;
           if (G.state.equipped) G.state.axeEquipped = false;
         } else if (it.kind === "outil" && it.name === "Hache") {
-          if (G.netConnected && G.netConnected()) G.netInput({ toggleAxe: true });
-          G.state.axeEquipped = !G.state.axeEquipped;
-          if (G.state.axeEquipped) G.state.equipped = null;
-          if (isDbl) G.state.bag.open = false;
+          if (isDbl) {
+            // Double-clic : force l'equipement de la hache + ferme le sac.
+            if (!G.state.axeEquipped) {
+              if (G.netConnected && G.netConnected()) G.netInput({ toggleAxe: true });
+              G.state.axeEquipped = true;
+              G.state.equipped = null;
+            }
+            G.state.bag.open = false;
+          } else {
+            if (G.netConnected && G.netConnected()) G.netInput({ toggleAxe: true });
+            G.state.axeEquipped = !G.state.axeEquipped;
+            if (G.state.axeEquipped) G.state.equipped = null;
+          }
         }
         return;
       }
