@@ -276,6 +276,9 @@
         return true;
       }
 
+      // Marge entre les bâtiments et la muraille de la ville (en unités monde).
+      // Les bâtiments en ville ne doivent pas toucher le mur de périmètre.
+      var WALL_MARGIN = 30;
       function placeHouseAt(hx, hy, inTown) {
         var frame = houseNames[G.randi(0, houseNames.length - 1)];
         var sp = G.SPRITES.house[frame];
@@ -284,10 +287,19 @@
         if (hx < 20 || hx > G.WORLD - 20 || hy < 20 || hy > G.WORLD - 20) return false;
         // Empêche les bâtiments de bloquer l'ouverture de la muraille.
         if (nearGate(hx, hy, side)) return false;
+        // Distance minimale entre les bâtiments et la muraille de la ville.
+        if (inTown) {
+          if (hx - side / 2 < G.TOWN_MIN + WALL_MARGIN) return false;
+          if (hx + side / 2 > G.TOWN_MAX - WALL_MARGIN) return false;
+          if (hy - side / 2 < G.TOWN_MIN + WALL_MARGIN) return false;
+          if (hy + side / 2 > G.TOWN_MAX - WALL_MARGIN) return false;
+        }
         for (var bi3 = 0; bi3 < state.buildings.length; bi3++) {
           var ob = state.buildings[bi3];
-          if (hx - side / 2 < ob.x + ob.w && hx + side / 2 > ob.x &&
-              hy - side / 2 < ob.y + ob.h && hy + side / 2 > ob.y) return false;
+          // Écart de 1 px entre bâtiments : on gonfle la boîte de l'obstacle
+          // de 1 px de chaque côté avant le test AABB.
+          if (hx - side / 2 < ob.x + ob.w + 1 && hx + side / 2 > ob.x - 1 &&
+              hy - side / 2 < ob.y + ob.h + 1 && hy + side / 2 > ob.y - 1) return false;
         }
         if (inTown !== undefined && G.inTown(hx, hy) !== inTown) return false;
         var h = G.makeHouse(hx, hy, sp);
@@ -295,7 +307,8 @@
         state.buildings.push(h);
         return true;
       }
-      // Tente de coller une maison contre un bâtiment existant (4 côtés possibles).
+      // Tente de placer une maison près d'un bâtiment existant (4 côtés),
+      // avec 1 px d'écart pour qu'ils se touchent sans se superposer.
       function placeAdjacent(houses, inTown) {
         for (var t = 0; t < 20; t++) {
           var anchor = houses[G.randi(0, houses.length - 1)];
@@ -306,10 +319,12 @@
           var sideA = anchor.w;
           var dir = G.randi(0, 3); // 0=haut, 1=bas, 2=gauche, 3=droite
           var hx, hy;
-          if (dir === 0) { hx = anchor.x + sideA / 2; hy = anchor.y - side / 2; }
-          else if (dir === 1) { hx = anchor.x + sideA / 2; hy = anchor.y + anchor.h + side / 2; }
-          else if (dir === 2) { hx = anchor.x - side / 2; hy = anchor.y + sideA / 2; }
-          else { hx = anchor.x + anchor.w + side / 2; hy = anchor.y + sideA / 2; }
+          // GAP = 1 px d'écart entre les bâtiments (bord à bord + 1 px).
+          var GAP = 1;
+          if (dir === 0) { hx = anchor.x + sideA / 2; hy = anchor.y - side / 2 - GAP; }
+          else if (dir === 1) { hx = anchor.x + sideA / 2; hy = anchor.y + anchor.h + side / 2 + GAP; }
+          else if (dir === 2) { hx = anchor.x - side / 2 - GAP; hy = anchor.y + sideA / 2; }
+          else { hx = anchor.x + anchor.w + side / 2 + GAP; hy = anchor.y + sideA / 2; }
           if (placeHouseAt(hx, hy, inTown)) return true;
         }
         return false;
