@@ -82,6 +82,17 @@
     </div>
   </div>
 
+  <div class="overlay" id="churchScreen" hidden>
+    <div class="panel">
+      <h2>⛪ Eglise</h2>
+      <p class="panel__sub">Déposez une relique pour gagner 100 pièces d'or. Cliquez sur une relique du sac pour la vendre.</p>
+      <p class="panel__sub">Or : <b id="churchGold">0</b></p>
+      <div class="chest__vault" id="churchVault">Aucune relique</div>
+      <div class="chest__bag" id="churchBag"></div>
+      <button class="btn btn--primary" id="closeChurchBtn" type="button">Fermer</button>
+    </div>
+  </div>
+
   <script src="src/config.js"></script>
   <script src="src/assets.js"></script>
   <script src="src/state.js"></script>

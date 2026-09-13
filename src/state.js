@@ -30,6 +30,11 @@
   G.chestVault = document.getElementById("chestVault");
   G.chestBag = document.getElementById("chestBag");
   G.closeChestBtn = document.getElementById("closeChestBtn");
+  G.churchScreen = document.getElementById("churchScreen");
+  G.churchVault = document.getElementById("churchVault");
+  G.churchBag = document.getElementById("churchBag");
+  G.churchGold = document.getElementById("churchGold");
+  G.closeChurchBtn = document.getElementById("closeChurchBtn");
 
   G.state = {
     started: false,
@@ -54,6 +59,7 @@
     bag: { open: false, contents: [] },
     chest: [],
     chestOpen: false,
+    churchOpen: false,
     gameOverCause: "",
     equipped: null,
     projectiles: [],

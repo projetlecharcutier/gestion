@@ -11,7 +11,7 @@
     var p = state.player;
     var dx = 0, dy = 0, fire = false, build = false, buildWall = null;
     // Déplacement : Espace maintenu + souris dirige (autorisé en mode build).
-    if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.gameOver) {
+    if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.churchOpen && !state.gameOver) {
       if (state.keys.space && state.mouse.inside) {
         var tx = state.mouse.wx, ty = state.mouse.wy;
         var ddx = tx - p.x, ddy = ty - p.y;
@@ -49,7 +49,7 @@
         if (state.clock >= 24) { state.clock -= 24; state.day += 1; }
       }
       if (!state.gameOver) G.updateZombies(dt);
-      if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.gameOver) {
+      if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.churchOpen && !state.gameOver) {
         var p = state.player;
         // Déplacement : Espace maintenu + souris dirige (autorisé en mode build).
         if (state.keys.space && state.mouse.inside) {

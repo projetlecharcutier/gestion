@@ -123,28 +123,84 @@
     G.chestScreen.hidden = false;
   };
 
-  // Eglise : clic pour y déposer une relique (gagne 100 pièces d'or) et
-  // déclencher le son de cloche. Fonctionne en local ; en réseau, le client
-  // joue juste le son (le dépôt est validé côté serveur).
+  // Eglise : ouvre le panneau (comme le coffre de la mairie) pour déposer
+  // une relique et gagner 100 pièces d'or. Le son church.mp3 se joue à l'ouverture.
   G.openChurch = function () {
     var state = G.state;
     if (G.playSfx) G.playSfx("church");
+    state.churchOpen = true;
+    state.paused = false;
+    G.pauseScreen.hidden = true;
+    G.drawChurch();
+    G.churchScreen.hidden = false;
+  };
+
+  G.closeChurch = function () {
+    G.state.churchOpen = false;
+    if (G.churchScreen) G.churchScreen.hidden = true;
+  };
+
+  // Vend une relique (index dans le sac) : +100 or. En réseau, le serveur
+  // est autorité (le client demande churchDeposit ; l'or revient via l'état).
+  G.sellRelic = function (index) {
+    var state = G.state;
+    if (index < 0 || index >= state.bag.contents.length) return;
+    var it = state.bag.contents[index];
+    if (it.name !== "Relique") return;
     if (G.netConnected && G.netConnected()) {
       G.netInput({ churchDeposit: true });
+      // Le serveur retire la relique et ajoute l'or ; on la retire aussi
+      // localement pour l'affichage immédiat (l'état serveur confirmera).
+      state.bag.contents.splice(index, 1);
+      state.inventory = state.bag.contents.length;
+      G.drawChurch();
+      G.updateHud();
       return;
     }
-    // Local : cherche une relique dans le sac.
-    var idx = -1;
+    state.bag.contents.splice(index, 1);
+    state.inventory = state.bag.contents.length;
+    state.gold = (state.gold || 0) + 100;
+    if (G.addFloater) G.addFloater("100 pièces d'or");
+    G.drawChurch();
+    G.updateHud();
+  };
+
+  // Affiche les reliques du sac (cliquables pour vendre) + l'or courant.
+  G.drawChurch = function () {
+    var state = G.state;
+    if (G.churchGold) G.churchGold.textContent = String(state.gold || 0);
+    var bag = G.churchBag;
+    if (!bag) return;
+    bag.innerHTML = "";
+    var list = document.createElement("div");
+    list.className = "chest__list";
+    // Filtre les reliques du sac (groupées).
+    var relics = [];
     for (var i = 0; i < state.bag.contents.length; i++) {
-      if (state.bag.contents[i].name === "Relique") { idx = i; break; }
+      if (state.bag.contents[i].name === "Relique") relics.push(i);
     }
-    if (idx >= 0) {
-      state.bag.contents.splice(idx, 1);
-      state.inventory = state.bag.contents.length;
-      state.gold = (state.gold || 0) + 100;
-      if (G.addFloater) G.addFloater("100 pièces d'or");
-      G.updateHud();
+    if (G.churchVault) {
+      G.churchVault.textContent = relics.length > 0
+        ? ("Reliques : " + relics.length)
+        : "Aucune relique dans votre sac";
     }
+    if (relics.length === 0) {
+      var empty = document.createElement("p");
+      empty.textContent = "(ramassez une relique puis revenez la vendre)";
+      list.appendChild(empty);
+    } else {
+      for (var r = 0; r < relics.length; r++) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn chest__item";
+        btn.textContent = "Relique  —  Vendre (+100 or)";
+        (function (idx) {
+          btn.addEventListener("click", function () { G.sellRelic(idx); });
+        })(relics[r]);
+        list.appendChild(btn);
+      }
+    }
+    bag.appendChild(list);
   };
 
   G.closeChest = function () {

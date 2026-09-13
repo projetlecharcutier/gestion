@@ -33,7 +33,7 @@
   // tir/hache se répète tant que le bouton est enfoncé.
   G.canvas.addEventListener("mousedown", function (e) {
     var state = G.state;
-    if (!state.started || state.paused || state.inBuilding || state.gameOver || state.chestOpen) return;
+    if (!state.started || state.paused || state.inBuilding || state.gameOver || state.chestOpen || state.churchOpen) return;
     if (e.button === 0) {
       // Clic gauche : action.
       if (state.buildMode) {
@@ -67,7 +67,7 @@
   // Clic gauche gère aussi le ramassage d'objets et la mairie (clic simple).
   G.canvas.addEventListener("click", function (e) {
     var state = G.state;
-    if (!state.started || state.paused || state.inBuilding || state.gameOver || state.chestOpen) return;
+    if (!state.started || state.paused || state.inBuilding || state.gameOver || state.chestOpen || state.churchOpen) return;
     if (state.buildMode) return; // géré par mousedown
     var rect = G.canvas.getBoundingClientRect();
     var sx = e.clientX - rect.left;
@@ -151,6 +151,7 @@
       state.keys.space = true;
     }
     if (e.code === "Escape") {
+      if (state.started && state.churchOpen) { G.closeChurch(); return; }
       if (state.started && state.chestOpen) { G.closeChest(); return; }
       if (state.started && state.bag.open) { state.bag.open = false; return; }
       if (state.started && state.buildMode) { state.buildMode = false; return; }
@@ -197,7 +198,9 @@
     state.chopTimer = 0;
     state.chest = [];
     state.chestOpen = false;
+    state.churchOpen = false;
     if (G.chestScreen) G.chestScreen.hidden = true;
+    if (G.churchScreen) G.churchScreen.hidden = true;
     // Mode multijoueur : on rejoint la partie hébergée par le serveur. Le
     // serveur construit le monde et pilote la simulation ; le client reçoit la
     // carte au message "joined" (voir net.js).
@@ -231,4 +234,5 @@
   G.resumeBtn.addEventListener("click", G.togglePause);
   G.leaveBuildingBtn.addEventListener("click", G.leaveBuilding);
   G.closeChestBtn.addEventListener("click", G.closeChest);
+  if (G.closeChurchBtn) G.closeChurchBtn.addEventListener("click", G.closeChurch);
 })();
