@@ -93,23 +93,32 @@
   // Le rendu dessine le PNG ancré bas-centre : largeur monde = sp.w*2,
   // hauteur monde = sp.h*2. Le contenu opaque occupe la fraction
   // [x0..x1]×[y0..y1] du PNG. On en déduit :
-  //   - rx : demi-largeur monde du contenu opaque.
-  //   - ry : demi-hauteur monde du contenu opaque.
-  //   - cy : centre Y monde (le PNG est ancré bas à t.y, donc le centre du
-  //          contenu opaque est à t.y - (1 - (y0+y1)/2) * sp.h*2).
-  // Retourne {rx, ry, cy} ou null si pas de sprite.
+  // Calcule la zone de collision d'un arbre/forêt ancrée au SOL (bord
+  // inférieur du PNG). Le rendu dessine le PNG bas-centre sur (t.x, t.y) :
+ // largeur monde = sp.w*2, hauteur monde = sp.h*2. La zone non-marchable
+ // est une boîte rectangulaire à l'empreinte au sol : toute la largeur
+ // opaque du PNG, sur une faible hauteur remontant depuis le sol (t.y).
+ // Cela évite que le joueur soit bloqué dans le feuillage (haut du PNG)
+ // ou puisse passer sous la forêt (bas du PNG).
+ // Retourne {rx, solTop} où rx = demi-largeur opaque, solTop = hauteur de
+ // la zone bloquante depuis le sol (t.y), ou null si pas de sprite.
   G.treeBounds = function (kind) {
     if (!G.hasSprite("tree", kind)) return null;
     var sp = G.SPRITES.tree[kind];
     var b = G.spriteBounds("tree", kind) || { x0: 0, y0: 0, x1: 1, y1: 1 };
     var opaqueW = (b.x1 - b.x0) * sp.w * 2;
+    // Hauteur bloquante au sol : on prend une fraction de la hauteur opaque
+    // (le bas du contenu) pour représenter l'empreinte au sol, pas tout le
+    // feuillage. ~25% de la hauteur opaque, avec un minimum sensible.
     var opaqueH = (b.y1 - b.y0) * sp.h * 2;
-    return { rx: opaqueW / 2, ry: opaqueH / 2, cy: -(1 - (b.y0 + b.y1) / 2) * sp.h * 2 };
+    var solTop = Math.max(opaqueH * 0.25, 16);
+    return { rx: opaqueW / 2, solTop: solTop, cy: 0 };
   };
   // Teste si la boîte centrée (x,y) de demi-côté half chevauche un arbre.
-  // La zone non-marchable = losange elliptique (Manhattan normalisé) centré sur
-  // le contenu opaque réel du PNG (t.x, t.y+t.cy) de demi-axes (t.rx, t.ry).
-  // Utilise la grille spatiale : ne vérifie que les arbres des cellules voisines.
+  // La zone non-marchable = boîte rectangulaire ancrée au sol : 
+  // X dans [t.x - t.rx, t.x + t.rx], Y dans [t.y - t.solTop, t.y].
+  // Le joueur ne peut pas marcher sur l'empreinte au sol de la forêt,
+  // mais le feuillage (haut du PNG) ne le bloque pas.
   G.hitsTree = function (x, y, half) {
     var grid = G.treeGrid;
     if (!grid) return false;
@@ -122,12 +131,9 @@
         for (var n = 0; n < arr.length; n++) {
           var t = arr[n];
           if (t.rx) {
-            // Losange elliptique centré (t.x, t.y + t.cy) de demi-axes (t.rx, t.ry)
-            // vs boîte demi-côté half. Chevauchement si la distance L1 normalisée
-            // du centre à la boîte est < 1.
-            var ddx = Math.max(Math.abs(t.x - x) - half, 0) / t.rx;
-            var ddy = Math.max(Math.abs((t.y + t.cy) - y) - half, 0) / t.ry;
-            if (ddx + ddy < 1) return true;
+            // Boîte rectangulaire au sol : [t.x - rx, t.x + rx] x [t.y - solTop, t.y].
+            if (x + half > t.x - t.rx && x - half < t.x + t.rx &&
+                y + half > t.y - t.solTop && y - half < t.y) return true;
           } else {
             // Repli (pas de PNG) : cercle (t.x, t.y, t.r).
             var cx = Math.max(Math.abs(t.x - x) - half, 0);
@@ -172,7 +178,7 @@
       grid[key].push(o);
       state.trees.push({
         x: tx, y: ty, r: r, kind: kind, hp: 2,
-        rx: b ? b.rx : 0, ry: b ? b.ry : 0, cy: b ? b.cy : 0
+        rx: b ? b.rx : 0, solTop: b ? b.solTop : 0, cy: 0
       });
     }
     var placed = 0;
@@ -366,7 +372,7 @@
       } while (G.nearBuilding(tx, ty, 30) && tries < 12);
       if (tries < 12) {
         var tb = G.treeBounds("town");
-        state.trees.push({ x: tx, y: ty, r: G.rand(56, 88), kind: "town", hp: 2, rx: tb ? tb.rx : 0, ry: tb ? tb.ry : 0, cy: tb ? tb.cy : 0 });
+        state.trees.push({ x: tx, y: ty, r: G.rand(56, 88), kind: "town", hp: 2, rx: tb ? tb.rx : 0, solTop: tb ? tb.solTop : 0, cy: 0 });
       }
     }
     // Forêt hors ville : les arbres wild popent par groupes de 1 à 10,
@@ -379,7 +385,7 @@
       else if (side === 2) { tx = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
       else { tx = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); ty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
       var eb = G.treeBounds("edge");
-      state.trees.push({ x: tx, y: ty, r: G.rand(64, 112), kind: "edge", hp: 2, rx: eb ? eb.rx : 0, ry: eb ? eb.ry : 0, cy: eb ? eb.cy : 0 });
+      state.trees.push({ x: tx, y: ty, r: G.rand(64, 112), kind: "edge", hp: 2, rx: eb ? eb.rx : 0, solTop: eb ? eb.solTop : 0, cy: 0 });
     }
 
     state.zombies = [];

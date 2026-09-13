@@ -69,6 +69,14 @@
         var state = G.state;
         state.buildings = msg.map.buildings || [];
         state.trees = msg.map.trees || [];
+        // Recalcule les bornes de collision (rx, solTop) côté client depuis
+        // les sprites PNG, car le serveur ne les envoie pas.
+        for (var ti = 0; ti < state.trees.length; ti++) {
+          var tb = G.treeBounds(state.trees[ti].kind);
+          state.trees[ti].rx = tb ? tb.rx : 0;
+          state.trees[ti].solTop = tb ? tb.solTop : 0;
+          state.trees[ti].cy = 0;
+        }
         G.buildTreeGrid();
       }
       if (msg.clock !== undefined) G.state.clock = msg.clock;
@@ -83,6 +91,12 @@
       if (msg.map) {
         G.state.buildings = msg.map.buildings || [];
         G.state.trees = msg.map.trees || [];
+        for (var ri = 0; ri < G.state.trees.length; ri++) {
+          var rb = G.treeBounds(G.state.trees[ri].kind);
+          G.state.trees[ri].rx = rb ? rb.rx : 0;
+          G.state.trees[ri].solTop = rb ? rb.solTop : 0;
+          G.state.trees[ri].cy = 0;
+        }
         G.buildTreeGrid();
       }
       if (msg.clock !== undefined) G.state.clock = msg.clock;
