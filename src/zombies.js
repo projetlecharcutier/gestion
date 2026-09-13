@@ -1,21 +1,29 @@
-// Zombies : vagues nocturnes, petits groupes qui fusionnent, IA (cible joueur/mur, attaque).
+// Zombies : vagues nocturnes, spawn depuis les 4 bords de la carte,
+// convergence vers la mairie, attaque des murs/joueurs sur le chemin,
+// séparation (1 px d'écart entre zombies).
 (function () {
   "use strict";
   var G = window.GAME = window.GAME || {};
 
+  // Spawn d'une vague de zombies : répartis sur les 4 bords de la carte,
+  // de toutes parts. Chaque groupe arrive d'un côté différent pour converger
+  // vers la mairie au centre.
   G.spawnWave = function () {
     var state = G.state;
     var count = G.ZOMBIE_PER_WAVE_BASE * Math.pow(G.ZOMBIE_WAVE_GROWTH, state.day);
     state.waveCount = Math.round(count);
-    var side = G.randi(0, 3);
     var nbGroups = Math.ceil(count / G.GROUP_SIZE);
     state.zombieGroups = [];
     for (var g = 0; g < nbGroups; g++) {
+      // Chaque groupe vient d'un bord aléatoire de la carte (au-delà de la
+      // ville), réparti sur les 4 côtés pour une convergence de toutes parts.
+      var side = g % 4;
       var lx, ly;
-      if (side === 0) { lx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ly = G.clamp(G.TOWN_MIN - G.rand(30, 220), 0, G.WORLD); }
-      else if (side === 1) { lx = G.rand(G.TOWN_MIN, G.TOWN_MAX); ly = G.clamp(G.TOWN_MAX + G.rand(30, 220), 0, G.WORLD); }
-      else if (side === 2) { lx = G.clamp(G.TOWN_MIN - G.rand(30, 220), 0, G.WORLD); ly = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
-      else { lx = G.clamp(G.TOWN_MAX + G.rand(30, 220), 0, G.WORLD); ly = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
+      var edge = G.rand(40, 200);
+      if (side === 0) { lx = G.rand(0, G.WORLD); ly = edge; }
+      else if (side === 1) { lx = G.rand(0, G.WORLD); ly = G.WORLD - edge; }
+      else if (side === 2) { lx = edge; ly = G.rand(0, G.WORLD); }
+      else { lx = G.WORLD - edge; ly = G.rand(0, G.WORLD); }
       var grp = { x: lx, y: ly, members: [] };
       state.zombieGroups.push(grp);
       var n = Math.min(G.GROUP_SIZE, count - g * G.GROUP_SIZE);
@@ -98,6 +106,47 @@
     for (var mi0 = 0; mi0 < state.buildings.length; mi0++) {
       if (state.buildings[mi0].isMairie) { mairie = state.buildings[mi0]; break; }
     }
+    // Grille spatiale temporaire pour la séparation entre zombies (O(1)).
+    var zGrid = null;
+    var zCell = 32;
+    function zGridKey(x, y) { return Math.floor(x / zCell) + "," + Math.floor(y / zCell); }
+    if (state.waveActive) {
+      zGrid = {};
+      for (var zi = 0; zi < state.zombies.length; zi++) {
+        var zz = state.zombies[zi];
+        var zk = zGridKey(zz.x, zz.y);
+        if (!zGrid[zk]) zGrid[zk] = [];
+        zGrid[zk].push(zz);
+      }
+    }
+    // Répousse un zombie hors de ses voisins trop proches (séparation 1 px).
+    function separate(z) {
+      if (!zGrid) return;
+      var zs = G.ZOMBIE_HALF;
+      var minD = zs * 2 + 1; // 1 px d'écart
+      var gx = Math.floor(z.x / zCell), gy = Math.floor(z.y / zCell);
+      for (var ix = -1; ix <= 1; ix++) {
+        for (var iy = -1; iy <= 1; iy++) {
+          var arr = zGrid[(gx + ix) + "," + (gy + iy)];
+          if (!arr) continue;
+          for (var n = 0; n < arr.length; n++) {
+            var o = arr[n];
+            if (o === z) continue;
+            var dx = z.x - o.x, dy = z.y - o.y;
+            var d = Math.sqrt(dx * dx + dy * dy);
+            if (d < minD && d > 0.01) {
+              var push = (minD - d) / 2;
+              z.x += (dx / d) * push;
+              z.y += (dy / d) * push;
+            } else if (d <= 0.01) {
+              // Superposition exacte : pousse dans une direction aléatoire.
+              z.x += G.rand(-1, 1);
+              z.y += G.rand(-1, 1);
+            }
+          }
+        }
+      }
+    }
     if (state.zombieGroups) {
       for (var gi = 0; gi < state.zombieGroups.length; gi++) {
         var grp = state.zombieGroups[gi];
@@ -109,7 +158,7 @@
         } else if (mairie) {
           // Cible la mairie ; attaque aussi les murs rencontrés sur le chemin.
           // La cible d'un mur est le point du bord le plus proche du groupe,
-          // pour que le zombie attaqué quand il est collé au mur.
+          // pour que le zombie attaque quand il est collé au mur.
           var best = null, bestD = Infinity, bestPt = null;
           for (var j = 0; j < state.walls.length; j++) {
             var m = state.walls[j];
@@ -174,6 +223,9 @@
               }
             }
           }
+          // Séparation : repousse le zombie hors de ses voisins trop proches
+          // (1 px d'écart) pour éviter le chevauchement.
+          separate(z);
         }
       }
     }
