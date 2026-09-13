@@ -280,11 +280,12 @@
       if (p.shootCd > 0) p.shootCd -= dt;
       // Pose de planche.
       if (p._buildWall) {
-        var oldP = { x: state.player.x, y: state.player.y };
         state.player.x = p.x; state.player.y = p.y; state.planks = p.planks || 0;
         G.tryBuildWall(p._buildWall.x, p._buildWall.y);
+        // pushPlayerOutOfWall (appelé par tryBuildWall) a pu déplacer state.player
+        // pour éviter un blocage : on récupère la nouvelle position.
+        p.x = state.player.x; p.y = state.player.y;
         p.planks = state.planks;
-        state.player.x = oldP.x; state.player.y = oldP.y;
         p._buildWall = null;
       }
       // Réinitialise les flags d'input consommés.

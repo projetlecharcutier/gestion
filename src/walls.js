@@ -31,6 +31,9 @@
 
   // Pose une planche au point cliqué. Les planches peuvent se superposer.
   // En mode build le personnage est fige : on peut poser n'importe ou sur la carte.
+  // Après la pose, si la palissade chevauche le joueur, on le repousse juste
+  // à l'extérieur de la palissade (bord le plus proche) pour éviter qu'il ne
+  // se retrouve bloqué dessus à la fin de la grace period.
   G.tryBuildWall = function (wx, wy) {
     var state = G.state;
     var p = state.player;
@@ -52,7 +55,74 @@
     // apres sa pose, pour eviter qu'il se retrouve coince dessus.
     var wall = { x: mx, y: my, w: w, h: h, hp: G.WALL_MAX_HP, orient: w > h ? "h" : "v", built: true, noBlockUntil: state.time + G.WALL_GRACE };
     state.walls.push(wall);
+    // Anti-blocage : si le joueur est à l'intérieur de la palissade, le repousser
+    // vers le bord le plus proche, juste à l'extérieur. On tente les 4 bords et
+    // on garde la position libre la plus proche.
+    G.pushPlayerOutOfWall(wall);
     G.updateHud();
+  };
+
+  // Repousse le joueur hors d'une palissade s'il s'y trouve coincé. Déplace
+  // le joueur vers le bord le plus proche de la palissade, à une marge de
+  // PLAYER_HALF + 2 px à l'extérieur. Si aucune des 4 directions n'est libre,
+  // cherche une position libre en spirale autour de la palissade.
+  G.pushPlayerOutOfWall = function (wall) {
+    var p = G.state.player;
+    var ph = G.PLAYER_HALF;
+    var margin = ph + 2;
+    // Le joueur est-il à l'intérieur de la palissade (AABB) ?
+    var px = p.x, py = p.y;
+    if (px + ph <= wall.x && px - ph >= wall.x + wall.w &&
+        py + ph <= wall.y && py - ph >= wall.y + wall.h) return; // non
+    if (!(px + ph > wall.x && px - ph < wall.x + wall.w &&
+          py + ph > wall.y && py - ph < wall.y + wall.h)) return; // pas de chevauchement
+    // 4 positions candidates : juste à l'extérieur de chaque bord.
+    var cands = [
+      { x: wall.x - margin, y: py },            // gauche
+      { x: wall.x + wall.w + margin, y: py },   // droite
+      { x: px, y: wall.y - margin },             // haut
+      { x: px, y: wall.y + wall.h + margin }    // bas
+    ];
+    var best = null, bestD = Infinity;
+    for (var i = 0; i < cands.length; i++) {
+      var c = cands[i];
+      if (c.x < ph || c.x > G.WORLD - ph || c.y < ph || c.y > G.WORLD - ph) continue;
+      // Vérifie que la position est libre (bâtiments + autres murs, en
+      // ignorant la grace de la palissade qu'on vient de poser).
+      if (G.aabbHitsBuildings(c.x, c.y)) continue;
+      if (G.aabbHitsWallsExcluding(c.x - ph, c.y - ph, G.PLAYER_W, G.PLAYER_W, wall)) continue;
+      var d = (c.x - px) * (c.x - px) + (c.y - py) * (c.y - py);
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    if (best) { p.x = best.x; p.y = best.y; return; }
+    // Aucun bord libre : recherche en spirale autour du centre de la palissade.
+    var cx = wall.x + wall.w / 2, cy = wall.y + wall.h / 2;
+    var step = 20, maxR = 400;
+    for (var r = margin; r <= maxR; r += step) {
+      for (var ang = 0; ang < Math.PI * 2; ang += Math.PI / 6) {
+        var nx = cx + Math.cos(ang) * r;
+        var ny = cy + Math.sin(ang) * r;
+        if (nx < ph || nx > G.WORLD - ph || ny < ph || ny > G.WORLD - ph) continue;
+        if (G.aabbHitsBuildings(nx, ny)) continue;
+        if (G.aabbHitsWallsExcluding(nx - ph, ny - ph, G.PLAYER_W, G.PLAYER_W, wall)) continue;
+        p.x = nx; p.y = ny;
+        return;
+      }
+    }
+  };
+
+  // Comme aabbHitsWalls mais ignore une palissade spécifique (excl). Utilisé
+  // par pushPlayerOutOfWall pour ne pas être bloqué par la palissade fraîchement
+  // posée lors de la recherche d'une position libre.
+  G.aabbHitsWallsExcluding = function (cx, cy, cw, ch, excl) {
+    var walls = G.state.walls;
+    for (var i = 0; i < walls.length; i++) {
+      var m = walls[i];
+      if (m === excl) continue;
+      if (!m.built) continue;
+      if (cx < m.x + m.w && cx + cw > m.x && cy < m.y + m.h && cy + ch > m.y) return true;
+    }
+    return false;
   };
 
   // Teste si la boîte (cx,cy,cw,ch) chevauche une planche POSÉE par le joueur (wall.built).
