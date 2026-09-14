@@ -20,10 +20,11 @@
     b.x = cx - b.w / 2; b.y = by - b.h / 2;
   }
 
-  // Variante ancrée en bas-centre : la boîte opaque est alignée sur le bord
-  // SUD du losange (comme le rendu du sprite), ce qui correspond à la zone
-  // réellement occupée par un arbre (canopée en haut, tronc/sol en bas).
-  // En X la boîte reste centrée ; en Y elle est ancrée sur y_base (bord sud).
+  // Variante ancrée en bas-centre : la boîte de collision correspond à la
+  // zone opaque réelle du PNG, positionnée comme le rendu (image ancrée en
+  // bas-centre). En X la boîte reste centrée ; en Y la boîte est ancrée sur le
+  // bord SUD de la zone opaque (y1), pas sur le bord sud de l'image complète
+  // (qui peut avoir de la transparence en bas).
   function shrinkToOpaqueBottom(b, ent, frame) {
     var bd = G.spriteBounds(ent, frame);
     if (!bd) return;
@@ -31,9 +32,13 @@
     var baseY = b.y + b.h;
     var fw = bd.x1 - bd.x0, fh = bd.y1 - bd.y0;
     if (fw <= 0 || fh <= 0) return;
+    var fullH = b.h;
     b.w = b.w * fw; b.h = b.h * fh;
     b.x = cx - b.w / 2;
-    b.y = baseY - b.h;
+    // La zone opaque en Y va de y0 à y1 (fraction du PNG). Le rendu ancre
+    // l'image complète sur baseY (bord sud). Le bas de la zone opaque est à
+    // baseY - fullH*(1-y1). La collision est ancrée sur ce point.
+    b.y = baseY - fullH * (1 - bd.y1) - b.h;
   }
 
   G.makeHouse = function (x, y, sprite) {
