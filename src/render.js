@@ -153,11 +153,12 @@
     var hPx = b.height * 0.25 * z;
     var rw = b.renderW || b.w;
     var rh = b.renderH || b.h;
+    var rx = b.renderX != null ? b.renderX : b.x;
     var rBaseY = b.baseY != null ? b.baseY : (b.y + b.h);
     var A = G.proj(b.x, b.y), B = G.proj(b.x + b.w, b.y),
         C = G.proj(b.x + b.w, b.y + b.h), D = G.proj(b.x, b.y + b.h);
-    var RA = G.proj(b.x, rBaseY - rh), RC = G.proj(b.x + rw, rBaseY),
-        RD = G.proj(b.x, rBaseY);
+    var RA = G.proj(rx, rBaseY - rh), RC = G.proj(rx + rw, rBaseY),
+        RD = G.proj(rx, rBaseY);
     var cx = (RA[0] + RC[0]) / 2, by = (RA[1] + RC[1]) / 2;
 
     // Sprite PNG si disponible : forêt, mairie, eglise (church), maison
