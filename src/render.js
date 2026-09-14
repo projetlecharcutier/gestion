@@ -447,8 +447,17 @@
     var cell = zoom * 0.5;
     if (cell < 1.2) cell = 1.2;
     var cols = 6, rows = 15;
-    var ox = base[0] - (cols / 2) * cell;
-    var oy = base[1] - rows * cell;
+    // Lunge / télégraphie d'attaque : élan visuel vers l'avant pendant
+    // ZOMBIE_LUNGE_TIME après un coup. Le sprite penche dans la direction
+    // de la cible, amplitude proportionnelle au temps restant.
+    var lungeOX = 0, lungeOY = 0;
+    if (z.lunge && z.lunge > 0) {
+      var f = (z.lunge / G.ZOMBIE_LUNGE_TIME) * G.ZOMBIE_LUNGE_VIS;
+      lungeOX = (z.lungeDx || 0) * f;
+      lungeOY = (z.lungeDy || 0) * f;
+    }
+    var ox = base[0] + lungeOX - (cols / 2) * cell;
+    var oy = base[1] + lungeOY - rows * cell;
     ctx.save();
     ctx.fillStyle = t.shadow;
     ctx.beginPath();

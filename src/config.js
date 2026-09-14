@@ -54,6 +54,24 @@
   // Contournement des murs : biais latéral (px/s) appliqué quand le zombie
   // est bloqué, pour longer le mur plutôt que de s'enliser.
   G.ZOMBIE_WALL_SLIDE = 60;
+  // --- Comportement d'attaque ---
+  // Lunge / télégraphie : durée (s) d'un élan visuel vers l'avant au moment
+  // de frapper, et amplitude (px écran) de l'offset de rendu.
+  G.ZOMBIE_LUNGE_TIME = 0.15;
+  G.ZOMBIE_LUNGE_VIS = 3.0;
+  // Harceleurs : fraction des zombies qui ciblent individuellement le joueur
+  // de plus loin, et portée (px) de détection du joueur pour ces éclaireurs.
+  G.ZOMBIE_HARASS_RATIO = 0.15;
+  G.ZOMBIE_HARASS_RANGE = 620;
+  // Attaque de meute : bonus de dégâts par assaillant proche (capé), rayon de
+  // regroupement (px) pour compter les assaillants autour d'un zombie qui frappe.
+  G.ZOMBIE_SWARM_BONUS = 1.0;
+  G.ZOMBIE_SWARM_CAP = 5;
+  G.ZOMBIE_SWARM_RADIUS = 24;
+  // Pilleurs : fraction des zombies qui font que leur groupe cible les
+  // planches construites par le joueur (built) à portée (px) plutôt que la mairie.
+  G.ZOMBIE_RAIDER_RATIO = 0.20;
+  G.ZOMBIE_RAID_RANGE = 520;
   G.ZOMBIE_W = 6;
   G.ZOMBIE_HALF = 3;
   G.ZOMBIE_ATTACK_RANGE = 150;

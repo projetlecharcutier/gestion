@@ -36,6 +36,23 @@ Règles de mouvement :
 
 Constantes associées (`src/config.js`) : `ZOMBIE_SPEED_VAR`, `ZOMBIE_WANDER_AMP`, `ZOMBIE_WANDER_FREQ`, `ZOMBIE_HESITATE_TIME`, `ZOMBIE_HESITATE_RATE`, `ZOMBIE_NOISE_RANGE`, `ZOMBIE_NOISE_TIME`, `ZOMBIE_WALL_SLIDE`.
 
+## Comportement d'attaque
+Chaque zombie porte un rôle d'attaque (init à l'apparition) :
+- `harasser` (bool, ~`ZOMBIE_HARASS_RATIO`) — éclaireur qui se détache du groupe pour traquer le joueur seul s'il le détecte à `ZOMBIE_HARASS_RANGE` (escouade divergente).
+- `raider` (bool, ~`ZOMBIE_RAIDER_RATIO`) — pilleur ; si un groupe en contient (`grp.hasRaider`), il dévie sa cible vers les planches construites par le joueur (`built`) à `ZOMBIE_RAID_RANGE` plutôt que la mairie.
+- `lunge`/`lungeDx`/`lungeDy` — télégraphie d'attaque : élan visuel vers l'avant pendant `ZOMBIE_LUNGE_TIME` après un coup (rendu dans `drawZombie`).
+
+Règles d'attaque :
+- Un zombie à moins de 14 px de sa cible frappe (joueur → `ZOMBIE_PLAYER_DMG` ; mur/mairie → `ZOMBIE_WALL_DMG` + bonus de meute).
+- **Lunge** : chaque coup déclenche un élan visuel (`z.lunge`) dans la direction de la cible.
+- **Attaque de meute** : les dégâts aux murs/mairie augmentent d'un bonus par assaillant voisin (`swarmBonus`, grille spatiale), capé à `ZOMBIE_SWARM_CAP` assaillants × `ZOMBIE_SWARM_BONUS` — impression de coups frappés ensemble.
+- **Pilleurs** : un groupe avec `hasRaider` cible les planches `built` à portée au lieu de la mairie (menace le travail du joueur).
+- **Harceleurs** : un `harasser` surcharge sa cible par le joueur dès qu'il est à `ZOMBIE_HARASS_RANGE`, indépendamment de la cible du groupe.
+
+Rendu (`src/render.js`) : `drawZombie` applique un offset de lunge au sprite (penche vers l'avant au-dessus de son ombre) pendant `z.lunge > 0`. En multijoueur, `lunge`/`lungeDx`/`lungeDy` sont transmis dans le snapshot zombie (`server/game.js`).
+
+Constantes associées (`src/config.js`) : `ZOMBIE_LUNGE_TIME`, `ZOMBIE_LUNGE_VIS`, `ZOMBIE_HARASS_RATIO`, `ZOMBIE_HARASS_RANGE`, `ZOMBIE_SWARM_BONUS`, `ZOMBIE_SWARM_CAP`, `ZOMBIE_SWARM_RADIUS`, `ZOMBIE_RAIDER_RATIO`, `ZOMBIE_RAID_RANGE`.
+
 ## Étendre
 - **Variante de zombie** : ajouter un `z.kind`/`z.variant` et brancher dans `updateZombies` + `drawZombie`.
 - **Zombie plus résistant** : augmenter `z.hp` à l'apparition et gérer plusieurs PV dans `updateProjectiles` (déjà `- pr.dmg`).

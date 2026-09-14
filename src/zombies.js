@@ -24,7 +24,7 @@
       else if (side === 1) { lx = G.rand(0, G.WORLD); ly = G.WORLD - edge; }
       else if (side === 2) { lx = edge; ly = G.rand(0, G.WORLD); }
       else { lx = G.WORLD - edge; ly = G.rand(0, G.WORLD); }
-      var grp = { x: lx, y: ly, members: [] };
+      var grp = { x: lx, y: ly, members: [], hasRaider: false };
       state.zombieGroups.push(grp);
       var n = Math.min(G.GROUP_SIZE, count - g * G.GROUP_SIZE);
       for (var k = 0; k < n; k++) {
@@ -36,6 +36,8 @@
         // speedFactor = vitesse relative (±ZOMBIE_SPEED_VAR), wanderPhase/Freq =
         // phase et fréquence d'oscillation du cap ("drunken walk"), hesitate =
         // décompte d'une pause en cours (0 = aucun).
+        // Rôles d'attaque : harasser (éclaireur qui harcèle le joueur de loin),
+        // raider (pilleur qui pousse son groupe vers les planches construites).
         var sf = 1 + G.rand(-G.ZOMBIE_SPEED_VAR, G.ZOMBIE_SPEED_VAR);
         var z = {
           x: zx, y: zy, hp: G.ZOMBIE_HP, atkCd: 0, wallCd: 0, group: grp,
@@ -44,8 +46,12 @@
           wanderPhase: Math.random() * Math.PI * 2,
           wanderFreq: G.ZOMBIE_WANDER_FREQ * (0.7 + Math.random() * 0.6),
           hesitate: 0,
-          blockedSides: 0
+          blockedSides: 0,
+          harasser: Math.random() < G.ZOMBIE_HARASS_RATIO,
+          raider: Math.random() < G.ZOMBIE_RAIDER_RATIO,
+          lunge: 0, lungeDx: 0, lungeDy: 0
         };
+        if (z.raider) grp.hasRaider = true;
         grp.members.push(z);
         state.zombies.push(z);
       }
@@ -74,6 +80,7 @@
               var ang = (idx / total) * Math.PI * 2 + G.rand(0, 0.5);
               z.slotAng = ang;
               z.slotDist = G.GROUP_FORMATION * (0.3 + Math.random() * 0.7);
+              if (z.raider) big.hasRaider = true;
               big.members.push(z);
             }
             var idx2 = groups.indexOf(small);
@@ -181,6 +188,28 @@
         }
       }
     }
+    // Bonus de dégâts de meute : compte les voisins zombies à portée de
+    // regroupement et renvoie un bonus croissant (capé) — effet de coups
+    // frappés ensemble par une meute collée au même mur/mairie.
+    function swarmBonus(z) {
+      if (!zGrid) return 0;
+      var count = 0;
+      var gx = Math.floor(z.x / zCell), gy = Math.floor(z.y / zCell);
+      var rad = G.ZOMBIE_SWARM_RADIUS;
+      for (var ix = -1; ix <= 1; ix++) {
+        for (var iy = -1; iy <= 1; iy++) {
+          var arr = zGrid[(gx + ix) + "," + (gy + iy)];
+          if (!arr) continue;
+          for (var n = 0; n < arr.length; n++) {
+            if (arr[n] === z) continue;
+            var dx = z.x - arr[n].x, dy = z.y - arr[n].y;
+            if (dx * dx + dy * dy < rad * rad) count++;
+          }
+        }
+      }
+      if (count > G.ZOMBIE_SWARM_CAP) count = G.ZOMBIE_SWARM_CAP;
+      return count * G.ZOMBIE_SWARM_BONUS;
+    }
     if (state.zombieGroups) {
       var retreating = state.zombieMode === "retreat";
       for (var gi = 0; gi < state.zombieGroups.length; gi++) {
@@ -215,7 +244,25 @@
           if (best && bestD < 40) {
             cible = { x: bestPt.x, y: bestPt.y, isPlayer: false, wall: best };
           } else {
-            cible = { x: mairie.x + mairie.w / 2, y: mairie.y + mairie.h / 2, isPlayer: false, mairie: mairie };
+            // Pilleurs : un groupe contenant des raiders dévie sa cible vers
+            // les planches construites par le joueur (built) à portée, menaçant
+            // directement le travail du joueur plutôt que la mairie.
+            var raiderCible = null;
+            if (grp.hasRaider) {
+              var rb = null, rbD = Infinity, rbPt = null;
+              for (var rj = 0; rj < state.walls.length; rj++) {
+                var rw = state.walls[rj];
+                if (!rw.built) continue;
+                var rclx = Math.max(rw.x, Math.min(grp.x, rw.x + rw.w));
+                var rcly = Math.max(rw.y, Math.min(grp.y, rw.y + rw.h));
+                var rmd = Math.sqrt((rclx - grp.x) * (rclx - grp.x) + (rcly - grp.y) * (rcly - grp.y));
+                if (rmd < rbD) { rbD = rmd; rb = rw; rbPt = { x: rclx, y: rcly }; }
+              }
+              if (rb && rbD < G.ZOMBIE_RAID_RANGE) {
+                raiderCible = { x: rbPt.x, y: rbPt.y, isPlayer: false, wall: rb };
+              }
+            }
+            cible = raiderCible || { x: mairie.x + mairie.w / 2, y: mairie.y + mairie.h / 2, isPlayer: false, mairie: mairie };
           }
         } else {
           cible = { x: G.WORLD / 2, y: G.WORLD / 2, isPlayer: false };
@@ -238,27 +285,49 @@
         }
         for (var mi = 0; mi < grp.members.length; mi++) {
           var z = grp.members[mi];
+          // Cible effective de ce zombie. Un harceleur se détache du groupe
+          // pour traquer le joueur seul s'il le détecte à portée (crée une
+          // escouade divergente qui harcèle le joueur pendant que le reste du
+          // groupe fonce sur la mairie/murs).
+          var zcible = cible;
+          if (z.harasser) {
+            var hpdx = p.x - z.x, hpdy = p.y - z.y;
+            if (Math.sqrt(hpdx * hpdx + hpdy * hpdy) < G.ZOMBIE_HARASS_RANGE) {
+              zcible = { x: p.x, y: p.y, isPlayer: true };
+            }
+          }
           var tx = grp.x + Math.cos(z.slotAng) * z.slotDist;
           var ty = grp.y + Math.sin(z.slotAng) * z.slotDist;
-          var zdx = cible.x - z.x, zdy = cible.y - z.y;
+          var zdx = zcible.x - z.x, zdy = zcible.y - z.y;
           var zd = Math.sqrt(zdx * zdx + zdy * zdy);
           if (z.atkCd > 0) z.atkCd -= dt;
           if (z.wallCd > 0) z.wallCd -= dt;
+          if (z.lunge > 0) z.lunge -= dt;
           if (zd < 14) {
-            if (cible.isPlayer && z.atkCd <= 0) {
+            if (zcible.isPlayer && z.atkCd <= 0) {
               z.atkCd = G.ZOMBIE_ATTACK_CD;
               p.hp -= G.ZOMBIE_PLAYER_DMG;
+              // Lunge / télégraphie : élan visuel vers le joueur.
+              z.lunge = G.ZOMBIE_LUNGE_TIME;
+              z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
               if (p.hp <= 0) { p.hp = 0; state.gameOver = true; state.gameOverCause = "player"; }
-            } else if (!cible.isPlayer && cible.wall && z.wallCd <= 0) {
+            } else if (!zcible.isPlayer && zcible.wall && z.wallCd <= 0) {
               z.wallCd = G.ZOMBIE_WALL_CD;
-              cible.wall.hp -= G.ZOMBIE_WALL_DMG;
-            } else if (!cible.isPlayer && cible.mairie && z.wallCd <= 0) {
+              // Attaque de meute : bonus de dégâts par assaillant proche du
+              // mur (impression de coups frappés ensemble).
+              cible.wall.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
+              z.lunge = G.ZOMBIE_LUNGE_TIME;
+              z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
+            } else if (!zcible.isPlayer && zcible.mairie && z.wallCd <= 0) {
               z.wallCd = G.ZOMBIE_WALL_CD;
-              cible.mairie.hp -= G.ZOMBIE_WALL_DMG;
+              cible.mairie.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
               if (cible.mairie.hp <= 0) { cible.mairie.hp = 0; state.gameOver = true; state.gameOverCause = "mairie"; }
+              z.lunge = G.ZOMBIE_LUNGE_TIME;
+              z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
             }
           } else {
-            var sx = tx - z.x, sy = ty - z.y;
+            var sx = (zcible.isPlayer ? zcible.x : tx) - z.x;
+            var sy = (zcible.isPlayer ? zcible.y : ty) - z.y;
             var sd = Math.sqrt(sx * sx + sy * sy) || 1;
             // Décompte des hésitations : si en cours, on ne bouge pas ce tick.
             if (z.hesitate > 0) {

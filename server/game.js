@@ -378,7 +378,11 @@
         };
       }),
       zombies: state.zombies.map(function (z) {
-        return { x: Math.round(z.x), y: Math.round(z.y), hp: z.hp };
+        return {
+          x: Math.round(z.x), y: Math.round(z.y), hp: z.hp,
+          lunge: z.lunge > 0 ? +(z.lunge).toFixed(2) : 0,
+          ldx: z.lungeDx || 0, ldy: z.lungeDy || 0
+        };
       }),
       walls: state.walls.map(function (m) {
         return { x: Math.round(m.x), y: Math.round(m.y), w: Math.round(m.w), h: Math.round(m.h), hp: m.hp, orient: m.orient, built: m.built };
