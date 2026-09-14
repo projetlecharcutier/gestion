@@ -35,6 +35,56 @@
   G.ZOMBIE_RETREAT_HOUR = 8; // heure (jeu) de retraite des zombies
   G.ZOMBIE_RETREAT_DIST = 700; // distance de retraite hors de la ville
   G.ZOMBIE_SPEED = 117;
+  // --- Comportement de déplacement (mouvement vivant) ---
+  // Variation de vitesse entre zombies (facteur multiplicatif sur ZOMBIE_SPEED).
+  G.ZOMBIE_SPEED_VAR = 0.5;   // [0..1] : speedFactor ∈ [1-VAR, 1+VAR]
+  // Allure erratique : amplitude (ratio de cap, 0..1) et fréquence (rad/s)
+  // de l'oscillation perpendiculaire au déplacement, par zombie, pour un
+  // "drunken walk" (cap qui dérive de part et d'autre).
+  G.ZOMBIE_WANDER_AMP = 0.5;
+  G.ZOMBIE_WANDER_FREQ = 2.4;
+  // Hésitations : durée (s) d'une pause aléatoire et intervalle moyen (s)
+  // entre deux hésitations (loi exponentielle).
+  G.ZOMBIE_HESITATE_TIME = 0.6;
+  G.ZOMBIE_HESITATE_RATE = 0.06; // proba/s de démarrer une hésitation
+  // Attraction par le bruit des coups de feu : portée (px) et durée (s)
+  // pendant laquelle un groupe dévie sa cible vers la position du tir.
+  G.ZOMBIE_NOISE_RANGE = 1600;
+  G.ZOMBIE_NOISE_TIME = 4.0;
+  // Contournement des murs : biais latéral (px/s) appliqué quand le zombie
+  // est bloqué, pour longer le mur plutôt que de s'enliser.
+  G.ZOMBIE_WALL_SLIDE = 60;
+  // --- Comportement d'attaque ---
+  // Lunge / télégraphie : durée (s) d'un élan visuel vers l'avant au moment
+  // de frapper, et amplitude (px écran) de l'offset de rendu.
+  G.ZOMBIE_LUNGE_TIME = 0.15;
+  G.ZOMBIE_LUNGE_VIS = 3.0;
+  // Harceleurs : fraction des zombies qui ciblent individuellement le joueur
+  // de plus loin, et portée (px) de détection du joueur pour ces éclaireurs.
+  G.ZOMBIE_HARASS_RATIO = 0.15;
+  G.ZOMBIE_HARASS_RANGE = 620;
+  // Attaque de meute : bonus de dégâts par assaillant proche (capé), rayon de
+  // regroupement (px) pour compter les assaillants autour d'un zombie qui frappe.
+  G.ZOMBIE_SWARM_BONUS = 1.0;
+  G.ZOMBIE_SWARM_CAP = 5;
+  G.ZOMBIE_SWARM_RADIUS = 24;
+  // Pilleurs : fraction des zombies qui font que leur groupe cible les
+  // planches construites par le joueur (built) à portée (px) plutôt que la mairie.
+  G.ZOMBIE_RAIDER_RATIO = 0.20;
+  G.ZOMBIE_RAID_RANGE = 520;
+  // --- Comportement de rassemblement ---
+  // Mode horde : seuil de membres pour qu'un groupe devienne une horde, bonus
+  // de vitesse en mode horde, et distance de formation dense en horde.
+  G.ZOMBIE_HORDE_THRESHOLD = 40;
+  G.ZOMBIE_HORDE_SPEED_BONUS = 0.18;
+  G.ZOMBIE_HORDE_DENSE = 0.7;   // facteur de resserrement de slotDist en horde
+  // Fusion animée : vitesse de convergence des slots vers la nouvelle
+  // formation après une fusion (lerp par seconde, 1 = instantané).
+  G.ZOMBIE_SLOT_LERP = 4.0;
+  // Dispersion à la retraite : facteur d'élargissement des slots en mode
+  // retraite et amplitude de bruit ajoutée à slotDist.
+  G.ZOMBIE_RETREAT_SLOT_SCALE = 1.6;
+  G.ZOMBIE_RETREAT_SLOT_NOISE = 40;
   G.ZOMBIE_W = 6;
   G.ZOMBIE_HALF = 3;
   G.ZOMBIE_ATTACK_RANGE = 150;

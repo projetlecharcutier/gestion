@@ -83,6 +83,7 @@
     waveSpawnedForDay: false,
     zombieMode: "retreat",
     waveMsgTimer: 0,
+    hordeMsgTimer: 0,
     time: 0
   };
 })();
