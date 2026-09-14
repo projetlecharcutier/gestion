@@ -134,6 +134,18 @@
   }
   G.isNight = isNight;
 
+  // Assombrissement nocturne global : intensité maximale (alpha) de l'overlay
+  // sombre et couleur (RGB "r,g,b"). La transition est douce : nulle aux
+  // limites 22h/2h, maximale à minuit (0h).
+  G.NIGHT_DARK_ALPHA = 0.5;
+  G.NIGHT_DARK_COLOR = "2,6,23";
+  G.nightDarkness = function (clock) {
+    var max = G.NIGHT_DARK_ALPHA;
+    if (clock >= 22) return max * (clock - 22) / 2;
+    if (clock < 2) return max * (2 - clock) / 2;
+    return 0;
+  };
+
   G.rand = function (min, max) { return min + Math.random() * (max - min); };
   G.randi = function (min, max) { return Math.floor(G.rand(min, max + 1)); };
   G.clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
