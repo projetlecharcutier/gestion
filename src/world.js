@@ -116,7 +116,7 @@
       name: "Forêt", msg: "", height: ref ? ref.h : 80,
       isForet: true, isDecor: true, isChoppable: true,
       hp: 2, maxHp: 2, foretFrame: frame, foretStage: 0,
-      renderW: side, renderH: side, baseY: y + side / 2,
+      renderX: x - side / 2, renderW: side, renderH: side, baseY: y + side / 2,
       door: { x: x, y: y + side / 2 }
     };
     if (ref) shrinkForetFoot(b, "foret", stage0 ? frame + "s0" : frame);
