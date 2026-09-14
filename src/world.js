@@ -20,6 +20,22 @@
     b.x = cx - b.w / 2; b.y = by - b.h / 2;
   }
 
+  // Variante ancrée en bas-centre : la boîte opaque est alignée sur le bord
+  // SUD du losange (comme le rendu du sprite), ce qui correspond à la zone
+  // réellement occupée par un arbre (canopée en haut, tronc/sol en bas).
+  // En X la boîte reste centrée ; en Y elle est ancrée sur y_base (bord sud).
+  function shrinkToOpaqueBottom(b, ent, frame) {
+    var bd = G.spriteBounds(ent, frame);
+    if (!bd) return;
+    var cx = b.x + b.w / 2;
+    var baseY = b.y + b.h;
+    var fw = bd.x1 - bd.x0, fh = bd.y1 - bd.y0;
+    if (fw <= 0 || fh <= 0) return;
+    b.w = b.w * fw; b.h = b.h * fh;
+    b.x = cx - b.w / 2;
+    b.y = baseY - b.h;
+  }
+
   G.makeHouse = function (x, y, sprite) {
     var side = sprite.w * 2;
     var b = {
@@ -80,15 +96,20 @@
   // Repli dimension 128 si pas de sprite (côté serveur sans PNG).
   G.makeForet = function (x, y, frame) {
     var sp = G.SPRITES.foret && G.SPRITES.foret[frame];
-    var side = sp ? sp.w * 2 : 128;
+    // Référence de taille/collision : sprite d'état s0 (forêt pleine) s'il
+    // existe, sinon le sprite de base. C'est l'image pleine qui définit
+    // l'emprise visuelle et la zone de collision (cohérence rendu/collision).
+    var stage0 = G.SPRITES.foret && G.SPRITES.foret[frame + "s0"];
+    var ref = stage0 || sp;
+    var side = ref ? ref.w * 2 : 128;
     var b = {
       x: x - side / 2, y: y - side / 2, w: side, h: side,
-      name: "Forêt", msg: "", height: sp ? sp.h : 80,
+      name: "Forêt", msg: "", height: ref ? ref.h : 80,
       isForet: true, isDecor: true, isChoppable: true,
       hp: 2, maxHp: 2, foretFrame: frame, foretStage: 0,
       door: { x: x, y: y + side / 2 }
     };
-    if (sp) shrinkToOpaque(b, "foret", frame);
+    if (ref) shrinkToOpaqueBottom(b, "foret", stage0 ? frame + "s0" : frame);
     return b;
   };
 
