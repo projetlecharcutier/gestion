@@ -101,9 +101,11 @@
   // Repli dimension 128 si pas de sprite (côté serveur sans PNG).
   G.makeForet = function (x, y, frame) {
     var sp = G.SPRITES.foret && G.SPRITES.foret[frame];
-    // Référence de taille/collision : sprite d'état s0 (forêt pleine) s'il
-    // existe, sinon le sprite de base. C'est l'image pleine qui définit
-    // l'emprise visuelle et la zone de collision (cohérence rendu/collision).
+    // Référence de taille : sprite d'état s0 (forêt pleine) s'il existe,
+    // sinon le sprite de base. La collision reste sur le losange complet du
+    // sol (side x side) pour rester cohérente avec le rendu (sprite ancré en
+    // bas-centre sur le bord sud du losange). Pas de shrink : le rendu et la
+    // collision partagent la même boîte.
     var stage0 = G.SPRITES.foret && G.SPRITES.foret[frame + "s0"];
     var ref = stage0 || sp;
     var side = ref ? ref.w * 2 : 128;
@@ -114,7 +116,6 @@
       hp: 2, maxHp: 2, foretFrame: frame, foretStage: 0,
       door: { x: x, y: y + side / 2 }
     };
-    if (ref) shrinkToOpaqueBottom(b, "foret", stage0 ? frame + "s0" : frame);
     return b;
   };
 
