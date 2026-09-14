@@ -180,7 +180,7 @@
             var sp = { img: img, w: img.naturalWidth, h: img.naturalHeight };
             G.SPRITES.foret[lowerName] = sp;
             probeAnimFrames(sp, dir, lowerName, function () {
-              probeForetStages(lowerName, function () { n++; next(); });
+              probeForetStages(dir, lowerName, function () { n++; next(); });
             });
           } else {
             n++; next();
@@ -202,7 +202,7 @@
   // avec probeAnimFrames (qui cherche <base>-N.png). Stocke le sprite sous
   // la clé "<base>s<index>" dans G.SPRITES.foret. Tolérant : charge ceux qui
   // existent, ignore les manquants (repli sur le sprite de base).
-  function probeForetStages(base, onDone) {
+  function probeForetStages(dir, base, onDone) {
     var stages = G.FORET_STAGES || 5;
     var i = 0;
     function next() {
