@@ -161,4 +161,16 @@ npm start          # écoute sur PORT (8080 par défaut)
 # ou : PORT=3030 npm start
 ```
 
-Le client se connecte automatiquement à `ws://<hote>:8080` (ou le port du serveur). En développement local, ouvrir `index.html` dans un navigateur pendant que le serveur tourne. Le menu d'accueil affiche le lobby (heure du monde, joueurs connectés, statut) avant de rejoindre.
+Le serveur sert **aussi les fichiers statiques** (index.html, src/, assets/) sur le même port que le WebSocket : on ouvre simplement `http://<hote>:<port>` dans un navigateur, le client s'y connecte en WebSocket sur le même hôte:port. Aucun DNS, aucun reverse proxy nécessaires.
+
+En développement local, ouvrir `http://localhost:8080` pendant que le serveur tourne. Le menu d'accueil affiche le lobby (heure du monde, joueurs connectés, statut) avant de rejoindre.
+
+### Déploiement continu sur une VM (sans chaîne de CD)
+
+`deploy/` contient un watcher shell (`deploy.sh`) + un service systemd (`flex.service`) qui, en permanence, tire la branche `main` et redémarre le serveur à chaque nouveau commit. Voir `deploy/README.md` pour l'installation sur une VM OVH (fonctionne via `http://<IP-VM>:<port>`, sans DNS).
+
+| Fichier | Rôle |
+|---------|------|
+| `deploy/deploy.sh` | Watcher : boucle de `git fetch main` toutes les `POLL_INTERVAL` s, redéploie (reset --hard, npm install si besoin, redémarre le serveur) si le commit a changé, relance le serveur s'il a crashé |
+| `deploy/flex.service` | Service systemd : lance le watcher au boot, le relance s'il crash |
+| `deploy/README.md` | Instructions d'installation sur la VM (prérequis, systemd, logs, pare-feu) |

@@ -1,0 +1,40 @@
+[Unit]
+Description=Flex Survival — watcher de déploiement continu (Git pull + serveur)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Ajustez ces variables d'environnement selon votre installation.
+Environment=REPO_URL=https://github.com/projetlecharcutier/gestion.git
+Environment=BRANCH=main
+Environment=APP_DIR=/opt/flex-survival/app
+Environment=PORT=8080
+Environment=POLL_INTERVAL=30
+# Chemin vers node (adaptez si node n'est pas dans le PATH de systemd).
+# Environment=NODE_BIN=/usr/bin/node
+
+ExecStart=/opt/flex-survival/deploy.sh
+# Le watcher gère lui-même le cycle de vie du serveur Node (enfant).
+# On ne veut PAS que systemd considère le service actif via le serveur enfant.
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+# Relance le watcher s'il crashe (le serveur est géré par le watcher).
+Restart=always
+RestartSec=5
+
+# Logs vers le journal systemd (visibles via `journalctl -u flex`).
+StandardOutput=journal
+StandardError=journal
+
+# Optionnel : hardening. Décommentez si votre VM le permet.
+# NoNewPrivileges=true
+# ProtectSystem=strict
+# ReadWritePaths=/opt/flex-survival
+# ProtectHome=true
+# PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
