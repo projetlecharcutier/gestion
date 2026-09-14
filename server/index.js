@@ -5,6 +5,9 @@
 (function () {
   "use strict";
   var WebSocket = require("ws");
+  var http = require("http");
+  var fs = require("fs");
+  var path = require("path");
   var game = require("./game");
 
   var PORT = process.env.PORT || 8080;
@@ -12,8 +15,55 @@
   var LOBBY_HZ = 2;
   var STATE_HZ = 10;
 
-  var wss = new WebSocket.Server({ port: PORT });
-  console.log("Serveur Flex Survival en écoute sur le port " + PORT);
+  // Racine des fichiers statiques (index.html, src/, assets/) : dossier
+  // parent de server/, c'est-à-dire la racine du dépôt.
+  var WEB_ROOT = path.join(__dirname, "..");
+  var MIME = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".ttf": "font/ttf",
+    ".mp3": "audio/mpeg",
+    ".ogg": "audio/ogg",
+    ".wav": "audio/wav"
+  };
+
+  // Serveur HTTP servant les fichiers statiques (le client se charge via
+  // index.html + src/ + assets/). Le WebSocket est attaché au même serveur,
+  // donc tout fonctionne sur un seul port : http://<ip>:<port>.
+  var server = http.createServer(function (req, res) {
+    var url = req.url.split("?")[0];
+    if (url === "/") url = "/index.html";
+    // Sécurité : empêche de remonter hors de WEB_ROOT.
+    var rel = path.normalize(url).replace(/^(\.\.[\/\\])+/, "");
+    var filePath = path.join(WEB_ROOT, rel);
+    if (filePath.indexOf(WEB_ROOT) !== 0) {
+      res.writeHead(403);
+      res.end("Forbidden");
+      return;
+    }
+    fs.readFile(filePath, function (err, data) {
+      if (err) {
+        res.writeHead(404);
+        res.end("Not found");
+        return;
+      }
+      var ext = path.extname(filePath).toLowerCase();
+      res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
+      res.end(data);
+    });
+  });
+
+  var wss = new WebSocket.Server({ server: server });
+  server.listen(PORT, function () {
+    console.log("Serveur Flex Survival en écoute sur le port " + PORT);
+  });
 
   var clients = {}; // ws -> {id, name, joined}
 

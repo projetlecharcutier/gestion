@@ -14,13 +14,16 @@
   var equipSentAt = 0;
   var pendingEquip = null; // nom d'arme attendu (null = desequipe / hache)
 
-  // URL du serveur : ws://hote:port. Détecte automatiquement l'hôte courant
-  // (utile en dev local et en hébergement). En file://, fallback sur localhost.
+  // URL du serveur : ws://hote:port. Le WebSocket utilise le même hôte et le
+  // même port que la page HTTP servie (le serveur sert le client ET le WS sur
+  // un seul port) — fonctionne directement via http://<ip>:<port>, sans DNS.
+  // En file://, fallback sur localhost:8080.
   function serverUrl() {
     var loc = window.location;
     var proto = loc.protocol === "https:" ? "wss:" : "ws:";
     if (loc.protocol === "file:") return "ws://localhost:8080";
-    return proto + "//" + loc.hostname + ":8080";
+    var port = loc.port || (loc.protocol === "https:" ? "443" : "80");
+    return proto + "//" + loc.hostname + ":" + port;
   }
 
   G.netConnect = function () {
