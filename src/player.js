@@ -8,6 +8,7 @@
     var bw = G.PLAYER_W, bh = G.PLAYER_W;
     for (var i = 0; i < G.state.buildings.length; i++) {
       var b = G.state.buildings[i];
+      if (b.isForet && G.foretDepleted(b)) continue;
       if (bx < b.x + b.w && bx + bw > b.x && by < b.y + b.h && by + bh > b.y) {
         return true;
       }

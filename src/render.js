@@ -160,7 +160,11 @@
     // de l'emprise sol du bâtiment (largeur du losange iso), ancré en bas-centre
     // sur le bord SUD du losange au sol (le point le plus bas en Y écran).
     var sprite = null;
-    if (b.isForet && b.foretFrame && G.hasSprite("foret", b.foretFrame)) sprite = G.SPRITES.foret[b.foretFrame];
+    if (b.isForet && b.foretFrame) {
+      var stageKey = G.foretStageFrame(b.foretFrame, b.foretStage || 0);
+      if (stageKey && G.hasSprite("foret", stageKey)) sprite = G.SPRITES.foret[stageKey];
+      else if (G.hasSprite("foret", b.foretFrame)) sprite = G.SPRITES.foret[b.foretFrame];
+    }
     else if (b.isDecor && b.houseSprite) sprite = b.houseSprite;
     else if (b.isMairie && G.hasSprite("building", "mairie")) sprite = G.SPRITES.building.mairie;
     else if (b.isChurch && G.hasSprite("church", "church")) sprite = G.SPRITES.church.church;

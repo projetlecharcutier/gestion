@@ -75,6 +75,7 @@
     floaters: [],
     clock: 8,
     day: 0,
+    lastDay: 0,
     elapsed: 0,
     nextWaveAt: G.WAVE_EVERY,
     waveActive: false,

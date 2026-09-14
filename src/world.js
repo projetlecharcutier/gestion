@@ -85,11 +85,44 @@
       x: x - side / 2, y: y - side / 2, w: side, h: side,
       name: "Forêt", msg: "", height: sp ? sp.h : 80,
       isForet: true, isDecor: true, isChoppable: true,
-      hp: 2, maxHp: 2, foretFrame: frame,
+      hp: 2, maxHp: 2, foretFrame: frame, foretStage: 0,
       door: { x: x, y: y + side / 2 }
     };
     if (sp) shrinkToOpaque(b, "foret", frame);
     return b;
+  };
+
+  // Nom du sprite selon l'état de coupe : "<base>s<stage>" si disponible,
+  // sinon repli sur le sprite de base. Le stage 0 = forêt pleine.
+  G.foretStageFrame = function (foretFrame, stage) {
+    if (foretFrame == null) return null;
+    var key = foretFrame + "s" + stage;
+    if (G.hasSprite("foret", key)) return key;
+    return foretFrame;
+  };
+
+  // Vrai si la forêt est à l'état final (entièrement coupée) : non récoltable
+  // et traversable.
+  G.foretDepleted = function (b) {
+    return !!(b && b.isForet && (b.foretStage || 0) >= (G.FORET_STAGES - 1));
+  };
+
+  // Régénération quotidienne : chaque forêt remonte d'un état de coupe vers
+  // s0. À appeler au passage de minuit (changement de jour). Reconstruit la
+  // grille de collision si une forêt épuisée repousse (redevient bloquante).
+  G.regenForets = function () {
+    var state = G.state;
+    if (!state || !state.buildings) return;
+    var regrowSolid = false;
+    for (var i = 0; i < state.buildings.length; i++) {
+      var b = state.buildings[i];
+      if (!b.isForet) continue;
+      if ((b.foretStage || 0) > 0) {
+        b.foretStage = (b.foretStage || 0) - 1;
+        if ((b.foretStage || 0) < (G.FORET_STAGES - 1)) regrowSolid = true;
+      }
+    }
+    if (regrowSolid && G.rebuildBuildingGrid) G.rebuildBuildingGrid();
   };
 
   // Grille spatiale des bâtiments (forêts + maisons + mairie) pour des
@@ -133,6 +166,7 @@
         for (var n = 0; n < arr.length; n++) {
           var b = arr[n];
           if (!b.isForet) continue;
+          if (G.foretDepleted(b)) continue;
           if (x + half > b.x && x - half < b.x + b.w &&
               y + half > b.y && y - half < b.y + b.h) return true;
         }

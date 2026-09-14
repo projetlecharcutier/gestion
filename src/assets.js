@@ -179,7 +179,9 @@
             frames[lowerName] = { src: dir + name, w: img.naturalWidth, h: img.naturalHeight };
             var sp = { img: img, w: img.naturalWidth, h: img.naturalHeight };
             G.SPRITES.foret[lowerName] = sp;
-            probeAnimFrames(sp, dir, lowerName, function () { n++; next(); });
+            probeAnimFrames(sp, dir, lowerName, function () {
+              probeForetStages(lowerName, function () { n++; next(); });
+            });
           } else {
             n++; next();
           }
@@ -193,6 +195,33 @@
     }
     next();
   }
+
+  // Charge les états de coupe d'une forêt : <base>s0.png, <base>s1.png, ...
+  // <base>s<FORET_STAGES-1>.png. Convention de nommage distincte de
+  // l'animation (<base>-N.png) : le suffixe 's' + index évite tout conflit
+  // avec probeAnimFrames (qui cherche <base>-N.png). Stocke le sprite sous
+  // la clé "<base>s<index>" dans G.SPRITES.foret. Tolérant : charge ceux qui
+  // existent, ignore les manquants (repli sur le sprite de base).
+  function probeForetStages(base, onDone) {
+    var stages = G.FORET_STAGES || 5;
+    var i = 0;
+    function next() {
+      if (i >= stages) { onDone(); return; }
+      var key = base + "s" + i;
+      var name = key + ".png";
+      var img = new Image();
+      img.onload = function () {
+        if (img.naturalWidth > 0) {
+          G.SPRITES.foret[key] = { img: img, w: img.naturalWidth, h: img.naturalHeight };
+        }
+        i++; next();
+      };
+      img.onerror = function () { i++; next(); };
+      img.src = dir + name;
+    }
+    next();
+  }
+
   // Sonde les sprites du personnage joueur : 3 états d'équipement
   // (perso / persoHache / persoPistolet) × 3 directions (face / gauche / droite)
   // = 9 PNG. Tolérant : charge ceux qui existent, ignore les 404.
@@ -334,7 +363,13 @@
   // que les assets ne sont pas chargés.
   G.foretNames = function () {
     var out = [];
-    if (G.SPRITES.foret) for (var k in G.SPRITES.foret) if (G.SPRITES.foret.hasOwnProperty(k)) out.push(k);
+    if (G.SPRITES.foret) for (var k in G.SPRITES.foret) {
+      if (!G.SPRITES.foret.hasOwnProperty(k)) continue;
+      // Exclut les sprites d'état de coupe (<base>s<index>) : ce sont des
+      // variantes d'affichage, pas des forêts de base distinctes.
+      if (/s[0-9]+$/.test(k)) continue;
+      out.push(k);
+    }
     return out;
   };
 

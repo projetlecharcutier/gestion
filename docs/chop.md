@@ -1,7 +1,7 @@
 # Récolte de planches (hache) — `src/chop.js`
 
 ## Contrat
-Récolte de planches : avec une hache équipée, rester à côté d'un arbre pendant `TREE_CHOP_TIME` secondes donne 1 planche et fait disparaître l'arbre. Dépend de `config.js` (`TREE_CHOP_TIME`, `AXE_RANGE`), `state.js` (`player`, `trees`, `planks`, `axeEquipped`, `chopTarget`, `chopTimer`), `hud.js` (`updateHud`). Appelé chaque frame depuis `update()` (`src/main.js`).
+Récolte de planches : avec une hache équipée, rester à côté d'une forêt pendant `TREE_CHOP_TIME` secondes donne `FORET_PLANKS_PER_CHOP` (4) planches et fait avancer la forêt d'un état de coupe. La forêt a `FORET_STAGES` (5) états (s0 = pleine → s4 = entièrement coupée) ; à l'état final elle n'est plus récoltable et devient traversable. Chaque jour écoulé, la forêt regagne un état (`G.regenForets`). Dépend de `config.js` (`TREE_CHOP_TIME`, `AXE_RANGE`, `FORET_STAGES`, `FORET_PLANKS_PER_CHOP`), `state.js`, `hud.js`. Appelé chaque frame depuis `update()` (`src/main.js`).
 
 ## Exposé sur `G`
 - `updateChop(dt)` — appelé chaque frame depuis `update()`. Gère le décompte de récolte.
@@ -13,12 +13,14 @@ Récolte de planches : avec une hache équipée, rester à côté d'un arbre pen
    - Aucun arbre → réinitialise et retourne.
 3. Si l'arbre visé change (`chopTarget !== target`) → relance le décompte (`chopTimer = 0`).
 4. Accumule `chopTimer += dt`.
-5. À `chopTimer >= TREE_CHOP_TIME` : `planks += 1`, retire l'arbre de `state.trees`, réinitialise `chopTarget`/`chopTimer`, rafraîchit le HUD.
+5. À `chopTimer >= TREE_CHOP_TIME` : `planks += FORET_PLANKS_PER_CHOP` (4), `foretStage += 1` sur la forêt. Si `foretStage >= FORET_STAGES-1` la forêt devient non récoltable et traversable (grille de collision reconstruite). Réinitialise `chopTarget`/`chopTimer`, rafraîchit le HUD.
 
 ## Contraintes
 - La hache est un objet `kind:"outil"`, équipé via le sac (`src/bag.js`) → booléen `state.axeEquipped`.
 - Pas de combat : la hache ne sert qu'à la récolte (n'affecte pas le tir).
-- 1 planche par arbre, 4 s par arbre.
+- 4 planches par coup de hache (`FORET_PLANKS_PER_CHOP`), 1 coup = `TREE_CHOP_TIME` secondes.
+- 5 états de coupe (`FORET_STAGES`) ; l'état final est non récoltable + traversable.
+- Régénération : 1 état regagné par jour écoulé (`G.regenForets`).
 - Le décompte se réinitialise si le joueur s'éloigne de tous les arbres ou change de cible.
 
 ## Étendre

@@ -47,6 +47,7 @@
         state.elapsed += dt;
         state.clock += (12 / G.DAY_SECONDS) * dt;
         if (state.clock >= 24) { state.clock -= 24; state.day += 1; }
+        if (state.day !== state.lastDay) { G.regenForets(); state.lastDay = state.day; }
       }
       if (!state.gameOver) G.updateZombies(dt);
       if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.churchOpen && !state.gameOver) {

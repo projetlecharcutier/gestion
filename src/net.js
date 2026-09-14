@@ -133,6 +133,23 @@
     if (s.waveActive !== undefined) state.waveActive = s.waveActive;
     if (s.waveMsgTimer !== undefined) state.waveMsgTimer = s.waveMsgTimer;
     if (s.hordeMsgTimer !== undefined) state.hordeMsgTimer = s.hordeMsgTimer;
+    // Met à jour l'état de coupe des forêts depuis le snapshot serveur.
+    if (s.forets) {
+      var byPos = {};
+      for (var fx = 0; fx < s.forets.length; fx++) {
+        byPos[s.forets[fx].x + "," + s.forets[fx].y] = s.forets[fx].stage;
+      }
+      var regrewSolid = false;
+      for (var bi = 0; bi < state.buildings.length; bi++) {
+        var fb = state.buildings[bi];
+        if (!fb.isForet) continue;
+        var k = Math.round(fb.x) + "," + Math.round(fb.y);
+        if (byPos[k] !== undefined) fb.foretStage = byPos[k];
+        else fb.foretStage = 0;
+        if ((fb.foretStage || 0) < (G.FORET_STAGES - 1)) regrewSolid = true;
+      }
+      if (regrewSolid && G.rebuildBuildingGrid) G.rebuildBuildingGrid();
+    }
     // Met à jour les PV de la mairie (pour le HUD) depuis l'état serveur.
     if (s.mairieHp !== undefined) {
       for (var mi = 0; mi < state.buildings.length; mi++) {
@@ -195,7 +212,9 @@
       var frame = b.foretFrame;
       if (!frame || !G.hasSprite("foret", frame)) continue;
       var cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+      var stage = b.foretStage || 0;
       var fresh = G.makeForet(cx, cy, frame);
+      fresh.foretStage = stage;
       buildings[i] = fresh;
     }
   }
