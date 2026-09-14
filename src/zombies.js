@@ -32,7 +32,20 @@
         var dist = G.GROUP_FORMATION * (0.3 + Math.random() * 0.7);
         var zx = lx + Math.cos(ang) * dist;
         var zy = ly + Math.sin(ang) * dist;
-        var z = { x: zx, y: zy, hp: G.ZOMBIE_HP, atkCd: 0, wallCd: 0, group: grp, slotAng: ang, slotDist: dist };
+        // Caractère propre à chaque zombie pour un mouvement vivant :
+        // speedFactor = vitesse relative (±ZOMBIE_SPEED_VAR), wanderPhase/Freq =
+        // phase et fréquence d'oscillation du cap ("drunken walk"), hesitate =
+        // décompte d'une pause en cours (0 = aucun).
+        var sf = 1 + G.rand(-G.ZOMBIE_SPEED_VAR, G.ZOMBIE_SPEED_VAR);
+        var z = {
+          x: zx, y: zy, hp: G.ZOMBIE_HP, atkCd: 0, wallCd: 0, group: grp,
+          slotAng: ang, slotDist: dist,
+          speedFactor: G.clamp(sf, 0.4, 1.6),
+          wanderPhase: Math.random() * Math.PI * 2,
+          wanderFreq: G.ZOMBIE_WANDER_FREQ * (0.7 + Math.random() * 0.6),
+          hesitate: 0,
+          blockedSides: 0
+        };
         grp.members.push(z);
         state.zombies.push(z);
       }
@@ -106,6 +119,20 @@
         G.mergeGroups();
       }
     }
+
+    // Détection du bruit des coups de feu : un tir nouvellement apparu
+    // (le nombre de projectiles augmente) attire les groupes proches pendant
+    // ZOMBIE_NOISE_TIME s. On garde la position du dernier tir récent.
+    var lastShot = state.lastShot || null;
+    var projN = state.projectiles ? state.projectiles.length : 0;
+    var prevN = state._prevProjN || 0;
+    if (projN > prevN && projN > 0) {
+      var fresh = state.projectiles[projN - 1];
+      lastShot = { x: fresh.x, y: fresh.y, t: state.time };
+    }
+    state._prevProjN = projN;
+    if (lastShot && (state.time - lastShot.t) > G.ZOMBIE_NOISE_TIME) lastShot = null;
+    state.lastShot = lastShot;
 
     var p = state.player;
     // La mairie est la cible principale des zombies (centre-ville).
@@ -193,6 +220,16 @@
         } else {
           cible = { x: G.WORLD / 2, y: G.WORLD / 2, isPlayer: false };
         }
+        // Attraction par le bruit : un tir récent dévie la cible des groupes
+        // à portée vers la position du tir (sans écraser un joueur proche ni
+        // un mur immédiat — ceux-ci restent prioritaires). Incite à la discrétion.
+        if (lastShot && !cible.isPlayer && !cible.wall) {
+          var nsx = lastShot.x - grp.x, nsy = lastShot.y - grp.y;
+          var nsd = Math.sqrt(nsx * nsx + nsy * nsy);
+          if (nsd < G.ZOMBIE_NOISE_RANGE) {
+            cible = { x: lastShot.x, y: lastShot.y, isPlayer: false, noise: true };
+          }
+        }
         var ldx = cible.x - grp.x, ldy = cible.y - grp.y;
         var ld = Math.sqrt(ldx * ldx + ldy * ldy) || 1;
         if (ld > 10) {
@@ -223,21 +260,52 @@
           } else {
             var sx = tx - z.x, sy = ty - z.y;
             var sd = Math.sqrt(sx * sx + sy * sy) || 1;
-            if (sd > 4) {
-              // Sous-pas : ne pas traverser une planche fine en un seul pas.
-              var zs = G.ZOMBIE_HALF;
-              var zStep = 8;
-              var zMove = G.ZOMBIE_SPEED * dt;
-              var done = 0;
-              while (done < zMove - 0.001) {
-                var inc = Math.min(zStep, zMove - done);
-                var stepX = z.x + (sx / sd) * inc;
-                var stepY = z.y + (sy / sd) * inc;
-                var blocked = true;
-                if (!G.aabbHitsWalls(stepX - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(stepX, z.y, zs)) { z.x = stepX; blocked = false; }
-                if (!G.aabbHitsWalls(z.x - zs, stepY - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(z.x, stepY, zs)) { z.y = stepY; blocked = false; }
-                if (blocked) break;
-                done += inc;
+            // Décompte des hésitations : si en cours, on ne bouge pas ce tick.
+            if (z.hesitate > 0) {
+              z.hesitate -= dt;
+            } else if (sd > 4) {
+              // Démarrage aléatoire d'une hésitation (le zombie s'arrête,
+              // comme s'il flaireit l'air).
+              if (Math.random() < G.ZOMBIE_HESITATE_RATE * dt) {
+                z.hesitate = G.ZOMBIE_HESITATE_TIME * (0.6 + Math.random() * 0.8);
+              } else {
+                // Cap de marche perturbé par une oscillation lente propre au
+                // zombie ("drunken walk") : on dérive le cap de ±ZOMBIE_WANDER_AMP
+                // autour de la direction cible.
+                var baseAng = Math.atan2(sy, sx);
+                var wob = Math.sin(state.time * z.wanderFreq + z.wanderPhase) * G.ZOMBIE_WANDER_AMP;
+                var mvAng = baseAng + wob;
+                var mvx = Math.cos(mvAng), mvy = Math.sin(mvAng);
+                // Sous-pas : ne pas traverser une planche fine en un seul pas.
+                var zs = G.ZOMBIE_HALF;
+                var zStep = 8;
+                var zMove = G.ZOMBIE_SPEED * z.speedFactor * dt;
+                var done = 0;
+                var hitWall = false;
+                while (done < zMove - 0.001) {
+                  var inc = Math.min(zStep, zMove - done);
+                  var stepX = z.x + mvx * inc;
+                  var stepY = z.y + mvy * inc;
+                  var blocked = true;
+                  if (!G.aabbHitsWalls(stepX - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(stepX, z.y, zs)) { z.x = stepX; blocked = false; }
+                  if (!G.aabbHitsWalls(z.x - zs, stepY - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(z.x, stepY, zs)) { z.y = stepY; blocked = false; }
+                  if (blocked) { hitWall = true; break; }
+                  done += inc;
+                }
+                // Contournement : si bloqué par un mur, on glisse le long plutôt
+                // que de s'enliser. On alterne côté selon le temps pour laisser
+                // la chance de passer des deux bords.
+                if (hitWall) {
+                  z.blockedSides = (z.blockedSides || 0) + 1;
+                  var slideDir = (((Math.floor(state.time * 2 + z.wanderPhase) % 2) === 0) ? 1 : -1);
+                  var perpX = -mvy, perpY = mvx;
+                  var slide = G.ZOMBIE_WALL_SLIDE * dt * slideDir;
+                  var sxs = z.x + perpX * slide, sys = z.y + perpY * slide;
+                  if (!G.aabbHitsWalls(sxs - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(sxs, z.y, zs)) z.x = sxs;
+                  if (!G.aabbHitsWalls(z.x - zs, sys - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(z.x, sys, zs)) z.y = sys;
+                } else {
+                  z.blockedSides = 0;
+                }
               }
             }
           }

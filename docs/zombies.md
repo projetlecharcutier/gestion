@@ -21,6 +21,21 @@ Vagues nocturnes, organisation en petits groupes qui fusionnent, IA (cible joueu
 - Zombies 2× plus lents que le joueur (`ZOMBIE_SPEED = SPEED/2`).
 - **Collisions planches** : le déplacement de chaque zombie teste `aabbHitsWalls` par axe (boîte `ZOMBIE_W`), donc les planches posées par le joueur (`built: true`) bloquent les zombies. Le mur de périmètre reste traversable.
 
+## Comportement de déplacement (mouvement vivant)
+Chaque zombie porte un caractère propre (init à l'apparition, champs sur `z`) :
+- `speedFactor` ∈ [`1-ZOMBIE_SPEED_VAR`, `1+ZOMBIE_SPEED_VAR`] (clampé 0.4–1.6) — vitesse relative, certains traînent, d'autres sont plus rapides.
+- `wanderPhase`/`wanderFreq` — oscillation lente du cap autour de la direction cible ("drunken walk"), amplitude `ZOMBIE_WANDER_AMP` (ratio de cap).
+- `hesitate` (s) — décompte d'une pause en cours (0 = aucun) ; démarre aléatoirement (`ZOMBIE_HESITATE_RATE` proba/s, durée `ZOMBIE_HESITATE_TIME`).
+- `blockedSides` — compteur de blocages murs consécutifs, déclenche le contournement.
+
+Règles de mouvement :
+- En hésitation, le zombie ne se déplace pas.
+- Sinon, le cap = direction cible + sinusoïde propre au zombie ; vitesse = `ZOMBIE_SPEED * speedFactor`.
+- **Contournement des murs** : si bloqué par une planche, le zombie glisse le long du mur (biais latéral `ZOMBIE_WALL_SLIDE`, côté alterné dans le temps) au lieu de s'enliser.
+- **Attraction par le bruit** : un tir nouvellement apparu attire les groupes à moins de `ZOMBIE_NOISE_RANGE` pendant `ZOMBIE_NOISE_TIME` s vers la position du tir (sans écraser un joueur proche ni un mur immédiat). Détecté via `state.lastShot` (diff du compteur `state._prevProjN`).
+
+Constantes associées (`src/config.js`) : `ZOMBIE_SPEED_VAR`, `ZOMBIE_WANDER_AMP`, `ZOMBIE_WANDER_FREQ`, `ZOMBIE_HESITATE_TIME`, `ZOMBIE_HESITATE_RATE`, `ZOMBIE_NOISE_RANGE`, `ZOMBIE_NOISE_TIME`, `ZOMBIE_WALL_SLIDE`.
+
 ## Étendre
 - **Variante de zombie** : ajouter un `z.kind`/`z.variant` et brancher dans `updateZombies` + `drawZombie`.
 - **Zombie plus résistant** : augmenter `z.hp` à l'apparition et gérer plusieurs PV dans `updateProjectiles` (déjà `- pr.dmg`).

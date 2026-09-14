@@ -35,6 +35,25 @@
   G.ZOMBIE_RETREAT_HOUR = 8; // heure (jeu) de retraite des zombies
   G.ZOMBIE_RETREAT_DIST = 700; // distance de retraite hors de la ville
   G.ZOMBIE_SPEED = 117;
+  // --- Comportement de déplacement (mouvement vivant) ---
+  // Variation de vitesse entre zombies (facteur multiplicatif sur ZOMBIE_SPEED).
+  G.ZOMBIE_SPEED_VAR = 0.5;   // [0..1] : speedFactor ∈ [1-VAR, 1+VAR]
+  // Allure erratique : amplitude (ratio de cap, 0..1) et fréquence (rad/s)
+  // de l'oscillation perpendiculaire au déplacement, par zombie, pour un
+  // "drunken walk" (cap qui dérive de part et d'autre).
+  G.ZOMBIE_WANDER_AMP = 0.5;
+  G.ZOMBIE_WANDER_FREQ = 2.4;
+  // Hésitations : durée (s) d'une pause aléatoire et intervalle moyen (s)
+  // entre deux hésitations (loi exponentielle).
+  G.ZOMBIE_HESITATE_TIME = 0.6;
+  G.ZOMBIE_HESITATE_RATE = 0.06; // proba/s de démarrer une hésitation
+  // Attraction par le bruit des coups de feu : portée (px) et durée (s)
+  // pendant laquelle un groupe dévie sa cible vers la position du tir.
+  G.ZOMBIE_NOISE_RANGE = 1600;
+  G.ZOMBIE_NOISE_TIME = 4.0;
+  // Contournement des murs : biais latéral (px/s) appliqué quand le zombie
+  // est bloqué, pour longer le mur plutôt que de s'enliser.
+  G.ZOMBIE_WALL_SLIDE = 60;
   G.ZOMBIE_W = 6;
   G.ZOMBIE_HALF = 3;
   G.ZOMBIE_ATTACK_RANGE = 150;
