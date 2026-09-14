@@ -166,10 +166,11 @@
     // de l'emprise sol du bâtiment (largeur du losange iso), ancré en bas-centre
     // sur le bord SUD du losange au sol (le point le plus bas en Y écran).
     var sprite = null;
+    var foretSpriteKey = null;
     if (b.isForet && b.foretFrame) {
       var stageKey = G.foretStageFrame(b.foretFrame, b.foretStage || 0);
-      if (stageKey && G.hasSprite("foret", stageKey)) sprite = G.SPRITES.foret[stageKey];
-      else if (G.hasSprite("foret", b.foretFrame)) sprite = G.SPRITES.foret[b.foretFrame];
+      if (stageKey && G.hasSprite("foret", stageKey)) { sprite = G.SPRITES.foret[stageKey]; foretSpriteKey = stageKey; }
+      else if (G.hasSprite("foret", b.foretFrame)) { sprite = G.SPRITES.foret[b.foretFrame]; foretSpriteKey = b.foretFrame; }
     }
     else if (b.isDecor && b.houseSprite) sprite = b.houseSprite;
     else if (b.isMairie && G.hasSprite("building", "mairie")) sprite = G.SPRITES.building.mairie;
@@ -180,7 +181,12 @@
       var dw = losangeW;
       var dh = dw * sprite.h / sprite.w;
       var groundY = Math.max(RC[1], RD[1]);
-      ctx.drawImage(G.animImg(sprite, G.state.time), cx - dw / 2, groundY - dh, dw, dh);
+      var opaqueDrop = 0;
+      if (b.isForet && foretSpriteKey) {
+        var ob = G.spriteBounds("foret", foretSpriteKey);
+        if (ob && ob.y1 < 1) opaqueDrop = (1 - ob.y1) * dh;
+      }
+      ctx.drawImage(G.animImg(sprite, G.state.time), cx - dw / 2, groundY - dh + opaqueDrop, dw, dh);
       // Barre de vie de la mairie au-dessus du sprite (uniquement si endommagée).
       if (b.isMairie && b.hp < b.maxHp) {
         var ratio = b.hp / b.maxHp;
