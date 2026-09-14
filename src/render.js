@@ -151,9 +151,14 @@
     var z = G.state.zoom;
     var t = b.isMairie ? G.TEXTURES.mairie : G.TEXTURES.building;
     var hPx = b.height * 0.25 * z;
+    var rw = b.renderW || b.w;
+    var rh = b.renderH || b.h;
+    var rBaseY = b.baseY != null ? b.baseY : (b.y + b.h);
     var A = G.proj(b.x, b.y), B = G.proj(b.x + b.w, b.y),
         C = G.proj(b.x + b.w, b.y + b.h), D = G.proj(b.x, b.y + b.h);
-    var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
+    var RA = G.proj(b.x, rBaseY - rh), RC = G.proj(b.x + rw, rBaseY),
+        RD = G.proj(b.x, rBaseY);
+    var cx = (RA[0] + RC[0]) / 2, by = (RA[1] + RC[1]) / 2;
 
     // Sprite PNG si disponible : forêt, mairie, eglise (church), maison
     // décorative ou bâtiment générique. Le PNG est dessiné à la taille exacte
@@ -170,10 +175,10 @@
     else if (b.isChurch && G.hasSprite("church", "church")) sprite = G.SPRITES.church.church;
     else if (G.hasSprite("building", "generic")) sprite = G.SPRITES.building.generic;
     if (sprite) {
-      var losangeW = (b.w + b.h) * 0.5 * z;
+      var losangeW = (rw + rh) * 0.5 * z;
       var dw = losangeW;
       var dh = dw * sprite.h / sprite.w;
-      var groundY = Math.max(C[1], D[1]);
+      var groundY = Math.max(RC[1], RD[1]);
       ctx.drawImage(G.animImg(sprite, G.state.time), cx - dw / 2, groundY - dh, dw, dh);
       // Barre de vie de la mairie au-dessus du sprite (uniquement si endommagée).
       if (b.isMairie && b.hp < b.maxHp) {

@@ -20,25 +20,27 @@
     b.x = cx - b.w / 2; b.y = by - b.h / 2;
   }
 
-  // Variante ancrée en bas-centre : la boîte de collision correspond à la
-  // zone opaque réelle du PNG, positionnée comme le rendu (image ancrée en
-  // bas-centre). En X la boîte reste centrée ; en Y la boîte est ancrée sur le
-  // bord SUD de la zone opaque (y1), pas sur le bord sud de l'image complète
-  // (qui peut avoir de la transparence en bas).
-  function shrinkToOpaqueBottom(b, ent, frame) {
+  // Collision d'une forêt (arbre vertical) : réduit la boîte au sol au pied
+  // de l'arbre, sous la zone opaque du PNG. En X la boîte suit la largeur
+  // opaque ; en Y (profondeur monde) la boîte est une petite zone ancrée sur
+  // le bord SUD du losange complet (le pied de l'arbre, là où le rendu ancre
+  // le sprite). On ne shrink pas en Y selon la hauteur du PNG (qui est
+  // verticale), mais on garde une profondeur proportionnelle à la largeur
+  // opaque pour que le pied reste naturel.
+  function shrinkForetFoot(b, ent, frame) {
     var bd = G.spriteBounds(ent, frame);
     if (!bd) return;
     var cx = b.x + b.w / 2;
     var baseY = b.y + b.h;
-    var fw = bd.x1 - bd.x0, fh = bd.y1 - bd.y0;
-    if (fw <= 0 || fh <= 0) return;
-    var fullH = b.h;
-    b.w = b.w * fw; b.h = b.h * fh;
+    var fw = bd.x1 - bd.x0;
+    if (fw <= 0) return;
+    // Largeur monde = largeur opaque. Profondeur monde = fraction de la
+    // largeur (pied circulaire), ancrée sur le bord sud.
+    var footW = b.w * fw;
+    var footH = footW * 0.6;
+    b.w = footW; b.h = footH;
     b.x = cx - b.w / 2;
-    // La zone opaque en Y va de y0 à y1 (fraction du PNG). Le rendu ancre
-    // l'image complète sur baseY (bord sud). Le bas de la zone opaque est à
-    // baseY - fullH*(1-y1). La collision est ancrée sur ce point.
-    b.y = baseY - fullH * (1 - bd.y1) - b.h;
+    b.y = baseY - b.h;
   }
 
   G.makeHouse = function (x, y, sprite) {
@@ -114,8 +116,10 @@
       name: "Forêt", msg: "", height: ref ? ref.h : 80,
       isForet: true, isDecor: true, isChoppable: true,
       hp: 2, maxHp: 2, foretFrame: frame, foretStage: 0,
+      renderW: side, renderH: side, baseY: y + side / 2,
       door: { x: x, y: y + side / 2 }
     };
+    if (ref) shrinkForetFoot(b, "foret", stage0 ? frame + "s0" : frame);
     return b;
   };
 
