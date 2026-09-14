@@ -72,6 +72,19 @@
   // planches construites par le joueur (built) à portée (px) plutôt que la mairie.
   G.ZOMBIE_RAIDER_RATIO = 0.20;
   G.ZOMBIE_RAID_RANGE = 520;
+  // --- Comportement de rassemblement ---
+  // Mode horde : seuil de membres pour qu'un groupe devienne une horde, bonus
+  // de vitesse en mode horde, et distance de formation dense en horde.
+  G.ZOMBIE_HORDE_THRESHOLD = 40;
+  G.ZOMBIE_HORDE_SPEED_BONUS = 0.18;
+  G.ZOMBIE_HORDE_DENSE = 0.7;   // facteur de resserrement de slotDist en horde
+  // Fusion animée : vitesse de convergence des slots vers la nouvelle
+  // formation après une fusion (lerp par seconde, 1 = instantané).
+  G.ZOMBIE_SLOT_LERP = 4.0;
+  // Dispersion à la retraite : facteur d'élargissement des slots en mode
+  // retraite et amplitude de bruit ajoutée à slotDist.
+  G.ZOMBIE_RETREAT_SLOT_SCALE = 1.6;
+  G.ZOMBIE_RETREAT_SLOT_NOISE = 40;
   G.ZOMBIE_W = 6;
   G.ZOMBIE_HALF = 3;
   G.ZOMBIE_ATTACK_RANGE = 150;

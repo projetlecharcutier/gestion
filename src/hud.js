@@ -44,6 +44,11 @@
       ctx.font = "bold 14px Segoe UI, system-ui, sans-serif";
       ctx.fillText("⚠ Vague de zombies !", W / 2, 40);
     }
+    if (G.state.hordeMsgTimer > 0) {
+      ctx.fillStyle = t.waveColor;
+      ctx.font = "bold 16px Segoe UI, system-ui, sans-serif";
+      ctx.fillText("☠ La horde arrive !", W / 2, 60);
+    }
     ctx.textAlign = "right";
     ctx.fillStyle = t.dayColor;
     ctx.font = "bold 16px Segoe UI, system-ui, sans-serif";

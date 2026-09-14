@@ -129,6 +129,7 @@
     if (s.waveCount !== undefined) state.waveCount = s.waveCount;
     if (s.waveActive !== undefined) state.waveActive = s.waveActive;
     if (s.waveMsgTimer !== undefined) state.waveMsgTimer = s.waveMsgTimer;
+    if (s.hordeMsgTimer !== undefined) state.hordeMsgTimer = s.hordeMsgTimer;
     // Met à jour les PV de la mairie (pour le HUD) depuis l'état serveur.
     if (s.mairieHp !== undefined) {
       for (var mi = 0; mi < state.buildings.length; mi++) {

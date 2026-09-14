@@ -447,6 +447,10 @@
     var cell = zoom * 0.5;
     if (cell < 1.2) cell = 1.2;
     var cols = 6, rows = 15;
+    // Leader (zombie d'index 0 du groupe) : rendu plus gros et teinté
+    // (corps plus sombre/rouge, objectif tactique visible).
+    var leader = !!(z.isLeader || z.leader);
+    var lcell = leader ? cell * 1.45 : cell;
     // Lunge / télégraphie d'attaque : élan visuel vers l'avant pendant
     // ZOMBIE_LUNGE_TIME après un coup. Le sprite penche dans la direction
     // de la cible, amplitude proportionnelle au temps restant.
@@ -456,22 +460,29 @@
       lungeOX = (z.lungeDx || 0) * f;
       lungeOY = (z.lungeDy || 0) * f;
     }
-    var ox = base[0] + lungeOX - (cols / 2) * cell;
-    var oy = base[1] + lungeOY - rows * cell;
+    var ox = base[0] + lungeOX - (cols / 2) * lcell;
+    var oy = base[1] + lungeOY - rows * lcell;
     ctx.save();
     ctx.fillStyle = t.shadow;
     ctx.beginPath();
-    ctx.ellipse(base[0], base[1], cols / 2 * cell, cell * 1.4, 0, 0, Math.PI * 2);
+    ctx.ellipse(base[0], base[1], cols / 2 * lcell, lcell * 1.4, 0, 0, Math.PI * 2);
     ctx.fill();
     var sprite = t.sprite;
     var palette = t.palette;
+    // Palette du leader : corps et cheveux teintés (plus rouge/sang).
+    if (leader) {
+      palette = {
+        h: "#5b2a2a", s: "#bfae8a", g: "#7a3a3a",
+        p: "#4a2a2a", f: "#2f1f1f"
+      };
+    }
     for (var r = 0; r < rows; r++) {
       var line = sprite[r];
       for (var c = 0; c < cols; c++) {
         var ch = line.charAt(c);
         if (ch === ".") continue;
         ctx.fillStyle = palette[ch];
-        ctx.fillRect(ox + c * cell, oy + r * cell, cell + 0.5, cell + 0.5);
+        ctx.fillRect(ox + c * lcell, oy + r * lcell, lcell + 0.5, lcell + 0.5);
       }
     }
     ctx.restore();

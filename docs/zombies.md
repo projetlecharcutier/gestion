@@ -53,6 +53,23 @@ Rendu (`src/render.js`) : `drawZombie` applique un offset de lunge au sprite (pe
 
 Constantes associées (`src/config.js`) : `ZOMBIE_LUNGE_TIME`, `ZOMBIE_LUNGE_VIS`, `ZOMBIE_HARASS_RATIO`, `ZOMBIE_HARASS_RANGE`, `ZOMBIE_SWARM_BONUS`, `ZOMBIE_SWARM_CAP`, `ZOMBIE_SWARM_RADIUS`, `ZOMBIE_RAIDER_RATIO`, `ZOMBIE_RAID_RANGE`.
 
+## Comportement de rassemblement
+Chaque groupe porte une `formation` (0=anneau, 1=ligne, 2=coin, 3="V") tirée au sort à l'apparition, et un `formPhase` (décalage angulaire). La position de slot de chaque membre est calculée par `G.zombieSlot(grp, i, n)` selon la formation et le mode du groupe.
+
+Champs de groupe : `formation`, `formPhase`, `isHorde`, `retreat`, `hordeMsgShown`.
+Champs de zombie (rassemblement) : `slotAng`/`slotDist` (position actuelle, animée), `slotAngT`/`slotDistT` (cible), `isLeader` (index 0 du groupe).
+
+Règles :
+- **Formations variées** : anneau, ligne, coin ou "V" selon le groupe ; à la fusion, une nouvelle formation est tirée et les cibles de slots sont recalculées.
+- **Hiérarchie visible (leader)** : le zombie d'index 0 (`isLeader`) est rendu plus gros et teinté (rouge/sang) dans `drawZombie` — objectif tactique. À sa mort, le suivant prend le relais. En multijoueur, `leader` est transmis dans le snapshot.
+- **Fusion animée** : après une fusion, les slots convergent vers les nouvelles cibles via un lerp (`ZOMBIE_SLOT_LERP`) plutôt que d'être instantanés.
+- **Mode horde** : un groupe de `≥ ZOMBIE_HORDE_THRESHOLD` membres devient une horde — formation resserrée (`ZOMBIE_HORDE_DENSE`), vitesse accrue (`ZOMBIE_HORDE_SPEED_BONUS`) et message HUD "La horde arrive !" (`state.hordeMsgTimer`).
+- **Dispersion à la retraite** : en mode retraite, les slots s'élargissent (`ZOMBIE_RETREAT_SLOT_SCALE`) avec du bruit (`ZOMBIE_RETREAT_SLOT_NOISE`) — la horde se disperse au lever du jour.
+
+Rendu (`src/render.js`) : `drawZombie` agrandit et teinte le leader. HUD (`src/hud.js`) : message horde. Multijoueur : `hordeMsgTimer` et `leader` transmis dans le snapshot (`server/game.js`), appliqués côté client (`src/net.js`).
+
+Constantes associées (`src/config.js`) : `ZOMBIE_HORDE_THRESHOLD`, `ZOMBIE_HORDE_SPEED_BONUS`, `ZOMBIE_HORDE_DENSE`, `ZOMBIE_SLOT_LERP`, `ZOMBIE_RETREAT_SLOT_SCALE`, `ZOMBIE_RETREAT_SLOT_NOISE`.
+
 ## Étendre
 - **Variante de zombie** : ajouter un `z.kind`/`z.variant` et brancher dans `updateZombies` + `drawZombie`.
 - **Zombie plus résistant** : augmenter `z.hp` à l'apparition et gérer plusieurs PV dans `updateProjectiles` (déjà `- pr.dmg`).

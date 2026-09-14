@@ -81,6 +81,7 @@
       waveSpawnedForDay: false,
       zombieMode: "retreat",
       waveMsgTimer: 0,
+      hordeMsgTimer: 0,
       time: 0,
       startTimer: 0,
       floaters: []
@@ -381,7 +382,8 @@
         return {
           x: Math.round(z.x), y: Math.round(z.y), hp: z.hp,
           lunge: z.lunge > 0 ? +(z.lunge).toFixed(2) : 0,
-          ldx: z.lungeDx || 0, ldy: z.lungeDy || 0
+          ldx: z.lungeDx || 0, ldy: z.lungeDy || 0,
+          leader: !!z.isLeader
         };
       }),
       walls: state.walls.map(function (m) {
@@ -400,7 +402,8 @@
       mairieMaxHp: G.MAIRIE_MAX_HP,
       waveCount: state.waveCount || 0,
       waveActive: state.waveActive || false,
-      waveMsgTimer: state.waveMsgTimer || 0
+      waveMsgTimer: state.waveMsgTimer || 0,
+      hordeMsgTimer: state.hordeMsgTimer || 0
     };
   }
 
