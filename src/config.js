@@ -101,6 +101,12 @@
   G.TREE_CHOP_TIME = 1;
   G.AXE_RANGE = 120;
   G.WALL_AXE_DMG = 10;
+  // Forêts : 5 états de coupe (s0 = pleine, s4 = entièrement coupée).
+  // Un coup de hache récolte 4 planches et fait avancer d'un état. À l'état
+  // final (s4) la forêt n'est plus récoltable et devient traversable. Chaque
+  // jour écoulé, la forêt regagne un état (remonte vers s0), sauf à s0.
+  G.FORET_STAGES = 5;
+  G.FORET_PLANKS_PER_CHOP = 4;
   G.WALL_GRACE = 1.5;
   G.ZOMBIE_PER_WAVE_BASE = 50;
   G.ZOMBIE_WAVE_GROWTH = 2;

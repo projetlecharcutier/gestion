@@ -67,6 +67,33 @@ assets/sprites/building/
 | `<base>-0.png`, `<base>-1.png`... | **animation** (frames d'un même objet, cycle) | `SE-0.png`, `SE-1.png`, `SE-2.png` |
 | `<base>1-0.png`, `<base>1-1.png`... | variante 1 **animée** | `H1-0.png`, `H1-1.png` |
 
+## États de coupe des forêts
+
+Les forêts ont **5 états de coupe** (s0 = pleine, s4 = entièrement coupée).
+Un coup de hache récolte 4 planches et fait passer la forêt à l'état suivant.
+À l'état final (s4), la forêt n'est plus récoltable et devient traversable.
+Chaque jour écoulé, la forêt regagne un état (remonte vers s0).
+
+**Convention de nommage : `<base>s<index>.png`** (suffixe `s` + index).
+
+```
+assets/sprites/tree/
+  foret1.png     <- sprite de base (état implicite s0 / repli)
+  foret1s0.png   <- état 0 : forêt pleine
+  foret1s1.png   <- état 1
+  foret1s2.png   <- état 2
+  foret1s3.png   <- état 3
+  foret1s4.png   <- état 4 : forêt entièrement coupée
+```
+
+**Pas de conflit avec l'animation** : l'animation utilise `<base>-N.png`
+(tiret), les états utilisent `<base>s<N>.png` (lettre `s`). Les deux
+conventions ne se chevauchent jamais (`foret1-0.png` ≠ `foret1s0.png`).
+
+**Tolérant** : si un sprite d'état manque, le rendu repli sur le sprite de
+base. Les états ne sont pas déclarés dans le manifeste : ils sont détectés
+automatiquement par `probeForetStages` (voir `src/assets.js`).
+
 ## Manifeste
 
 `assets/manifest.json` decrit les frames de base. Les frames d'animation (`-N`) ne

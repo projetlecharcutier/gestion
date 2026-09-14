@@ -14,6 +14,7 @@
     for (var i = 0; i < blds.length; i++) {
       var t = blds[i];
       if (!t.isForet) continue;
+      if (G.foretDepleted(t)) continue;
       var cx = t.x + t.w / 2, cy = t.y + t.h / 2;
       var dx = cx - p.x, dy = cy - p.y;
       var d = Math.sqrt(dx * dx + dy * dy);
@@ -90,13 +91,11 @@
           state.planks += G.WALL_PLANKS;
         }
       } else {
-        // Récolte : 1 planche, forêt retirée des bâtiments.
-        state.planks += 1;
-        var idx = state.buildings.indexOf(cible);
-        if (idx >= 0) {
-          state.buildings.splice(idx, 1);
-          if (G.buildingGrid) G.rebuildBuildingGrid();
-        }
+        // Récolte : 4 planches, la forêt avance d'un état de coupe.
+        // À l'état final elle n'est plus récoltable et devient traversable.
+        state.planks += G.FORET_PLANKS_PER_CHOP;
+        cible.foretStage = (cible.foretStage || 0) + 1;
+        if (G.foretDepleted(cible) && G.buildingGrid) G.rebuildBuildingGrid();
       }
       state.chopTarget = null;
       state.chopWall = null;

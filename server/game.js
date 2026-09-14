@@ -73,6 +73,7 @@
       chopTimer: 0,
       clock: 8,
       day: 0,
+      lastDay: 0,
       elapsed: 0,
       nextWaveAt: G.WAVE_EVERY,
       waveActive: false,
@@ -260,6 +261,13 @@
     state.clock += (12 / G.DAY_SECONDS) * dt;
     if (state.clock >= 24) { state.clock -= 24; state.day += 1; }
 
+    // Régénération des forêts : à chaque nouveau jour, chaque forêt remonte
+    // d'un état de coupe (vers s0 = pleine). Une forêt déjà à s0 ne change pas.
+    if (state.day !== state.lastDay) {
+      G.regenForets();
+      state.lastDay = state.day;
+    }
+
     // Déplacement de chaque joueur (validation côté serveur).
     for (var i = 0; i < state.players.length; i++) {
       var p = state.players[i];
@@ -403,7 +411,12 @@
       waveCount: state.waveCount || 0,
       waveActive: state.waveActive || false,
       waveMsgTimer: state.waveMsgTimer || 0,
-      hordeMsgTimer: state.hordeMsgTimer || 0
+      hordeMsgTimer: state.hordeMsgTimer || 0,
+      forets: state.buildings.filter(function (b) {
+        return b.isForet && (b.foretStage || 0) > 0;
+      }).map(function (b) {
+        return { x: Math.round(b.x), y: Math.round(b.y), stage: b.foretStage || 0 };
+      })
     };
   }
 
@@ -438,7 +451,7 @@
         return {
           x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h),
           name: b.name, isMairie: b.isMairie, isChurch: b.isChurch, isDecor: b.isDecor,
-          isForet: b.isForet || false, foretFrame: b.foretFrame || null,
+          isForet: b.isForet || false, foretFrame: b.foretFrame || null, foretStage: b.foretStage || 0,
           houseSprite: b.houseSprite ? b.houseSprite : null,
           hp: b.hp, maxHp: b.maxHp, height: b.height
         };
