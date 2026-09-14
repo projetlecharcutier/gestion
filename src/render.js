@@ -662,6 +662,11 @@
     G.drawProjectiles();
     G.drawFloaters();
     G.drawFog();
+    var darkness = G.nightDarkness(state.clock);
+    if (darkness > 0) {
+      ctx.fillStyle = "rgba(" + G.NIGHT_DARK_COLOR + "," + darkness + ")";
+      ctx.fillRect(0, 0, W, H);
+    }
     G.drawCrosshair();
     G.drawBuildHint();
     G.drawChopProgress();
