@@ -45,7 +45,7 @@
     if (!online) {
       if (!state.paused && !state.gameOver) {
         state.elapsed += dt;
-        state.clock += (12 / G.DAY_SECONDS) * dt;
+        state.clock += (12 / G.DAY_SECONDS) * G.TIME_SCALE * dt;
         if (state.clock >= 24) { state.clock -= 24; state.day += 1; }
         if (state.day !== state.lastDay) { G.regenForets(); state.lastDay = state.day; }
       }
