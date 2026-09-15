@@ -164,6 +164,30 @@ canvas#game {
 .btn--primary { background: var(--accent); border-color: var(--accent); }
 .btn--primary:hover { background: var(--accent-soft); transform: translateY(-1px); }
 
+.mode-choice {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.mode-choice__opt {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: #0f172a;
+  cursor: pointer;
+  font-size: 0.92rem;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.mode-choice__opt input { accent-color: var(--accent); margin: 0; }
+.mode-choice__opt:has(input:checked) {
+  border-color: var(--accent);
+  background: rgba(99, 102, 241, 0.15);
+}
+
 .chest__vault { margin: 10px 0; padding: 8px 10px; background: #0f172a; border: 1px solid var(--panel-border); border-radius: 6px; font-size: 0.95rem; color: #cbd5e1; min-height: 2.4em; }
 .chest__bag { margin: 8px 0; }
 .chest__list { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; }

@@ -108,7 +108,8 @@
   }
   // Lance le chargement asynchrone des sprites PNG (tolérant aux images manquantes).
   G.loadAssets(function () { /* sprites prêts ou manquants : le rendu fait fallback */ });
-  // Connexion au serveur multijoueur dès le chargement (pour le lobby du menu).
-  if (G.netConnect) G.netConnect();
+  // La connexion au serveur multijoueur n'est plus automatique : elle est
+  // déclenchée par l'utilisateur via le choix "Jouer sur le serveur" du menu
+  // (voir src/input.js). En local, aucun serveur n'est contacté.
   requestAnimationFrame(loop);
 })();

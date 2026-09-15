@@ -178,6 +178,27 @@
     if (e.code === "Space") G.state.keys.space = false;
   });
 
+  // État du mode de jeu choisi dans le menu : "local" (défaut) ou "server".
+  // En local, aucun serveur n'est contacté et la simulation tourne côté client.
+  // En serveur, on déclenche la connexion WebSocket et on affiche le lobby.
+  G.playMode = "local";
+  var modeChoice = document.getElementById("modeChoice");
+  var lobbyInfo = document.getElementById("lobbyInfo");
+  if (modeChoice) {
+    modeChoice.addEventListener("change", function (e) {
+      var chosen = e.target.value;
+      G.playMode = chosen;
+      if (chosen === "server") {
+        // Lance la connexion au serveur (idempotente) et montre le lobby.
+        if (G.netConnect) G.netConnect();
+        if (lobbyInfo) lobbyInfo.hidden = false;
+        if (!G.lobbyInfo && lobbyInfo) lobbyInfo.textContent = "Connexion au serveur…";
+      } else {
+        if (lobbyInfo) lobbyInfo.hidden = true;
+      }
+    });
+  }
+
   G.startForm.addEventListener("submit", function (e) {
     e.preventDefault();
     var v = G.nameInput.value.trim();
@@ -214,16 +235,17 @@
     state.churchOpen = false;
     if (G.chestScreen) G.chestScreen.hidden = true;
     if (G.churchScreen) G.churchScreen.hidden = true;
-    // Mode multijoueur : on rejoint la partie hébergée par le serveur. Le
-    // serveur construit le monde et pilote la simulation ; le client reçoit la
-    // carte au message "joined" (voir net.js).
-    if (G.netConnected && G.netConnected()) {
+    // Mode serveur : on rejoint la partie hébergée par le serveur. Le serveur
+    // construit le monde et pilote la simulation ; le client reçoit la carte
+    // au message "joined" (voir net.js). On ne démarre la simulation locale que
+    // si la connexion est établie.
+    if (G.playMode === "server" && G.netConnected && G.netConnected()) {
       G.netJoin(v);
       state.started = true; // le rendu démarre ; l'état réel arrive via net.
       G.nameInput.blur();
       return;
     }
-    // Fallback hors-ligne : on construit le monde localement.
+    // Mode local (ou serveur injoignable) : on construit le monde localement.
     function doBuild() {
       G.buildWorld();
       G.spawnBirds();
