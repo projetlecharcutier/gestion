@@ -299,14 +299,27 @@
           cible = { x: p.x, y: p.y, isPlayer: true };
         } else if (retreating) {
           // Mode retraite (apres 8h) : s'eloigne de la ville, n'attaque pas la
-          // mairie. Cible un point a ZOMBIE_RETREAT_DIST hors de la ville, dans
-          // la direction opposee au centre-ville.
-          var tcx = (G.TOWN_MIN + G.TOWN_MAX) / 2;
-          var rdx = grp.x - tcx, rdy = grp.y - tcx;
-          var rlen = Math.sqrt(rdx * rdx + rdy * rdy) || 1;
-          cible = { x: tcx + (rdx / rlen) * (G.TOWN / 2 + G.ZOMBIE_RETREAT_DIST),
-                    y: tcx + (rdy / rlen) * (G.TOWN / 2 + G.ZOMBIE_RETREAT_DIST),
-                    isPlayer: false, retreat: true };
+          // mairie. MAIS attaque les murs à proximité (de nuit comme de jour,
+          // un mur collé reste attaqué avant de fuir). On cherche d'abord un
+          // mur à portée ; s'il y en a un, on le cible, sinon on fuit.
+          var nearWall = null, nearWallD = Infinity, nearWallPt = null;
+          for (var wj = 0; wj < state.walls.length; wj++) {
+            var wm = state.walls[wj];
+            var wlx = Math.max(wm.x, Math.min(grp.x, wm.x + wm.w));
+            var wly = Math.max(wm.y, Math.min(grp.y, wm.y + wm.h));
+            var wmd = Math.sqrt((wlx - grp.x) * (wlx - grp.x) + (wly - grp.y) * (wly - grp.y));
+            if (wmd < nearWallD) { nearWallD = wmd; nearWall = wm; nearWallPt = { x: wlx, y: wly }; }
+          }
+          if (nearWall && nearWallD < 40) {
+            cible = { x: nearWallPt.x, y: nearWallPt.y, isPlayer: false, wall: nearWall };
+          } else {
+            var tcx = (G.TOWN_MIN + G.TOWN_MAX) / 2;
+            var rdx = grp.x - tcx, rdy = grp.y - tcx;
+            var rlen = Math.sqrt(rdx * rdx + rdy * rdy) || 1;
+            cible = { x: tcx + (rdx / rlen) * (G.TOWN / 2 + G.ZOMBIE_RETREAT_DIST),
+                      y: tcx + (rdy / rlen) * (G.TOWN / 2 + G.ZOMBIE_RETREAT_DIST),
+                      isPlayer: false, retreat: true };
+          }
         } else if (mairie) {
           // Cible la mairie ; attaque aussi les murs rencontrés sur le chemin.
           // La cible d'un mur est le point du bord le plus proche du groupe,
