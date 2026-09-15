@@ -20,29 +20,6 @@
     b.x = cx - b.w / 2; b.y = by - b.h / 2;
   }
 
-  // Collision d'une forêt (arbre vertical) : réduit la boîte au sol au pied
-  // de l'arbre, sous la zone opaque du PNG. En X la boîte suit la largeur
-  // opaque ; en Y (profondeur monde) la boîte est une petite zone ancrée sur
-  // le bord SUD du losange complet (le pied de l'arbre, là où le rendu ancre
-  // le sprite). On ne shrink pas en Y selon la hauteur du PNG (qui est
-  // verticale), mais on garde une profondeur proportionnelle à la largeur
-  // opaque pour que le pied reste naturel.
-  function shrinkForetFoot(b, ent, frame) {
-    var bd = G.spriteBounds(ent, frame);
-    if (!bd) return;
-    var cx = b.x + b.w / 2;
-    var baseY = b.y + b.h;
-    var fw = bd.x1 - bd.x0;
-    if (fw <= 0) return;
-    // Largeur monde = largeur opaque. Profondeur monde = fraction de la
-    // largeur (pied circulaire), ancrée sur le bord sud.
-    var footW = b.w * fw;
-    var footH = footW * 0.6;
-    b.w = footW; b.h = footH;
-    b.x = cx - b.w / 2;
-    b.y = baseY - b.h;
-  }
-
   G.makeHouse = function (x, y, sprite) {
     var side = sprite.w * 2;
     var b = {
@@ -95,19 +72,14 @@
     return false;
   };
 
-  // Crée une forêt : objet de type bâtiment (isForet:true, isDecor:true,
-  // isChoppable:true) avec la même logique de collision qu'un bâtiment :
-  // emprise sol = largeur du PNG * 2 (ancré bas-centre), réduite à la boîte
-  // opaque réelle du PNG via shrinkToOpaque. Les forêts vont dans
-  // state.buildings[] : elles collident donc comme n'importe quel bâtiment.
-  // Repli dimension 128 si pas de sprite (côté serveur sans PNG).
+  // Crée une forêt : objet de type bâtiment (isForet, isDecor, isChoppable)
+  // avec EXACTEMENT la même logique de collision qu'un bâtiment : emprise sol
+  // = largeur du PNG * 2 (ancré bas-centre), réduite à la zone opaque réelle
+  // du PNG via shrinkToOpaque. Le rendu et la collision partagent la même
+  // boîte : drawBuilding dessine le sprite sur (b.x, b.y, b.w, b.h) ancré
+  // bas-centre, comme pour la mairie/eglise/maison. Repli 128 sans sprite (serveur).
   G.makeForet = function (x, y, frame) {
     var sp = G.SPRITES.foret && G.SPRITES.foret[frame];
-    // Référence de taille : sprite d'état s0 (forêt pleine) s'il existe,
-    // sinon le sprite de base. La collision reste sur le losange complet du
-    // sol (side x side) pour rester cohérente avec le rendu (sprite ancré en
-    // bas-centre sur le bord sud du losange). Pas de shrink : le rendu et la
-    // collision partagent la même boîte.
     var stage0 = G.SPRITES.foret && G.SPRITES.foret[frame + "s0"];
     var ref = stage0 || sp;
     var side = ref ? ref.w * 2 : 128;
@@ -116,11 +88,32 @@
       name: "Forêt", msg: "", height: ref ? ref.h : 80,
       isForet: true, isDecor: true, isChoppable: true,
       hp: 2, maxHp: 2, foretFrame: frame, foretStage: 0,
-      renderX: x - side / 2, renderW: side, renderH: side, baseY: y + side / 2,
       door: { x: x, y: y + side / 2 }
     };
-    if (ref) shrinkForetFoot(b, "foret", stage0 ? frame + "s0" : frame);
+    if (ref) shrinkToOpaque(b, "foret", stage0 ? frame + "s0" : frame);
     return b;
+  };
+
+  // Recalcule l'emprise de collision d'une forêt selon l'état de coupe courant
+  // (foretStage) : le sprite d'affichage change de taille entre s0 et s4, donc
+  // la zone opaque (shrinkToOpaque) doit être recalculée pour que rendu et
+  // collision restent alignés à chaque état. Reconstruit le centre du losange
+  // complet (side = sprite de l'état * 2) puis applique shrinkToOpaque sur le
+  // sprite de cet état. Préserve le centre monde (x + w/2, y + h/2).
+  G.refitForet = function (b) {
+    if (!b || !b.isForet) return;
+    var frame = b.foretFrame;
+    if (!frame) return;
+    var cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+    var stage = b.foretStage || 0;
+    var key = G.foretStageFrame(frame, stage);
+    var sp = key && G.hasSprite("foret", key) ? G.SPRITES.foret[key] : (G.SPRITES.foret && G.SPRITES.foret[frame]);
+    if (!sp) return;
+    var side = sp.w * 2;
+    b.w = side; b.h = side;
+    b.x = cx - side / 2; b.y = cy - side / 2;
+    b.height = sp.h;
+    shrinkToOpaque(b, "foret", key && G.hasSprite("foret", key) ? key : frame);
   };
 
   // Nom du sprite selon l'état de coupe : "<base>s<stage>" si disponible,
@@ -150,6 +143,7 @@
       if (!b.isForet) continue;
       if ((b.foretStage || 0) > 0) {
         b.foretStage = (b.foretStage || 0) - 1;
+        if (G.refitForet) G.refitForet(b);
         if ((b.foretStage || 0) < (G.FORET_STAGES - 1)) regrowSolid = true;
       }
     }

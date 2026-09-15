@@ -95,6 +95,7 @@
         // À l'état final elle n'est plus récoltable et devient traversable.
         state.planks += G.FORET_PLANKS_PER_CHOP;
         cible.foretStage = (cible.foretStage || 0) + 1;
+        if (G.refitForet) G.refitForet(cible);
         if (G.foretDepleted(cible) && G.buildingGrid) G.rebuildBuildingGrid();
       }
       state.chopTarget = null;
