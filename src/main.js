@@ -59,13 +59,16 @@
           var dist = Math.sqrt(dx * dx + dy * dy);
           if (dist > 0.001) {
             var nx = dx / dist, ny = dy / dist;
+            // La direction du sprite (lastDx/lastDy/face) suit la souris meme si
+            // le mouvement reel est minuscule ou bloque : l'image reflete la
+            // direction visee, independamment de la distance souris.
+            p.lastDx = nx; p.lastDy = ny;
+            if (nx < 0) p.face = -1; else if (nx > 0) p.face = 1;
             var stepX = p.x + nx * G.SPEED * dt;
             var stepY = p.y + ny * G.SPEED * dt;
-            G.tryMove(stepX, stepY);
-            p.moving = true; p.lastDx = nx; p.lastDy = ny;
-            if (nx < 0) p.face = -1; else if (nx > 0) p.face = 1;
-          } else { p.moving = false; }
-        } else { p.moving = false; }
+            p.moving = G.tryMove(stepX, stepY);
+          } else { p.moving = false; p.lastDx = 0; p.lastDy = 0; }
+        } else { p.moving = false; p.lastDx = 0; p.lastDy = 0; }
       } else {
         state.player.moving = false;
       }

@@ -275,22 +275,25 @@
       if (p._dx !== undefined && p._dy !== undefined) {
         var dx = p._dx, dy = p._dy;
         var dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 0.1) {
+        if (dist > 0.001) {
           var nx = dx / dist, ny = dy / dist;
+          // La direction du sprite (lastDx/lastDy/face) suit la souris meme si
+          // le mouvement reel est minuscule ou bloque : l'image reflete la
+          // direction visee, independamment de la distance souris.
+          p.lastDx = nx; p.lastDy = ny;
+          if (nx < 0) p.face = -1; else if (nx > 0) p.face = 1;
           var stepX = p.x + nx * G.SPEED * dt;
           var stepY = p.y + ny * G.SPEED * dt;
           // tryMove valide les collisions (bâtiments, arbres, murs).
           var oldPx = state.player.x, oldPy = state.player.y;
           state.player.x = p.x; state.player.y = p.y;
-          G.tryMove(stepX, stepY);
+          p.moving = G.tryMove(stepX, stepY);
           p.x = state.player.x; p.y = state.player.y;
-          p.moving = true; p.lastDx = nx; p.lastDy = ny;
-          if (nx < 0) p.face = -1; else if (nx > 0) p.face = 1;
         } else {
-          p.moving = false;
+          p.moving = false; p.lastDx = 0; p.lastDy = 0;
         }
       } else {
-        p.moving = false;
+        p.moving = false; p.lastDx = 0; p.lastDy = 0;
       }
       // Tir.
       if (p._fire && p.equipped && p.shootCd <= 0) {
