@@ -258,7 +258,7 @@
 
     // Cycle jour/nuit.
     state.elapsed += dt;
-    state.clock += (12 / G.DAY_SECONDS) * dt;
+    state.clock += (12 / G.DAY_SECONDS) * G.TIME_SCALE * dt;
     if (state.clock >= 24) { state.clock -= 24; state.day += 1; }
 
     // Régénération des forêts : à chaque nouveau jour, chaque forêt remonte

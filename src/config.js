@@ -28,6 +28,9 @@
   G.DAY_SECONDS = 300;
   G.NIGHT_SECONDS = 120;
   G.CYCLE_SECONDS = G.DAY_SECONDS * 2;
+  // Multiplicateur global de vitesse d'écoulement du temps de jeu : 3x plus
+  // rapide (le cycle jour/nuit et les horloges avancent 3 fois plus vite).
+  G.TIME_SCALE = 3;
   G.WAVE_EVERY = 420;
   G.WAVE_LEAVE = 600;
   // Cycle jour/nuit des zombies : vague a minuit, retraite a 8h.
