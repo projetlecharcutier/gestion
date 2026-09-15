@@ -247,9 +247,8 @@
     var p = G.state.player;
     var base = G.proj(p.x, p.y);
     var z = G.state.zoom;
-    // Direction de marche : vecteur de déplacement si en mouvement, sinon idle.
-    var dx = p.moving ? (p.lastDx || 0) : 0;
-    var dy = p.moving ? (p.lastDy || 0) : 0;
+    var dx = (p.lastDx || 0);
+    var dy = (p.lastDy || 0);
     // Sprite du joueur : nouveau système (3 états × 3 directions) en priorité,
     // repli sur le système 8-directions si le nouveau sprite manque.
     var sprite = G.playerSprite ? G.playerSprite(G.state.equipped, G.state.axeEquipped, dx, dy) : null;
@@ -300,8 +299,8 @@
     ctx.ellipse(base[0], base[1], 9 * z * 0.5, 4 * z * 0.5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    var dx = rp.moving ? (rp.lastDx || 0) : 0;
-    var dy = rp.moving ? (rp.lastDy || 0) : 0;
+    var dx = (rp.lastDx || 0);
+    var dy = (rp.lastDy || 0);
     var sprite = G.playerSprite ? G.playerSprite(rp.equipped, rp.axeEquipped, dx, dy) : null;
     if (!sprite) sprite = G.spriteFor("player", dx, dy);
     if (sprite) {
