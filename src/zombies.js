@@ -95,6 +95,8 @@
           blockedSides: 0,
           harasser: Math.random() < G.ZOMBIE_HARASS_RATIO,
           raider: Math.random() < G.ZOMBIE_RAIDER_RATIO,
+          wallBreaker: Math.random() < G.ZOMBIE_BREAKER_RATIO,
+          seekDir: 0, // sens de longe du mur pour les fouisseurs (+1/-1)
           lunge: 0, lungeDx: 0, lungeDy: 0,
           isLeader: k === 0
         };
@@ -389,6 +391,36 @@
               zcible = { x: p.x, y: p.y, isPlayer: true };
             }
           }
+          // Détection de mur individuelle : chaque zombie cherche le mur le
+          // plus proche de LUI-MÊME (pas du groupe) à portée ZOMBIE_WALL_SENSE.
+          // Cela évite qu'un zombie collé à un mur reste passif parce que le
+          // groupe vise la mairie ou un point de slot éloigné. Un mur détecté
+          // devient la cible effective : le zombie l'attaque ou le longe.
+          var zNearWall = null, zNearWallD = Infinity, zNearWallPt = null;
+          for (var zw = 0; zw < state.walls.length; zw++) {
+            var zwl = state.walls[zw];
+            var zclx = Math.max(zwl.x, Math.min(z.x, zwl.x + zwl.w));
+            var zcly = Math.max(zwl.y, Math.min(z.y, zwl.y + zwl.h));
+            var zwd = Math.sqrt((zclx - z.x) * (zclx - z.x) + (zcly - z.y) * (zcly - z.y));
+            if (zwd < zNearWallD) { zNearWallD = zwd; zNearWall = zwl; zNearWallPt = { x: zclx, y: zcly }; }
+          }
+          if (zNearWall && zNearWallD < G.ZOMBIE_WALL_SENSE && !zcible.isPlayer) {
+            // Démolisseur : fonce droit sur le point le plus proche du mur.
+            // Fouisseur : longe le mur dans un sens fixe pour chercher une
+            // faille (un trou dans la palissade) jusqu'à pouvoir passer.
+            if (z.wallBreaker) {
+              zcible = { x: zNearWallPt.x, y: zNearWallPt.y, isPlayer: false, wall: zNearWall };
+            } else {
+              var alongX = zNearWall.w >= zNearWall.h ? 1 : 0;
+              var alongY = zNearWall.w >= zNearWall.h ? 0 : 1;
+              if (!z.seekDir) z.seekDir = (Math.random() < 0.5 ? 1 : -1);
+              var seekPt = {
+                x: zNearWallPt.x + alongX * z.seekDir * 60,
+                y: zNearWallPt.y + alongY * z.seekDir * 60
+              };
+              zcible = { x: seekPt.x, y: seekPt.y, isPlayer: false, wall: zNearWall, seeking: true };
+            }
+          }
           var tx = grp.x + Math.cos(z.slotAng) * z.slotDist;
           var ty = grp.y + Math.sin(z.slotAng) * z.slotDist;
           var zdx = zcible.x - z.x, zdy = zcible.y - z.y;
@@ -396,6 +428,8 @@
           if (z.atkCd > 0) z.atkCd -= dt;
           if (z.wallCd > 0) z.wallCd -= dt;
           if (z.lunge > 0) z.lunge -= dt;
+          var nightFast = G.isNight(state.clock) ? G.ZOMBIE_NIGHT_ATTACK_FASTER : 1;
+          var wallHit = zcible.wall && !zcible.seeking && zd < G.ZOMBIE_WALL_HIT;
           if (zd < 14) {
             if (zcible.isPlayer && z.atkCd <= 0) {
               z.atkCd = G.ZOMBIE_ATTACK_CD;
@@ -405,16 +439,23 @@
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
               if (p.hp <= 0) { p.hp = 0; state.gameOver = true; state.gameOverCause = "player"; }
             } else if (!zcible.isPlayer && zcible.wall && z.wallCd <= 0) {
-              z.wallCd = G.ZOMBIE_WALL_CD;
+              z.wallCd = G.ZOMBIE_WALL_CD / nightFast;
               // Attaque de meute : bonus de dégâts par assaillant proche du
               // mur (impression de coups frappés ensemble).
-              cible.wall.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
+              zcible.wall.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
               z.lunge = G.ZOMBIE_LUNGE_TIME;
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
             } else if (!zcible.isPlayer && zcible.mairie && z.wallCd <= 0) {
-              z.wallCd = G.ZOMBIE_WALL_CD;
-              cible.mairie.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
-              if (cible.mairie.hp <= 0) { cible.mairie.hp = 0; state.gameOver = true; state.gameOverCause = "mairie"; }
+              z.wallCd = G.ZOMBIE_WALL_CD / nightFast;
+              zcible.mairie.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
+              if (zcible.mairie.hp <= 0) { zcible.mairie.hp = 0; state.gameOver = true; state.gameOverCause = "mairie"; }
+              z.lunge = G.ZOMBIE_LUNGE_TIME;
+              z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
+            }
+          } else if (wallHit) {
+            if (z.wallCd <= 0) {
+              z.wallCd = G.ZOMBIE_WALL_CD / nightFast;
+              zcible.wall.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
               z.lunge = G.ZOMBIE_LUNGE_TIME;
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
             }
@@ -459,12 +500,49 @@
                 // la chance de passer des deux bords.
                 if (hitWall) {
                   z.blockedSides = (z.blockedSides || 0) + 1;
-                  var slideDir = (((Math.floor(state.time * 2 + z.wanderPhase) % 2) === 0) ? 1 : -1);
-                  var perpX = -mvy, perpY = mvx;
-                  var slide = G.ZOMBIE_WALL_SLIDE * dt * slideDir;
-                  var sxs = z.x + perpX * slide, sys = z.y + perpY * slide;
-                  if (!G.aabbHitsWalls(sxs - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(sxs, z.y, zs)) z.x = sxs;
-                  if (!G.aabbHitsWalls(z.x - zs, sys - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(z.x, sys, zs)) z.y = sys;
+                  // Distingue le blocage par forêt (contourner pour atteindre
+                  // le mur) du blocage par mur (glisser le long).
+                  var blockedByForet = G.aabbHitsForets(z.x, z.y, zs) ||
+                    G.aabbHitsForets(z.x + mvx * zStep, z.y + mvy * zStep, zs);
+                  if (blockedByForet) {
+                    // Réoriente vers le mur le plus proche (contournement
+                    // dirigé de la forêt) pour rejoindre la palissade.
+                    var reWall = null, reD = G.ZOMBIE_FORET_REORIENT, rePt = null;
+                    for (var rw2 = 0; rw2 < state.walls.length; rw2++) {
+                      var rwm = state.walls[rw2];
+                      var rlx2 = Math.max(rwm.x, Math.min(z.x, rwm.x + rwm.w));
+                      var rly2 = Math.max(rwm.y, Math.min(z.y, rwm.y + rwm.h));
+                      var rmd2 = Math.sqrt((rlx2 - z.x) * (rlx2 - z.x) + (rly2 - z.y) * (rly2 - z.y));
+                      if (rmd2 < reD) { reD = rmd2; reWall = rwm; rePt = { x: rlx2, y: rly2 }; }
+                    }
+                    if (reWall && rePt) {
+                      var rdx2 = rePt.x - z.x, rdy2 = rePt.y - z.y;
+                      var rlen2 = Math.sqrt(rdx2 * rdx2 + rdy2 * rdy2) || 1;
+                      var fStep = G.ZOMBIE_WALL_SLIDE * dt;
+                      var fsx = z.x + (rdx2 / rlen2) * fStep;
+                      var fsy = z.y + (rdy2 / rlen2) * fStep;
+                      if (!G.aabbHitsForets(fsx, z.y, zs) && !G.aabbHitsWalls(fsx - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) z.x = fsx;
+                      if (!G.aabbHitsForets(z.x, fsy, zs) && !G.aabbHitsWalls(z.x - zs, fsy - zs, G.ZOMBIE_W, G.ZOMBIE_W)) z.y = fsy;
+                    } else {
+                      // Pas de mur proche : glisse le long de la forêt.
+                      var fsd = (((Math.floor(state.time * 2 + z.wanderPhase) % 2) === 0) ? 1 : -1);
+                      var fperpX = -mvy, fperpY = mvx;
+                      var fsl = G.ZOMBIE_WALL_SLIDE * dt * fsd;
+                      var fxs = z.x + fperpX * fsl, fys = z.y + fperpY * fsl;
+                      if (!G.aabbHitsForets(fxs, z.y, zs) && !G.aabbHitsWalls(fxs - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) z.x = fxs;
+                      if (!G.aabbHitsForets(z.x, fys, zs) && !G.aabbHitsWalls(z.x - zs, fys - zs, G.ZOMBIE_W, G.ZOMBIE_W)) z.y = fys;
+                    }
+                  } else {
+                    // Blocage par mur : glisse le long pour contourner.
+                    var slideSpd = zcible.seeking ? G.ZOMBIE_SEEK_SLIDE : G.ZOMBIE_WALL_SLIDE;
+                    var slideDir = zcible.seeking && z.seekDir ? z.seekDir :
+                      (((Math.floor(state.time * 2 + z.wanderPhase) % 2) === 0) ? 1 : -1);
+                    var perpX = -mvy, perpY = mvx;
+                    var slide = slideSpd * dt * slideDir;
+                    var sxs = z.x + perpX * slide, sys = z.y + perpY * slide;
+                    if (!G.aabbHitsWalls(sxs - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(sxs, z.y, zs)) z.x = sxs;
+                    if (!G.aabbHitsWalls(z.x - zs, sys - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(z.x, sys, zs)) z.y = sys;
+                  }
                 } else {
                   z.blockedSides = 0;
                 }
