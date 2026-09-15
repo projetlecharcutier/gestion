@@ -415,7 +415,7 @@
       forets: state.buildings.filter(function (b) {
         return b.isForet && (b.foretStage || 0) > 0;
       }).map(function (b) {
-        return { x: Math.round(b.x), y: Math.round(b.y), stage: b.foretStage || 0 };
+        return { x: Math.round(b.x + b.w / 2), y: Math.round(b.y + b.h / 2), stage: b.foretStage || 0 };
       })
     };
   }

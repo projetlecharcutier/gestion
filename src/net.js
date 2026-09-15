@@ -143,9 +143,10 @@
       for (var bi = 0; bi < state.buildings.length; bi++) {
         var fb = state.buildings[bi];
         if (!fb.isForet) continue;
-        var k = Math.round(fb.x) + "," + Math.round(fb.y);
+        var k = Math.round(fb.x + fb.w / 2) + "," + Math.round(fb.y + fb.h / 2);
         if (byPos[k] !== undefined) fb.foretStage = byPos[k];
         else fb.foretStage = 0;
+        if (G.refitForet) G.refitForet(fb);
         if ((fb.foretStage || 0) < (G.FORET_STAGES - 1)) regrewSolid = true;
       }
       if (regrewSolid && G.rebuildBuildingGrid) G.rebuildBuildingGrid();
@@ -215,6 +216,7 @@
       var stage = b.foretStage || 0;
       var fresh = G.makeForet(cx, cy, frame);
       fresh.foretStage = stage;
+      if (G.refitForet) G.refitForet(fresh);
       buildings[i] = fresh;
     }
   }

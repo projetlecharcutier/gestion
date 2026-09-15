@@ -151,39 +151,38 @@
     var z = G.state.zoom;
     var t = b.isMairie ? G.TEXTURES.mairie : G.TEXTURES.building;
     var hPx = b.height * 0.25 * z;
-    var rw = b.renderW || b.w;
-    var rh = b.renderH || b.h;
-    var rx = b.renderX != null ? b.renderX : b.x;
-    var rBaseY = b.baseY != null ? b.baseY : (b.y + b.h);
     var A = G.proj(b.x, b.y), B = G.proj(b.x + b.w, b.y),
         C = G.proj(b.x + b.w, b.y + b.h), D = G.proj(b.x, b.y + b.h);
-    var RA = G.proj(rx, rBaseY - rh), RC = G.proj(rx + rw, rBaseY),
-        RD = G.proj(rx, rBaseY);
-    var cx = (RA[0] + RC[0]) / 2, by = (RA[1] + RC[1]) / 2;
+    var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
 
     // Sprite PNG si disponible : forêt, mairie, eglise (church), maison
     // décorative ou bâtiment générique. Le PNG est dessiné à la taille exacte
     // de l'emprise sol du bâtiment (largeur du losange iso), ancré en bas-centre
     // sur le bord SUD du losange au sol (le point le plus bas en Y écran).
     var sprite = null;
-    var foretSpriteKey = null;
+    var spriteEnt = null, spriteKey = null;
     if (b.isForet && b.foretFrame) {
       var stageKey = G.foretStageFrame(b.foretFrame, b.foretStage || 0);
-      if (stageKey && G.hasSprite("foret", stageKey)) { sprite = G.SPRITES.foret[stageKey]; foretSpriteKey = stageKey; }
-      else if (G.hasSprite("foret", b.foretFrame)) { sprite = G.SPRITES.foret[b.foretFrame]; foretSpriteKey = b.foretFrame; }
+      if (stageKey && G.hasSprite("foret", stageKey)) { sprite = G.SPRITES.foret[stageKey]; spriteEnt = "foret"; spriteKey = stageKey; }
+      else if (G.hasSprite("foret", b.foretFrame)) { sprite = G.SPRITES.foret[b.foretFrame]; spriteEnt = "foret"; spriteKey = b.foretFrame; }
     }
     else if (b.isDecor && b.houseSprite) sprite = b.houseSprite;
-    else if (b.isMairie && G.hasSprite("building", "mairie")) sprite = G.SPRITES.building.mairie;
-    else if (b.isChurch && G.hasSprite("church", "church")) sprite = G.SPRITES.church.church;
-    else if (G.hasSprite("building", "generic")) sprite = G.SPRITES.building.generic;
+    else if (b.isMairie && G.hasSprite("building", "mairie")) { sprite = G.SPRITES.building.mairie; spriteEnt = "building"; spriteKey = "mairie"; }
+    else if (b.isChurch && G.hasSprite("church", "church")) { sprite = G.SPRITES.church.church; spriteEnt = "church"; spriteKey = "church"; }
+    else if (G.hasSprite("building", "generic")) { sprite = G.SPRITES.building.generic; spriteEnt = "building"; spriteKey = "generic"; }
     if (sprite) {
-      var losangeW = (rw + rh) * 0.5 * z;
+      var losangeW = (b.w + b.h) * 0.5 * z;
       var dw = losangeW;
       var dh = dw * sprite.h / sprite.w;
-      var groundY = Math.max(RC[1], RD[1]);
+      var groundY = Math.max(C[1], D[1]);
+      // Ancrage opaque commun (forêt + bâtiment + maison) : le bas de la zone
+      // opaque du sprite (pas le bas du PNG) est aligné sur le bord sud (groundY).
+      // Pour un PNG plein y1==1 -> opaqueDrop=0 (inchangé) ; pour un PNG aéré
+      // (marge transparente en bas) on abaisse le rendu pour ramener le pied
+      // opaque au niveau de la collision. Identique pour tous les objets.
       var opaqueDrop = 0;
-      if (b.isForet && foretSpriteKey) {
-        var ob = G.spriteBounds("foret", foretSpriteKey);
+      if (spriteEnt && spriteKey) {
+        var ob = G.spriteBounds(spriteEnt, spriteKey);
         if (ob && ob.y1 < 1) opaqueDrop = (1 - ob.y1) * dh;
       }
       ctx.drawImage(G.animImg(sprite, G.state.time), cx - dw / 2, groundY - dh + opaqueDrop, dw, dh);
