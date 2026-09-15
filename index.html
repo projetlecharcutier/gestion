@@ -52,9 +52,19 @@
     <div class="panel">
       <h1>Flex</h1>
       <p class="panel__intro">Vous êtes un habitant de la ville de Flex. Tous les jours, quand la nuit tombe, la horde de zombies s'attaque à votre ville. Essayez de survivre tout en gardant votre flex.</p>
-      <div class="lobby" id="lobbyInfo">Connexion au serveur…</div>
+      <div class="lobby" id="lobbyInfo" hidden>Connexion au serveur…</div>
       <form id="startForm">
         <input id="nameInput" type="text" maxlength="18" placeholder="Votre nom (facultatif)" autocomplete="off" />
+        <div class="mode-choice" id="modeChoice">
+          <label class="mode-choice__opt">
+            <input type="radio" name="playMode" value="local" checked />
+            <span>Jouer en local</span>
+          </label>
+          <label class="mode-choice__opt">
+            <input type="radio" name="playMode" value="server" />
+            <span>Jouer sur le serveur</span>
+          </label>
+        </div>
         <button class="btn btn--primary" type="submit">Lancer une partie</button>
       </form>
     </div>

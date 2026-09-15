@@ -72,6 +72,24 @@
   // planches construites par le joueur (built) à portée (px) plutôt que la mairie.
   G.ZOMBIE_RAIDER_RATIO = 0.20;
   G.ZOMBIE_RAID_RANGE = 520;
+  // --- Attaque des murs (nuit) ---
+  // Portée (px) de détection d'un mur par zombie individuel : un zombie
+  // attaque tout mur à portée même si le groupe vise ailleurs.
+  G.ZOMBIE_WALL_SENSE = 60;
+  // Rayon d'attaque effective d'un zombie sur un mur (px, distance zombie→bord mur).
+  G.ZOMBIE_WALL_HIT = 22;
+  // Diversité d'attaque des murs : fraction de zombies "démolisseurs" qui
+  // foncent droit sur le mur le plus proche, le reste "fouisseurs" longe le
+  // mur jusqu'à trouver une faille (un trou dans la palissade).
+  G.ZOMBIE_BREAKER_RATIO = 0.5;
+  // Bonus nocturne de cadence d'attaque des murs : la nuit, le cooldown
+  // d'attaque est divisé par ce facteur (zombies plus actifs).
+  G.ZOMBIE_NIGHT_ATTACK_FASTER = 1.6;
+  // Contournement des forêts : portée (px) de réorientation vers le mur le
+  // plus proche quand un zombie est bloqué par une forêt.
+  G.ZOMBIE_FORET_REORIENT = 360;
+  // Vitesse de glissement le long d'un mur pour les fouisseurs (px/s).
+  G.ZOMBIE_SEEK_SLIDE = 90;
   // --- Comportement de rassemblement ---
   // Mode horde : seuil de membres pour qu'un groupe devienne une horde, bonus
   // de vitesse en mode horde, et distance de formation dense en horde.

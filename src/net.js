@@ -27,6 +27,9 @@
   }
 
   G.netConnect = function () {
+    // Garde : ne pas ouvrir une seconde connexion si une est déjà ouverte ou
+    // en cours d'ouverture (l'utilisateur peut re-sélectionner le mode serveur).
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
     try {
       ws = new WebSocket(serverUrl());
     } catch (e) {
@@ -221,10 +224,11 @@
     }
   }
 
-  // Met à jour l'affichage du lobby dans le menu d'accueil.
+  // Met à jour l'affichage du lobby dans le menu d'accueil (mode serveur).
   G.updateLobbyDisplay = function () {
     var el = document.getElementById("lobbyInfo");
     if (!el || !G.lobbyInfo) return;
+    if (G.playMode !== "server") return;
     var info = G.lobbyInfo;
     var h = Math.floor(info.clock);
     var m = Math.floor((info.clock - h) * 60);
