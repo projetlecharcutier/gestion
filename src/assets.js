@@ -165,8 +165,7 @@
       var found = false;
       function tryCand() {
         if (ci >= candidates.length) {
-          // Aucune variante pour ce numéro : si on a déjà trouvé au moins une
-          // forêt avant, on s'arrête. Sinon et n==0, on tente le n=1.
+          if (n >= 1) { tryStageRef(0); return; }
           if (n === 0) { n = 1; next(); return; }
           onDone(frames);
           return;
@@ -192,6 +191,27 @@
         img.src = dir + name;
       }
       tryCand();
+      function tryStageRef(sci) {
+        var stageCandidates = ["foret" + n + "s0.png", "Foret" + n + "s0.png", "FORET" + n + "s0.png"];
+        if (sci >= stageCandidates.length) {
+          onDone(frames);
+          return;
+        }
+        var sname = stageCandidates[sci];
+        var slowerName = sname.toLowerCase().replace("s0.png", "");
+        var simg = new Image();
+        simg.onload = function () {
+          if (simg.naturalWidth > 0) {
+            frames[slowerName] = { src: dir + sname, w: simg.naturalWidth, h: simg.naturalHeight };
+            G.SPRITES.foret[slowerName] = { img: simg, w: simg.naturalWidth, h: simg.naturalHeight };
+            probeForetStages(dir, slowerName, function () { n++; next(); }, 1);
+          } else {
+            sci++; tryStageRef(sci);
+          }
+        };
+        simg.onerror = function () { sci++; tryStageRef(sci); };
+        simg.src = dir + sname;
+      }
     }
     next();
   }
@@ -202,9 +222,9 @@
   // avec probeAnimFrames (qui cherche <base>-N.png). Stocke le sprite sous
   // la clé "<base>s<index>" dans G.SPRITES.foret. Tolérant : charge ceux qui
   // existent, ignore les manquants (repli sur le sprite de base).
-  function probeForetStages(dir, base, onDone) {
+  function probeForetStages(dir, base, onDone, startFrom) {
     var stages = G.FORET_STAGES || 5;
-    var i = 0;
+    var i = startFrom || 0;
     function next() {
       if (i >= stages) { onDone(); return; }
       var key = base + "s" + i;
