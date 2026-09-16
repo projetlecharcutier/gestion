@@ -6,7 +6,9 @@ Sprites charges par `src/assets.js` au demarrage.
 
 ```
 assets/sprites/
-  player/   idle.png  N.png  NE.png  E.png  SE.png  S.png  SW.png  W.png  NW.png
+  player/   perso_face.png perso_gauche.png perso_droite.png
+            persoHache_face.png ...   persoPistolet_face.png ...
+            (et frames d'animation <base>-0.png <base>-1.png ...)
   bird/     idle.png  N.png  NE.png  E.png  SE.png  S.png  SW.png  W.png  NW.png
   tree/     foret.png  foret1.png  foret2.png ...   # forêts (variantes)
   building/ mairie.png  generic.png
@@ -15,17 +17,52 @@ assets/sprites/
   wall/     palissageNESO.png  palissageNoSe.png
   zomb/
     alive/                                      # sprites zombies vivants (reserve)
-    dead/   trace1.png trace2.png ...           # traces de zombies morts (au sol)
+    dead/   deadzomb1.png deadzomb2.png ...    # traces de zombies morts (au sol)
 ```
 
 ## Traces de zombies morts (`zomb/dead/`)
 
 Quand un zombie meurt, il laisse une trace au sol (sang, débris...). Le jeu
-charge tous les `trace1.png`, `trace2.png`, ... du dossier `zomb/dead/` (numérotation
-depuis **1**, sonde jusqu'à 3 numéros manquants consécutifs) et en **choisit un
-au hasard** à chaque mort. Rien à déclarer dans le manifeste. La trace est
-dessinée **juste au-dessus du fond**, derrière tous les autres éléments. Voir
-`zomb/README.md`.
+charge tous les `deadzomb1.png`, `deadzomb2.png`, ... du dossier `zomb/dead/`
+(numérotation depuis **1**, sonde jusqu'à 3 numéros manquants consécutifs) et
+en **choisit un au hasard** à chaque mort. Rien à déclarer dans le manifeste.
+La trace est dessinée **juste au-dessus du fond**, derrière tous les autres
+éléments. Voir `zomb/README.md`.
+
+## Joueur (`player/`)
+
+Le joueur n'utilise pas les 8 directions cardinales. Il a **3 états
+d'équipement** × **3 directions**, soit 9 sprites de base :
+
+| État | Fichiers |
+|------|----------|
+| mains nues | `perso_face.png` · `perso_gauche.png` · `perso_droite.png` |
+| hache équipée | `persoHache_face.png` · `persoHache_gauche.png` · `persoHache_droite.png` |
+| pistolet équipé | `persoPistolet_face.png` · `persoPistolet_gauche.png` · `persoPistolet_droite.png` |
+
+La direction est choisie selon le mouvement :
+
+- `face` : immobile, vers le haut (N), vers le bas (S)
+- `droite` : vers la droite (E, NE, SE)
+- `gauche` : vers la gauche (W, NW, SW)
+
+### Animer un sprite du joueur
+
+Comme partout : ajoute des frames `<base>-0.png`, `<base>-1.png`, ... à côté du
+sprite de base. Si `-0.png` existe, le sprite est animé (cycle 8 fps), sinon
+statique.
+
+**Exemple** : marche mains nues vers la droite.
+
+```
+assets/sprites/player/
+  perso_droite.png     <- perso_droite-0.png absent ? statique
+  perso_droite-0.png   <- -0 présent ? animé : 3 frames
+  perso_droite-1.png      frame 0
+  perso_droite-2.png      frame 1
+                         frame 2
+                         -> cycle 0,1,2,0,1,2... à 8 fps
+```
 
 ## Animation
 
