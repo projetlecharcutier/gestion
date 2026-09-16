@@ -10,6 +10,15 @@
   var _total = 0;
   var _ready = false;
 
+  // Cache-buster des sprites : un parametre de version (stable le temps d'une
+  // session) ajoute a l'URL de chaque PNG. Force le navigateur a recharger les
+  // images a chaque chargement de page, ce qui evite qu'un PNG ajoute apès coup
+  // reste en cache comme 404 (frames d'animation non detectees). En production
+  // (serveur redémarré à chaque commit via deploy.sh), la valeur change à
+  // chaque redémarrage.
+  var ASSET_V = "v" + Date.now();
+  function bust(url) { return url + (url.indexOf("?") >= 0 ? "&" : "?") + ASSET_V; }
+
   // Animation par frames : convention <base>-0.png, <base>-1.png, ...
   // Si un sprite de base possede des frames -N (depuis 0), il est anime :
   // le rendu les parcourt en boucle selon le temps. Une seule image = statique.
@@ -56,7 +65,7 @@
         sprite.frames = frames.length > 0 ? frames : null;
         onDone(frames);
       };
-      img.src = dir + base + "-" + n + ".png";
+      img.src = bust(dir + base + "-" + n + ".png");
     }
     next();
   }
@@ -139,7 +148,7 @@
         if (consecMiss >= MAX_MISS) { onDone(frames); return; }
         next();
       };
-      img.src = dir + name + ".png";
+      img.src = bust(dir + name + ".png");
     }
     next();
   }
@@ -188,7 +197,7 @@
         img.onerror = function () {
           ci++; tryCand();
         };
-        img.src = dir + name;
+        img.src = bust(dir + name);
       }
       tryCand();
       function tryStageRef(sci) {
@@ -210,7 +219,7 @@
           }
         };
         simg.onerror = function () { sci++; tryStageRef(sci); };
-        simg.src = dir + sname;
+        simg.src = bust(dir + sname);
       }
     }
     next();
@@ -237,7 +246,7 @@
         i++; next();
       };
       img.onerror = function () { i++; next(); };
-      img.src = dir + name;
+      img.src = bust(dir + name);
     }
     next();
   }
@@ -266,7 +275,7 @@
           probeAnimFrames(sp, dir, key, function () { done(); });
         };
         img.onerror = function () { done(); };
-        img.src = dir + key + ".png";
+        img.src = bust(dir + key + ".png");
       })(toLoad[i]);
     }
   }
@@ -347,7 +356,7 @@
           _loaded++;
           if (_loaded >= _total) probePlayer(afterPlayer);
         };
-        img.src = e.def.src;
+        img.src = bust(e.def.src);
       })(entries[i]);
     }
   }
@@ -380,7 +389,7 @@
         n++;
         next();
       };
-      img.src = dir + "deadzomb" + n + ".png";
+      img.src = bust(dir + "deadzomb" + n + ".png");
     }
     next();
   }

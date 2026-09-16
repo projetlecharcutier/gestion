@@ -290,19 +290,24 @@
     ctx.save();
     ctx.fillStyle = G.TEXTURES.player.shadow;
     ctx.beginPath();
-    ctx.ellipse(base[0], base[1], 9 * z * 0.5, 4 * z * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(base[0], base[1], 9 * z, 4 * z, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
     if (sprite) {
       // Sprite PNG : ancré en bas-centre sur la position projetée, mis à l'échelle du zoom.
-      var scale = z * 0.5;
-      var dw = sprite.w * scale, dh = sprite.h * scale;
-      ctx.drawImage(G.animImg(sprite, G.state.time), base[0] - dw / 2, base[1] - dh, dw, dh);
+      // Les frames d'animation peuvent avoir une taille différente du sprite de
+      // base : on utilise la taille réelle de l'image courante (frame ou base).
+      var scale = z * 1.0;
+      var img = G.animImg(sprite, G.state.time);
+      var iw = (img && img.naturalWidth) || sprite.w;
+      var ih = (img && img.naturalHeight) || sprite.h;
+      var dw = iw * scale, dh = ih * scale;
+      ctx.drawImage(img, base[0] - dw / 2, base[1] - dh, dw, dh);
       return;
     }
     // Fallback : sprite pixel art JS (ancien rendu, gauche/droite par miroir).
     var t = G.TEXTURES.player;
-    var cell = z * 0.5;
+    var cell = z;
     if (cell < 1.2) cell = 1.2;
     var cols = 6, rows = 15;
     var ox = base[0] - (cols / 2) * cell;
@@ -330,7 +335,7 @@
     ctx.save();
     ctx.fillStyle = G.TEXTURES.player.shadow;
     ctx.beginPath();
-    ctx.ellipse(base[0], base[1], 9 * z * 0.5, 4 * z * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(base[0], base[1], 9 * z, 4 * z, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
     var dx = (rp.lastDx || 0);
@@ -338,16 +343,19 @@
     var sprite = G.playerSprite ? G.playerSprite(rp.equipped, rp.axeEquipped, dx, dy) : null;
     if (!sprite) sprite = G.spriteFor("player", dx, dy);
     if (sprite) {
-      var scale = z * 0.5;
-      var dw = sprite.w * scale, dh = sprite.h * scale;
+      var scale = z * 1.0;
+      var img = G.animImg(sprite, G.state.time);
+      var iw = (img && img.naturalWidth) || sprite.w;
+      var ih = (img && img.naturalHeight) || sprite.h;
+      var dw = iw * scale, dh = ih * scale;
       if (rp.face < 0) {
         ctx.save();
         ctx.translate(base[0], base[1]);
         ctx.scale(-1, 1);
-        ctx.drawImage(G.animImg(sprite, G.state.time), -dw / 2, -dh, dw, dh);
+        ctx.drawImage(img, -dw / 2, -dh, dw, dh);
         ctx.restore();
       } else {
-        ctx.drawImage(G.animImg(sprite, G.state.time), base[0] - dw / 2, base[1] - dh, dw, dh);
+        ctx.drawImage(img, base[0] - dw / 2, base[1] - dh, dw, dh);
       }
     }
     // Nom + barre de vie.
