@@ -365,7 +365,7 @@
     ctx.fillStyle = "#fff";
     ctx.strokeStyle = "rgba(0,0,0,0.7)";
     ctx.lineWidth = 3;
-    var ny = base[1] - (sprite ? sprite.h * z * 0.5 + 14 : 30);
+    var ny = base[1] - (sprite ? sprite.h * z + 14 : 30);
     ctx.strokeText(rp.name, base[0], ny);
     ctx.fillText(rp.name, base[0], ny);
     if (rp.hp !== undefined && rp.hp < G.PLAYER_MAX_HP) {

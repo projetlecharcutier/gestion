@@ -73,9 +73,9 @@
     var col = ratio < 0.30 ? t.color.low : (ratio < 0.60 ? t.color.mid : t.color.high);
     ctx.save();
     ctx.fillStyle = t.bg;
-    ctx.fillRect(base[0] - w / 2 - 1, base[1] - 24 * z * 0.5 - h - 2, w + 2, h + 2);
+    ctx.fillRect(base[0] - w / 2 - 1, base[1] - 26 * z - h - 2, w + 2, h + 2);
     ctx.fillStyle = col;
-    ctx.fillRect(base[0] - w / 2, base[1] - 24 * z * 0.5 - h - 1, w * ratio, h);
+    ctx.fillRect(base[0] - w / 2, base[1] - 26 * z - h - 1, w * ratio, h);
     ctx.restore();
   };
 
