@@ -27,7 +27,7 @@ Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fo
 | 9 | `src/zombies.js` | Vagues, groupes qui fusionnent, IA zombies | `spawnWave`, `mergeGroups`, `updateZombies`, `cleanupZombies` |
 | 10 | `src/bag.js` | Sac : disposition, rendu, clic équiper (armes & hache) | `bagLayout`, `handleBagClick`, `drawBag` |
 | 11 | `src/hud.js` | HUD DOM + overlays canvas (dont cercle de décompte hache) | `updateHud`, `drawClock`, `drawPlayerHpBar`, `drawBuildHint`, `drawChopProgress`, `drawGameOver` |
-| 12 | `src/render.js` | Tout le dessin + `render()` | `drawGround/Item/Tree/Building/Player/Wall/Zombie/Projectiles/Fog/Crosshair`, `fillPoly`, `roundRect`, `render` |
+| 12 | `src/render.js` | Tout le dessin + `render()` | `drawGround/Item/Tree/Building/Player/Wall/Zombie/Projectiles/Fog/Crosshair/DeadTraces`, `fillPoly`, `roundRect`, `render` |
 | 13 | `src/input.js` | Entrées (souris, molette, clavier) + formulaire démarrage | resize interne, listeners |
 | 14 | `src/main.js` | Logique par frame `update(dt)` + `loop()` | `update`, `loop` |
 
@@ -38,7 +38,7 @@ Schéma complet dans `src/state.js`. Champs clés :
 - `player { x, y, face, moving, hp }` — position monde, orientation, vie
 - `camera { x, y }`, `zoom`, `targetZoom`
 - `mouse { sx, sy, wx, wy, inside }` — écran (s*) + monde (w*)
-- `items[]`, `buildings[]`, `trees[]`, `walls[]`, `zombies[]`, `zombieGroups[]`
+- `items[]`, `buildings[]`, `trees[]`, `walls[]`, `zombies[]`, `zombieGroups[]`, `deadTraces[]`
 - `bag { open, contents[] }`, `equipped` (nom arme ou null), `projectiles[]`
 - `planks`, `inventory`, `shootCd`, `buildMode`, `plankRotation` (0=horizontal, 1=vertical)
 - `axeEquipped` (bool), `chopTarget` (arbre visé ou null), `chopTimer` (accumulateur s)
@@ -57,6 +57,8 @@ Schéma complet dans `src/state.js`. Champs clés :
 | `ZOMBIE_PLAYER_DMG` | 20 | 5 coups = mort (100 PV) |
 | `WALL_MAX_HP` | 100 | PV d'un mur |
 | `PLAYER_MAX_HP` | 100 | PV joueur |
+| `FOOD_HEAL` | 25 | PV restaurés par nourriture mangée |
+| `DEAD_TRACES_MAX` | 500 | Traces de zombies morts conservées (les plus récentes) |
 | `MAIRIE_MAX_HP` | 1000 | PV de la Mairie (game over à 0) |
 | `WALL_PLANKS` | 4 | Planches / planche posée |
 | `PLANK_LONG/THICK` | 120 / 24 | Dimensions d'une planche posée (px) |
@@ -111,6 +113,7 @@ Voir `docs/textures.md` pour la spec.
 - **Nouvel objet ramassable** → `state.items[]` dans `buildWorld` (`src/world.js`) ; ramassage géré dans le clic (`src/input.js`).
 - **Nouveau bâtiment** → `state.buildings[]` dans `buildWorld` (`src/world.js`) ; rendu auto (`src/render.js`).
 - **Comportement zombie** → `updateZombies` (`src/zombies.js`) ; nettoyer les morts via `cleanupZombies`.
+- **Traces de zombies morts** → déposer des PNG dans `assets/sprites/zomb/dead/trace1.png`, `trace2.png`, ... (chargés auto, un tiré au hasard à chaque mort). Génération dans `cleanupZombies` (`src/zombies.js`), rendu `drawDeadTraces` (`src/render.js`, juste après `drawGround`). Plafond `G.DEAD_TRACES_MAX`.
 - **Nouveau HUD canvas** → `src/hud.js`, appeler dans `render()` (`src/render.js`).
 - **Nouvelle entrée clavier** → `src/input.js`.
 - **Changer un sprite / une couleur** → `src/textures/<type>.js` uniquement (le rendu les consomme).

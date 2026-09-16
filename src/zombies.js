@@ -564,6 +564,24 @@
       if (state.zombies[zj].hp <= 0) {
         var dz = state.zombies[zj];
         if (G.playSfx) G.playSfx("zombie_die");
+        // Trace au sol : laisse une marque la ou le zombie est mort. La variante
+        // est tiree aleatoirement dans une plage large (le client applique un
+        // modulo sur le nombre reel de PNG disponibles au rendu, donc cote
+        // serveur aucune connaissance des PNG n'est necessaire). Coordonnees
+        // legeres, broadcastees a 10 Hz. Une legere rotation aleatoire casse
+        // la repetition.
+        if (state.deadTraces) {
+          state.deadTraces.push({
+            x: Math.round(dz.x), y: Math.round(dz.y),
+            v: Math.floor(Math.random() * 100),
+            r: Math.round(Math.random() * 360 - 180)
+          });
+          // Plafonne le nombre de traces pour eviter une croissance infinie
+          // (snapshot + rendu) sur les longues parties : on garde les plus recentes.
+          if (state.deadTraces.length > G.DEAD_TRACES_MAX) {
+            state.deadTraces.splice(0, state.deadTraces.length - G.DEAD_TRACES_MAX);
+          }
+        }
         if (dz.group && dz.group.members) {
           var idx = dz.group.members.indexOf(dz);
           if (idx >= 0) dz.group.members.splice(idx, 1);

@@ -325,7 +325,8 @@
       }
     }
     function finish() { _ready = true; if (onReady) onReady(); }
-    function afterHouses() { probeForets(finish); }
+    function afterTraces() { probeDeadTraces(finish); }
+    function afterHouses() { probeForets(afterTraces); }
     function afterPlayer() { probeHouses(afterHouses); }
     _total = entries.length;
     if (_total === 0) { probePlayer(afterPlayer); return; }
@@ -350,6 +351,53 @@
       })(entries[i]);
     }
   }
+  // Sonde les traces de zombies morts : assets/sprites/zomb/dead/trace1.png,
+  // trace2.png, ... jusqu'a 3 numeros consecutifs manquants. Charge tous les
+  // PNG trouves dans G.SPRITES.zombDead (tableau de sprites {img,w,h}). Un PNG
+  // est choisi au hasard parmi eux a chaque mort de zombie. Tolerant : si aucun
+  // PNG n'est present, le tableau reste vide (aucune trace laissee).
+  function probeDeadTraces(onDone) {
+    G.SPRITES.zombDead = [];
+    var dir = "assets/sprites/zomb/dead/";
+    var n = 1;
+    var consecMiss = 0;
+    var MAX_MISS = 3;
+    function next() {
+      if (consecMiss >= MAX_MISS) { onDone(); return; }
+      var img = new Image();
+      img.onload = function () {
+        if (img.naturalWidth > 0) {
+          G.SPRITES.zombDead.push({ img: img, w: img.naturalWidth, h: img.naturalHeight });
+          consecMiss = 0;
+        } else {
+          consecMiss++;
+        }
+        n++;
+        next();
+      };
+      img.onerror = function () {
+        consecMiss++;
+        n++;
+        next();
+      };
+      img.src = dir + "trace" + n + ".png";
+    }
+    next();
+  }
+
+  // Renvoie un sprite de trace de zombie mort au hasard, ou null si aucun
+  // PNG n'est disponible.
+  G.randomDeadTraceSprite = function () {
+    var list = G.SPRITES.zombDead;
+    if (!list || list.length === 0) return null;
+    return list[Math.floor(Math.random() * list.length)];
+  };
+
+  // Nombre de traces de zombies morts disponibles (0 = aucun PNG).
+  G.deadTraceCount = function () {
+    return (G.SPRITES.zombDead && G.SPRITES.zombDead.length) || 0;
+  };
+
   G.loadAssets = function (onReady) {
     var req = new XMLHttpRequest();
     req.open("GET", "assets/manifest.json", true);

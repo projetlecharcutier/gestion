@@ -110,6 +110,40 @@
     }
   };
 
+  // Dessine les traces de zombies morts au sol. Appele juste apres drawGround,
+  // AVANT les items et tous les autres elements : la trace reste derriere
+  // tout (objets, batiments, murs, zombies, joueur), seul le fond vert est en
+  // dessous. Chaque trace est un PNG (variante tiree aleatoirement a la mort)
+  // ancre bas-centre a la position du zombie mort, avec une legere rotation.
+  // Tolerant : si aucun PNG n'est disponible, ne dessine rien.
+  G.drawDeadTraces = function () {
+    var ctx = G.ctx;
+    var z = G.state.zoom;
+    var traces = G.state.deadTraces;
+    if (!traces || traces.length === 0) return;
+    var list = G.SPRITES.zombDead;
+    if (!list || list.length === 0) return;
+    var bnds = G.visibleWorldBounds();
+    for (var i = 0; i < traces.length; i++) {
+      var tr = traces[i];
+      if (tr.x < bnds.minX || tr.x > bnds.maxX || tr.y < bnds.minY || tr.y > bnds.maxY) continue;
+      var sp = list[tr.v % list.length];
+      if (!sp || !sp.img) continue;
+      var p = G.proj(tr.x, tr.y);
+      // Taille : le sprite est ancre bas-centre sur sa position au sol.
+      // La largeur en pixels ecran suit le zoom (comme les objets au sol).
+      var dw = sp.w * z * 0.25;
+      var dh = dw * sp.h / sp.w;
+      if (dw < 6) dw = 6;
+      if (dh < 6) dh = 6;
+      ctx.save();
+      ctx.translate(p[0], p[1]);
+      if (tr.r) ctx.rotate(tr.r * Math.PI / 180);
+      ctx.drawImage(sp.img, -dw / 2, -dh, dw, dh);
+      ctx.restore();
+    }
+  };
+
   G.drawItem = function (it) {
     if (it.taken) return;
     var ctx = G.ctx;
@@ -622,6 +656,9 @@
     if (!state.started) return;
 
     G.drawGround();
+
+    // Traces de zombies morts : tout en bas, derriere tout sauf le fond.
+    G.drawDeadTraces();
 
     for (var i = 0; i < state.items.length; i++) G.drawItem(state.items[i]);
 

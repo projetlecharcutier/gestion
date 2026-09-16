@@ -222,6 +222,7 @@
     state.waveMsgTimer = 0;
     state.zombies = [];
     state.zombieGroups = [];
+    state.deadTraces = [];
     state.birds = [];
     state.walls = [];
     state.buildMode = false;
