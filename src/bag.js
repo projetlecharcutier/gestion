@@ -58,6 +58,24 @@
           if (G.netConnected && G.netConnected()) G.netInput({ equip: newEq });
           G.state.equipped = newEq;
           if (G.state.equipped) G.state.axeEquipped = false;
+        } else if (it.kind === "objet" && it.name === "Nourriture") {
+          var contents = G.state.bag.contents;
+          if (G.netConnected && G.netConnected()) {
+            G.netInput({ eat: true });
+          } else if (G.state.player.hp < G.PLAYER_MAX_HP) {
+            var fi = -1;
+            for (var ci = 0; ci < contents.length; ci++) {
+              if (contents[ci].name === "Nourriture" && contents[ci].kind === "objet") { fi = ci; break; }
+            }
+            if (fi >= 0) {
+              contents.splice(fi, 1);
+              G.state.inventory = contents.length;
+              G.state.player.hp = Math.min(G.PLAYER_MAX_HP, G.state.player.hp + G.FOOD_HEAL);
+              if (G.addFloater) G.addFloater("Nourriture (Soin)");
+              if (G.playSfx) G.playSfx("eat");
+              G.updateHud();
+            }
+          }
         } else if (it.kind === "outil" && it.name === "Hache") {
           if (isDbl) {
             // Double-clic : force l'equipement de la hache + ferme le sac.
@@ -160,6 +178,7 @@
       ctx.textAlign = "right";
       var suffix = it.kind === "arme" ? "arme (clic pour équiper)" :
                    (it.kind === "outil" && it.name === "Hache") ? "outil (clic pour équiper)" :
+                   (it.kind === "objet" && it.name === "Nourriture") ? "objet (clic pour manger)" :
                    it.kind;
       ctx.fillText(suffix, px + pw - 18, ly);
     }
