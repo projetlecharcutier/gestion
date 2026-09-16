@@ -55,6 +55,7 @@
     walls: [],
     zombies: [],
     zombieGroups: [],
+    deadTraces: [],
     birds: [],
     bag: { open: false, contents: [] },
     chest: [],

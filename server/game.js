@@ -56,6 +56,7 @@
       walls: [],
       zombies: [],
       zombieGroups: [],
+      deadTraces: [],
       birds: [],
       bag: { open: false, contents: [] },
       chest: [],
@@ -408,6 +409,9 @@
       }),
       birds: state.birds.map(function (b) {
         return { x: Math.round(b.x), y: Math.round(b.y), hp: b.hp };
+      }),
+      deadTraces: (state.deadTraces || []).map(function (t) {
+        return { x: t.x, y: t.y, v: t.v, r: t.r };
       }),
       mairieHp: mairieHp(),
       mairieMaxHp: G.MAIRIE_MAX_HP,

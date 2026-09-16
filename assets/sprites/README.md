@@ -13,7 +13,19 @@ assets/sprites/
   church/   church.png
   house/    H1.png  H2.png ...                      # maisons (variantes, auto)
   wall/     palissageNESO.png  palissageNoSe.png
+  zomb/
+    alive/                                      # sprites zombies vivants (reserve)
+    dead/   trace1.png trace2.png ...           # traces de zombies morts (au sol)
 ```
+
+## Traces de zombies morts (`zomb/dead/`)
+
+Quand un zombie meurt, il laisse une trace au sol (sang, débris...). Le jeu
+charge tous les `trace1.png`, `trace2.png`, ... du dossier `zomb/dead/` (numérotation
+depuis **1**, sonde jusqu'à 3 numéros manquants consécutifs) et en **choisit un
+au hasard** à chaque mort. Rien à déclarer dans le manifeste. La trace est
+dessinée **juste au-dessus du fond**, derrière tous les autres éléments. Voir
+`zomb/README.md`.
 
 ## Animation
 
