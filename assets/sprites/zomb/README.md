@@ -9,11 +9,11 @@ Quand un zombie meurt, il laisse une trace sur le sol (sang, débris...).
 Le jeu charge **tous** les PNG de ce dossier et en **choisit un au hasard** à
 chaque mort de zombie.
 
-**Convention de nommage :** `trace1.png`, `trace2.png`, `trace3.png`, ...
-(le jeu sonde `trace1`, puis `trace2`, etc. et s'arrête après 3 numéros
+**Convention de nommage :** `deadzomb1.png`, `deadzomb2.png`, `deadzomb3.png`, ...
+(le jeu sonde `deadzomb1`, puis `deadzomb2`, etc. et s'arrête après 3 numéros
 manquants consécutifs). Commence à **1**.
 
-- Il suffit d'ajouter `trace1.png`, `trace2.png`, ... ici pour qu'ils entrent
+- Il suffit d'ajouter `deadzomb1.png`, `deadzomb2.png`, ... ici pour qu'ils entrent
   dans le tirage aléatoire — rien à déclarer dans le manifeste.
 - La trace est dessinée **juste au-dessus du fond** (derrière les objets, les
   bâtiments, les murs, les zombies et le joueur) : elle ne recouvre jamais

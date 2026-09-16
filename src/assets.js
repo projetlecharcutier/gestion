@@ -351,8 +351,8 @@
       })(entries[i]);
     }
   }
-  // Sonde les traces de zombies morts : assets/sprites/zomb/dead/trace1.png,
-  // trace2.png, ... jusqu'a 3 numeros consecutifs manquants. Charge tous les
+  // Sonde les traces de zombies morts : assets/sprites/zomb/dead/deadzomb1.png,
+  // deadzomb2.png, ... jusqu'a 3 numeros consecutifs manquants. Charge tous les
   // PNG trouves dans G.SPRITES.zombDead (tableau de sprites {img,w,h}). Un PNG
   // est choisi au hasard parmi eux a chaque mort de zombie. Tolerant : si aucun
   // PNG n'est present, le tableau reste vide (aucune trace laissee).
@@ -380,7 +380,7 @@
         n++;
         next();
       };
-      img.src = dir + "trace" + n + ".png";
+      img.src = dir + "deadzomb" + n + ".png";
     }
     next();
   }
