@@ -237,6 +237,18 @@
       if (hasAxe) { p.axeEquipped = !p.axeEquipped; if (p.axeEquipped) p.equipped = null; }
     }
     if (input.planks !== undefined) p.planks = input.planks;
+    // Consommation de nourriture : retire un exemplaire du sac et rend des PV.
+    if (input.eat) {
+      var fi = -1;
+      for (var ci2 = 0; ci2 < p.bag.contents.length; ci2++) {
+        if (p.bag.contents[ci2].name === "Nourriture" && p.bag.contents[ci2].kind === "objet") { fi = ci2; break; }
+      }
+      if (fi >= 0 && p.hp < G.PLAYER_MAX_HP) {
+        p.bag.contents.splice(fi, 1);
+        p.inventory = p.bag.contents.length;
+        p.hp = Math.min(G.PLAYER_MAX_HP, p.hp + G.FOOD_HEAL);
+      }
+    }
   }
 
   // Simulation : un tick à dt secondes.
