@@ -17,12 +17,48 @@
   G.TS = 1000;
 
   G.WEAPON_STATS = {
-    "Mains nues": { speed: 600,  life: 1.0, cd: 0.30, dmg: 1, color: "#fff7ad", spread: 0.10, label: "poing" },
-    "Pistolet":    { speed: 900,  life: 1.2, cd: 0.22, dmg: 2, color: "#fde68a", spread: 0.03, label: "pistolet" },
-    "Fusil":       { speed: 1400, life: 1.6, cd: 0.45, dmg: 5, color: "#fb923c", spread: 0.01, label: "fusil" },
-    "Arc":         { speed: 1000, life: 1.4, cd: 0.40, dmg: 3, color: "#bbf7d0", spread: 0.02, label: "arc" },
-    "Couteau":     { speed: 520,  life: 0.4, cd: 0.25, dmg: 2, color: "#e2e8f0", spread: 0.0,  label: "couteau" },
-    "Bâton":       { speed: 680,  life: 0.8, cd: 0.50, dmg: 3, color: "#d6bb89", spread: 0.06, label: "bâton" }
+      "Mains nues": {
+          speed: 600,
+          life: 1.0,
+          cd: 0.30,
+          dmg: 1,
+          color: "#fff7ad",
+          spread: 0.10,
+          label: "poing"
+      },
+      "Pistolet": {
+          type: "pistolet",
+          cd: 0.5,
+          speed: 600,
+          life: 1.2, // Portée plus grande (vitesse * vie)
+          dmg: 25,
+          spread: 0.05,
+          color: "#ffcc00"
+      },
+      "Arc": {
+          type: "arc",
+          cd: 0.9,
+          speed: 400,
+          life: 0.7, // Portée réduite
+          dmg: 40,
+          spread: 0.02,
+          color: "#8B4513",
+          piercing: true,
+          pierceCount: 5 // Traverse jusqu'à 5 cibles
+      },
+      "Fusil": {
+          type: "fusil",
+          cd: 0.7,
+          speed: 500,
+          life: 0.5, // Portée courte en cône
+          dmg: 15,
+          spread: 0.1,
+          color: "#555555",
+          pellets: 8, // Nombre de plombs
+          coneSpread: 0.3 // Largeur du cône
+      },
+      "Couteau":     { speed: 520,  life: 0.4, cd: 0.25, dmg: 2, color: "#e2e8f0", spread: 0.0,  label: "couteau" },
+      "Bâton":       { speed: 680,  life: 0.8, cd: 0.50, dmg: 3, color: "#d6bb89", spread: 0.06, label: "bâton" }
   };
 
   G.DAY_SECONDS = 300;

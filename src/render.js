@@ -381,34 +381,82 @@
     ctx.restore();
   };
 
-  G.drawProjectiles = function () {
-    var ctx = G.ctx;
-    var t = G.TEXTURES.projectile;
-    for (var i = 0; i < G.state.projectiles.length; i++) {
-      var pr = G.state.projectiles[i];
-      var col = pr.color || t.defaultColor;
-      for (var k = 0; k < pr.trail.length; k++) {
-        var s = G.proj(pr.trail[k][0], pr.trail[k][1]);
-        var a = (k / pr.trail.length) * t.trailAlpha;
-        ctx.globalAlpha = a;
-        ctx.fillStyle = col;
-        ctx.beginPath();
-        ctx.arc(s[0], s[1], t.trailSize + k * t.trailSizeStep, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-      var h = G.proj(pr.x, pr.y);
-      var rad = t.sizeBase + (pr.dmg || 1) * t.sizePerDmg;
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.arc(h[0], h[1], rad, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = t.stroke;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-  };
+    G.drawProjectiles = function () {
+        var ctx = G.ctx;
+        var t = G.TEXTURES.projectile;
+        for (var i = 0; i < G.state.projectiles.length; i++) {
+            var pr = G.state.projectiles[i];
+            var col = pr.color || t.defaultColor;
+
+            // --- Gestion de la traînette (inchangée) ---
+            for (var k = 0; k < pr.trail.length; k++) {
+                var s = G.proj(pr.trail[k][0], pr.trail[k][1]);
+                var a = (k / pr.trail.length) * t.trailAlpha;
+                ctx.globalAlpha = a;
+                ctx.fillStyle = col;
+                ctx.beginPath();
+                ctx.arc(s[0], s[1], t.trailSize + k * t.trailSizeStep, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            var h = G.proj(pr.x, pr.y);
+
+            // --- Rendu Personnalisé selon le type d'arme ---
+
+            // Si c'est une flèche d'arc, on dessine un triangle orienté
+            if (pr.type === "arc") {
+                ctx.save();
+                // Positionne le contexte au centre du projectile
+                ctx.translate(h[0], h[1]);
+                // Calcule l'angle de déplacement et oriente le contexte
+                ctx.rotate(Math.atan2(pr.vy, pr.vx));
+                var correctionDegres = 30;
+                var correctionRadians = correctionDegres * Math.PI / 180;
+                ctx.rotate(correctionRadians);
+
+                ctx.fillStyle = col;
+                ctx.beginPath();
+
+                // Réglages de taille
+                var arrowLength = 12; // Longueur totale de la pointe
+                var arrowWidth = 8;   // Largeur totale à la base
+
+                // Optionnel: Décale le dessin pour que le point (0,0) ne soit pas tout à fait au bout de la pointe,
+                // mais légèrement à l'intérieur, pour un meilleur rendu visuel lors des collisions.
+                var arrowOffsetX = 0;
+
+                // On dessine en partant du principe que la flèche pointe vers la droite (axe X positif)
+                ctx.moveTo(arrowOffsetX + arrowLength, 0); // Pointe (à droite)
+                ctx.lineTo(arrowOffsetX, arrowWidth / 2);    // Base arrière gauche
+                ctx.lineTo(arrowOffsetX, -arrowWidth / 2);   // Base arrière droite
+
+                ctx.closePath();
+                ctx.fill();
+
+                // Optionnel : Ajouter un contour fin à la flèche
+                if (t.stroke) {
+                    ctx.strokeStyle = t.stroke;
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+            // Sinon, affichage standard en rond (pour pistolet, fusil, etc.)
+            else {
+                var rad = pr.size !== undefined ? pr.size : (t.sizeBase + (pr.dmg || 1) * t.sizePerDmg);
+                ctx.fillStyle = col;
+                ctx.beginPath();
+                ctx.arc(h[0], h[1], rad, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = t.stroke;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
+        ctx.globalAlpha = 1;
+    };
 
   G.drawFog = function () {
     var ctx = G.ctx;
