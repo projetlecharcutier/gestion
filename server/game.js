@@ -310,13 +310,36 @@
       }
       // Tir.
       if (p._fire && p.equipped && p.shootCd <= 0) {
-        var st = G.equippedStats();
+        var st = G.WEAPON_STATS[p.equipped] || G.WEAPON_STATS["Mains nues"];
         p.shootCd = st.cd;
-        var ang = Math.atan2(p._aimY ? p._aimY - p.y : 0, p._aimX ? p._aimX - p.x : 1);
-        state.projectiles.push({
-          x: p.x, y: p.y, vx: Math.cos(ang) * st.speed, vy: Math.sin(ang) * st.speed,
-          life: st.life, owner: p.id, dmg: st.dmg, color: st.color, trail: []
-        });
+        var baseAng = Math.atan2(p._aimY ? p._aimY - p.y : 0, p._aimX ? p._aimX - p.x : 1);
+        var weaponType = st.type || "pistolet";
+        if (weaponType === "fusil") {
+          var pelletCount = st.pellets || 5;
+          var coneSpread = st.coneSpread || 0.3;
+          for (var pi = 0; pi < pelletCount; pi++) {
+            var poffset = (pelletCount > 1) ? (pi / (pelletCount - 1) - 0.5) * coneSpread : 0;
+            var pang = baseAng + poffset + (Math.random() * 2 - 1) * st.spread;
+            state.projectiles.push({
+              x: p.x, y: p.y - G.PLAYER_H * 0.5,
+              vx: Math.cos(pang) * st.speed, vy: Math.sin(pang) * st.speed,
+              life: st.life, owner: p.id, dmg: st.dmg, color: st.color,
+              size: st.size || 3, type: st.type || "pistolet", trail: [],
+              piercing: false, hitEntities: []
+            });
+          }
+        } else {
+          var psp = (Math.random() * 2 - 1) * st.spread;
+          var spang = baseAng + psp;
+          state.projectiles.push({
+            x: p.x, y: p.y - G.PLAYER_H * 0.5,
+            vx: Math.cos(spang) * st.speed, vy: Math.sin(spang) * st.speed,
+            life: st.life, owner: p.id, dmg: st.dmg, color: st.color,
+            size: st.size || 3, type: st.type || "pistolet", trail: [],
+            piercing: !!st.piercing, pierceCount: st.pierceCount || (st.piercing ? 3 : 0),
+            hitEntities: []
+          });
+        }
       }
       if (p.shootCd > 0) p.shootCd -= dt;
       // Pose de planche.
@@ -417,7 +440,7 @@
         return { x: Math.round(it.x), y: Math.round(it.y), name: it.name, kind: it.kind, color: it.color };
       }),
       projectiles: state.projectiles.map(function (pr) {
-        return { x: Math.round(pr.x), y: Math.round(pr.y) };
+        return { x: Math.round(pr.x), y: Math.round(pr.y), vx: pr.vx, vy: pr.vy, color: pr.color, type: pr.type, size: pr.size, trail: pr.trail || [] };
       }),
       birds: state.birds.map(function (b) {
         return { x: Math.round(b.x), y: Math.round(b.y), hp: b.hp };
