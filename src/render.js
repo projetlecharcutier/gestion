@@ -298,7 +298,8 @@
       // Les frames d'animation peuvent avoir une taille différente du sprite de
       // base : on utilise la taille réelle de l'image courante (frame ou base).
       var scale = z * 1.0;
-      var img = G.animImg(sprite, G.state.time);
+      var ptime = G.state.player.moving ? G.state.time : 0;
+      var img = G.animImg(sprite, ptime);
       var iw = (img && img.naturalWidth) || sprite.w;
       var ih = (img && img.naturalHeight) || sprite.h;
       var dw = iw * scale, dh = ih * scale;
@@ -344,7 +345,8 @@
     if (!sprite) sprite = G.spriteFor("player", dx, dy);
     if (sprite) {
       var scale = z * 1.0;
-      var img = G.animImg(sprite, G.state.time);
+      var rptime = rp.moving ? G.state.time : 0;
+      var img = G.animImg(sprite, rptime);
       var iw = (img && img.naturalWidth) || sprite.w;
       var ih = (img && img.naturalHeight) || sprite.h;
       var dw = iw * scale, dh = ih * scale;
