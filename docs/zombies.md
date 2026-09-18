@@ -70,8 +70,18 @@ Rendu (`src/render.js`) : `drawZombie` agrandit et teinte le leader. HUD (`src/h
 
 Constantes associées (`src/config.js`) : `ZOMBIE_HORDE_THRESHOLD`, `ZOMBIE_HORDE_SPEED_BONUS`, `ZOMBIE_HORDE_DENSE`, `ZOMBIE_SLOT_LERP`, `ZOMBIE_RETREAT_SLOT_SCALE`, `ZOMBIE_RETREAT_SLOT_NOISE`.
 
+## Contournement des forêts (navigation)
+
+Les forêts (`isForet`, AABB opaques pleines) bloquent les zombies : sans guidance, les groupes s'enlisaient au bord des massifs ou spawnaient dans des enclaves fermées. Trois mécanismes, du global au local :
+
+- **Champ de navigation** (`G.rebuildNavGrid`/`G.navStep`, `src/world.js`) : BFS multi-sources depuis le périmètre de la ville sur une grille grossière (`G.NAV_CELL` = 32 px, marge 8 px) recalculée à chaque `rebuildBuildingGrid()`. Le cap de base du chef suit le gradient descendant (`navStep`) — il contourne les massifs par le chemin le plus court et repasse en ligne droite dès qu'une cellule voisine est libre. Les coupes de forêts ouvrent automatiquement de nouveaux passages (rebuild au chop).
+- **Évasion des poches** : un chef (ou zombie) pris À L'INTÉRIEUR d'une forêt (`G.foretAt`) marche vers le bord du massif dans la direction de sa cible (projection du cap sur l'AABB), car aucune position intérieure n'est valide en collision. `ensureForetConnectivity()` (fin de `buildWorld`, et après repousse) retire en outre les forêts qui referment des enclaves inaccessibles — garantit qu'un point de spawn hors ville garde un chemin vers la palissade.
+- **Whisker local** (`grp.foretSeekDir`, `grp.foretCurAng`) : si le pas du chef touche une forêt, on essaie des caps de plus en plus déviés (15°→180° des deux côtés, sens préférentiel fixe par groupe) ; le premier cap libre est mémorisé et on retente le cap direct à chaque tick (retour de trajectoire) — le chef longe le contour au lieu d'osciller. Le spawn pousse par ailleurs les points d'apparition hors des massifs, et `separate()` ne repousse jamais un zombie à l'intérieur d'une forêt.
+
+Règle d'or : toute écriture de position zombie (chef, membre, séparation) doit soit tester `aabbHitsForets`, soit viser explicitement une sortie de massif.
+
 ## Étendre
 - **Variante de zombie** : ajouter un `z.kind`/`z.variant` et brancher dans `updateZombies` + `drawZombie`.
 - **Zombie plus résistant** : augmenter `z.hp` à l'apparition et gérer plusieurs PV dans `updateProjectiles` (déjà `- pr.dmg`).
-- **Pathfinding** : remplacer la ligne droite leader→cible par un contour des murs.
+- **Pathfinding** : le champ BFS existe (voir « Contournement des forêts ») ; pour l'affiner, jouer sur `NAV_CELL`/la marge dans `rebuildNavGrid`.
 - **Boss** : groupe singleton avec plus de PV et stats spéciales.

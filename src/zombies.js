@@ -75,6 +75,17 @@
         var ang = slot.ang, dist = slot.dist;
         var zx = lx + Math.cos(ang) * dist;
         var zy = ly + Math.sin(ang) * dist;
+        // Ne spawne pas a l'interieur d'une foret : la collision la traite
+        // comme un bloc plein, le zombie y serait prisonnier. On pousse le
+        // point de spawn hors du massif en s'ecartant du centre du groupe.
+        if (G.foretAt && G.foretAt(zx, zy)) {
+          for (var pf = 1; pf <= 16; pf++) {
+            var pfd = dist + pf * 20;
+            var pfx = lx + Math.cos(ang) * pfd;
+            var pfy = ly + Math.sin(ang) * pfd;
+            if (!G.foretAt(pfx, pfy)) { zx = pfx; zy = pfy; break; }
+          }
+        }
         // Caractère propre à chaque zombie pour un mouvement vivant :
         // speedFactor = vitesse relative (±ZOMBIE_SPEED_VAR), wanderPhase/Freq =
         // phase et fréquence d'oscillation du cap ("drunken walk"), hesitate =
@@ -234,12 +245,18 @@
             var d = Math.sqrt(dx * dx + dy * dy);
             if (d < minD && d > 0.01) {
               var push = (minD - d) / 2;
-              z.x += (dx / d) * push;
-              z.y += (dy / d) * push;
+              var nx = z.x + (dx / d) * push;
+              var ny = z.y + (dy / d) * push;
+              // Ne pousse pas a l'interieur d'une foret : la collision la
+              // traite comme un bloc plein, le zombie y resterait piege.
+              if (!G.aabbHitsForets(nx, z.y, zs) || G.aabbHitsForets(z.x, z.y, zs)) z.x = nx;
+              if (!G.aabbHitsForets(z.x, ny, zs) || G.aabbHitsForets(z.x, z.y, zs)) z.y = ny;
             } else if (d <= 0.01) {
-              // Superposition exacte : pousse dans une direction aléatoire.
-              z.x += G.rand(-1, 1);
-              z.y += G.rand(-1, 1);
+              // Superposition exacte : pousse dans une direction aléatoire
+              // (sans entrer dans une foret).
+              var rx = z.x + G.rand(-1, 1), ry = z.y + G.rand(-1, 1);
+              if (!G.aabbHitsForets(rx, z.y, zs) || G.aabbHitsForets(z.x, z.y, zs)) z.x = rx;
+              if (!G.aabbHitsForets(z.x, ry, zs) || G.aabbHitsForets(z.x, z.y, zs)) z.y = ry;
             }
           }
         }
@@ -373,9 +390,99 @@
         var ld = Math.sqrt(ldx * ldx + ldy * ldy) || 1;
         // Bonus de vitesse en mode horde : le groupe avance plus vite.
         var grpSpeed = grp.isHorde ? G.ZOMBIE_SPEED * (1 + G.ZOMBIE_HORDE_SPEED_BONUS) : G.ZOMBIE_SPEED;
-        if (ld > 10) {
-          grp.x += (ldx / ld) * grpSpeed * dt;
-          grp.y += (ldy / ld) * grpSpeed * dt;
+        // Chef pris a l'interieur d'une foret : la collision la traite comme
+        // un bloc plein, aucune position interieure n'est valide. Il marche
+        // vers le bord du massif situe dans la direction de sa cible (repli :
+        // bord le plus proche) pour en sortir, puis reprend sa route.
+        var grpIn = G.foretAt && G.foretAt(grp.x, grp.y);
+        if (grpIn) {
+          var eCx = grpIn.x + grpIn.w / 2, eCy = grpIn.y + grpIn.h / 2;
+          var eDx = grp.x - eCx, eDy = grp.y - eCy;
+          var eLen = Math.sqrt(eDx * eDx + eDy * eDy) || 1;
+          var eStep = grpSpeed * dt;
+          // Point de sortie : projette la direction cible sur le bord de
+          // l'AABB de la foret (premiere arete coupee), sinon le bord le plus
+          // proche du chef. Sortir vers la cible evite de se pieger dans un
+          // coin de carte (bord le plus proche = pire endroit).
+          var outX = 0, outY = 0, outFound = false;
+          var cDx = cible.x - grp.x, cDy = cible.y - grp.y;
+          var cLen = Math.sqrt(cDx * cDx + cDy * cDy) || 1;
+          var cUx = cDx / cLen, cUy = cDy / cLen;
+          if (cUx > 0.001) { var tR = (grpIn.x + grpIn.w - grp.x) / cUx; if (tR > 0) { var yR = grp.y + cUy * tR; if (yR >= grpIn.y && yR <= grpIn.y + grpIn.h) { outX = grpIn.x + grpIn.w; outY = yR; outFound = true; } } }
+          if (!outFound && cUx < -0.001) { var tL = (grpIn.x - grp.x) / cUx; if (tL > 0) { var yL = grp.y + cUy * tL; if (yL >= grpIn.y && yL <= grpIn.y + grpIn.h) { outX = grpIn.x; outY = yL; outFound = true; } } }
+          if (!outFound && cUy > 0.001) { var tB = (grpIn.y + grpIn.h - grp.y) / cUy; if (tB > 0) { var xB = grp.x + cUx * tB; if (xB >= grpIn.x && xB <= grpIn.x + grpIn.w) { outX = xB; outY = grpIn.y + grpIn.h; outFound = true; } } }
+          if (!outFound && cUy < -0.001) { var tT = (grpIn.y - grp.y) / cUy; if (tT > 0) { var xT = grp.x + cUx * tT; if (xT >= grpIn.x && xT <= grpIn.x + grpIn.w) { outX = xT; outY = grpIn.y; outFound = true; } } }
+          var exitDx, exitDy;
+          if (outFound) {
+            exitDx = outX - grp.x; exitDy = outY - grp.y;
+          } else {
+            exitDx = eDx; exitDy = eDy;
+          }
+          var exitLen = Math.sqrt(exitDx * exitDx + exitDy * exitDy) || 1;
+          grp.x += (exitDx / exitLen) * eStep;
+          grp.y += (exitDy / exitLen) * eStep;
+        } else if (ld > 10) {
+          // Le chef trace la route en evitant les forets (sous-pas + glissement
+          // le long du contour) : sans cela il traverse les arbres, ses slots
+          // se retrouvent en pleine foret et les membres s'enlisent contre les
+          // arbres sans jamais atteindre la palissade ou la mairie.
+          // Pilotage "whisker" avec memoire de cap : si le cap direct est
+          // bloque par une foret, on essaie des caps de plus en plus devies
+          // (15 a 180 degres des deux cotes, sens preferentiel fixe par
+          // groupe). Le premier cap libre devient le cap courant MEMORISE :
+          // aux ticks suivants on re-essaie d'abord de se rapprocher du cap
+          // direct (retour de trajectoire des qu'une ebauche de passage
+          // existe), ce qui produit un vrai contournement du massif plutot
+          // qu'un enlisement au bord.
+          if (!grp.foretSeekDir) grp.foretSeekDir = (Math.random() < 0.5 ? 1 : -1);
+          // Cap de base : suit le champ de navigation (BFS vers la ville)
+          // quand il est disponible — il contourne les massifs par le chemin
+          // le plus court. Repli sur la ligne droite si la cellule est hors
+          // champ (poche fermee : l'evasion locale prend le relais).
+          var navPt = G.navStep ? G.navStep(grp.x, grp.y) : null;
+          var gBaseAng = navPt ? Math.atan2(navPt.y - grp.y, navPt.x - grp.x) : Math.atan2(ldy, ldx);
+          var gStep = 16;
+          var gMove = grpSpeed * dt;
+          var gDone = 0;
+          var gHalf = 6;
+          while (gDone < gMove - 0.001) {
+            var gInc = Math.min(gStep, gMove - gDone);
+            var gMoved = false;
+            // Retour de trajectoire : apres un contournement, reessaie le cap
+            // direct en priorite et efface la memoire s'il est libre.
+            if (grp.foretCurAng !== undefined) {
+              var rvx = Math.cos(gBaseAng), rvy = Math.sin(gBaseAng);
+              var rsx = grp.x + rvx * gInc, rsy = grp.y + rvy * gInc;
+              var rBx = rsx > 12 && rsx < G.WORLD - 12 && !G.aabbHitsForets(rsx, grp.y, gHalf);
+              var rBy = rsy > 12 && rsy < G.WORLD - 12 && !G.aabbHitsForets(grp.x, rsy, gHalf);
+              if (rBx || rBy) {
+                if (rBx) grp.x = rsx;
+                if (rBy) grp.y = rsy;
+                grp.foretCurAng = undefined;
+                gMoved = true;
+              }
+            }
+            for (var wTry = 0; wTry <= 12 && !gMoved; wTry++) {
+              var wDev = (wTry === 0) ? 0 : (Math.PI / 12) * wTry * (wTry % 2 === 1 ? 1 : -1) * grp.foretSeekDir;
+              var wAng = (grp.foretCurAng !== undefined ? grp.foretCurAng : gBaseAng) + wDev;
+              var wvx = Math.cos(wAng), wvy = Math.sin(wAng);
+              var wsx = grp.x + wvx * gInc;
+              var wsy = grp.y + wvy * gInc;
+              var wBx = false, wBy = false;
+              if (wsx > 12 && wsx < G.WORLD - 12 && !G.aabbHitsForets(wsx, grp.y, gHalf)) { grp.x = wsx; wBx = true; }
+              if (wsy > 12 && wsy < G.WORLD - 12 && !G.aabbHitsForets(grp.x, wsy, gHalf)) { grp.y = wsy; wBy = true; }
+              if (wBx || wBy) {
+                gMoved = true;
+                if (grp.foretCurAng === undefined) grp.foretCurAng = wAng;
+              }
+            }
+            if (!gMoved) {
+              // Tous les caps bloques (cul-de-sac) : inverse le sens de longe.
+              grp.foretSeekDir = -grp.foretSeekDir;
+              grp.foretCurAng = undefined;
+            }
+            gDone += gInc;
+          }
         }
         for (var mi = 0; mi < grp.members.length; mi++) {
           var z = grp.members[mi];
@@ -503,6 +610,22 @@
                   var blockedByForet = G.aabbHitsForets(z.x, z.y, zs) ||
                     G.aabbHitsForets(z.x + mvx * zStep, z.y + mvy * zStep, zs);
                   if (blockedByForet) {
+                    if (G.aabbHitsForets(z.x, z.y, zs)) {
+                      // Zombie a l'interieur d'une foret (spawn bord de carte,
+                      // repoussement de separation) : la collision traite le
+                      // massif comme un bloc plein, aucune position interieure
+                      // n'est valide. Il marche droit vers le bord le plus
+                      // proche pour en sortir avant tout autre chose.
+                      var zF = G.foretAt ? G.foretAt(z.x, z.y) : null;
+                      if (zF) {
+                        var fCx = zF.x + zF.w / 2, fCy = zF.y + zF.h / 2;
+                        var eDx = z.x - fCx, eDy = z.y - fCy;
+                        var eLen = Math.sqrt(eDx * eDx + eDy * eDy) || 1;
+                        var eStep = grpSpeed * z.speedFactor * dt;
+                        z.x += (eDx / eLen) * eStep;
+                        z.y += (eDy / eLen) * eStep;
+                      }
+                    } else {
                     // Réoriente vers le mur le plus proche (contournement
                     // dirigé de la forêt) pour rejoindre la palissade.
                     var reWall = null, reD = G.ZOMBIE_FORET_REORIENT, rePt = null;
@@ -519,16 +642,28 @@
                       var fStep = G.ZOMBIE_WALL_SLIDE * dt;
                       var fsx = z.x + (rdx2 / rlen2) * fStep;
                       var fsy = z.y + (rdy2 / rlen2) * fStep;
-                      if (!G.aabbHitsForets(fsx, z.y, zs) && !G.aabbHitsWalls(fsx - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) z.x = fsx;
-                      if (!G.aabbHitsForets(z.x, fsy, zs) && !G.aabbHitsWalls(z.x - zs, fsy - zs, G.ZOMBIE_W, G.ZOMBIE_W)) z.y = fsy;
-                    } else {
-                      // Pas de mur proche : glisse le long de la forêt.
-                      var fsd = (((Math.floor(state.time * 2 + z.wanderPhase) % 2) === 0) ? 1 : -1);
-                      var fperpX = -mvy, fperpY = mvx;
-                      var fsl = G.ZOMBIE_WALL_SLIDE * dt * fsd;
+                      var fsMoved = false;
+                      if (!G.aabbHitsForets(fsx, z.y, zs) && !G.aabbHitsWalls(fsx - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = fsx; fsMoved = true; }
+                      if (!G.aabbHitsForets(z.x, fsy, zs) && !G.aabbHitsWalls(z.x - zs, fsy - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = fsy; fsMoved = true; }
+                      if (!fsMoved) reWall = null;
+                    }
+                    if (!reWall) {
+                      // Pas de mur proche ou direction du mur bloquee : glisse le long de la forêt dans
+                      // un sens fixe propre au zombie (le sens n'est inversé
+                      // que si le passage est bouché) — l'alternance rapide
+                      // faisait osciller le zombie sur place au bord du massif.
+                      if (!z.foretSeekDir) z.foretSeekDir = (Math.random() < 0.5 ? 1 : -1);
+                      var fperpX = -mvy * z.foretSeekDir, fperpY = mvx * z.foretSeekDir;
+                      var fsl = G.ZOMBIE_WALL_SLIDE * dt;
                       var fxs = z.x + fperpX * fsl, fys = z.y + fperpY * fsl;
-                      if (!G.aabbHitsForets(fxs, z.y, zs) && !G.aabbHitsWalls(fxs - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) z.x = fxs;
-                      if (!G.aabbHitsForets(z.x, fys, zs) && !G.aabbHitsWalls(z.x - zs, fys - zs, G.ZOMBIE_W, G.ZOMBIE_W)) z.y = fys;
+                      var fMoved = false;
+                      if (!G.aabbHitsForets(fxs, z.y, zs) && !G.aabbHitsWalls(fxs - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = fxs; fMoved = true; }
+                      if (!G.aabbHitsForets(z.x, fys, zs) && !G.aabbHitsWalls(z.x - zs, fys - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = fys; fMoved = true; }
+                      if (!fMoved && z.blockedSides > 8) {
+                        z.foretSeekDir = -z.foretSeekDir;
+                        z.blockedSides = 0;
+                      }
+                    }
                     }
                   } else {
                     // Blocage par mur : glisse le long pour contourner.

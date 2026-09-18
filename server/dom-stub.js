@@ -24,11 +24,14 @@ function setupStub() {
   // Aucune maison PNG côté serveur : houseNames() renvoie [] et le bloc de
   // maisons décoratives est sauté dans buildWorld().
   G.houseNames = function () { return []; };
-  // Côté serveur, aucune forêt PNG non plus. On fournit un frame factice
-  // "foret" et un stub de makeForet avec dimensions par défaut (128) pour que
-  // spawnForets() génère des forêts (collisions calibrées côté client).
+  // Côté serveur, aucune forêt PNG. On fournit des frames factices avec les
+  // dimensions réelles des PNG (assets/sprites/tree/ : 52x37 et 40x30) pour
+  // que makeForet() construise des AABB de collision proches du client
+  // (côté client shrinkToOpaque réduit encore à la zone opaque, mais l'ordre
+  // de grandeur reste fidèle — des sprites de 128 créaient des massifs de
+  // 256x256 qui bouchaient 3/4 de la carte côté serveur).
   G.foretNames = function () { return ["foret1", "foret2"]; };
-  G.SPRITES.foret = { foret1: { w: 128, h: 128 }, foret2: { w: 128, h: 128 } };
+  G.SPRITES.foret = { foret1: { w: 52, h: 37 }, foret2: { w: 40, h: 30 } };
   G.PLANK_LONG = 120;
   G.PLANK_THICK = 24;
   G.wallSpriteDims = function () { return { longW: G.PLANK_LONG, thick: G.PLANK_THICK }; };

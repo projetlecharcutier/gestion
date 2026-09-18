@@ -148,6 +148,7 @@
       }
     }
     if (regrowSolid && G.rebuildBuildingGrid) G.rebuildBuildingGrid();
+    if (regrowSolid && G.ensureForetConnectivity) G.ensureForetConnectivity();
   };
 
   // Grille spatiale des bâtiments (forêts + maisons + mairie) pour des
@@ -172,6 +173,7 @@
       }
     }
     G.buildingGrid = grid;
+    if (G.rebuildNavGrid) G.rebuildNavGrid();
   };
 
   // Teste si la boîte centrée (x,y) de demi-côté half chevauche une forêt
@@ -198,6 +200,165 @@
       }
     }
     return false;
+  };
+
+  // --- Champ de navigation des zombies (BFS vers la ville) ---
+  // Grille grossiere (cellule NAV_CELL px) : chaque cellule porte la distance
+  // BFS (en nombre de cellules franchissables) jusqu'au perimetre de la ville.
+  // Les cellules couvertes par une foret non epuisee sont infranchissables :
+  // le champ fait donc le CONTOUR des massifs. Un zombie piege dans une poche
+  // fermee est sur une cellule sans valeur : il retombe sur l'evasion locale.
+  // Recalcule apres chaque rebuildBuildingGrid (les coupes de forets ouvrent
+  // de nouveaux passages).
+  G.NAV_CELL = 32;
+  G.navGrid = null;
+  G.navCols = 0;
+  G.navRows = 0;
+  G.rebuildNavGrid = function () {
+    var cell = G.NAV_CELL;
+    var cols = Math.ceil(G.WORLD / cell), rows = Math.ceil(G.WORLD / cell);
+    G.navCols = cols; G.navRows = rows;
+    var blocked = new Uint8Array(cols * rows);
+    var blds = G.state.buildings;
+    // Marge de securite : une cellule est bloquee seulement si l'AABB d'une
+    // foret empiete reellement dedans (cellule retrainee de NAV_MARGIN px,
+    // l'ordre de grandeur du rayon du chef de groupe). Une cellule que la
+    // foret ne fait que toucher en bordure reste franchissable : les
+    // couloirs etroits physiquement praticables restent ouverts au champ.
+    var margin = 8;
+    for (var i = 0; i < blds.length; i++) {
+      var b = blds[i];
+      if (!b.isForet) continue;
+      if (G.foretDepleted(b)) continue;
+      var minCx = Math.floor((b.x + margin) / cell), maxCx = Math.floor((b.x + b.w - margin) / cell);
+      var minCy = Math.floor((b.y + margin) / cell), maxCy = Math.floor((b.y + b.h - margin) / cell);
+      for (var cx = minCx; cx <= maxCx; cx++) {
+        for (var cy = minCy; cy <= maxCy; cy++) {
+          if (cx >= 0 && cx < cols && cy >= 0 && cy < rows) blocked[cy * cols + cx] = 1;
+        }
+      }
+    }
+    // BFS multi-sources depuis le perimetre de la ville (juste au-dela des
+    // murs) : toute cellule libre atteignable porte sa distance au but.
+    var dist = new Int32Array(cols * rows);
+    for (var d = 0; d < dist.length; d++) dist[d] = -1;
+    var queue = new Int32Array(cols * rows);
+    var qHead = 0, qTail = 0;
+    function seed(cx, cy) {
+      if (cx < 0 || cx >= cols || cy < 0 || cy >= rows) return;
+      var k = cy * cols + cx;
+      if (blocked[k] || dist[k] !== -1) return;
+      dist[k] = 0;
+      queue[qTail++] = k;
+    }
+    var pad = 2;
+    var tMin = Math.floor((G.TOWN_MIN - 80) / cell), tMax = Math.floor((G.TOWN_MAX + 80) / cell);
+    for (var tcx = tMin; tcx <= tMax; tcx++) {
+      seed(tcx, tMin + pad); seed(tcx, tMax - pad);
+    }
+    for (var tcy = tMin; tcy <= tMax; tcy++) {
+      seed(tMin + pad, tcy); seed(tMax - pad, tcy);
+    }
+    while (qHead < qTail) {
+      var k2 = queue[qHead++];
+      var cx2 = k2 % cols, cy2 = (k2 - cx2) / cols;
+      var nd = dist[k2] + 1;
+      if (cx2 > 0 && !blocked[k2 - 1] && dist[k2 - 1] === -1) { dist[k2 - 1] = nd; queue[qTail++] = k2 - 1; }
+      if (cx2 < cols - 1 && !blocked[k2 + 1] && dist[k2 + 1] === -1) { dist[k2 + 1] = nd; queue[qTail++] = k2 + 1; }
+      if (cy2 > 0 && !blocked[k2 - cols] && dist[k2 - cols] === -1) { dist[k2 - cols] = nd; queue[qTail++] = k2 - cols; }
+      if (cy2 < rows - 1 && !blocked[k2 + cols] && dist[k2 + cols] === -1) { dist[k2 + cols] = nd; queue[qTail++] = k2 + cols; }
+    }
+    G.navGrid = dist;
+  };
+
+  // Garantit qu'aucune "poche fermee" de forets n'existe : une poche est un
+  // ensemble de cellules libres inatteignables depuis la ville (le champ BFS
+  // les marque -1). Un zombie (ou groupe) qui y spawne resterait prisonnier
+  // a vie, incapable d'atteindre la palissade ou la mairie. Solution : retirer
+  // iterativement la foret solide la plus proche du centre de chaque poche
+  // jusqu'a ce que tout l'espace libre soit connecte a la ville (borné pour
+  // garantir la terminaison). Appele apres la generation du monde et apres
+  // une repousse de foret (qui peut refermer un passage).
+  G.ensureForetConnectivity = function () {
+    var cell = G.NAV_CELL;
+    var blds = G.state.buildings;
+    for (var iter = 0; iter < 40; iter++) {
+      if (!G.navGrid) break;
+      var cols = G.navCols, rows = G.navRows;
+      // Cherche une cellule de poche (libre mais non atteignable).
+      var pocket = -1;
+      for (var k = 0; k < G.navGrid.length; k++) {
+        if (G.navGrid[k] === -1) { pocket = k; break; }
+      }
+      if (pocket === -1) return; // tout est connecte
+      var px = ((pocket % cols) + 0.5) * cell;
+      var py = (Math.floor(pocket / cols) + 0.5) * cell;
+      // Retire la foret solide la plus proche du centre de la poche.
+      var bestI = -1, bestD = Infinity;
+      for (var i = 0; i < blds.length; i++) {
+        var b = blds[i];
+        if (!b.isForet || G.foretDepleted(b)) continue;
+        var dx = b.x + b.w / 2 - px, dy = b.y + b.h / 2 - py;
+        var d = dx * dx + dy * dy;
+        if (d < bestD) { bestD = d; bestI = i; }
+      }
+      if (bestI === -1) return;
+      blds.splice(bestI, 1);
+      G.rebuildBuildingGrid(); // recalcule aussi le champ nav
+    }
+  };
+
+  // Renvoie un vecteur unitaire (ou null) indiquant le meilleur pas de
+  // navigation depuis (x, y) vers la ville selon le champ BFS : pointe vers
+  // la cellule voisine (8-connexe) de distance minimale. Le pas cible est le
+  // centre de la cellule voisine ; le zombie avance ainsi de cellule en
+  // cellule le long du chemin de moindre distance, contournant les massifs.
+  G.navStep = function (x, y) {
+    var grid = G.navGrid;
+    if (!grid) return null;
+    var cell = G.NAV_CELL;
+    var cols = G.navCols, rows = G.navRows;
+    var cx = Math.floor(x / cell), cy = Math.floor(y / cell);
+    if (cx < 0 || cx >= cols || cy < 0 || cy >= rows) return null;
+    var here = grid[cy * cols + cx];
+    if (here === -1) return null;
+    var best = -1, bestD = (here >= 0 ? here : Infinity);
+    for (var ox = -1; ox <= 1; ox++) {
+      for (var oy = -1; oy <= 1; oy++) {
+        if (ox === 0 && oy === 0) continue;
+        var nx = cx + ox, ny = cy + oy;
+        if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) continue;
+        var nd = grid[ny * cols + nx];
+        if (nd === -1) continue;
+        if (nd < bestD) { bestD = nd; best = ny * cols + nx; }
+      }
+    }
+    if (best === -1) return null;
+    var bx = best % cols, by = (best - bx) / cols;
+    var tx = (bx + 0.5) * cell, ty2 = (by + 0.5) * cell;
+    var dx = tx - x, dy = ty2 - y;
+    var len = Math.sqrt(dx * dx + dy * dy) || 1;
+    return { x: x + (dx / len) * 32, y: y + (dy / len) * 32, dist: bestD };
+  };
+
+  // Renvoie la foret (batiment isForet non epuisee) dont l'AABB contient le
+  // point (x, y), ou null. Sert a extraire les zombies pris a l'interieur
+  // d'un massif : la collision traite une foret comme un bloc plein, donc
+  // aucune position interieure n'est valide et il faut marcher vers le bord.
+  G.foretAt = function (x, y) {
+    var grid = G.buildingGrid;
+    if (!grid) return null;
+    var cell = G.BUILDING_CELL;
+    var cx = Math.floor(x / cell), cy = Math.floor(y / cell);
+    var arr = grid[cx + "," + cy];
+    if (!arr) return null;
+    for (var n = 0; n < arr.length; n++) {
+      var b = arr[n];
+      if (!b.isForet) continue;
+      if (G.foretDepleted(b)) continue;
+      if (x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h) return b;
+    }
+    return null;
   };
 
   // Fait poper `total` forêts, regroupées en clusters de 1 à 10 (même
@@ -484,5 +645,9 @@
 
     state.zombies = [];
     G.rebuildBuildingGrid();
+    // La generation aleatoire des forets peut refermer des enclaves : retire
+    // les massifs qui enferment des poches inaccessibles, pour que chaque
+    // point de spawn hors ville garde un chemin vers la palissade.
+    if (G.ensureForetConnectivity) G.ensureForetConnectivity();
   };
 })();
