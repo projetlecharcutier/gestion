@@ -169,11 +169,10 @@
     }
     if (state.waveMsgTimer > 0) state.waveMsgTimer -= dt;
     if (state.hordeMsgTimer > 0) state.hordeMsgTimer -= dt;
-    // 8h : les zombies se retirent loin de la ville (n'attaquent plus la mairie)
-    // et on rearme le drapeau de vague pour la nuit suivante.
+    // 8h : on rearme le drapeau de vague pour la nuit suivante. Les zombies
+    // restent en mode attaque (agressifs autant le jour que la nuit).
     var crossedMorning = prevClock < 8 && state.clock >= 8;
     if (crossedMorning) {
-      if (state.waveActive) state.zombieMode = "retreat";
       state.waveSpawnedForDay = false;
     }
 
@@ -428,7 +427,6 @@
           if (z.atkCd > 0) z.atkCd -= dt;
           if (z.wallCd > 0) z.wallCd -= dt;
           if (z.lunge > 0) z.lunge -= dt;
-          var nightFast = G.isNight(state.clock) ? G.ZOMBIE_NIGHT_ATTACK_FASTER : 1;
           var wallHit = zcible.wall && !zcible.seeking && zd < G.ZOMBIE_WALL_HIT;
           if (zd < 14) {
             if (zcible.isPlayer && z.atkCd <= 0) {
@@ -439,14 +437,14 @@
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
               if (p.hp <= 0) { p.hp = 0; state.gameOver = true; state.gameOverCause = "player"; }
             } else if (!zcible.isPlayer && zcible.wall && z.wallCd <= 0) {
-              z.wallCd = G.ZOMBIE_WALL_CD / nightFast;
+              z.wallCd = G.ZOMBIE_WALL_CD;
               // Attaque de meute : bonus de dégâts par assaillant proche du
               // mur (impression de coups frappés ensemble).
               zcible.wall.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
               z.lunge = G.ZOMBIE_LUNGE_TIME;
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
             } else if (!zcible.isPlayer && zcible.mairie && z.wallCd <= 0) {
-              z.wallCd = G.ZOMBIE_WALL_CD / nightFast;
+              z.wallCd = G.ZOMBIE_WALL_CD;
               zcible.mairie.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
               if (zcible.mairie.hp <= 0) { zcible.mairie.hp = 0; state.gameOver = true; state.gameOverCause = "mairie"; }
               z.lunge = G.ZOMBIE_LUNGE_TIME;
@@ -454,7 +452,7 @@
             }
           } else if (wallHit) {
             if (z.wallCd <= 0) {
-              z.wallCd = G.ZOMBIE_WALL_CD / nightFast;
+              z.wallCd = G.ZOMBIE_WALL_CD;
               zcible.wall.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
               z.lunge = G.ZOMBIE_LUNGE_TIME;
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);

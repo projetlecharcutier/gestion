@@ -121,9 +121,6 @@
   // foncent droit sur le mur le plus proche, le reste "fouisseurs" longe le
   // mur jusqu'à trouver une faille (un trou dans la palissade).
   G.ZOMBIE_BREAKER_RATIO = 0.5;
-  // Bonus nocturne de cadence d'attaque des murs : la nuit, le cooldown
-  // d'attaque est divisé par ce facteur (zombies plus actifs).
-  G.ZOMBIE_NIGHT_ATTACK_FASTER = 1.6;
   // Contournement des forêts : portée (px) de réorientation vers le mur le
   // plus proche quand un zombie est bloqué par une forêt.
   G.ZOMBIE_FORET_REORIENT = 360;

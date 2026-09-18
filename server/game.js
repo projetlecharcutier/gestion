@@ -81,7 +81,7 @@
       waveCount: 0,
       waveLeaveAt: 0,
       waveSpawnedForDay: false,
-      zombieMode: "retreat",
+      zombieMode: "attack",
       waveMsgTimer: 0,
       hordeMsgTimer: 0,
       time: 0,

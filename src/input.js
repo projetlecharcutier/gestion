@@ -218,7 +218,7 @@
     state.waveActive = false;
     state.waveCount = 0;
     state.waveSpawnedForDay = false;
-    state.zombieMode = "retreat";
+    state.zombieMode = "attack";
     state.waveMsgTimer = 0;
     state.zombies = [];
     state.zombieGroups = [];
