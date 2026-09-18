@@ -236,7 +236,7 @@
     var h = Math.floor(info.clock);
     var m = Math.floor((info.clock - h) * 60);
     var timeStr = (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m;
-    var phase = (info.clock >= 22 || info.clock < 2) ? "🌙 Nuit" : "☀️ Jour";
+    var phase = (G.isNight ? G.isNight(info.clock) : (info.clock >= G.NIGHT_START || info.clock < G.NIGHT_END)) ? "🌙 Nuit" : "☀️ Jour";
     var names = info.players.map(function (p) {
       return p.name + (p.alive ? "" : " †");
     }).join(", ") || "(aucun joueur)";

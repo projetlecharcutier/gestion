@@ -165,11 +165,11 @@
   G.updateZombies = function (dt) {
     var state = G.state;
     // Cycle jour/nuit : les vagues sont pilotees par l'horloge (minuit = spawn,
-    // 8h = retraite), pas par un simple timer d'elapsed.
+    // lever du jour = rearmement), pas par un simple timer d'elapsed.
     var prevClock = state.clock - (12 / G.DAY_SECONDS) * G.TIME_SCALE * dt;
     if (prevClock < 0) prevClock += 24;
     // Minuit (passage a 0h) : spawn d'une nouvelle vague + message.
-    var crossedMidnight = prevClock > 22 && state.clock < 2;
+    var crossedMidnight = prevClock > (G.NIGHT_START || 22) && state.clock < (G.NIGHT_END || 2);
     if (crossedMidnight && !state.waveSpawnedForDay) {
       G.spawnWave();
       state.waveActive = true;

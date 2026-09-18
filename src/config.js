@@ -69,7 +69,12 @@
   G.TIME_SCALE = 3;
   G.WAVE_EVERY = 420;
   G.WAVE_LEAVE = 600;
-  // Cycle jour/nuit des zombies : vague a minuit, retraite a 8h.
+  // Bornes de la nuit (heures de jeu) : la nuit commence a 23h et se
+  // termine a 7h du matin. Tout ce qui depend du cycle jour/nuit (assombrissement,
+  // musique, affichage HUD, phase lobby) lit ces bornes via isNight.
+  G.NIGHT_START = 23;
+  G.NIGHT_END = 7;
+  // Cycle jour/nuit des zombies : vague a minuit, rearmement au lever du jour.
   G.NIGHT_WAVE_HOUR = 0;   // heure (jeu) de spawn de la vague
   G.ZOMBIE_RETREAT_HOUR = 8; // heure (jeu) de retraite des zombies
   G.ZOMBIE_RETREAT_DIST = 700; // distance de retraite hors de la ville
@@ -192,20 +197,29 @@
   G.GROUP_MERGE_INTERVAL = 2.0;
 
   function isNight(clock) {
-    return clock >= 22 || clock < 2;
+    return clock >= G.NIGHT_START || clock < G.NIGHT_END;
   }
   G.isNight = isNight;
 
   // Assombrissement nocturne global : intensité maximale (alpha) de l'overlay
   // sombre et couleur (RGB "r,g,b"). La transition est douce : nulle aux
-  // limites 22h/2h, maximale à minuit (0h).
+  // bornes NIGHT_START/NIGHT_END, maximale au milieu de la nuit.
   G.NIGHT_DARK_ALPHA = 0.5;
   G.NIGHT_DARK_COLOR = "2,6,23";
+  // Assombrissement : transition douce, nulle aux bornes NIGHT_START/NIGHT_END,
+  // maximale au milieu de la nuit (3h du matin, creux entre 23h et 7h).
   G.nightDarkness = function (clock) {
     var max = G.NIGHT_DARK_ALPHA;
-    if (clock >= 22) return max * (clock - 22) / 2;
-    if (clock < 2) return max * (2 - clock) / 2;
-    return 0;
+    var start = G.NIGHT_START, end = G.NIGHT_END;
+    var nightLen = end - start;
+    if (nightLen <= 0) nightLen += 24;
+    // Position dans la nuit (0 a nightLen, continu a travers minuit) :
+    // 0 aux bornes, milieu de nuit au creux. Profil triangulaire : nul aux
+    // bornes 23h/7h, maximal a 3h du matin, continu sur tout le cycle.
+    var t = (clock - start + 24) % 24;
+    if (t > nightLen) return 0;
+    var half = nightLen / 2;
+    return max * (1 - Math.abs(t - half) / half);
   };
 
   G.rand = function (min, max) { return min + Math.random() * (max - min); };
