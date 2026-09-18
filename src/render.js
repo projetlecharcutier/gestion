@@ -726,7 +726,18 @@
       var bld = state.buildings[bi];
       // Culling : ignore les bâtiments (forêts, maisons) hors écran.
       if (bld.x + bld.w < bnds.minX || bld.x > bnds.maxX || bld.y + bld.h < bnds.minY || bld.y > bnds.maxY) continue;
-      drawables.push({ depth: bld.x + bld.y, type: "building", ref: bld });
+      // Profondeur : une forêt coupée (stage > 0) se dessine DERIERE ses
+      // voisines pleines (s0). refitForet réduit son AABB vers le centre quand
+      // on la coupe, ce qui augmentait x+y et la faisait passer DEVANT : les
+      // souches (s4) couvraient les forêts pleines. Biais par état de coupe,
+      // calibré sur l'écart de profondeur d'un cluster (forêts voisines
+      // espacées de moins de ~100 px) : la forêt coupée recule d'un rang par
+      // étage sans percer l'ordre des murs/zombies réellement devant elle.
+      var depth = bld.x + bld.y;
+      if (bld.isForet && (bld.foretStage || 0) > 0) {
+        depth -= bld.foretStage * G.FORET_DEPTH_BIAS;
+      }
+      drawables.push({ depth: depth, type: "building", ref: bld });
     }
     for (var wi = 0; wi < state.walls.length; wi++) {
       var m = state.walls[wi];

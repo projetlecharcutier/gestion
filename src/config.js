@@ -168,6 +168,9 @@
   // jour écoulé, la forêt regagne un état (remonte vers s0), sauf à s0.
   G.FORET_STAGES = 5;
   G.FORET_PLANKS_PER_CHOP = 4;
+  // Rendu : biais de profondeur par état de coupe — une forêt coupée (stage
+  // > 0) se dessine derriere ses voisines pleines (s0). Voir render().
+  G.FORET_DEPTH_BIAS = 260;
   G.WALL_GRACE = 1.5;
   G.ZOMBIE_PER_WAVE_BASE = 50;
   G.ZOMBIE_WAVE_GROWTH = 2;
