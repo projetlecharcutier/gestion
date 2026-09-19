@@ -88,8 +88,7 @@
         }
         // Caractère propre à chaque zombie pour un mouvement vivant :
         // speedFactor = vitesse relative (±ZOMBIE_SPEED_VAR), wanderPhase/Freq =
-        // phase et fréquence d'oscillation du cap ("drunken walk"), hesitate =
-        // décompte d'une pause en cours (0 = aucun).
+        // phase et fréquence d'oscillation du cap ("drunken walk").
         // Rôles d'attaque : harasser (éclaireur qui harcèle le joueur de loin),
         // raider (pilleur qui pousse son groupe vers les planches construites).
         // slotAng/slotDist = position de slot actuelle (animée), slotAngT/
@@ -102,7 +101,6 @@
           speedFactor: G.clamp(sf, 0.4, 1.6),
           wanderPhase: Math.random() * Math.PI * 2,
           wanderFreq: G.ZOMBIE_WANDER_FREQ * (0.7 + Math.random() * 0.6),
-          hesitate: 0,
           blockedSides: 0,
           harasser: Math.random() < G.ZOMBIE_HARASS_RATIO,
           raider: Math.random() < G.ZOMBIE_RAIDER_RATIO,
@@ -587,20 +585,27 @@
               hitTarget.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
               z.lunge = G.ZOMBIE_LUNGE_TIME;
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
+            } else {
+              // Collé à la cible mais en cooldown : il ne reste pas figé,
+              // il continue de presser/frapper la cible (élan visuel).
+              z.lunge = G.ZOMBIE_LUNGE_TIME;
+              z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
             }
           } else {
             var sx = (zcible.isPlayer ? zcible.x : tx) - z.x;
             var sy = (zcible.isPlayer ? zcible.y : ty) - z.y;
             var sd = Math.sqrt(sx * sx + sy * sy) || 1;
-            // Décompte des hésitations : si en cours, on ne bouge pas ce tick.
-            if (z.hesitate > 0) {
-              z.hesitate -= dt;
-            } else if (sd > 4) {
-              // Démarrage aléatoire d'une hésitation (le zombie s'arrête,
-              // comme s'il flaireit l'air).
-              if (Math.random() < G.ZOMBIE_HESITATE_RATE * dt) {
-                z.hesitate = G.ZOMBIE_HESITATE_TIME * (0.6 + Math.random() * 0.8);
-              } else {
+            // Zombie arrivé à son slot mais hors de portée d'un objectif
+            // attaquable (mur/tour/mairie) : il ne reste jamais passif, il
+            // pousse vers le point d'attaque (toujours en train d'attaquer
+            // ou de chercher un moyen d'attaquer).
+            if (sd <= 4 && !zcible.isPlayer &&
+                (zcible.wall || zcible.tower || zcible.mairie) &&
+                zd > G.ZOMBIE_WALL_HIT) {
+              sx = zcible.x - z.x; sy = zcible.y - z.y;
+              sd = Math.sqrt(sx * sx + sy * sy) || 1;
+            }
+            if (sd > 4) {
                 // Cap de marche perturbé par une oscillation lente propre au
                 // zombie ("drunken walk") : on dérive le cap de ±ZOMBIE_WANDER_AMP
                 // autour de la direction cible.
@@ -686,6 +691,31 @@
                       if (!fMoved && z.blockedSides > 8) {
                         z.foretSeekDir = -z.foretSeekDir;
                         z.blockedSides = 0;
+                        // Coin de massif (les deux sens de longe bloqués) :
+                        // s'échappe en s'écartant du centre de la forêt — le
+                        // glissement reprend ensuite le long d'une autre
+                        // face au lieu de rester planté au coin.
+                        var cf = G.foretAt ? G.foretAt(z.x, z.y) : null;
+                        if (!cf) {
+                          var nearF = null, nfD = 40;
+                          for (var nfx = -1; nfx <= 1; nfx++) {
+                            for (var nfy = -1; nfy <= 1; nfy++) {
+                              var cf2 = G.foretAt(z.x + nfx * 12, z.y + nfy * 12);
+                              if (cf2) { nearF = cf2; break; }
+                            }
+                            if (nearF) break;
+                          }
+                          cf = nearF;
+                        }
+                        if (cf) {
+                          var ccx = cf.x + cf.w / 2, ccy = cf.y + cf.h / 2;
+                          var cex = z.x - ccx, cey = z.y - ccy;
+                          var cel = Math.sqrt(cex * cex + cey * cey) || 1;
+                          var esc = G.ZOMBIE_WALL_SLIDE * dt * 2;
+                          var esx = z.x + (cex / cel) * esc, esy = z.y + (cey / cel) * esc;
+                          if (!G.aabbHitsForets(esx, z.y, zs) && esx > 12 && esx < G.WORLD - 12) z.x = esx;
+                          if (!G.aabbHitsForets(z.x, esy, zs) && esy > 12 && esy < G.WORLD - 12) z.y = esy;
+                        }
                       }
                     }
                     }
@@ -699,11 +729,23 @@
                     var sxs = z.x + perpX * slide, sys = z.y + perpY * slide;
                     if (!G.aabbHitsWalls(sxs - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(sxs, z.y, zs)) z.x = sxs;
                     if (!G.aabbHitsWalls(z.x - zs, sys - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(z.x, sys, zs)) z.y = sys;
+                    // Fouisseur patient épuisé : le contournement ne trouve
+                    // pas de faille (palissade fermée), il ne reste pas
+                    // inactif — il attaque le mur qu'il longe.
+                    if (z.blockedSides > 12 && z.wallCd <= 0) {
+                      var atkWall = zNearWall || zcible.wall;
+                      if (atkWall) {
+                        z.wallCd = G.ZOMBIE_WALL_CD;
+                        atkWall.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
+                        z.lunge = G.ZOMBIE_LUNGE_TIME;
+                        z.lungeDx = mvx; z.lungeDy = mvy;
+                        z.blockedSides = 0;
+                      }
+                    }
                   }
                 } else {
                   z.blockedSides = 0;
                 }
-              }
             }
           }
           // Séparation : repousse le zombie hors de ses voisins trop proches

@@ -25,16 +25,22 @@ Vagues nocturnes, organisation en petits groupes qui fusionnent, IA (cible joueu
 Chaque zombie porte un caractère propre (init à l'apparition, champs sur `z`) :
 - `speedFactor` ∈ [`1-ZOMBIE_SPEED_VAR`, `1+ZOMBIE_SPEED_VAR`] (clampé 0.4–1.6) — vitesse relative, certains traînent, d'autres sont plus rapides.
 - `wanderPhase`/`wanderFreq` — oscillation lente du cap autour de la direction cible ("drunken walk"), amplitude `ZOMBIE_WANDER_AMP` (ratio de cap).
-- `hesitate` (s) — décompte d'une pause en cours (0 = aucun) ; démarre aléatoirement (`ZOMBIE_HESITATE_RATE` proba/s, durée `ZOMBIE_HESITATE_TIME`).
 - `blockedSides` — compteur de blocages murs consécutifs, déclenche le contournement.
 
 Règles de mouvement :
-- En hésitation, le zombie ne se déplace pas.
-- Sinon, le cap = direction cible + sinusoïde propre au zombie ; vitesse = `ZOMBIE_SPEED * speedFactor`.
+- **Un zombie n'est jamais inactif** : il est toujours en train d'attaquer une
+  cible à portée ou de se déplacer pour en chercher un moyen (pas de pauses).
+- Le cap = direction cible + sinusoïde propre au zombie ; vitesse = `ZOMBIE_SPEED * speedFactor`.
+- **Slot atteint mais cible hors de portée** : si le zombie est arrivé à sa
+  place de formation alors que la cible (mur/tour/mairie) est encore hors de
+  portée d'attaque, il pousse vers le point d'attaque au lieu de rester figé.
+- **Fouisseur épuisé** : un zombie bloqué par un mur depuis trop longtemps
+  (`blockedSides > 12`) sans avoir trouvé de faille dans la palissade ne reste
+  pas passif : il attaque le mur qu'il longe.
 - **Contournement des murs** : si bloqué par une planche, le zombie glisse le long du mur (biais latéral `ZOMBIE_WALL_SLIDE`, côté alterné dans le temps) au lieu de s'enliser.
 - **Attraction par le bruit** : un tir nouvellement apparu attire les groupes à moins de `ZOMBIE_NOISE_RANGE` pendant `ZOMBIE_NOISE_TIME` s vers la position du tir (sans écraser un joueur proche ni un mur immédiat). Détecté via `state.lastShot` (diff du compteur `state._prevProjN`).
 
-Constantes associées (`src/config.js`) : `ZOMBIE_SPEED_VAR`, `ZOMBIE_WANDER_AMP`, `ZOMBIE_WANDER_FREQ`, `ZOMBIE_HESITATE_TIME`, `ZOMBIE_HESITATE_RATE`, `ZOMBIE_NOISE_RANGE`, `ZOMBIE_NOISE_TIME`, `ZOMBIE_WALL_SLIDE`.
+Constantes associées (`src/config.js`) : `ZOMBIE_SPEED_VAR`, `ZOMBIE_WANDER_AMP`, `ZOMBIE_WANDER_FREQ`, `ZOMBIE_NOISE_RANGE`, `ZOMBIE_NOISE_TIME`, `ZOMBIE_WALL_SLIDE`.
 
 ## Comportement d'attaque
 Chaque zombie porte un rôle d'attaque (init à l'apparition) :

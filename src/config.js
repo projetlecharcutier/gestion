@@ -87,10 +87,6 @@
   // "drunken walk" (cap qui dérive de part et d'autre).
   G.ZOMBIE_WANDER_AMP = 0.5;
   G.ZOMBIE_WANDER_FREQ = 2.4;
-  // Hésitations : durée (s) d'une pause aléatoire et intervalle moyen (s)
-  // entre deux hésitations (loi exponentielle).
-  G.ZOMBIE_HESITATE_TIME = 0.6;
-  G.ZOMBIE_HESITATE_RATE = 0.06; // proba/s de démarrer une hésitation
   // Attraction par le bruit des coups de feu : portée (px) et durée (s)
   // pendant laquelle un groupe dévie sa cible vers la position du tir.
   G.ZOMBIE_NOISE_RANGE = 1600;
