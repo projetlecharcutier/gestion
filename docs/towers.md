@@ -7,11 +7,19 @@
 
 ## 1. Vue d'ensemble
 
-- **Scierie** : technologie débloquée au coffre de la mairie (100 planches +
-  10 or), puis **bâtiment unique** posable dans la ville.
+- **Bâtiments de ville** (`G.TOWN_BUILDINGS`, `src/config.js`) : scierie,
+  université, montgolfière — chacun une technologie débloquée au coffre de
+  la mairie (100 planches + 10 or), puis **bâtiment unique** posable dans la
+  ville. Un futur bâtiment = une nouvelle entrée au registre (menu, pose,
+  chantier, rendu, vote et snapshot automatiques).
+- **Université** : placeholder posable/cliquable, prêt à recevoir de futures
+  améliorations.
+- **Montgolfière** (centre de décollage) : au clic, annonce le **volume** et
+  la **direction** de la prochaine vague (pré-tirage `G.rollWave` chaque
+  matin, consommé par `spawnWave` à minuit).
 - **Menu de construction** : touche **Z** → liste des bâtiments constructibles
-  (palissade toujours ; scierie si débloquée et non posée ; tours si la
-  scierie est construite) → clic sur un bâtiment → clic sur la carte pour le
+  (palissade toujours ; bâtiments de ville débloqués et non posés ; tours si
+  la scierie est construite) → clic sur un bâtiment → clic sur la carte pour le
   poser. Clic droit / Échap annule.
 - **Tour en bois** : défense automatique, 2 archers (gauche/droite) qui tirent
   des flèches sur les zombies uniquement. Posable partout (ville incluse,
@@ -56,15 +64,15 @@
   **ne pivote pas**.
 - Pose : vérif chevauchement bâtiments/murs, paiement au coffre (tour :
   1 or + 20 planches), grace period + `pushPlayerOutOfWall` réutilisés.
-  - Scierie : **dans la ville uniquement** (`G.inTown`).
+  - Bâtiments de ville : **dans la ville uniquement** (`G.inTown`).
   - Tour : **partout**.
-- **Chantier 10 s** (`G.TOWER_BUILD_TIME`) pour la scierie ET la tour :
+- **Chantier 10 s** (`G.TOWER_BUILD_TIME`) pour les bâtiments de ville ET les tours :
   anim `chantier` en **un seul tour complet** sur la durée (frame =
   progression `builtAt → builtAt + TOWER_BUILD_TIME`, figée sur la dernière
   frame ensuite), aucun fonctionnement pendant le chantier,
   bâtiment **dès le début** solide et attaquable.
 
-## 5. Sprites (`assets/sprites/tour/`, `assets/sprites/scierie/`)
+## 5. Sprites (`assets/sprites/tour/`, `assets/sprites/scierie/`, `assets/sprites/universite/`, `assets/sprites/montgolfiere/`)
 
 Nomenclature (sondage auto des frames `-0.png, -1.png…`, cf. README assets) :
 
@@ -75,6 +83,8 @@ Nomenclature (sondage auto des frames `-0.png, -1.png…`, cf. README assets) :
 | `tour/gauche-0..N.png` | overlay tir gauche — **PNG complet de la tour**, découpé en **moitié gauche** au rendu |
 | `tour/droite-0..N.png` | overlay tir droite — idem, **moitié droite** |
 | `scierie/idle.png`, `scierie/chantier.png` | scierie construite / en chantier |
+| `universite/idle.png`, `universite/chantier.png` | université construite / en chantier |
+| `montgolfiere/idle.png`, `montgolfiere/chantier.png` | montgolfière construite / en chantier |
 
 Règles de dessin :
 - Toutes les frames d'une même série ont **exactement les mêmes dimensions**.

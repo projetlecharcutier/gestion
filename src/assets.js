@@ -113,6 +113,12 @@
     },
     scierie: {
       idle: { src: "assets/sprites/scierie/idle.png", w: 96, h: 96 }
+    },
+    universite: {
+      idle: { src: "assets/sprites/universite/idle.png", w: 96, h: 96 }
+    },
+    montgolfiere: {
+      idle: { src: "assets/sprites/montgolfiere/idle.png", w: 96, h: 96 }
     }
   };
   // Sonde les maisons house/H1.png, H2.png, ... jusqu'au premier fichier
@@ -354,7 +360,11 @@
         { ent: "tour", dir: "assets/sprites/tour/", base: "gauche" },
         { ent: "tour", dir: "assets/sprites/tour/", base: "droite" },
         { ent: "scierie", dir: "assets/sprites/scierie/", base: "idle" },
-        { ent: "scierie", dir: "assets/sprites/scierie/", base: "chantier" }
+        { ent: "scierie", dir: "assets/sprites/scierie/", base: "chantier" },
+        { ent: "universite", dir: "assets/sprites/universite/", base: "idle" },
+        { ent: "universite", dir: "assets/sprites/universite/", base: "chantier" },
+        { ent: "montgolfiere", dir: "assets/sprites/montgolfiere/", base: "idle" },
+        { ent: "montgolfiere", dir: "assets/sprites/montgolfiere/", base: "chantier" }
       ];
       var si = 0;
       function nextSeries() {

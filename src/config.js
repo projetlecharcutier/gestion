@@ -193,6 +193,45 @@
   // Scierie & tours : deplacement debloque a la mairie (cf. docs/towers.md).
   // La tech Scierie coute 100 planches + 10 or pris dans le coffre de la mairie.
   G.SCIERIE_COST = { planks: 100, gold: 10 };
+  // Batiments de ville debloquables a la mairie (meme modele que la scierie) :
+  // tech au coffre (vote en multi), pose UNIQUE en ville via le menu Z,
+  // chantier TOWER_BUILD_TIME puis effet. Un nouveau batiment = une entree
+  // ici (cle = id tech "unlocked", champ state du batiment, sprite, label) :
+  // menu, pose, chantier, rendu, vote et snapshot le prennent en compte
+  // automatiquement.
+  //  - scierie   : ouvre la construction des tours (batiment modele).
+  //  - universite : placeholder pret a recevoir de futures ameliorations.
+  //  - montgolfiere : au clic, indique le volume et la direction de la
+  //    prochaine vague (schéma pre-tire, cf. pendingWave dans zombies.js).
+  G.TOWN_BUILDINGS = {
+    scierie: {
+      label: "Scierie",
+      stateField: "scierie",
+      unlockedField: "scierieUnlocked",
+      cost: { planks: 100, gold: 10 },
+      side: 40,
+      msg: "La scierie permet de construire des tours.",
+      onClick: "buildMenu"
+    },
+    universite: {
+      label: "Université",
+      stateField: "universite",
+      unlockedField: "universiteUnlocked",
+      cost: { planks: 100, gold: 10 },
+      side: 40,
+      msg: "L'université accueillera de futures améliorations.",
+      onClick: "universite"
+    },
+    montgolfiere: {
+      label: "Centre de décollage",
+      stateField: "montgolfiere",
+      unlockedField: "montgolfiereUnlocked",
+      cost: { planks: 100, gold: 10 },
+      side: 40,
+      msg: "La montgolfière surveille l'arrivée de la prochaine horde.",
+      onClick: "montgolfiere"
+    }
+  };
   G.SCIERIE_SIDE = 40;   // emprise sol de la scierie (unites monde)
   // Pieces d'or : 100 pre-poses hors ville au demarrage, drop regulier des
   // oiseaux (proba par oiseau tue).

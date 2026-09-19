@@ -87,10 +87,11 @@
     var sel = state.buildSel;
     // Emprise + libellé selon la sélection (palissade par défaut).
     var w, h, label, ok;
-    if (sel === "scierie") {
-      w = G.SCIERIE_SIDE; h = G.SCIERIE_SIDE;
-      label = "Scierie";
-      ok = !state.scierie && G.inTown(state.mouse.wx, state.mouse.wy);
+    if (sel && G.TOWN_BUILDINGS[sel]) {
+      var tdef = G.TOWN_BUILDINGS[sel];
+      w = tdef.side; h = tdef.side;
+      label = tdef.label;
+      ok = !state[tdef.stateField] && G.inTown(state.mouse.wx, state.mouse.wy);
     } else if (sel && sel.indexOf("tour:") === 0) {
       var tSide = G.towerSide(sel.slice(5));
       w = tSide; h = tSide;

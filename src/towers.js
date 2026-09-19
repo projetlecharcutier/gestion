@@ -32,18 +32,29 @@
     return fi;
   };
 
-  // Crée le bâtiment scierie (unique) à la position cliquée.
-  G.makeScierie = function (x, y) {
-    var side = G.SCIERIE_SIDE;
-    return {
+  // Crée le bâtiment de ville `id` du registre TOWN_BUILDINGS (unique) à la
+  // position cliquée. Même modèle pour tous : emprise carrée `side`, posé
+  // dans state[def.stateField] + state.buildings, chantier puis chantierDone.
+  G.makeTownBuilding = function (id, x, y) {
+    var def = G.TOWN_BUILDINGS[id];
+    var side = def.side;
+    var b = {
       x: x - side / 2, y: y - side / 2, w: side, h: side,
-      name: "Scierie", msg: "La scierie permet de construire des tours.",
-      isScierie: true, isDecor: false,
+      name: def.label, msg: def.msg,
+      isScierie: id === "scierie", isUniversite: id === "universite",
+      isMontgolfiere: id === "montgolfiere", isDecor: false,
+      townBuilding: id,
       height: 120,
       door: { x: x, y: y + side / 2 },
       builtAt: G.state.time,
       chantierDone: false
     };
+    return b;
+  };
+
+  // Crée le bâtiment scierie (unique) à la position cliquée.
+  G.makeScierie = function (x, y) {
+    return G.makeTownBuilding("scierie", x, y);
   };
 
   // Crée une tour du niveau donné (ex. "bois") à la position cliquée.
@@ -78,14 +89,18 @@
   };
 
   // Liste les bâtiments constructibles (menu ouvert avec Z) : palissade
-  // toujours, scierie si la tech est débloquée et pas encore posée, tours
-  // (tous les niveaux de TOWER_STATS, futurs niveaux automatiques) si la
-  // scierie est construite.
+  // toujours, bâtiments de ville du registre (tech débloquée + pas encore
+  // posés), tours (tous les niveaux de TOWER_STATS, futurs niveaux
+  // automatiques) si la scierie est construite.
   G.buildMenu = function () {
     var state = G.state;
     var menu = [{ id: "palissade", label: "Palissade (mur)", costPlanks: G.WALL_PLANKS, costGold: 0 }];
-    if (state.scierieUnlocked && !state.scierie) {
-      menu.push({ id: "scierie", label: "Scierie", costPlanks: 0, costGold: 0 });
+    for (var tb in G.TOWN_BUILDINGS) {
+      if (!G.TOWN_BUILDINGS.hasOwnProperty(tb)) continue;
+      var tdef = G.TOWN_BUILDINGS[tb];
+      if (state[tdef.unlockedField] && !state[tdef.stateField]) {
+        menu.push({ id: tb, label: tdef.label, costPlanks: 0, costGold: 0 });
+      }
     }
     if (state.scierie && state.scierie.chantierDone) {
       for (var level in G.TOWER_STATS) {
@@ -112,15 +127,19 @@
       return G.tryBuildWall(wx, wy);
     }
 
-    if (sel === "scierie") {
-      if (state.scierie) return false;
+    if (G.TOWN_BUILDINGS[sel]) {
+      // Batiment de ville (scierie, universite, montgolfiere...) : unique,
+      // en ville uniquement, deja paye au deblocage tech.
+      var tdef = G.TOWN_BUILDINGS[sel];
+      if (state[tdef.stateField]) return false;
       if (!G.inTown(wx, wy)) return false;
-      var side = G.SCIERIE_SIDE;
+      var side = tdef.side;
       var sx = wx - side / 2, sy = wy - side / 2;
       if (!G.towerSpotFree(sx, sy, side, side)) return false;
-      state.scierie = G.makeScierie(wx, wy);
-      state.buildings.push(state.scierie);
-      G.pushPlayerOutOfWall(state.scierie);
+      var b = G.makeTownBuilding(sel, wx, wy);
+      state[tdef.stateField] = b;
+      state.buildings.push(b);
+      G.pushPlayerOutOfWall(b);
       state.buildSel = null;
       return true;
     }
@@ -156,9 +175,14 @@
   // Avance les chantiers (scierie + tours) : construit après TOWER_BUILD_TIME.
   G.updateBuildSites = function (dt) {
     var state = G.state;
-    if (state.scierie && !state.scierie.chantierDone &&
-        state.time - state.scierie.builtAt >= G.TOWER_BUILD_TIME) {
-      state.scierie.chantierDone = true;
+    for (var tb in G.TOWN_BUILDINGS) {
+      if (!G.TOWN_BUILDINGS.hasOwnProperty(tb)) continue;
+      var tdef = G.TOWN_BUILDINGS[tb];
+      var b = state[tdef.stateField];
+      if (b && !b.chantierDone &&
+          state.time - b.builtAt >= G.TOWER_BUILD_TIME) {
+        b.chantierDone = true;
+      }
     }
     for (var i = 0; i < state.towers.length; i++) {
       var t = state.towers[i];
@@ -291,19 +315,32 @@
   // planches du poseur (state.planks en solo ; en multi le serveur copie
   // p.planks dans state.planks avant l'appel, cf. server/game.js).
   G.canPayScierie = function () {
-    return (G.state.mairieGold || 0) >= G.SCIERIE_COST.gold &&
-           (G.state.planks || 0) >= G.SCIERIE_COST.planks;
+    return G.canPayTownTech("scierie");
+  };
+
+  // Peut-on payer la tech d'un batiment de ville du registre ?
+  G.canPayTownTech = function (id) {
+    var def = G.TOWN_BUILDINGS[id];
+    if (!def) return false;
+    return (G.state.mairieGold || 0) >= def.cost.gold &&
+           (G.state.planks || 0) >= def.cost.planks;
+  };
+
+  // Débite et débloque la tech d'un batiment de ville du registre.
+  G.unlockTownTech = function (id) {
+    var state = G.state;
+    var def = G.TOWN_BUILDINGS[id];
+    if (!def || state[def.unlockedField]) return false;
+    if (!G.canPayTownTech(id)) return false;
+    state.mairieGold -= def.cost.gold;
+    state.planks -= def.cost.planks;
+    state[def.unlockedField] = true;
+    return true;
   };
 
   // Débite et débloque la tech scierie.
   G.unlockScierie = function () {
-    var state = G.state;
-    if (state.scierieUnlocked) return false;
-    if (!G.canPayScierie()) return false;
-    state.mairieGold -= G.SCIERIE_COST.gold;
-    state.planks -= G.SCIERIE_COST.planks;
-    state.scierieUnlocked = true;
-    return true;
+    return G.unlockTownTech("scierie");
   };
 
   // Vote en cours à la mairie (multijoueur). Le serveur est autoritaire ;
@@ -347,17 +384,18 @@
     var proposal = state.vote.proposal;
     state.vote = null;
     if (passed) {
-      if (proposal === "scierie") {
+      var tdef = G.TOWN_BUILDINGS[proposal];
+      if (tdef) {
         if (payerPlanks) {
           // Multi : les planches viennent du joueur initiateur (state.vote.votes
           // garde son id). L'or vient du coffre commun.
-          if ((state.mairieGold || 0) < G.SCIERIE_COST.gold) return "failed";
-          if (!payerPlanks(G.SCIERIE_COST.planks)) return "failed";
-          state.mairieGold -= G.SCIERIE_COST.gold;
-          state.scierieUnlocked = true;
+          if ((state.mairieGold || 0) < tdef.cost.gold) return "failed";
+          if (!payerPlanks(tdef.cost.planks)) return "failed";
+          state.mairieGold -= tdef.cost.gold;
+          state[tdef.unlockedField] = true;
           return "passed";
         }
-        if (G.unlockScierie()) return "passed";
+        if (G.unlockTownTech(proposal)) return "passed";
         // Vote gagnant mais paiement impossible : refuse sans cooldown (les
         // ressources manquaient au moment de la resolution).
         return "failed";

@@ -141,6 +141,59 @@
     if (G.churchScreen) G.churchScreen.hidden = true;
   };
 
+  // Centre de decollage de montgolfiere : affiche le volume et la direction
+  // de la prochaine vague (pre-tiree le matin, cf. rollWave dans zombies.js).
+  G.openMontgolfiere = function () {
+    var state = G.state;
+    state.paused = false;
+    G.pauseScreen.hidden = true;
+    G.drawMontgolfiere();
+    if (G.montgolfiereScreen) G.montgolfiereScreen.hidden = false;
+  };
+
+  G.closeMontgolfiere = function () {
+    if (G.montgolfiereScreen) G.montgolfiereScreen.hidden = true;
+  };
+
+  var SIDE_NAMES = ["nord", "sud", "ouest", "est"];
+
+  G.drawMontgolfiere = function () {
+    var info = G.montgolfiereInfo;
+    if (!info) return;
+    var pw = G.state.pendingWave;
+    if (!pw) {
+      info.textContent = "Aucune observation pour le moment.";
+      return;
+    }
+    var dirTxt = pw.sides.map(function (s) { return SIDE_NAMES[s] || "?"; }).join(", ");
+    info.innerHTML = "";
+    var p1 = document.createElement("p");
+    p1.textContent = "Prochaine horde : " + pw.count + " zombies";
+    var p2 = document.createElement("p");
+    p2.textContent = "Arrivée : " + (pw.sides.length === 4 ? "de toutes parts" : (pw.sides.length === 1 ? "du " + dirTxt : "du " + dirTxt + " (tenaille)"));
+    info.appendChild(p1);
+    info.appendChild(p2);
+  };
+
+  // Universite : placeholder pret a recevoir de futures ameliorations.
+  G.openUniversite = function () {
+    var state = G.state;
+    state.paused = false;
+    G.pauseScreen.hidden = true;
+    G.drawUniversite();
+    if (G.universiteScreen) G.universiteScreen.hidden = false;
+  };
+
+  G.closeUniversite = function () {
+    if (G.universiteScreen) G.universiteScreen.hidden = true;
+  };
+
+  G.drawUniversite = function () {
+    var info = G.universiteInfo;
+    if (!info) return;
+    info.textContent = "Aucune amélioration disponible pour le moment. De futures recherches y seront enseignées.";
+  };
+
   // Vend une relique (index dans le sac) : +100 or. En réseau, le serveur
   // est autorité (le client demande churchDeposit ; l'or revient via l'état).
   G.sellRelic = function (index) {
@@ -257,7 +310,9 @@
     }
   };
 
-  // Section Technologies du coffre de la mairie : scierie (+ futur : votes).
+  // Section Technologies du coffre de la mairie : un bouton par batiment de
+  // ville du registre TOWN_BUILDINGS (scierie, universite, montgolfiere, ...
+  // futurs ajouts automatiques). Achat direct en solo, vote en multi.
   G.drawChestTech = function () {
     var state = G.state;
     var tech = G.chestTech;
@@ -269,25 +324,53 @@
     var h = document.createElement("p");
     h.textContent = "Technologies";
     list.appendChild(h);
-    if (state.scierieUnlocked) {
-      var ok = document.createElement("p");
-      ok.textContent = "Scierie : débloquée" + (state.scierie ? " (bâtiment posé)" : " — posez-la en ville (Z)");
-      list.appendChild(ok);
-    } else {
-      var btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "btn chest__item";
-      var label = "Scierie — " + G.SCIERIE_COST.planks + " planches + " + G.SCIERIE_COST.gold + " or";
-      var net = G.netConnected && G.netConnected();
-      var voteActive = net && state.vote && state.vote.proposal === "scierie";
-      if (voteActive) {
-        label += " — VOTE en cours : " + Math.max(0, Math.ceil((state.vote.endsAt || 0) - (state.time || 0))) + " s (clic = voter pour)";
+    for (var tb in G.TOWN_BUILDINGS) {
+      if (!G.TOWN_BUILDINGS.hasOwnProperty(tb)) continue;
+      var tdef = G.TOWN_BUILDINGS[tb];
+      var b = state[tdef.stateField];
+      if (state[tdef.unlockedField]) {
+        var ok = document.createElement("p");
+        ok.textContent = tdef.label + " : débloquée" + (b ? (b.chantierDone ? " (bâtiment posé)" : " (en construction)") : " — posez-la en ville (Z)");
+        list.appendChild(ok);
+      } else {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn chest__item";
+        var label = tdef.label + " — " + tdef.cost.planks + " planches + " + tdef.cost.gold + " or";
+        var net = G.netConnected && G.netConnected();
+        var voteActive = net && state.vote && state.vote.proposal === tb;
+        if (voteActive) {
+          label += " — VOTE en cours : " + Math.max(0, Math.ceil((state.vote.endsAt || 0) - (state.time || 0))) + " s (clic = voter pour)";
+        }
+        btn.textContent = label;
+        (function (id) {
+          btn.addEventListener("click", function () { G.buyTownTech(id); });
+        })(tb);
+        list.appendChild(btn);
       }
-      btn.textContent = label;
-      btn.addEventListener("click", function () { G.buyScierie(); });
-      list.appendChild(btn);
     }
     tech.appendChild(list);
+  };
+
+  // Demande le deblocage d'une tech de batiment de ville : achat direct en
+  // solo (si le coffre suffit), proposition de vote en multijoueur.
+  G.buyTownTech = function (id) {
+    var state = G.state;
+    var tdef = G.TOWN_BUILDINGS[id];
+    if (!tdef || state[tdef.unlockedField]) return;
+    if (G.netConnected && G.netConnected()) {
+      G.netInput({ techVote: id });
+      if (G.addFloater) G.addFloater("Vote lancé (15 s)");
+      G.drawChest();
+      return;
+    }
+    if (G.unlockTownTech(id)) {
+      if (G.addFloater) G.addFloater(tdef.label + " débloquée ! Z + posez-la en ville");
+      G.drawChest();
+      G.updateHud();
+    } else {
+      if (G.addFloater) G.addFloater("Il faut " + tdef.cost.planks + " planches + " + tdef.cost.gold + " or au coffre");
+    }
   };
 
   G.drawChest = function () {

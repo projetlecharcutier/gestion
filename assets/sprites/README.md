@@ -46,11 +46,19 @@ donc representer la **meme tour, au meme pixel pres** (meme taille de PNG),
 seuls les archers different. L'empreinte de pose de la tour = taille du PNG
 (dans le doute : 96x128, cf. manifeste `src/assets.js`).
 
-## Scierie (`scierie/`)
+## Batiments de ville (`scierie/`, `universite/`, `montgolfiere/`)
 
-Batiment unique debloquable a la mairie. Deux series animees : `idle.png`
-(batiment construit) et `chantier.png` (construction). Emprise au sol
-definie par `SCIERIE_SIDE` (`src/config.js`), pas par la taille du PNG.
+Batiments uniques debloquables a la mairie (meme modele que la scierie,
+registre `TOWN_BUILDINGS` dans `src/config.js`). Deux series animees par
+batiment : `idle.png` (batiment construit) et `chantier.png` (construction,
+frames `chantier-0.png`, `chantier-1.png`... jouees en un seul tour sur les
+10 s de construction). Emprise au sol definie par `side` dans le registre
+(`src/config.js`), pas par la taille du PNG.
+
+- `scierie/` : ouvre la construction des tours.
+- `universite/` : placeholder pour de futures ameliorations.
+- `montgolfiere/` : centre de decollage — au clic, annonce le volume et la
+  direction de la prochaine vague de zombies.
 
 ## Traces de zombies morts (`zomb/dead/`)
 

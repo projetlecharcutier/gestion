@@ -22,7 +22,7 @@ Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fo
 | 4 | `src/world.js` | Génération : bâtiments, mur de périmètre, objets, arbres | `buildWorld`, `makeBuilding`, `nearBuilding`, `buildPerimeterWall` |
 | 5 | `src/player.js` | Déplacement, collisions (bâtiments + planches posées), entrée bâtiment, soin hôpital, pause | `tryMove`, `aabbHitsBuildings`, `clampPlayer`, `enterBuilding`, `leaveBuilding`, `togglePause`, `tryHealAtHospital`, `hasGoldPiece` |
 | 6 | `src/walls.js` | Construction de planches/murs (Z + clic) + rotation + collisions + nettoyage murs détruits | `tryBuildWall`, `cleanupWalls`, `plankDims`, `rotatePlank`, `aabbHitsWalls` |
-| 7 | `src/towers.js` | Scierie + tours d'attaque : tech à la mairie (vote), menu de construction, chantiers, tir automatique flèches | `makeScierie`, `makeTower`, `updateBuildSites`, `updateTowers`, `cleanupTowers`, `buildMenu`, `placeFromBuildMenu`, `canPayScierie`, `unlockScierie`, `startVote`, `castVote`, `resolveVote` |
+| 7 | `src/towers.js` | Bâtiments de ville (scierie, université, montgolfière) + tours d'attaque : tech à la mairie (vote), menu de construction, chantiers, tir automatique flèches | `makeTownBuilding`, `makeScierie`, `makeTower`, `updateBuildSites`, `updateTowers`, `cleanupTowers`, `buildMenu`, `placeFromBuildMenu`, `canPayTownTech`, `unlockTownTech`, `startVote`, `castVote`, `resolveVote` |
 | 8 | `src/chop.js` | Récolte de planches à la hache (décompte près d'un arbre) | `updateChop`, `chopProgress` |
 | 9 | `src/weapons.js` | Stats arme équipée, tir, déplacement projectiles | `equippedStats`, `handleShooting`, `updateProjectiles` |
 | 10 | `src/zombies.js` | Vagues, groupes qui fusionnent, IA zombies (priorité : palissade > tour > mairie/joueur) | `spawnWave`, `mergeGroups`, `updateZombies`, `cleanupZombies` |
@@ -44,7 +44,7 @@ Schéma complet dans `src/state.js`. Champs clés :
 - `planks`, `inventory`, `shootCd`, `buildMode`, `plankRotation` (0=horizontal, 1=vertical)
 - `axeEquipped` (bool), `chopTarget` (arbre visé ou null), `chopTimer` (accumulateur s)
 - `clock` (0..24), `day`, `elapsed`, `nextWaveAt`, `waveActive`, `waveLeaveAt`
-- `mairieGold` (or du coffre commun de la mairie), `scierieUnlocked` (tech débloquée), `scierie` (bâtiment scierie posé ou null), `towers[]` (tours d'attaque), `buildSel` ("scierie" ou "tour:<niveau>"), `buildMenuOpen`, `vote` (vote tech en cours ou null), `voteCooldownUntil`
+- `mairieGold` (or du coffre commun de la mairie), `scierieUnlocked`/`universiteUnlocked`/`montgolfiereUnlocked` (techs débloquées), `scierie`/`universite`/`montgolfiere` (bâtiments posés ou null), `pendingWave` (pré-tirage de la prochaine vague), `towers[]` (tours d'attaque), `buildSel` ("scierie" ou "tour:<niveau>"), `buildMenuOpen`, `vote` (vote tech en cours ou null), `voteCooldownUntil`
 
 ## Constantes importantes (`src/config.js`)
 
@@ -131,20 +131,22 @@ Voir `docs/textures.md` pour la spec.
 - **Nouveau système complet** → créer `src/<nom>.js`, l'ajouter à `index.html` avant `main.js`, exposer sur `G`, documenter ici.
 - **Nouveau niveau de tour** (pierre, métal...) → ajouter une entrée dans `G.TOWER_STATS` (`src/config.js`) : menu de construction, chantier, combat, brouillard et rendu s'adaptent automatiquement. Fournir les PNG `assets/sprites/tour/{idle,chantier,gauche,droite}-N.png`.
 
-## Scierie & tours d'attaque (`src/towers.js`)
+## Bâtiments de ville & tours d'attaque (`src/towers.js`)
 
 Spec complète : `docs/towers.md`. En résumé :
 
-1. **Tech scierie** au coffre de la mairie (section Technologies) : 100 planches + 10 or. En solo achat direct ; en multi vote à la majorité stricte des connectés (15 s, initiateur compte « pour », refus → cooldown 30 s). L'or sort du coffre commun (`mairieGold`), les planches du joueur initiateur.
-2. **Flux de construction** : touche **Z** → **menu de construction** (DOM) qui liste les bâtiments constructibles → clic sur un bâtiment → mode pose → clic sur la carte. Palissade toujours présente ; scierie (unique, en ville, empreinte 40 px, chantier 10 s) si la tech est débloquée ; tours si la scierie est construite. Clic droit / Échap annule la sélection.
+1. **Techs de bâtiments de ville** (scierie, université, montgolfière) au coffre de la mairie (section Technologies) : 100 planches + 10 or chacune. En solo achat direct ; en multi vote à la majorité stricte des connectés (15 s, initiateur compte « pour », refus → cooldown 30 s). L'or sort du coffre commun (`mairieGold`), les planches du joueur initiateur.
+2. **Flux de construction** : touche **Z** → **menu de construction** (DOM) qui liste les bâtiments constructibles → clic sur un bâtiment → mode pose → clic sur la carte. Palissade toujours présente ; bâtiments de ville (scierie, université, montgolfière — uniques, en ville, empreinte 40 px, chantier 10 s) si leur tech est débloquée ; tours si la scierie est construite. Clic droit / Échap annule la sélection.
 3. **Tour d'attaque** (`tour:<niveau>` dans le menu) : posable partout, empreinte = taille du PNG, chantier 10 s. Dès le début du chantier elle est attaquable (PV 500, dégradée comme une palissade).
 4. **Combat** : chaque tour porte 2 archers (gauche/droite) indépendants. Ciblage par demi-espace (`z.x < tour.x` = gauche), zombie le plus proche à portée, cooldown 1 s/côté, flèche = trait noir non-perforant (`type:"fleche", owner:"tour"`), éjectée depuis les 10 % les plus hauts du PNG, passe au-dessus des palissades, ne touche jamais les joueurs.
 5. **Rendu** (`drawTower` dans `src/render.js`) : PNG complet par côté (gauche/droite) découpé en moitiés disjointes au rendu → tirs simultanés sans recouvrement.
 6. **Priorité zombies** : 1) palissade accessible, 2) tour accessible, 3) mairie/joueur.
 7. **Brouillard** : chaque tour construite dégage un rayon de visibilité (`fogRadius`, 300 px) hors ville (`drawFog` multi-sources).
 8. **Destruction** : aucune trace, son `tourCasse` (`assets/sounds/`), aucun remboursement.
+9. **Université** : posable/cliquable, placeholder prêt pour de futures améliorations (fenêtre dédiée).
+10. **Montgolfière** (centre de décollage) : au clic, annonce le volume et la direction de la prochaine vague (pré-tirage `G.rollWave` chaque matin dans `pendingWave`, consommé par `spawnWave`).
 
-Assets attendus (repli sans eux) : `assets/sprites/tour/{idle,chantier,gauche,droite}-N.png`, `assets/sprites/scierie/{idle,chantier}-N.png`, `assets/sounds/tourCasse.mp3`.
+Assets attendus (repli sans eux) : `assets/sprites/tour/{idle,chantier,gauche,droite}-N.png`, `assets/sprites/{scierie,universite,montgolfiere}/{idle,chantier}-N.png`, `assets/sounds/tourCasse.mp3`.
 
 ## Specs détaillées par système
 

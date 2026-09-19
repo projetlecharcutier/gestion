@@ -48,15 +48,13 @@
     return { ang: ang, dist: dist };
   };
 
-  G.spawnWave = function () {
+  // Tire le schéma de directions d'une vague : 1, 2 ou 4 bords de la carte
+  // (1/3 chacun). Pré-tiré à chaque réarmement matinal dans
+  // state.pendingWave { sides, count } : la montgolfière peut annoncer la
+  // vague de la nuit suivante AVANT minuit ; spawnWave consomme le tirage.
+  G.rollWave = function (day) {
     var state = G.state;
-    var count = G.ZOMBIE_PER_WAVE_BASE * Math.pow(G.ZOMBIE_WAVE_GROWTH, state.day);
-    state.waveCount = Math.round(count);
-    var nbGroups = Math.ceil(count / G.GROUP_SIZE);
-    // Schéma de la vague : les directions d'arrivée sont tirées au hasard —
-    // une seule direction (assaut concentré), deux directions (tenaille) ou
-    // les quatre (siège de toutes parts). Le tirage se fait par vague, tous
-    // les groupes de la vague partagent le même schéma.
+    var count = G.ZOMBIE_PER_WAVE_BASE * Math.pow(G.ZOMBIE_WAVE_GROWTH, day);
     var scheme = Math.random();
     var sides;
     if (scheme < 1 / 3) {
@@ -68,7 +66,22 @@
     } else {
       sides = [0, 1, 2, 3];
     }
+    state.pendingWave = { sides: sides, count: Math.round(count) };
+    return state.pendingWave;
+  };
+
+  G.spawnWave = function () {
+    var state = G.state;
+    // Consomme le pré-tirage de la vague (rollWave au réveil matinal) ;
+    // s'il n'existe pas (test, première nuit), tire maintenant. Le prétirage
+    // est effacé : la montgolfière ne doit pas ressasser une vague passée.
+    var pending = state.pendingWave || G.rollWave(state.day);
+    state.pendingWave = null;
+    var count = pending.count;
+    state.waveCount = Math.round(count);
+    var sides = pending.sides;
     state.waveSides = sides;
+    var nbGroups = Math.ceil(count / G.GROUP_SIZE);
     state.zombieGroups = [];
     for (var g = 0; g < nbGroups; g++) {
       // Chaque groupe vient d'un des bords tirés pour cette vague (au-delà
@@ -204,6 +217,9 @@
     var crossedMorning = prevClock < 8 && state.clock >= 8;
     if (crossedMorning) {
       state.waveSpawnedForDay = false;
+      // Pré-tire la vague de la nuit suivante (volume + directions) pour que
+      // la montgolfière puisse l'annoncer dès le matin.
+      G.rollWave(state.day + 1);
     }
 
     if (state.waveActive && state.zombieGroups) {

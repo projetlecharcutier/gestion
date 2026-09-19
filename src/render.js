@@ -203,11 +203,13 @@
     else if (b.isDecor && b.houseSprite) sprite = b.houseSprite;
     else if (b.isMairie && G.hasSprite("building", "mairie")) { sprite = G.SPRITES.building.mairie; spriteEnt = "building"; spriteKey = "mairie"; }
     else if (b.isChurch && G.hasSprite("church", "church")) { sprite = G.SPRITES.church.church; spriteEnt = "church"; spriteKey = "church"; }
-    else if (b.isScierie) {
-      // Scierie : frame chantier pendant la construction, idle ensuite.
+    else if (b.townBuilding && G.TOWN_BUILDINGS[b.townBuilding]) {
+      // Batiment de ville (scierie, universite, montgolfiere...) : frame
+      // chantier pendant la construction, idle ensuite.
+      var tbEnt = b.townBuilding;
       var scKey = b.chantierDone ? "idle" : "chantier";
-      if (G.hasSprite("scierie", scKey)) { sprite = G.SPRITES.scierie[scKey]; spriteEnt = "scierie"; spriteKey = scKey; }
-      else if (G.hasSprite("scierie", "idle")) { sprite = G.SPRITES.scierie.idle; spriteEnt = "scierie"; spriteKey = "idle"; }
+      if (G.hasSprite(tbEnt, scKey)) { sprite = G.SPRITES[tbEnt][scKey]; spriteEnt = tbEnt; spriteKey = scKey; }
+      else if (G.hasSprite(tbEnt, "idle")) { sprite = G.SPRITES[tbEnt].idle; spriteEnt = tbEnt; spriteKey = "idle"; }
     }
     else if (G.hasSprite("building", "generic")) { sprite = G.SPRITES.building.generic; spriteEnt = "building"; spriteKey = "generic"; }
     if (sprite) {
@@ -226,7 +228,7 @@
         if (ob && ob.y1 < 1) opaqueDrop = (1 - ob.y1) * dh;
       }
       var scImg = G.animImg(sprite, G.state.time);
-      if (b.isScierie && !b.chantierDone) {
+      if (b.townBuilding && !b.chantierDone) {
         // Chantier : la boucle de frames ne fait qu'UN tour sur TOWER_BUILD_TIME
         // (frame figée sur la dernière si le temps depasse), pas de cycle libre.
         var scFrames = sprite.frames;

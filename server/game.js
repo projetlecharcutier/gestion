@@ -65,6 +65,11 @@
       mairieGold: 0,
       scierieUnlocked: false,
       scierie: null,
+      universiteUnlocked: false,
+      universite: null,
+      montgolfiereUnlocked: false,
+      montgolfiere: null,
+      pendingWave: null,
       towers: [],
       buildSel: null,
       vote: null,
@@ -203,12 +208,14 @@
       p._placeBuild = { x: input.placeBuild.wx, y: input.placeBuild.wy };
     }
     // Vote technologique a la mairie : l'initiateur lance, les autres votent.
+    // Generique pour tout batiment de ville du registre TOWN_BUILDINGS.
     if (input.techVote) {
-      if (input.techVote === "scierie" && !state.scierieUnlocked) {
+      var tdef = G.TOWN_BUILDINGS[input.techVote];
+      if (tdef && !state[tdef.unlockedField]) {
         if (!state.vote) {
           // L'initiateur doit pouvoir payer (planches) et le coffre aussi (or).
-          if ((state.mairieGold || 0) >= G.SCIERIE_COST.gold && (p.planks || 0) >= G.SCIERIE_COST.planks) {
-            G.startVote("scierie", p.id);
+          if ((state.mairieGold || 0) >= tdef.cost.gold && (p.planks || 0) >= tdef.cost.planks) {
+            G.startVote(input.techVote, p.id);
           }
         } else {
           // Un clic pendant un vote en cours = vote "pour".
@@ -467,6 +474,17 @@
     }
   }
 
+  // Snapshot d'un batiment de ville (scierie, universite, montgolfiere).
+  function snapshotTownBuilding(b) {
+    if (!b) return null;
+    return {
+      x: Math.round(b.x), y: Math.round(b.y),
+      w: Math.round(b.w), h: Math.round(b.h),
+      chantierDone: !!b.chantierDone,
+      buildAge: +(state.time - b.builtAt).toFixed(1)
+    };
+  }
+
   // Construit l'état à broadcaster (allégé : pas de textures, pas de HUD).
   function snapshot() {
     return {
@@ -514,11 +532,14 @@
       mairieMaxHp: G.MAIRIE_MAX_HP,
       mairieGold: state.mairieGold || 0,
       scierieUnlocked: !!state.scierieUnlocked,
-      scierie: state.scierie ? {
-        x: Math.round(state.scierie.x), y: Math.round(state.scierie.y),
-        w: Math.round(state.scierie.w), h: Math.round(state.scierie.h),
-        chantierDone: !!state.scierie.chantierDone,
-        buildAge: +(state.time - state.scierie.builtAt).toFixed(1)
+      universiteUnlocked: !!state.universiteUnlocked,
+      montgolfiereUnlocked: !!state.montgolfiereUnlocked,
+      scierie: snapshotTownBuilding(state.scierie),
+      universite: snapshotTownBuilding(state.universite),
+      montgolfiere: snapshotTownBuilding(state.montgolfiere),
+      pendingWave: state.pendingWave ? {
+        sides: state.pendingWave.sides,
+        count: state.pendingWave.count
       } : null,
       towers: state.towers.map(function (t) {
         return {

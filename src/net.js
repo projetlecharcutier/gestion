@@ -136,37 +136,41 @@
     state.mairieHp = s.mairieHp;
     state.mairieMaxHp = s.mairieMaxHp;
     if (s.mairieGold !== undefined) state.mairieGold = s.mairieGold;
-    if (s.scierieUnlocked !== undefined) state.scierieUnlocked = s.scierieUnlocked;
-    // Scierie : le serveur est autorite (position + avancement du chantier).
-    if (s.scierie !== undefined) {
-      if (!s.scierie) {
-        state.scierie = null;
-        // Retire l'eventuel batiment local.
-        for (var sb = 0; sb < state.buildings.length; sb++) {
-          if (state.buildings[sb].isScierie) { state.buildings.splice(sb, 1); break; }
+    // Batiments de ville (scierie, universite, montgolfiere...) : le serveur
+    // est autorite (tech debloquee, position, avancement du chantier).
+    if (G.TOWN_BUILDINGS) {
+      for (var tb in G.TOWN_BUILDINGS) {
+        if (!G.TOWN_BUILDINGS.hasOwnProperty(tb)) continue;
+        var tdef = G.TOWN_BUILDINGS[tb];
+        if (s[tdef.unlockedField] !== undefined) state[tdef.unlockedField] = s[tdef.unlockedField];
+        if (s[tb] === undefined) continue;
+        var snap2 = s[tb];
+        if (!snap2) {
+          state[tdef.stateField] = null;
+          for (var sb = 0; sb < state.buildings.length; sb++) {
+            if (state.buildings[sb].townBuilding === tb) { state.buildings.splice(sb, 1); break; }
+          }
+        } else {
+          var local = null;
+          for (var sb2 = 0; sb2 < state.buildings.length; sb2++) {
+            if (state.buildings[sb2].townBuilding === tb) { local = state.buildings[sb2]; break; }
+          }
+          if (!local) {
+            local = G.makeTownBuilding(tb, snap2.x + snap2.w / 2, snap2.y + snap2.h / 2);
+            state.buildings.push(local);
+          }
+          local.x = snap2.x; local.y = snap2.y;
+          local.w = snap2.w; local.h = snap2.h;
+          local.chantierDone = snap2.chantierDone;
+          if (snap2.buildAge !== undefined) {
+            local.builtAt = (state.time || 0) - snap2.buildAge;
+          }
+          state[tdef.stateField] = local;
         }
-      } else {
-        var local = null;
-        for (var sb2 = 0; sb2 < state.buildings.length; sb2++) {
-          if (state.buildings[sb2].isScierie) { local = state.buildings[sb2]; break; }
-        }
-        if (!local) {
-          local = { isScierie: true, isDecor: false, name: "Scierie",
-                    msg: "La scierie permet de construire des tours.",
-                    height: 120, door: { x: s.scierie.x + s.scierie.w / 2, y: s.scierie.y + s.scierie.h } };
-          state.buildings.push(local);
-        }
-        local.x = s.scierie.x; local.y = s.scierie.y;
-        local.w = s.scierie.w; local.h = s.scierie.h;
-        local.chantierDone = s.scierie.chantierDone;
-        // Avancement du chantier : builtAt recalcule depuis buildAge pour que
-        // l'anim chantier (un tour sur TOWER_BUILD_TIME) reste coherente.
-        if (s.scierie.buildAge !== undefined) {
-          local.builtAt = (state.time || 0) - s.scierie.buildAge;
-        }
-        state.scierie = local;
       }
     }
+    // Prochaine vague (pre-tiree) : annoncee par la montgolfiere.
+    if (s.pendingWave !== undefined) state.pendingWave = s.pendingWave;
     // Tours : recreation depuis le snapshot (le serveur simule le combat).
     if (s.towers !== undefined) {
       var kept = [];
