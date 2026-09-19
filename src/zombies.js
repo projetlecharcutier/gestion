@@ -5,9 +5,9 @@
   "use strict";
   var G = window.GAME = window.GAME || {};
 
-  // Spawn d'une vague de zombies : répartis sur les 4 bords de la carte,
-  // de toutes parts. Chaque groupe arrive d'un côté différent pour converger
-  // vers la mairie au centre.
+  // Spawn d'une vague de zombies : les directions d'arrivée sont tirées au
+  // hasard par vague (1, 2 ou 4 bords de la carte). Chaque groupe arrive
+  // depuis une des directions tirées et converge vers la mairie au centre.
   // Calcule la position de slot cible (ang, dist) du zombie d'index i dans
   // un groupe de n membres, selon la formation du groupe et son mode (horde,
   // retraite). Formations : 0=anneau, 1=ligne, 2=coin, 3="V". Renvoie {ang,dist}.
@@ -53,18 +53,34 @@
     var count = G.ZOMBIE_PER_WAVE_BASE * Math.pow(G.ZOMBIE_WAVE_GROWTH, state.day);
     state.waveCount = Math.round(count);
     var nbGroups = Math.ceil(count / G.GROUP_SIZE);
+    // Schéma de la vague : les directions d'arrivée sont tirées au hasard —
+    // une seule direction (assaut concentré), deux directions (tenaille) ou
+    // les quatre (siège de toutes parts). Le tirage se fait par vague, tous
+    // les groupes de la vague partagent le même schéma.
+    var scheme = Math.random();
+    var sides;
+    if (scheme < 1 / 3) {
+      sides = [Math.floor(Math.random() * 4)];
+    } else if (scheme < 2 / 3) {
+      var s1 = Math.floor(Math.random() * 4);
+      var s2 = (s1 + 1 + Math.floor(Math.random() * 3)) % 4;
+      sides = [s1, s2];
+    } else {
+      sides = [0, 1, 2, 3];
+    }
+    state.waveSides = sides;
     state.zombieGroups = [];
     for (var g = 0; g < nbGroups; g++) {
-      // Chaque groupe vient d'un bord aléatoire de la carte (au-delà de la
-      // ville), réparti sur les 4 côtés pour une convergence de toutes parts.
-      var side = g % 4;
+      // Chaque groupe vient d'un des bords tirés pour cette vague (au-delà
+      // de la ville), réparti sur les directions du schéma.
+      var side = sides[g % sides.length];
       var lx, ly;
       var edge = G.rand(40, 200);
       if (side === 0) { lx = G.rand(0, G.WORLD); ly = edge; }
       else if (side === 1) { lx = G.rand(0, G.WORLD); ly = G.WORLD - edge; }
       else if (side === 2) { lx = edge; ly = G.rand(0, G.WORLD); }
       else { lx = G.WORLD - edge; ly = G.rand(0, G.WORLD); }
-      var grp = { x: lx, y: ly, members: [], hasRaider: false,
+      var grp = { x: lx, y: ly, members: [], hasRaider: false, spawnSide: side,
                   formation: Math.floor(Math.random() * 4),
                   formPhase: Math.random() * Math.PI * 2,
                   isHorde: false, retreat: false, hordeMsgShown: false };
@@ -75,6 +91,11 @@
         var ang = slot.ang, dist = slot.dist;
         var zx = lx + Math.cos(ang) * dist;
         var zy = ly + Math.sin(ang) * dist;
+        // Pres d'un bord de la carte, la formation peut deborder : on clampe
+        // le spawn a l'interieur de la carte (le zombie rejoint sa formation
+        // en marchant, il ne doit pas apparaitre hors du monde).
+        zx = G.clamp(zx, 12, G.WORLD - 12);
+        zy = G.clamp(zy, 12, G.WORLD - 12);
         // Ne spawne pas a l'interieur d'une foret : la collision la traite
         // comme un bloc plein, le zombie y serait prisonnier. On pousse le
         // point de spawn hors du massif en s'ecartant du centre du groupe.
