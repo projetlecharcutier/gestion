@@ -279,8 +279,9 @@
       btn.className = "btn chest__item";
       var label = "Scierie — " + G.SCIERIE_COST.planks + " planches + " + G.SCIERIE_COST.gold + " or";
       var net = G.netConnected && G.netConnected();
-      if (net && state.vote && state.vote.proposal === "scierie") {
-        label += " (vote en cours : " + Math.max(0, Math.ceil(state.vote.endsAt - state.time)) + " s)";
+      var voteActive = net && state.vote && state.vote.proposal === "scierie";
+      if (voteActive) {
+        label += " — VOTE en cours : " + Math.max(0, Math.ceil((state.vote.endsAt || 0) - (state.time || 0))) + " s (clic = voter pour)";
       }
       btn.textContent = label;
       btn.addEventListener("click", function () { G.buyScierie(); });

@@ -106,7 +106,11 @@
       var level = sel.slice(5);
       var stats = G.TOWER_STATS[level];
       if (!stats) return false;
+      // Les tours ne sont constructibles qu'apres la pose de la scierie
+      // (batiment construit, pas seulement la tech debloquee).
+      if (!state.scierie || !state.scierie.chantierDone) return false;
       if ((state.mairieGold || 0) < stats.cost.gold) return false;
+      if ((state.planks || 0) < stats.cost.planks) return false;
       var tSide = G.towerSide(level);
       var tx = wx - tSide / 2, ty = wy - tSide / 2;
       if (!G.towerSpotFree(tx, ty, tSide, tSide)) return false;
@@ -263,9 +267,9 @@
 
   // --- Déverrouillage tech + vote ---
 
-  // Peut-on payer la tech scierie ? (coffre mairie : or commun + planches
-  // du joueur qui débloque — en multi le serveur utilise les planches du
-  // joueur initiateur).
+  // Peut-on payer la tech scierie ? L'or vient du coffre commun, les
+  // planches du poseur (state.planks en solo ; en multi le serveur copie
+  // p.planks dans state.planks avant l'appel, cf. server/game.js).
   G.canPayScierie = function () {
     return (G.state.mairieGold || 0) >= G.SCIERIE_COST.gold &&
            (G.state.planks || 0) >= G.SCIERIE_COST.planks;
@@ -307,8 +311,11 @@
   };
 
   // Résout le vote : majorité stricte des joueurs connectés requise.
+  // payerPlanks : callback (cout) => boolean fourni par l'appelant pour
+  // debiter les planches du joueur initiateur (multi) ; en solo, null ->
+  // on debite state.planks directement.
   // Renvoie "passed", "failed" ou null (pas de vote en cours).
-  G.resolveVote = function (connectedCount) {
+  G.resolveVote = function (connectedCount, payerPlanks) {
     var state = G.state;
     if (!state.vote) return null;
     if (state.time < state.vote.endsAt) return null;
@@ -320,7 +327,21 @@
     var proposal = state.vote.proposal;
     state.vote = null;
     if (passed) {
-      if (proposal === "scierie" && G.unlockScierie()) return "passed";
+      if (proposal === "scierie") {
+        if (payerPlanks) {
+          // Multi : les planches viennent du joueur initiateur (state.vote.votes
+          // garde son id). L'or vient du coffre commun.
+          if ((state.mairieGold || 0) < G.SCIERIE_COST.gold) return "failed";
+          if (!payerPlanks(G.SCIERIE_COST.planks)) return "failed";
+          state.mairieGold -= G.SCIERIE_COST.gold;
+          state.scierieUnlocked = true;
+          return "passed";
+        }
+        if (G.unlockScierie()) return "passed";
+        // Vote gagnant mais paiement impossible : refuse sans cooldown (les
+        // ressources manquaient au moment de la resolution).
+        return "failed";
+      }
       return "passed";
     }
     state.voteCooldownUntil = state.time + G.VOTE_COOLDOWN;

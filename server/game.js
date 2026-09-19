@@ -436,7 +436,17 @@
     G.updateBuildSites(dt);
     G.updateTowers(dt);
     G.cleanupTowers();
-    if (state.vote) G.resolveVote(alivePlayers());
+    if (state.vote) {
+      var voteInitiator = state.vote.initiator;
+      G.resolveVote(alivePlayers(), function (cost) {
+        // Debite les planches du joueur initiateur du vote (or : coffre commun,
+        // deja debite par resolveVote).
+        var init = voteInitiator !== undefined ? findPlayer(voteInitiator) : null;
+        if (!init || (init.planks || 0) < cost) return false;
+        init.planks -= cost;
+        return true;
+      });
+    }
 
     // Zombies, projectiles, oiseaux.
     G.updateZombies(dt);
