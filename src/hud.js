@@ -83,17 +83,35 @@
     if (!G.state.buildMode || !G.state.mouse.inside) return;
     var ctx = G.ctx;
     var t = G.TEXTURES.buildHint;
-    var dims = G.plankDims();
-    var w = dims.w, h = dims.h;
-    // Centre de la palissade en coords monde.
-    var cxw = G.state.mouse.wx, cyw = G.state.mouse.wy;
+    var state = G.state;
+    var sel = state.buildSel;
+    // Emprise + libellé selon la sélection (palissade par défaut).
+    var w, h, label, ok;
+    if (sel === "scierie") {
+      w = G.SCIERIE_SIDE; h = G.SCIERIE_SIDE;
+      label = "Scierie";
+      ok = !state.scierie && G.inTown(state.mouse.wx, state.mouse.wy);
+    } else if (sel && sel.indexOf("tour:") === 0) {
+      var tSide = G.towerSide(sel.slice(5));
+      w = tSide; h = tSide;
+      label = (G.TOWER_STATS[sel.slice(5)] || {}).label || "Tour";
+      var ts = G.TOWER_STATS[sel.slice(5)] || { cost: { gold: 0, planks: 0 } };
+      ok = (state.mairieGold || 0) >= ts.cost.gold && (state.planks || 0) >= ts.cost.planks;
+    } else {
+      var dims = G.plankDims();
+      w = dims.w; h = dims.h;
+      label = "Palissade";
+      ok = state.planks >= G.WALL_PLANKS;
+    }
+    // Centre en coords monde.
+    var cxw = state.mouse.wx, cyw = state.mouse.wy;
     // Losange iso : projette les 4 coins de l'emprise (comme drawWall).
     var A = G.proj(cxw - w / 2, cyw - h / 2),
         B = G.proj(cxw + w / 2, cyw - h / 2),
         C = G.proj(cxw + w / 2, cyw + h / 2),
         D = G.proj(cxw - w / 2, cyw + h / 2);
     ctx.save();
-    ctx.strokeStyle = G.state.planks >= G.WALL_PLANKS ? t.ok : t.nok;
+    ctx.strokeStyle = ok ? t.ok : t.nok;
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -108,9 +126,8 @@
     ctx.font = "12px Segoe UI, system-ui, sans-serif";
     ctx.textAlign = "center";
     var by = Math.min(A[1], B[1]);
-    ctx.fillText(G.state.planks >= G.WALL_PLANKS ?
-      "Poser une planche (" + G.state.planks + " planches) · Molette = rotation · Clic droit = annuler" :
-      "Pas assez de planches (" + G.state.planks + "/" + G.WALL_PLANKS + ")", (A[0] + C[0]) / 2, by - 8);
+    ctx.fillText(label + (ok ? "" : " (emplacement ou ressources invalides)") +
+      " · Z = menu · Clic droit = annuler", (A[0] + C[0]) / 2, by - 8);
     ctx.restore();
   };
 

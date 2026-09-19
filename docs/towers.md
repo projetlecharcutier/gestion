@@ -8,8 +8,11 @@
 ## 1. Vue d'ensemble
 
 - **Scierie** : technologie débloquée au coffre de la mairie (100 planches +
-  10 or), puis **bâtiment unique** posable dans la ville. Elle ouvre le menu
-  de construction (palissade, tour en bois, futurs niveaux).
+  10 or), puis **bâtiment unique** posable dans la ville.
+- **Menu de construction** : touche **Z** → liste des bâtiments constructibles
+  (palissade toujours ; scierie si débloquée et non posée ; tours si la
+  scierie est construite) → clic sur un bâtiment → clic sur la carte pour le
+  poser. Clic droit / Échap annule.
 - **Tour en bois** : défense automatique, 2 archers (gauche/droite) qui tirent
   des flèches sur les zombies uniquement. Posable partout (ville incluse,
   hors ville incluse).

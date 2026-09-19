@@ -60,6 +60,7 @@
     // on garde la position libre la plus proche.
     G.pushPlayerOutOfWall(wall);
     G.updateHud();
+    return true;
   };
 
   // Repousse le joueur hors d'une palissade s'il s'y trouve coincé. Déplace

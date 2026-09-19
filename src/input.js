@@ -61,6 +61,7 @@
       // Clic droit : en mode build = sortir du mode construction, sinon = sac.
       if (state.buildMode && !state.paused && !state.inBuilding && !state.gameOver) {
         state.buildMode = false;
+        state.buildSel = null;
       } else if (!state.bag.open) {
         state.bag.open = true;
       } else if (state.bag.open) {
@@ -198,13 +199,20 @@
       if (state.started && state.churchOpen) { G.closeChurch(); return; }
       if (state.started && state.chestOpen) { G.closeChest(); return; }
       if (state.started && state.bag.open) { state.bag.open = false; return; }
-      if (state.started && state.buildMode) { state.buildMode = false; return; }
+      if (state.started && state.buildMode) { state.buildMode = false; state.buildSel = null; return; }
       if (state.started) G.togglePause();
     }
-    // Z : mode pose de planche (activation / désactivation).
+    // Z : ouvre le menu de construction (liste des bâtiments). Si un
+    // bâtiment est déjà sélectionné, Z bascule simplement le mode pose.
     if (e.code === "KeyZ" || e.key === "z" || e.key === "Z" || e.key === "w" || e.key === "W") {
       if (state.started && !state.paused && !state.inBuilding && !state.bag.open && !state.gameOver) {
-        state.buildMode = !state.buildMode;
+        if (state.buildSel && state.buildMode) {
+          state.buildMode = false;
+        } else if (state.buildSel) {
+          state.buildMode = true;
+        } else {
+          G.openBuildMenu();
+        }
       }
     }
   });
@@ -260,6 +268,7 @@
     state.birds = [];
     state.walls = [];
     state.buildMode = false;
+    state.buildSel = null;
     state.plankRotation = 0;
     state.axeEquipped = false;
     state.chopTarget = null;

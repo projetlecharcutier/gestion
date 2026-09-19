@@ -63,14 +63,22 @@
     return true;
   };
 
-  // Liste les bâtiments constructibles depuis la scierie : palissade + tous
-  // les niveaux de TOWER_STATS (les futurs niveaux s'ajoutent automatiquement).
+  // Liste les bâtiments constructibles (menu ouvert avec Z) : palissade
+  // toujours, scierie si la tech est débloquée et pas encore posée, tours
+  // (tous les niveaux de TOWER_STATS, futurs niveaux automatiques) si la
+  // scierie est construite.
   G.buildMenu = function () {
-    var menu = [{ id: "palissade", label: "Palissade", costPlanks: G.WALL_PLANKS, costGold: 0 }];
-    for (var level in G.TOWER_STATS) {
-      if (!G.TOWER_STATS.hasOwnProperty(level)) continue;
-      var st = G.TOWER_STATS[level];
-      menu.push({ id: "tour:" + level, label: st.label, costPlanks: st.cost.planks, costGold: st.cost.gold });
+    var state = G.state;
+    var menu = [{ id: "palissade", label: "Palissade (mur)", costPlanks: G.WALL_PLANKS, costGold: 0 }];
+    if (state.scierieUnlocked && !state.scierie) {
+      menu.push({ id: "scierie", label: "Scierie", costPlanks: 0, costGold: 0 });
+    }
+    if (state.scierie && state.scierie.chantierDone) {
+      for (var level in G.TOWER_STATS) {
+        if (!G.TOWER_STATS.hasOwnProperty(level)) continue;
+        var st = G.TOWER_STATS[level];
+        menu.push({ id: "tour:" + level, label: st.label, costPlanks: st.cost.planks, costGold: st.cost.gold });
+      }
     }
     return menu;
   };
@@ -85,7 +93,8 @@
     if (!sel) return false;
 
     if (sel === "palissade") {
-      state.buildSel = null;
+      // La sélection palissade reste active : on peut poser plusieurs murs
+      // d'affilée (clic droit / Échap / Z pour annuler).
       return G.tryBuildWall(wx, wy);
     }
 
@@ -223,10 +232,6 @@
 
   G.openBuildMenu = function () {
     var state = G.state;
-    if (!state.scierie || !state.scierie.chantierDone) {
-      if (G.addFloater) G.addFloater("La scierie est en construction...");
-      return;
-    }
     state.buildMenuOpen = true;
     state.paused = false;
     G.drawBuildMenu();
@@ -244,21 +249,22 @@
     if (!list) return;
     list.innerHTML = "";
     var entries = G.buildMenu();
-    // La scierie elle-meme : posable si debloquee et pas encore posee.
-    if (state.scierieUnlocked && !state.scierie) {
-      entries.push({ id: "scierie", label: "Scierie", costPlanks: 0, costGold: 0 });
-    }
     for (var i = 0; i < entries.length; i++) {
       (function (entry) {
         var btn = document.createElement("button");
         btn.type = "button";
         btn.className = "btn chest__item";
-        btn.textContent = entry.label + " — " + entry.costPlanks + " planches + " + entry.costGold + " or";
+        var costTxt = "";
+        if (entry.costPlanks > 0) costTxt += entry.costPlanks + " planches";
+        if (entry.costGold > 0) costTxt += (costTxt ? " + " : "") + entry.costGold + " or";
+        if (!costTxt) costTxt = "gratuit";
+        btn.textContent = entry.label + " — " + costTxt;
         btn.addEventListener("click", function () {
           state.buildSel = entry.id;
-          state.buildMode = false; // Z re-activera le mode pose
+          state._buildSel = entry.id;
+          state.buildMode = true;
           G.closeBuildMenu();
-          if (G.addFloater) G.addFloater("Z puis cliquez pour poser : " + entry.label);
+          if (G.addFloater) G.addFloater("Cliquez sur la carte pour poser : " + entry.label);
         });
         list.appendChild(btn);
       })(entries[i]);
