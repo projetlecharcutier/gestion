@@ -618,6 +618,10 @@
       { x: c + 1800, y: c - 2400, taken: false, name: "Arc", color: "#a16207", kind: "arme" },
       { x: G.TOWN_MIN - 2800, y: c + 3000, taken: false, name: "Couteau", color: "#cbd5e1", kind: "arme" },
       { x: G.TOWN_MIN - 1200, y: G.TOWN_MIN - 800, taken: false, name: "Relique", color: "#a855f7", kind: "objet" },
+      { x: G.TOWN_MIN - 2600, y: G.TOWN_MAX + 700, taken: false, name: "Relique", color: "#a855f7", kind: "objet" },
+      { x: G.TOWN_MAX + 2200, y: G.TOWN_MIN - 600, taken: false, name: "Relique", color: "#a855f7", kind: "objet" },
+      { x: c - 800, y: G.TOWN_MAX + 2600, taken: false, name: "Relique", color: "#a855f7", kind: "objet" },
+      { x: G.TOWN_MAX + 600, y: G.TOWN_MAX + 2400, taken: false, name: "Relique", color: "#a855f7", kind: "objet" },
       { x: G.TOWN_MAX + 1400, y: G.TOWN_MAX + 1000, taken: false, name: "Cristal", color: "#38bdf8", kind: "objet" },
       { x: c + 1800, y: c - 2400, taken: false, name: "Potion", color: "#ef4444", kind: "objet" },
       // Haches : disponibles uniquement en dehors de la ville.

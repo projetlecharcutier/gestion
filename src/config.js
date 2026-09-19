@@ -214,7 +214,7 @@
       cd: 1.0,            // cooldown de tir par cote (s)
       arrowSpeed: 500,    // vitesse des fleches (px/s)
       fogRadius: 300,    // rayon de brouillard degage (px)
-      cost: { gold: 50, planks: 20 }, // prix paye au coffre de la mairie
+      cost: { gold: 1, planks: 20 }, // prix paye au coffre de la mairie
       animDur: 0.5,       // duree de l'anim de tir (s)
       idleFps: 4,         // vitesse de la boucle idle
       fallbackSide: 120   // emprise sol sans PNG (serveur)

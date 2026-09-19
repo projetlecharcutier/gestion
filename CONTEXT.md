@@ -79,7 +79,7 @@ Schéma complet dans `src/state.js`. Champs clés :
 | `VOTE_DURATION` | 15 | Durée d'un vote tech (s) |
 | `VOTE_COOLDOWN` | 30 | Cooldown après un vote refusé (s) |
 | `TOWER_BUILD_TIME` | 10 | Chantier tour/scierie (s) |
-| `TOWER_STATS` | — | Table des tours par niveau (`bois` : hp 500, dmg 25, portée 300, cd 1 s/côté, flèche 500 px/s, fog 300 px, coût 50 or + 20 planches). Un nouveau niveau (pierre, métal...) = une nouvelle entrée, tout le reste est automatique. |
+| `TOWER_STATS` | — | Table des tours par niveau (`bois` : hp 500, dmg 25, portée 300, cd 1 s/côté, flèche 500 px/s, fog 300 px, coût 1 or + 20 planches). Un nouveau niveau (pierre, métal...) = une nouvelle entrée, tout le reste est automatique. |
 
 ## Boucle de jeu (`src/main.js`)
 

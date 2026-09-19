@@ -55,7 +55,7 @@
   `wallSpriteDims` : collision = 4× le PNG, comme les bâtiments). La tour
   **ne pivote pas**.
 - Pose : vérif chevauchement bâtiments/murs, paiement au coffre (tour :
-  50 or + 20 planches), grace period + `pushPlayerOutOfWall` réutilisés.
+  1 or + 20 planches), grace period + `pushPlayerOutOfWall` réutilisés.
   - Scierie : **dans la ville uniquement** (`G.inTown`).
   - Tour : **partout**.
 - **Chantier 10 s** (`G.TOWER_BUILD_TIME`) pour la scierie ET la tour :
@@ -113,7 +113,7 @@ par tour, et 1 draw tant qu'aucun tir récent.
 | `cd` | 1,0 s (par côté) |
 | `arrowSpeed` | 500 px/s |
 | `fogRadius` | 300 px |
-| `cost` | 50 or + 20 planches |
+| `cost` | 1 or + 20 planches |
 | `animDur` | durée d'anim de tir (s) |
 | `idleFps` | vitesse de la boucle idle (le chantier n'a plus de fps dédié :
   un seul tour calé sur `TOWER_BUILD_TIME`) |
