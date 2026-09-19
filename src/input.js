@@ -93,6 +93,18 @@
       if (od < 70) {
         var px = p.x - it.x, py = p.y - it.y;
         if (Math.sqrt(px * px + py * py) < 120) {
+          // Pièce d'or : crédit direct au coffre de la mairie (pas de sac).
+          if (it.kind === "or") {
+            if (G.netConnected && G.netConnected()) {
+              G.netInput({ pickup: { x: Math.round(it.x), y: Math.round(it.y) } });
+            } else {
+              it.taken = true;
+              state.mairieGold = (state.mairieGold || 0) + 1;
+              if (G.addFloater) G.addFloater("+1 pièce");
+              G.updateHud();
+            }
+            return;
+          }
           if (G.netConnected && G.netConnected()) {
             G.netInput({ pickup: { x: Math.round(it.x), y: Math.round(it.y) } });
           } else {

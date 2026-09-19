@@ -76,8 +76,16 @@
     }
   };
 
-  // Dépose un objet aléatoire à la position d'un oiseau tué.
+  // Dépose un objet aléatoire à la position d'un oiseau tué. Une pièce d'or
+  // (kind "or", ramassage direct au coffre de la mairie) tombe en plus avec
+  // une probabilité BIRD_GOLD_CHANCE.
   G.birdDrop = function (x, y) {
+    if (Math.random() < G.BIRD_GOLD_CHANCE) {
+      G.state.items.push({
+        x: x, y: y, taken: false,
+        name: "Pièce", color: "#fbbf24", kind: "or"
+      });
+    }
     var drop = G.BIRD_DROPS[G.randi(0, G.BIRD_DROPS.length - 1)];
     G.state.items.push({
       x: x, y: y, taken: false,

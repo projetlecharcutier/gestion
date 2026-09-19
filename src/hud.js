@@ -16,7 +16,7 @@
     if (G.hudAxe) G.hudAxe.textContent = state.axeEquipped ? "oui" : "non";
     G.hudHp.textContent = String(Math.round(state.player.hp));
     G.hudPlanks.textContent = String(state.planks);
-    if (G.hudGold) G.hudGold.textContent = String(state.gold);
+    if (G.hudGold) G.hudGold.textContent = String(state.mairieGold || 0);
     if (G.hudMairie) {
       var mairie = null;
       for (var i = 0; i < state.buildings.length; i++) { if (state.buildings[i].isMairie) { mairie = state.buildings[i]; break; } }

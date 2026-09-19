@@ -160,7 +160,7 @@
     }
     state.bag.contents.splice(index, 1);
     state.inventory = state.bag.contents.length;
-    state.gold = (state.gold || 0) + 100;
+    state.mairieGold = (state.mairieGold || 0) + 100;
     if (G.addFloater) G.addFloater("100 pièces d'or");
     G.drawChurch();
     G.updateHud();
@@ -169,7 +169,7 @@
   // Affiche les reliques du sac (cliquables pour vendre) + l'or courant.
   G.drawChurch = function () {
     var state = G.state;
-    if (G.churchGold) G.churchGold.textContent = String(state.gold || 0);
+    if (G.churchGold) G.churchGold.textContent = String(state.mairieGold || 0);
     var bag = G.churchBag;
     if (!bag) return;
     bag.innerHTML = "";

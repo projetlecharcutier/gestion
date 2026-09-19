@@ -61,6 +61,9 @@
       bag: { open: false, contents: [] },
       chest: [],
       chestOpen: false,
+      mairieGold: 0,
+      scierieUnlocked: false,
+      scierie: null,
       equipped: null,
       projectiles: [],
       keys: {},
@@ -198,9 +201,15 @@
         if (Math.abs(it.x - tx) < 5 && Math.abs(it.y - ty) < 5) {
           var pdx = p.x - it.x, pdy = p.y - it.y;
           if (Math.sqrt(pdx * pdx + pdy * pdy) < 140) {
-            it.taken = true;
-            p.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });
-            p.inventory = p.bag.contents.length;
+            // Pièce d'or : crédit direct au coffre de la mairie (commun).
+            if (it.kind === "or") {
+              it.taken = true;
+              state.mairieGold = (state.mairieGold || 0) + 1;
+            } else {
+              it.taken = true;
+              p.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });
+              p.inventory = p.bag.contents.length;
+            }
           }
           break;
         }
@@ -215,7 +224,7 @@
       if (ri >= 0) {
         p.bag.contents.splice(ri, 1);
         p.inventory = p.bag.contents.length;
-        p.gold = (p.gold || 0) + 100;
+        state.mairieGold = (state.mairieGold || 0) + 100;
       }
     }
     // Équipement : un seul objet équipé à la fois.
@@ -450,6 +459,8 @@
       }),
       mairieHp: mairieHp(),
       mairieMaxHp: G.MAIRIE_MAX_HP,
+      mairieGold: state.mairieGold || 0,
+      scierieUnlocked: !!state.scierieUnlocked,
       waveCount: state.waveCount || 0,
       waveActive: state.waveActive || false,
       waveMsgTimer: state.waveMsgTimer || 0,

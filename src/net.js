@@ -135,6 +135,8 @@
     state.planks = s.planks || 0;
     state.mairieHp = s.mairieHp;
     state.mairieMaxHp = s.mairieMaxHp;
+    if (s.mairieGold !== undefined) state.mairieGold = s.mairieGold;
+    if (s.scierieUnlocked !== undefined) state.scierieUnlocked = s.scierieUnlocked;
     if (s.waveCount !== undefined) state.waveCount = s.waveCount;
     if (s.waveActive !== undefined) state.waveActive = s.waveActive;
     if (s.waveMsgTimer !== undefined) state.waveMsgTimer = s.waveMsgTimer;

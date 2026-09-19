@@ -194,6 +194,18 @@
     { name: "Gemme", color: "#22d3ee", kind: "objet" }
   ];
 
+  // Scierie & tours : deplacement debloque a la mairie (cf. docs/towers.md).
+  // La tech Scierie coute 100 planches + 10 or pris dans le coffre de la mairie.
+  G.SCIERIE_COST = { planks: 100, gold: 10 };
+  G.SCIERIE_SIDE = 160;  // emprise sol de la scierie (unites monde)
+  // Pieces d'or : 100 pre-poses hors ville au demarrage, drop regulier des
+  // oiseaux (proba par oiseau tue).
+  G.GOLD_ITEMS_START = 100;
+  G.BIRD_GOLD_CHANCE = 0.5;
+  // Votes a la mairie (multijoueur) : duree du vote et cooldown d'echec.
+  G.VOTE_DURATION = 15;
+  G.VOTE_COOLDOWN = 30;
+
   G.GROUP_SIZE = 8;
   G.GROUP_FORMATION = 90;
   G.GROUP_MERGE_DIST = 320;
