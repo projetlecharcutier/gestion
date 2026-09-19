@@ -595,13 +595,19 @@
             var sx = (zcible.isPlayer ? zcible.x : tx) - z.x;
             var sy = (zcible.isPlayer ? zcible.y : ty) - z.y;
             var sd = Math.sqrt(sx * sx + sy * sy) || 1;
-            // Zombie arrivé à son slot mais hors de portée d'un objectif
-            // attaquable (mur/tour/mairie) : il ne reste jamais passif, il
-            // pousse vers le point d'attaque (toujours en train d'attaquer
-            // ou de chercher un moyen d'attaquer).
-            if (sd <= 4 && !zcible.isPlayer &&
+            // Groupe arrivé sur son objectif (chef à l'arrêt à portée de
+            // mur/tour/mairie, ou mur/tour détecté individuellement) : le
+            // zombie ne reste pas en orbite autour du chef en formation — il
+            // pousse en continu vers le point d'attaque tant qu'il n'est pas
+            // à portée de coup. Le signal est stable (condition de groupe,
+            // pas de position de slot) : pas d'oscillation slot/objectif.
+            var arrive = !zcible.isPlayer &&
                 (zcible.wall || zcible.tower || zcible.mairie) &&
-                zd > G.ZOMBIE_WALL_HIT) {
+                (ld <= G.ZOMBIE_WALL_SENSE ||
+                 (zNearWall && zNearWallD < G.ZOMBIE_WALL_SENSE) ||
+                 (zcible.tower && zd < G.ZOMBIE_WALL_SENSE * 2)) &&
+                zd > (zcible.seeking ? 14 : G.ZOMBIE_WALL_HIT);
+            if (arrive) {
               sx = zcible.x - z.x; sy = zcible.y - z.y;
               sd = Math.sqrt(sx * sx + sy * sy) || 1;
             }
