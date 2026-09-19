@@ -10,6 +10,7 @@
     var state = G.state;
     var p = state.player;
     var dx = 0, dy = 0, fire = false, build = false, buildWall = null;
+    var netInputExtras = {};
     // Déplacement : Espace maintenu + souris dirige (autorisé en mode build).
     if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.churchOpen && !state.gameOver) {
       if (state.keys.space && state.mouse.inside) {
@@ -24,9 +25,12 @@
     }
     if (state.buildMode) build = true;
     if (state._buildWall) { buildWall = state._buildWall; state._buildWall = null; }
+    if (state._buildSel !== undefined) { netInputExtras.buildSel = state._buildSel; state._buildSel = undefined; }
+    if (state._placeBuild) { netInputExtras.placeBuild = state._placeBuild; state._placeBuild = null; }
     G.netInput({
       dx: dx, dy: dy, fire: fire, build: build, buildWall: buildWall,
-      aimX: state.mouse.wx, aimY: state.mouse.wy
+      aimX: state.mouse.wx, aimY: state.mouse.wy,
+      buildSel: netInputExtras.buildSel, placeBuild: netInputExtras.placeBuild
     });
     return true;
   }
@@ -74,6 +78,9 @@
       }
       G.handleShooting();
       G.updateProjectiles(dt);
+      G.updateBuildSites(dt);
+      G.updateTowers(dt);
+      G.cleanupTowers();
       G.cleanupZombies();
       G.cleanupBirds();
       G.cleanupWalls();

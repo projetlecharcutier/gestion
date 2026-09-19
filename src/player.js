@@ -237,8 +237,61 @@
   };
 
   // Affiche le contenu du coffre et du sac dans l'écran de coffre.
+  // Demande le deblocage de la scierie : achat direct en solo (si le coffre
+  // suffit), proposition de vote en multijoueur (serveur autoritaire).
+  G.buyScierie = function () {
+    var state = G.state;
+    if (state.scierieUnlocked) return;
+    if (G.netConnected && G.netConnected()) {
+      G.netInput({ techVote: "scierie" });
+      if (G.addFloater) G.addFloater("Vote lancé (15 s)");
+      G.drawChest();
+      return;
+    }
+    if (G.unlockScierie()) {
+      if (G.addFloater) G.addFloater("Scierie débloquée ! Z + posez-la en ville");
+      G.drawChest();
+      G.updateHud();
+    } else {
+      if (G.addFloater) G.addFloater("Il faut 100 planches + 10 or au coffre");
+    }
+  };
+
+  // Section Technologies du coffre de la mairie : scierie (+ futur : votes).
+  G.drawChestTech = function () {
+    var state = G.state;
+    var tech = G.chestTech;
+    if (!tech) return;
+    if (G.chestGold) G.chestGold.textContent = String(state.mairieGold || 0);
+    tech.innerHTML = "";
+    var list = document.createElement("div");
+    list.className = "chest__list";
+    var h = document.createElement("p");
+    h.textContent = "Technologies";
+    list.appendChild(h);
+    if (state.scierieUnlocked) {
+      var ok = document.createElement("p");
+      ok.textContent = "Scierie : débloquée" + (state.scierie ? " (bâtiment posé)" : " — posez-la en ville (Z)");
+      list.appendChild(ok);
+    } else {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn chest__item";
+      var label = "Scierie — " + G.SCIERIE_COST.planks + " planches + " + G.SCIERIE_COST.gold + " or";
+      var net = G.netConnected && G.netConnected();
+      if (net && state.vote && state.vote.proposal === "scierie") {
+        label += " (vote en cours : " + Math.max(0, Math.ceil(state.vote.endsAt - state.time)) + " s)";
+      }
+      btn.textContent = label;
+      btn.addEventListener("click", function () { G.buyScierie(); });
+      list.appendChild(btn);
+    }
+    tech.appendChild(list);
+  };
+
   G.drawChest = function () {
     var state = G.state;
+    G.drawChestTech();
     var vault = G.chestVault;
     var bag = G.chestBag;
     // Coffre : objets groupés (même nom + type) avec leur nombre.

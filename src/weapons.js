@@ -111,7 +111,8 @@
             }
 
             // 2. Collisions avec les Oiseaux (si le projectile n'est pas déjà détruit)
-            if (!shouldDestroy) {
+            // Les flèches de tour ignorent les oiseaux (cible : zombies uniquement).
+            if (!shouldDestroy && pr.owner !== "tour") {
                 for (var bi = 0; bi < state.birds.length; bi++) {
                     var b = state.birds[bi];
 

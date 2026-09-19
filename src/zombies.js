@@ -526,6 +526,21 @@
               };
               zcible = { x: seekPt.x, y: seekPt.y, isPlayer: false, wall: zNearWall, seeking: true };
             }
+          } else if (!zNearWall && state.towers && state.towers.length > 0 && !zcible.isPlayer) {
+            // Priorite 2 : tour accessible (palissade absente a portee).
+            // Le zombie fonce sur la tour la plus proche a portee de sense et
+            // l'attaque comme une palissade (memes degats/cooldown).
+            var zNearTower = null, zNearTowerD = Infinity, zNearTowerPt = null;
+            for (var zt = 0; zt < state.towers.length; zt++) {
+              var ztw = state.towers[zt];
+              var ztlx = Math.max(ztw.x, Math.min(z.x, ztw.x + ztw.w));
+              var ztly = Math.max(ztw.y, Math.min(z.y, ztw.y + ztw.h));
+              var ztd = Math.sqrt((ztlx - z.x) * (ztlx - z.x) + (ztly - z.y) * (ztly - z.y));
+              if (ztd < zNearTowerD) { zNearTowerD = ztd; zNearTower = ztw; zNearTowerPt = { x: ztlx, y: ztly }; }
+            }
+            if (zNearTower && zNearTowerD < G.ZOMBIE_WALL_SENSE) {
+              zcible = { x: zNearTowerPt.x, y: zNearTowerPt.y, isPlayer: false, tower: zNearTower };
+            }
           }
           var tx = grp.x + Math.cos(z.slotAng) * z.slotDist;
           var ty = grp.y + Math.sin(z.slotAng) * z.slotDist;
@@ -535,6 +550,7 @@
           if (z.wallCd > 0) z.wallCd -= dt;
           if (z.lunge > 0) z.lunge -= dt;
           var wallHit = zcible.wall && !zcible.seeking && zd < G.ZOMBIE_WALL_HIT;
+          var towerHit = zcible.tower && zd < G.ZOMBIE_WALL_HIT;
           if (zd < 14) {
             if (zcible.isPlayer && z.atkCd <= 0) {
               z.atkCd = G.ZOMBIE_ATTACK_CD;
@@ -550,6 +566,13 @@
               zcible.wall.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
               z.lunge = G.ZOMBIE_LUNGE_TIME;
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
+            } else if (!zcible.isPlayer && zcible.tower && z.wallCd <= 0) {
+              // Attaque de tour : memes regles que les palissades (degats +
+              // bonus de meute, cooldown partage wallCd).
+              z.wallCd = G.ZOMBIE_WALL_CD;
+              zcible.tower.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
+              z.lunge = G.ZOMBIE_LUNGE_TIME;
+              z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
             } else if (!zcible.isPlayer && zcible.mairie && z.wallCd <= 0) {
               z.wallCd = G.ZOMBIE_WALL_CD;
               zcible.mairie.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
@@ -557,10 +580,11 @@
               z.lunge = G.ZOMBIE_LUNGE_TIME;
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
             }
-          } else if (wallHit) {
+          } else if (wallHit || towerHit) {
             if (z.wallCd <= 0) {
               z.wallCd = G.ZOMBIE_WALL_CD;
-              zcible.wall.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
+              var hitTarget = wallHit ? zcible.wall : zcible.tower;
+              hitTarget.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
               z.lunge = G.ZOMBIE_LUNGE_TIME;
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
             }

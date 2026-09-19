@@ -107,6 +107,12 @@
     wall: {
       palissageNESO: { src: "assets/sprites/wall/palissageNESO.png", w: 80, h: 60 },
       palissageNoSe: { src: "assets/sprites/wall/palissageNoSe.png", w: 60, h: 80 }
+    },
+    tour: {
+      idle: { src: "assets/sprites/tour/idle.png", w: 96, h: 128 }
+    },
+    scierie: {
+      idle: { src: "assets/sprites/scierie/idle.png", w: 96, h: 96 }
     }
   };
   // Sonde les maisons house/H1.png, H2.png, ... jusqu'au premier fichier
@@ -336,7 +342,46 @@
     function finish() { _ready = true; if (onReady) onReady(); }
     function afterTraces() { probeDeadTraces(finish); }
     function afterHouses() { probeForets(afterTraces); }
-    function afterPlayer() { probeHouses(afterHouses); }
+    function afterTours() { probeHouses(afterHouses); }
+    function afterPlayer() { probeTours(afterTours); }
+    function probeTours(onDone) {
+      // Tour : series chantier / idle (deja dans le manifeste) + gauche / droite
+      // (overlays de tir, PNG complets). Sondage de frames <base>-0.png, -1.png...
+      G.SPRITES.tour = G.SPRITES.tour || {};
+      var series = [
+        { ent: "tour", dir: "assets/sprites/tour/", base: "idle" },
+        { ent: "tour", dir: "assets/sprites/tour/", base: "chantier" },
+        { ent: "tour", dir: "assets/sprites/tour/", base: "gauche" },
+        { ent: "tour", dir: "assets/sprites/tour/", base: "droite" },
+        { ent: "scierie", dir: "assets/sprites/scierie/", base: "idle" },
+        { ent: "scierie", dir: "assets/sprites/scierie/", base: "chantier" }
+      ];
+      var si = 0;
+      function nextSeries() {
+        if (si >= series.length) { onDone(); return; }
+        var s = series[si++];
+        G.SPRITES[s.ent] = G.SPRITES[s.ent] || {};
+        if (G.hasSprite(s.ent, s.base) && s.base !== "chantier" && s.base !== "gauche" && s.base !== "droite") {
+          // idle tour/scierie : anime les frames du sprite manifeste deja charge.
+          nextSeries();
+          return;
+        }
+        // Base statique (premiere frame) puis frames animees.
+        var img = new Image();
+        img.onload = function () {
+          if (img.naturalWidth > 0) {
+            var sp = { img: img, w: img.naturalWidth, h: img.naturalHeight };
+            G.SPRITES[s.ent][s.base] = sp;
+            probeAnimFrames(sp, s.dir, s.base, function () { nextSeries(); });
+            return;
+          }
+          nextSeries();
+        };
+        img.onerror = function () { nextSeries(); };
+        img.src = bust(s.dir + s.base + ".png");
+      }
+      nextSeries();
+    }
     _total = entries.length;
     if (_total === 0) { probePlayer(afterPlayer); return; }
     for (var i = 0; i < entries.length; i++) {

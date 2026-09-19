@@ -205,6 +205,26 @@
   // Votes a la mairie (multijoueur) : duree du vote et cooldown d'echec.
   G.VOTE_DURATION = 15;
   G.VOTE_COOLDOWN = 30;
+  // Tours : stats par niveau (cf. docs/towers.md). Un futur niveau (pierre,
+  // metal...) est une nouvelle entree : menu, combat et rendu la prennent en
+  // compte automatiquement.
+  G.TOWER_BUILD_TIME = 10; // duree du chantier (s), scierie et tours
+  G.TOWER_STATS = {
+    bois: {
+      label: "Tour en bois",
+      hp: 500,            // PV de la tour
+      dmg: 25,            // degats par fleche
+      range: 300,         // portee de tir (px)
+      cd: 1.0,            // cooldown de tir par cote (s)
+      arrowSpeed: 500,    // vitesse des fleches (px/s)
+      fogRadius: 300,    // rayon de brouillard degage (px)
+      cost: { gold: 50, planks: 20 }, // prix paye au coffre de la mairie
+      animDur: 0.5,       // duree de l'anim de tir (s)
+      idleFps: 4,         // vitesse de la boucle idle
+      chantierFps: 8,     // vitesse de la boucle chantier
+      fallbackSide: 120   // emprise sol sans PNG (serveur)
+    }
+  };
 
   G.GROUP_SIZE = 8;
   G.GROUP_FORMATION = 90;
