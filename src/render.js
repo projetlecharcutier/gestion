@@ -225,7 +225,17 @@
         var ob = G.spriteBounds(spriteEnt, spriteKey);
         if (ob && ob.y1 < 1) opaqueDrop = (1 - ob.y1) * dh;
       }
-      ctx.drawImage(G.animImg(sprite, G.state.time), cx - dw / 2, groundY - dh + opaqueDrop, dw, dh);
+      var scImg = G.animImg(sprite, G.state.time);
+      if (b.isScierie && !b.chantierDone) {
+        // Chantier : la boucle de frames ne fait qu'UN tour sur TOWER_BUILD_TIME
+        // (frame figée sur la dernière si le temps depasse), pas de cycle libre.
+        var scFrames = sprite.frames;
+        if (scFrames && scFrames.length > 1) {
+          var fi2 = G.chantierFrame(sprite, b.builtAt, G.state.time, scFrames.length);
+          scImg = scFrames[fi2];
+        }
+      }
+      ctx.drawImage(scImg, cx - dw / 2, groundY - dh + opaqueDrop, dw, dh);
       // Barre de vie de la mairie au-dessus du sprite (uniquement si endommagée).
       if (b.isMairie && b.hp < b.maxHp) {
         var ratio = b.hp / b.maxHp;
@@ -572,10 +582,16 @@
     if (base) {
       dh = dw * base.h / base.w;
       dy = groundY - dh;
-      var fps = t.chantierDone ? (stats.idleFps || 4) : (stats.chantierFps || 8);
       var img = base;
       if (base.frames && base.frames.length > 0) {
-        var fi = Math.floor((G.state.time || 0) * fps) % base.frames.length;
+        var fi;
+        if (t.chantierDone) {
+          fi = Math.floor((G.state.time || 0) * (stats.idleFps || 4)) % base.frames.length;
+        } else {
+          // Chantier : UN seul tour complet sur TOWER_BUILD_TIME, figé sur la
+          // derniere frame ensuite (pas de cycle libre).
+          fi = G.chantierFrame(base, t.builtAt, G.state.time, base.frames.length);
+        }
         img = { img: base.frames[fi], w: base.w, h: base.h };
       } else {
         img = base.img ? base : { img: base, w: base.w, h: base.h };

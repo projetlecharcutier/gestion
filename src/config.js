@@ -193,7 +193,7 @@
   // Scierie & tours : deplacement debloque a la mairie (cf. docs/towers.md).
   // La tech Scierie coute 100 planches + 10 or pris dans le coffre de la mairie.
   G.SCIERIE_COST = { planks: 100, gold: 10 };
-  G.SCIERIE_SIDE = 160;  // emprise sol de la scierie (unites monde)
+  G.SCIERIE_SIDE = 40;   // emprise sol de la scierie (unites monde)
   // Pieces d'or : 100 pre-poses hors ville au demarrage, drop regulier des
   // oiseaux (proba par oiseau tue).
   G.GOLD_ITEMS_START = 100;
@@ -217,7 +217,6 @@
       cost: { gold: 50, planks: 20 }, // prix paye au coffre de la mairie
       animDur: 0.5,       // duree de l'anim de tir (s)
       idleFps: 4,         // vitesse de la boucle idle
-      chantierFps: 8,     // vitesse de la boucle chantier
       fallbackSide: 120   // emprise sol sans PNG (serveur)
     }
   };

@@ -18,6 +18,20 @@
     return side;
   };
 
+  // Indice de frame d'une anim de chantier : un seul tour complet sur la
+  // durée TOWER_BUILD_TIME, figé sur la dernière frame ensuite (clippé).
+  G.chantierFrame = function (sprite, builtAt, now, frames) {
+    var n = frames || G.animCount(sprite);
+    if (n <= 1) return 0;
+    var dur = G.TOWER_BUILD_TIME || 10;
+    var p = ((now || 0) - (builtAt || 0)) / dur;
+    if (p < 0) p = 0;
+    if (p > 1) p = 1;
+    var fi = Math.floor(p * n);
+    if (fi > n - 1) fi = n - 1;
+    return fi;
+  };
+
   // Crée le bâtiment scierie (unique) à la position cliquée.
   G.makeScierie = function (x, y) {
     var side = G.SCIERIE_SIDE;

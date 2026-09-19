@@ -59,7 +59,9 @@
   - Scierie : **dans la ville uniquement** (`G.inTown`).
   - Tour : **partout**.
 - **Chantier 10 s** (`G.TOWER_BUILD_TIME`) pour la scierie ET la tour :
-  boucle d'anim `chantier`, aucun fonctionnement pendant le chantier,
+  anim `chantier` en **un seul tour complet** sur la durée (frame =
+  progression `builtAt → builtAt + TOWER_BUILD_TIME`, figée sur la dernière
+  frame ensuite), aucun fonctionnement pendant le chantier,
   bâtiment **dès le début** solide et attaquable.
 
 ## 5. Sprites (`assets/sprites/tour/`, `assets/sprites/scierie/`)
@@ -68,7 +70,7 @@ Nomenclature (sondage auto des frames `-0.png, -1.png…`, cf. README assets) :
 
 | Frames | Rôle |
 |---|---|
-| `tour/chantier-0..N.png` | boucle pendant les 10 s de construction |
+| `tour/chantier-0..N.png` | **un seul tour** pendant les 10 s de construction |
 | `tour/idle-0..N.png` | boucle lente une fois construite — **ne doit pas toucher aux pixels des archers** |
 | `tour/gauche-0..N.png` | overlay tir gauche — **PNG complet de la tour**, découpé en **moitié gauche** au rendu |
 | `tour/droite-0..N.png` | overlay tir droite — idem, **moitié droite** |
@@ -84,7 +86,8 @@ Règles de dessin :
 
 ## 6. Rendu des tours (ordre par frame)
 
-1. En chantier : draw `chantier` (frame = `time × fps` modulo).
+1. En chantier : draw `chantier` (frame = progression du chantier, **un seul
+tour** sur `TOWER_BUILD_TIME`, dernière frame figée ensuite).
 2. Construite : draw `idle` (boucle lente).
 3. Si `animL > 0` : draw `gauche` restreint au rect source **moitié gauche**,
    frame calculée depuis `animL`.
@@ -112,7 +115,8 @@ par tour, et 1 draw tant qu'aucun tir récent.
 | `fogRadius` | 300 px |
 | `cost` | 50 or + 20 planches |
 | `animDur` | durée d'anim de tir (s) |
-| `idleFps` / `chantierFps` | vitesses de boucle |
+| `idleFps` | vitesse de la boucle idle (le chantier n'a plus de fps dédié :
+  un seul tour calé sur `TOWER_BUILD_TIME`) |
 
 Puissance / portée / cadence **identiques gauche et droite** (une seule
 entrée : la parité est structurelle).

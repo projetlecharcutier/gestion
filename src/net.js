@@ -159,6 +159,11 @@
         local.x = s.scierie.x; local.y = s.scierie.y;
         local.w = s.scierie.w; local.h = s.scierie.h;
         local.chantierDone = s.scierie.chantierDone;
+        // Avancement du chantier : builtAt recalcule depuis buildAge pour que
+        // l'anim chantier (un tour sur TOWER_BUILD_TIME) reste coherente.
+        if (s.scierie.buildAge !== undefined) {
+          local.builtAt = (state.time || 0) - s.scierie.buildAge;
+        }
         state.scierie = local;
       }
     }
@@ -177,6 +182,9 @@
           lt.hp = st2.hp; lt.maxHp = st2.maxHp;
           lt.chantierDone = st2.chantierDone;
           lt.animL = st2.animL; lt.animR = st2.animR;
+          if (!lt.chantierDone && st2.buildAge !== undefined) {
+            lt.builtAt = (state.time || 0) - st2.buildAge;
+          }
           kept.push(lt);
           delete byPos[k];
         }
@@ -187,6 +195,7 @@
         kept.push({ x: nt.x, y: nt.y, w: nt.w, h: nt.h, level: nt.level,
                     hp: nt.hp, maxHp: nt.maxHp, chantierDone: nt.chantierDone,
                     animL: nt.animL || 0, animR: nt.animR || 0,
+                    builtAt: nt.buildAge !== undefined ? (state.time || 0) - nt.buildAge : 0,
                     cdL: 0, cdR: 0, isTower: true });
       }
       state.towers = kept;

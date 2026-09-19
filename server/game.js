@@ -517,7 +517,8 @@
       scierie: state.scierie ? {
         x: Math.round(state.scierie.x), y: Math.round(state.scierie.y),
         w: Math.round(state.scierie.w), h: Math.round(state.scierie.h),
-        chantierDone: !!state.scierie.chantierDone
+        chantierDone: !!state.scierie.chantierDone,
+        buildAge: +(state.time - state.scierie.builtAt).toFixed(1)
       } : null,
       towers: state.towers.map(function (t) {
         return {
