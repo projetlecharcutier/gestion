@@ -22,14 +22,15 @@ Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fo
 | 4 | `src/world.js` | Génération : bâtiments, mur de périmètre, objets, arbres | `buildWorld`, `makeBuilding`, `nearBuilding`, `buildPerimeterWall` |
 | 5 | `src/player.js` | Déplacement, collisions (bâtiments + planches posées), entrée bâtiment, soin hôpital, pause | `tryMove`, `aabbHitsBuildings`, `clampPlayer`, `enterBuilding`, `leaveBuilding`, `togglePause`, `tryHealAtHospital`, `hasGoldPiece` |
 | 6 | `src/walls.js` | Construction de planches/murs (Z + clic) + rotation + collisions + nettoyage murs détruits | `tryBuildWall`, `cleanupWalls`, `plankDims`, `rotatePlank`, `aabbHitsWalls` |
-| 7 | `src/chop.js` | Récolte de planches à la hache (décompte près d'un arbre) | `updateChop`, `chopProgress` |
-| 8 | `src/weapons.js` | Stats arme équipée, tir, déplacement projectiles | `equippedStats`, `handleShooting`, `updateProjectiles` |
-| 9 | `src/zombies.js` | Vagues, groupes qui fusionnent, IA zombies | `spawnWave`, `mergeGroups`, `updateZombies`, `cleanupZombies` |
-| 10 | `src/bag.js` | Sac : disposition, rendu, clic équiper (armes & hache) | `bagLayout`, `handleBagClick`, `drawBag` |
-| 11 | `src/hud.js` | HUD DOM + overlays canvas (dont cercle de décompte hache) | `updateHud`, `drawClock`, `drawPlayerHpBar`, `drawBuildHint`, `drawChopProgress`, `drawGameOver` |
-| 12 | `src/render.js` | Tout le dessin + `render()` | `drawGround/Item/Tree/Building/Player/Wall/Zombie/Projectiles/Fog/Crosshair/DeadTraces`, `fillPoly`, `roundRect`, `render` |
-| 13 | `src/input.js` | Entrées (souris, molette, clavier) + formulaire démarrage | resize interne, listeners |
-| 14 | `src/main.js` | Logique par frame `update(dt)` + `loop()` | `update`, `loop` |
+| 7 | `src/towers.js` | Scierie + tours d'attaque : tech à la mairie (vote), menu de construction, chantiers, tir automatique flèches | `makeScierie`, `makeTower`, `updateBuildSites`, `updateTowers`, `cleanupTowers`, `buildMenu`, `placeFromBuildMenu`, `canPayScierie`, `unlockScierie`, `startVote`, `castVote`, `resolveVote` |
+| 8 | `src/chop.js` | Récolte de planches à la hache (décompte près d'un arbre) | `updateChop`, `chopProgress` |
+| 9 | `src/weapons.js` | Stats arme équipée, tir, déplacement projectiles | `equippedStats`, `handleShooting`, `updateProjectiles` |
+| 10 | `src/zombies.js` | Vagues, groupes qui fusionnent, IA zombies (priorité : palissade > tour > mairie/joueur) | `spawnWave`, `mergeGroups`, `updateZombies`, `cleanupZombies` |
+| 11 | `src/bag.js` | Sac : disposition, rendu, clic équiper (armes & hache) | `bagLayout`, `handleBagClick`, `drawBag` |
+| 12 | `src/hud.js` | HUD DOM + overlays canvas (dont cercle de décompte hache) | `updateHud`, `drawClock`, `drawPlayerHpBar`, `drawBuildHint`, `drawChopProgress`, `drawGameOver` |
+| 13 | `src/render.js` | Tout le dessin + `render()` (dont `drawTower`, flèche orientée, brouillard multi-sources) | `drawGround/Item/Tree/Building/Player/Wall/Zombie/Projectiles/Fog/Crosshair/DeadTraces`, `drawTower`, `fillPoly`, `roundRect`, `render` |
+| 14 | `src/input.js` | Entrées (souris, molette, clavier) + formulaire démarrage | resize interne, listeners |
+| 15 | `src/main.js` | Logique par frame `update(dt)` + `loop()` | `update`, `loop` |
 
 ## État global : `G.state`
 
@@ -43,6 +44,7 @@ Schéma complet dans `src/state.js`. Champs clés :
 - `planks`, `inventory`, `shootCd`, `buildMode`, `plankRotation` (0=horizontal, 1=vertical)
 - `axeEquipped` (bool), `chopTarget` (arbre visé ou null), `chopTimer` (accumulateur s)
 - `clock` (0..24), `day`, `elapsed`, `nextWaveAt`, `waveActive`, `waveLeaveAt`
+- `mairieGold` (or du coffre commun de la mairie), `scierieUnlocked` (tech débloquée), `scierie` (bâtiment scierie posé ou null), `towers[]` (tours d'attaque), `buildSel` ("scierie" ou "tour:<niveau>"), `buildMenuOpen`, `vote` (vote tech en cours ou null), `voteCooldownUntil`
 
 ## Constantes importantes (`src/config.js`)
 
@@ -70,6 +72,14 @@ Schéma complet dans `src/state.js`. Champs clés :
 | `WAVE_LEAVE` | 600 | Repartent après 10 min |
 | `ZOMBIE_PER_WAVE_BASE` | 50 | Zombies à la 1ère vague |
 | `ZOMBIE_WAVE_GROWTH` | 2 | ×2 zombies chaque nuit (+100%) |
+| `SCIERIE_COST` | 100 planches + 10 or | Tech scierie à la mairie (or : coffre commun, planches : poseur) |
+| `SCIERIE_SIDE` | 160 | Taille de l'empreinte scierie (px) |
+| `GOLD_ITEMS_START` | 100 | Pièces d'or posées hors ville au démarrage |
+| `BIRD_GOLD_CHANCE` | 0.5 | Proba qu'un oiseau tué lâche une pièce d'or |
+| `VOTE_DURATION` | 15 | Durée d'un vote tech (s) |
+| `VOTE_COOLDOWN` | 30 | Cooldown après un vote refusé (s) |
+| `TOWER_BUILD_TIME` | 10 | Chantier tour/scierie (s) |
+| `TOWER_STATS` | — | Table des tours par niveau (`bois` : hp 500, dmg 25, portée 300, cd 1 s/côté, flèche 500 px/s, fog 300 px, coût 50 or + 20 planches). Un nouveau niveau (pierre, métal...) = une nouvelle entrée, tout le reste est automatique. |
 
 ## Boucle de jeu (`src/main.js`)
 
@@ -80,9 +90,10 @@ Schéma complet dans `src/state.js`. Champs clés :
 3. `updateZombies(dt)`
 4. Déplacement joueur (suit la souris) si pas en bâtiment/pause/sac/game over
 5. `handleShooting()` → `updateProjectiles(dt)` (tir désactivé en mode pose de planche)
-6. `cleanupZombies()` + `cleanupWalls()` + `updateChop(dt)` (récolte hache)
-7. Caméra suit le joueur
-8. Refresh souris monde + `updateHud()`
+6. `updateBuildSites(dt)` + `updateTowers(dt)` + `cleanupTowers()` (scierie & tours d'attaque)
+7. `cleanupZombies()` + `cleanupWalls()` + `updateChop(dt)` (récolte hache)
+8. Caméra suit le joueur
+9. Refresh souris monde + `updateHud()`
 
 ## Textures (`src/textures/`)
 
@@ -118,6 +129,22 @@ Voir `docs/textures.md` pour la spec.
 - **Nouvelle entrée clavier** → `src/input.js`.
 - **Changer un sprite / une couleur** → `src/textures/<type>.js` uniquement (le rendu les consomme).
 - **Nouveau système complet** → créer `src/<nom>.js`, l'ajouter à `index.html` avant `main.js`, exposer sur `G`, documenter ici.
+- **Nouveau niveau de tour** (pierre, métal...) → ajouter une entrée dans `G.TOWER_STATS` (`src/config.js`) : menu de construction, chantier, combat, brouillard et rendu s'adaptent automatiquement. Fournir les PNG `assets/sprites/tour/{idle,chantier,gauche,droite}-N.png`.
+
+## Scierie & tours d'attaque (`src/towers.js`)
+
+Spec complète : `docs/towers.md`. En résumé :
+
+1. **Tech scierie** au coffre de la mairie (section Technologies) : 100 planches + 10 or. En solo achat direct ; en multi vote à la majorité stricte des connectés (15 s, initiateur compte « pour », refus → cooldown 30 s). L'or sort du coffre commun (`mairieGold`), les planches du joueur initiateur.
+2. **Scierie** : bâtiment unique posable en ville (Z + clic, empreinte 160 px, chantier 10 s). Un clic dessus ouvre le **menu de construction** (DOM) qui liste les bâtiments disponibles.
+3. **Tour d'attaque** (`tour:<niveau>` dans le menu) : posable partout, empreinte = taille du PNG, chantier 10 s. Dès le début du chantier elle est attaquable (PV 500, dégradée comme une palissade).
+4. **Combat** : chaque tour porte 2 archers (gauche/droite) indépendants. Ciblage par demi-espace (`z.x < tour.x` = gauche), zombie le plus proche à portée, cooldown 1 s/côté, flèche = trait noir non-perforant (`type:"fleche", owner:"tour"`), éjectée depuis les 10 % les plus hauts du PNG, passe au-dessus des palissades, ne touche jamais les joueurs.
+5. **Rendu** (`drawTower` dans `src/render.js`) : PNG complet par côté (gauche/droite) découpé en moitiés disjointes au rendu → tirs simultanés sans recouvrement.
+6. **Priorité zombies** : 1) palissade accessible, 2) tour accessible, 3) mairie/joueur.
+7. **Brouillard** : chaque tour construite dégage un rayon de visibilité (`fogRadius`, 300 px) hors ville (`drawFog` multi-sources).
+8. **Destruction** : aucune trace, son `tourCasse` (`assets/sounds/`), aucun remboursement.
+
+Assets attendus (repli sans eux) : `assets/sprites/tour/{idle,chantier,gauche,droite}-N.png`, `assets/sprites/scierie/{idle,chantier}-N.png`, `assets/sounds/tourCasse.mp3`.
 
 ## Specs détaillées par système
 
@@ -142,7 +169,7 @@ Le jeu fonctionne en mode **client-serveur** : un serveur Node.js héberge une *
 |----------|------|
 | `G.netConnect()` | Connexion WebSocket au serveur (auto-détection hôte/port) |
 | `G.netJoin(name)` | Rejoint la partie (envoie `join`) |
-| `G.netInput(input)` | Envoie un input (`dx,dy,fire,build,buildWall,aimX,aimY,pickup,equip,toggleAxe,rotate`) |
+| `G.netInput(input)` | Envoie un input (`dx,dy,fire,build,buildWall,aimX,aimY,pickup,equip,toggleAxe,rotate`, et `techVote`, `buildSel`, `placeBuild` pour la scierie/tours) |
 | `G.netHandle(msg)` | Traite `lobby` / `joined` / `state` / `restart` / `full` |
 | `G.applyRemoteState(s)` | Applique l'état serveur au state local (interpolation position joueur, sac, équipement, planches) |
 | `G.updateLobbyDisplay()` | Affiche le lobby dans le menu d'accueil (heure, joueurs connectés, statut) |
