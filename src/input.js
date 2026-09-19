@@ -33,15 +33,21 @@
   // tir/hache se répète tant que le bouton est enfoncé.
   G.canvas.addEventListener("mousedown", function (e) {
     var state = G.state;
-    if (!state.started || state.paused || state.inBuilding || state.gameOver || state.chestOpen || state.churchOpen) return;
+    if (!state.started || state.paused || state.inBuilding || state.gameOver || state.chestOpen || state.churchOpen || state.buildMenuOpen) return;
     if (e.button === 0) {
       // Clic gauche : action.
       if (state.buildMode) {
-        // En build, le clic gauche pose la planche.
+        // En build, le clic gauche pose le batiment selectionne (palissade,
+        // scierie, tour) ou une planche si aucune selection.
         var rect = G.canvas.getBoundingClientRect();
         var w = G.unproj(e.clientX - rect.left, e.clientY - rect.top);
-        if (G.netConnected && G.netConnected()) state._buildWall = { wx: w[0], wy: w[1] };
-        else G.tryBuildWall(w[0], w[1]);
+        if (state.buildSel && state.buildSel !== "palissade") {
+          if (G.netConnected && G.netConnected()) state._placeBuild = { wx: w[0], wy: w[1] };
+          else G.placeFromBuildMenu(w[0], w[1]);
+        } else {
+          if (G.netConnected && G.netConnected()) state._buildWall = { wx: w[0], wy: w[1] };
+          else G.tryBuildWall(w[0], w[1]);
+        }
         return;
       }
       // On n'arme pas l'action (tir/hache) tant qu'un menu (sac/coffre/eglise)
@@ -71,7 +77,7 @@
   // Clic gauche gère aussi le ramassage d'objets et la mairie (clic simple).
   G.canvas.addEventListener("click", function (e) {
     var state = G.state;
-    if (!state.started || state.paused || state.inBuilding || state.gameOver || state.chestOpen || state.churchOpen) return;
+    if (!state.started || state.paused || state.inBuilding || state.gameOver || state.chestOpen || state.churchOpen || state.buildMenuOpen) return;
     if (state.buildMode) return; // géré par mousedown
     var rect = G.canvas.getBoundingClientRect();
     var sx = e.clientX - rect.left;
@@ -93,6 +99,18 @@
       if (od < 70) {
         var px = p.x - it.x, py = p.y - it.y;
         if (Math.sqrt(px * px + py * py) < 120) {
+          // Pièce d'or : crédit direct au coffre de la mairie (pas de sac).
+          if (it.kind === "or") {
+            if (G.netConnected && G.netConnected()) {
+              G.netInput({ pickup: { x: Math.round(it.x), y: Math.round(it.y) } });
+            } else {
+              it.taken = true;
+              state.mairieGold = (state.mairieGold || 0) + 1;
+              if (G.addFloater) G.addFloater("+1 pièce");
+              G.updateHud();
+            }
+            return;
+          }
           if (G.netConnected && G.netConnected()) {
             G.netInput({ pickup: { x: Math.round(it.x), y: Math.round(it.y) } });
           } else {
@@ -120,6 +138,21 @@
           var pdxc = p.x - cxc, pdyc = p.y - cyc;
           if (Math.sqrt(pdxc * pdxc + pdyc * pdyc) < reachc) {
             G.openChurch();
+            return;
+          }
+        }
+        continue;
+      }
+      if (b.isScierie) {
+        // La scierie est cliquable : ouvre le menu de construction.
+        var clickRs = Math.max(b.w, b.h) / 2 + 10;
+        var cxs = b.x + b.w / 2, cys = b.y + b.h / 2;
+        var ddxs = w[0] - cxs, ddys = w[1] - cys;
+        if (Math.sqrt(ddxs * ddxs + ddys * ddys) < clickRs) {
+          var reachs = clickRs + 60;
+          var pdxs = p.x - cxs, pdys = p.y - cys;
+          if (Math.sqrt(pdxs * pdxs + pdys * pdys) < reachs) {
+            G.openBuildMenu();
             return;
           }
         }
@@ -161,6 +194,7 @@
       state.keys.space = true;
     }
     if (e.code === "Escape") {
+      if (state.started && state.buildMenuOpen) { G.closeBuildMenu(); return; }
       if (state.started && state.churchOpen) { G.closeChurch(); return; }
       if (state.started && state.chestOpen) { G.closeChest(); return; }
       if (state.started && state.bag.open) { state.bag.open = false; return; }
@@ -270,5 +304,6 @@
   G.resumeBtn.addEventListener("click", G.togglePause);
   G.leaveBuildingBtn.addEventListener("click", G.leaveBuilding);
   G.closeChestBtn.addEventListener("click", G.closeChest);
+  if (G.closeBuildMenuBtn) G.closeBuildMenuBtn.addEventListener("click", G.closeBuildMenu);
   if (G.closeChurchBtn) G.closeChurchBtn.addEventListener("click", G.closeChurch);
 })();

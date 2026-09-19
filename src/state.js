@@ -26,9 +26,14 @@
   G.buildingName = document.getElementById("buildingName");
   G.buildingMsg = document.getElementById("buildingMsg");
   G.leaveBuildingBtn = document.getElementById("leaveBuildingBtn");
+  G.buildMenuScreen = document.getElementById("buildMenuScreen");
+  G.buildMenuList = document.getElementById("buildMenuList");
+  G.closeBuildMenuBtn = document.getElementById("closeBuildMenuBtn");
   G.chestScreen = document.getElementById("chestScreen");
   G.chestVault = document.getElementById("chestVault");
   G.chestBag = document.getElementById("chestBag");
+  G.chestGold = document.getElementById("chestGold");
+  G.chestTech = document.getElementById("chestTech");
   G.closeChestBtn = document.getElementById("closeChestBtn");
   G.churchScreen = document.getElementById("churchScreen");
   G.churchVault = document.getElementById("churchVault");
@@ -50,6 +55,14 @@
     inventory: 0,
     planks: 0,
     gold: 0,
+    mairieGold: 0,
+    scierieUnlocked: false,
+    scierie: null,
+    towers: [],
+    buildSel: null,
+    buildMenuOpen: false,
+    vote: null,
+    voteCooldownUntil: 0,
     items: [],
     buildings: [],
     walls: [],

@@ -135,6 +135,71 @@
     state.planks = s.planks || 0;
     state.mairieHp = s.mairieHp;
     state.mairieMaxHp = s.mairieMaxHp;
+    if (s.mairieGold !== undefined) state.mairieGold = s.mairieGold;
+    if (s.scierieUnlocked !== undefined) state.scierieUnlocked = s.scierieUnlocked;
+    // Scierie : le serveur est autorite (position + avancement du chantier).
+    if (s.scierie !== undefined) {
+      if (!s.scierie) {
+        state.scierie = null;
+        // Retire l'eventuel batiment local.
+        for (var sb = 0; sb < state.buildings.length; sb++) {
+          if (state.buildings[sb].isScierie) { state.buildings.splice(sb, 1); break; }
+        }
+      } else {
+        var local = null;
+        for (var sb2 = 0; sb2 < state.buildings.length; sb2++) {
+          if (state.buildings[sb2].isScierie) { local = state.buildings[sb2]; break; }
+        }
+        if (!local) {
+          local = { isScierie: true, isDecor: false, name: "Scierie",
+                    msg: "La scierie permet de construire des tours.",
+                    height: 120, door: { x: s.scierie.x + s.scierie.w / 2, y: s.scierie.y + s.scierie.h } };
+          state.buildings.push(local);
+        }
+        local.x = s.scierie.x; local.y = s.scierie.y;
+        local.w = s.scierie.w; local.h = s.scierie.h;
+        local.chantierDone = s.scierie.chantierDone;
+        state.scierie = local;
+      }
+    }
+    // Tours : recreation depuis le snapshot (le serveur simule le combat).
+    if (s.towers !== undefined) {
+      var kept = [];
+      var byPos = {};
+      for (var ti = 0; ti < s.towers.length; ti++) {
+        byPos[s.towers[ti].x + "," + s.towers[ti].y] = s.towers[ti];
+      }
+      for (var tk = 0; tk < state.towers.length; tk++) {
+        var lt = state.towers[tk];
+        var k = Math.round(lt.x) + "," + Math.round(lt.y);
+        if (byPos[k] !== undefined) {
+          var st2 = byPos[k];
+          lt.hp = st2.hp; lt.maxHp = st2.maxHp;
+          lt.chantierDone = st2.chantierDone;
+          lt.animL = st2.animL; lt.animR = st2.animR;
+          kept.push(lt);
+          delete byPos[k];
+        }
+      }
+      for (var bk in byPos) {
+        if (!byPos.hasOwnProperty(bk)) continue;
+        var nt = byPos[bk];
+        kept.push({ x: nt.x, y: nt.y, w: nt.w, h: nt.h, level: nt.level,
+                    hp: nt.hp, maxHp: nt.maxHp, chantierDone: nt.chantierDone,
+                    animL: nt.animL || 0, animR: nt.animR || 0,
+                    cdL: 0, cdR: 0, isTower: true });
+      }
+      state.towers = kept;
+    }
+    // Vote en cours a la mairie (affichage dans le coffre).
+    if (s.vote !== undefined) {
+      if (!s.vote) { state.vote = null; }
+      else {
+        if (!state.vote) state.vote = { votes: {} };
+        state.vote.proposal = s.vote.proposal;
+        state.vote.endsAt = (state.time || 0) + s.vote.endsAt;
+      }
+    }
     if (s.waveCount !== undefined) state.waveCount = s.waveCount;
     if (s.waveActive !== undefined) state.waveActive = s.waveActive;
     if (s.waveMsgTimer !== undefined) state.waveMsgTimer = s.waveMsgTimer;

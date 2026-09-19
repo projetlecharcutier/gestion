@@ -28,6 +28,7 @@
   load("world.js");
   load("player.js");
   load("walls.js");
+  load("towers.js");
   load("chop.js");
   load("weapons.js");
   load("birds.js");
@@ -61,6 +62,13 @@
       bag: { open: false, contents: [] },
       chest: [],
       chestOpen: false,
+      mairieGold: 0,
+      scierieUnlocked: false,
+      scierie: null,
+      towers: [],
+      buildSel: null,
+      vote: null,
+      voteCooldownUntil: 0,
       equipped: null,
       projectiles: [],
       keys: {},
@@ -189,6 +197,26 @@
     if (input.rotate) G.state.plankRotation = G.state.plankRotation ? 0 : 1;
     if (input.openBag) p._openBag = true;
     if (input.buildWall) p._buildWall = { x: input.buildWall.wx, y: input.buildWall.wy };
+    // Selection dans le menu de construction (scierie) + pose du batiment.
+    if (input.buildSel !== undefined) p._buildSel = input.buildSel;
+    if (input.placeBuild) {
+      p._placeBuild = { x: input.placeBuild.wx, y: input.placeBuild.wy };
+    }
+    // Vote technologique a la mairie : l'initiateur lance, les autres votent.
+    if (input.techVote) {
+      if (input.techVote === "scierie" && !state.scierieUnlocked) {
+        if (!state.vote) {
+          // L'initiateur doit pouvoir payer (planches) et le coffre aussi (or).
+          if ((state.mairieGold || 0) >= G.SCIERIE_COST.gold && (p.planks || 0) >= G.SCIERIE_COST.planks) {
+            G.startVote("scierie", p.id);
+          }
+        } else {
+          // Un clic pendant un vote en cours = vote "pour".
+          G.castVote(p.id, true);
+        }
+      }
+    }
+    if (input.voteYes !== undefined) G.castVote(p.id, !!input.voteYes);
     // Ramassage d'objet au sol (le client envoie les coords de l'item cliqué).
     if (input.pickup) {
       var tx = input.pickup.x, ty = input.pickup.y;
@@ -198,9 +226,15 @@
         if (Math.abs(it.x - tx) < 5 && Math.abs(it.y - ty) < 5) {
           var pdx = p.x - it.x, pdy = p.y - it.y;
           if (Math.sqrt(pdx * pdx + pdy * pdy) < 140) {
-            it.taken = true;
-            p.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });
-            p.inventory = p.bag.contents.length;
+            // Pièce d'or : crédit direct au coffre de la mairie (commun).
+            if (it.kind === "or") {
+              it.taken = true;
+              state.mairieGold = (state.mairieGold || 0) + 1;
+            } else {
+              it.taken = true;
+              p.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });
+              p.inventory = p.bag.contents.length;
+            }
           }
           break;
         }
@@ -215,7 +249,7 @@
       if (ri >= 0) {
         p.bag.contents.splice(ri, 1);
         p.inventory = p.bag.contents.length;
-        p.gold = (p.gold || 0) + 100;
+        state.mairieGold = (state.mairieGold || 0) + 100;
       }
     }
     // Équipement : un seul objet équipé à la fois.
@@ -352,6 +386,18 @@
         p.planks = state.planks;
         p._buildWall = null;
       }
+      // Pose de batiment depuis le menu de la scierie (tour, scierie) :
+      // l'or vient du coffre commun, les planches du joueur.
+      if (p._buildSel !== undefined) state.buildSel = p._buildSel;
+      if (p._placeBuild) {
+        state.player.x = p.x; state.player.y = p.y;
+        state.planks = p.planks || 0;
+        G.placeFromBuildMenu(p._placeBuild.x, p._placeBuild.y);
+        p.x = state.player.x; p.y = state.player.y;
+        p.planks = state.planks;
+        p._placeBuild = null;
+        state.buildSel = null;
+      }
       // Réinitialise les flags d'input consommés.
       p._dx = undefined; p._dy = undefined;
       // Récolte de planches / destruction de palissade à la hache : on swappe
@@ -383,7 +429,23 @@
       state.actionHeld = oldChop.ah;
       // Réinitialise les flags d'input consommés.
       p._dx = undefined; p._dy = undefined;
-      p._fire = false; p._build = false; p._openBag = false;
+      p._fire = false; p._build = false; p._openBag = false; p._buildSel = undefined; p._placeBuild = null;
+    }
+
+    // Chantiers (scierie, tours), combat des tours, votes a la mairie.
+    G.updateBuildSites(dt);
+    G.updateTowers(dt);
+    G.cleanupTowers();
+    if (state.vote) {
+      var voteInitiator = state.vote.initiator;
+      G.resolveVote(alivePlayers(), function (cost) {
+        // Debite les planches du joueur initiateur du vote (or : coffre commun,
+        // deja debite par resolveVote).
+        var init = voteInitiator !== undefined ? findPlayer(voteInitiator) : null;
+        if (!init || (init.planks || 0) < cost) return false;
+        init.planks -= cost;
+        return true;
+      });
     }
 
     // Zombies, projectiles, oiseaux.
@@ -450,6 +512,27 @@
       }),
       mairieHp: mairieHp(),
       mairieMaxHp: G.MAIRIE_MAX_HP,
+      mairieGold: state.mairieGold || 0,
+      scierieUnlocked: !!state.scierieUnlocked,
+      scierie: state.scierie ? {
+        x: Math.round(state.scierie.x), y: Math.round(state.scierie.y),
+        w: Math.round(state.scierie.w), h: Math.round(state.scierie.h),
+        chantierDone: !!state.scierie.chantierDone
+      } : null,
+      towers: state.towers.map(function (t) {
+        return {
+          x: Math.round(t.x), y: Math.round(t.y), w: Math.round(t.w), h: Math.round(t.h),
+          level: t.level, hp: t.hp, maxHp: t.maxHp,
+          chantierDone: !!t.chantierDone,
+          animL: +t.animL.toFixed(2), animR: +t.animR.toFixed(2),
+          buildAge: +(state.time - t.builtAt).toFixed(1)
+        };
+      }),
+      vote: state.vote ? {
+        proposal: state.vote.proposal,
+        endsAt: +(state.vote.endsAt - state.time).toFixed(1),
+        yes: countYesVotes()
+      } : null,
       waveCount: state.waveCount || 0,
       waveActive: state.waveActive || false,
       waveMsgTimer: state.waveMsgTimer || 0,
@@ -460,6 +543,15 @@
         return { x: Math.round(b.x + b.w / 2), y: Math.round(b.y + b.h / 2), stage: b.foretStage || 0 };
       })
     };
+  }
+
+  function countYesVotes() {
+    if (!state.vote) return 0;
+    var n = 0;
+    for (var id in state.vote.votes) {
+      if (state.vote.votes.hasOwnProperty(id) && state.vote.votes[id]) n++;
+    }
+    return n;
   }
 
   function mairieHp() {

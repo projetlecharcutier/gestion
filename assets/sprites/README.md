@@ -18,7 +18,39 @@ assets/sprites/
   zomb/
     alive/                                      # sprites zombies vivants (reserve)
     dead/   deadzomb1.png deadzomb2.png ...    # traces de zombies morts (au sol)
+  tour/      idle.png  chantier.png  gauche.png  droite.png   # tour d'attaque
+  scierie/   idle.png  chantier.png                # scierie
 ```
+
+## Tour d'attaque (`tour/`)
+
+La tour d'attaque a 4 series, chargees automatiquement (repli dessin vectoriel
+si absentes). **Chaque PNG contient la tour entiere** (elle ne pivote pas) :
+
+| Serie | Sens | Contenu |
+|-------|------|---------|
+| `idle.png` | tour construite, inactive | tour + 2 archers immobiles |
+| `chantier.png` | chantier (10 s) | echafaudage, montent au fur et a mesure |
+| `gauche.png` | animation de tir **a gauche** | tour entiere, archer gauche qui tire |
+| `droite.png` | animation de tir **a droite** | tour entiere, archer droite qui tire |
+
+Les series s'animent avec la convention habituelle : `idle-0.png`, `idle-1.png`,
+... (idle : 4 fps, chantier : 8 fps, tir : duree fixe). Les projectiles
+(fleches) sont **ejectes depuis les 10 % les plus hauts** du PNG : garde les
+archers en haut du dessin.
+
+Les animations `gauche` et `droite` peuvent se jouer **en meme temps** : le
+jeu decoupe chaque PNG complet en **moities gauche/droite disjointes** au
+rendu, l'une sur l'autre, donc aucun recouvrement. Les deux series doivent
+donc representer la **meme tour, au meme pixel pres** (meme taille de PNG),
+seuls les archers different. L'empreinte de pose de la tour = taille du PNG
+(dans le doute : 96x128, cf. manifeste `src/assets.js`).
+
+## Scierie (`scierie/`)
+
+Batiment unique debloquable a la mairie. Deux series animees : `idle.png`
+(batiment construit) et `chantier.png` (construction). Emprise au sol
+definie par `SCIERIE_SIDE` (`src/config.js`), pas par la taille du PNG.
 
 ## Traces de zombies morts (`zomb/dead/`)
 

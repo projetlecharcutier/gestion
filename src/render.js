@@ -203,6 +203,12 @@
     else if (b.isDecor && b.houseSprite) sprite = b.houseSprite;
     else if (b.isMairie && G.hasSprite("building", "mairie")) { sprite = G.SPRITES.building.mairie; spriteEnt = "building"; spriteKey = "mairie"; }
     else if (b.isChurch && G.hasSprite("church", "church")) { sprite = G.SPRITES.church.church; spriteEnt = "church"; spriteKey = "church"; }
+    else if (b.isScierie) {
+      // Scierie : frame chantier pendant la construction, idle ensuite.
+      var scKey = b.chantierDone ? "idle" : "chantier";
+      if (G.hasSprite("scierie", scKey)) { sprite = G.SPRITES.scierie[scKey]; spriteEnt = "scierie"; spriteKey = scKey; }
+      else if (G.hasSprite("scierie", "idle")) { sprite = G.SPRITES.scierie.idle; spriteEnt = "scierie"; spriteKey = "idle"; }
+    }
     else if (G.hasSprite("building", "generic")) { sprite = G.SPRITES.building.generic; spriteEnt = "building"; spriteKey = "generic"; }
     if (sprite) {
       var losangeW = (b.w + b.h) * 0.5 * z;
@@ -443,6 +449,26 @@
 
                 ctx.restore();
             }
+            // Flèche de tour : petit trait noir orienté (pas une boule).
+            else if (pr.type === "fleche") {
+                ctx.save();
+                ctx.translate(h[0], h[1]);
+                ctx.rotate(Math.atan2(pr.vy, pr.vx));
+                ctx.strokeStyle = "#111111";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(-6, 0);
+                ctx.lineTo(6, 0);
+                ctx.stroke();
+                ctx.fillStyle = "#111111";
+                ctx.beginPath();
+                ctx.moveTo(6, 0);
+                ctx.lineTo(2, -2);
+                ctx.lineTo(2, 2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
             // Sinon, affichage standard en rond (pour pistolet, fusil, etc.)
             else {
                 var rad = pr.size !== undefined ? pr.size : (t.sizeBase + (pr.dmg || 1) * t.sizePerDmg);
@@ -458,24 +484,48 @@
         ctx.globalAlpha = 1;
     };
 
+  // Brouillard multi-sources : le joueur + chaque tour construite dégagent
+  // une zone de visibilité (union des dégradés radiaux). Uniquement hors
+  // ville (la ville est toujours visible). Le joueur "se sent en sécurité"
+  // à proximité d'une tour, même hors les murs.
   G.drawFog = function () {
     var ctx = G.ctx;
-    var p = G.state.player;
-    if (G.inTown(p.x, p.y)) return;
-    var t = G.TEXTURES.fog;
-    var s = G.proj(p.x, p.y);
-    var z = G.state.zoom;
-    var rx = G.FOG_RADIUS * 0.5 * z * 2;
-    var ry = G.FOG_RADIUS * 0.25 * z * 2;
+    var state = G.state;
+    var p = state.player;
     var W = G.canvas.width / (window.devicePixelRatio || 1);
     var H = G.canvas.height / (window.devicePixelRatio || 1);
-    var grad = ctx.createRadialGradient(s[0], s[1], Math.min(rx, ry) * 0.5, s[0], s[1], Math.max(rx, ry) * 1.3);
-    for (var i = 0; i < t.stops.length; i++) {
-      grad.addColorStop(t.stops[i].at, "rgba(" + t.color + "," + t.stops[i].alpha + ")");
+    // Sources : joueur (rayon FOG_RADIUS) + tours construites (fogRadius).
+    var sources = [];
+    if (!G.inTown(p.x, p.y)) sources.push({ x: p.x, y: p.y, r: G.FOG_RADIUS });
+    var towers = state.towers || [];
+    for (var ti = 0; ti < towers.length; ti++) {
+      var tw = towers[ti];
+      if (!tw.chantierDone) continue;
+      var stats = G.TOWER_STATS[tw.level] || G.TOWER_STATS.bois;
+      sources.push({ x: tw.x + tw.w / 2, y: tw.y + tw.h / 2, r: stats.fogRadius });
     }
+    if (sources.length === 0) return;
+    var t = G.TEXTURES.fog;
+    var z = state.zoom;
+    // Le brouillard ne se dessine que si le joueur est hors ville (les tours
+    // ne dégagent que si le brouillard est actif).
+    if (G.inTown(p.x, p.y)) return;
     ctx.save();
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
+    for (var si = 0; si < sources.length; si++) {
+      var src = sources[si];
+      var s = G.proj(src.x, src.y);
+      var rx = src.r * 0.5 * z * 2;
+      var ry = src.r * 0.25 * z * 2;
+      var grad = ctx.createRadialGradient(s[0], s[1], Math.min(rx, ry) * 0.5, s[0], s[1], Math.max(rx, ry) * 1.3);
+      for (var i = 0; i < t.stops.length; i++) {
+        grad.addColorStop(t.stops[i].at, "rgba(" + t.color + "," + t.stops[i].alpha + ")");
+      }
+      // Composite : chaque dégradé "trou" le brouillard par-dessus le
+      // précédent (les zones dégagées fusionnent en union).
+      ctx.globalCompositeOperation = si === 0 ? "source-over" : "source-over";
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+    }
     ctx.restore();
   };
 
@@ -495,6 +545,79 @@
     ctx.moveTo(s[0], s[1] + t.gap); ctx.lineTo(s[0], s[1] + t.tick);
     ctx.stroke();
     ctx.restore();
+  };
+
+  // Tour d'attaque : rendu en 4 couches (cf. docs/towers.md) —
+  // 1. chantier (boucle) pendant TOWER_BUILD_TIME secondes,
+  // 2. idle (boucle lente) une fois construite,
+  // 3. overlay tir gauche (MOITIE GAUCHE du PNG seulement, pour que les tirs
+  //    simultanes gauche/droite ne se recouvrent pas),
+  // 4. overlay tir droite (moitie droite).
+  // Les overlays sont des PNG complets de la tour : on restreint le rect
+  // source a la moitie concernee. Ancrage identique a la base (bas-centre sur
+  // le bord sud du losange au sol), donc aucune couture possible.
+  G.drawTower = function (t) {
+    var ctx = G.ctx;
+    var z = G.state.zoom;
+    var stats = G.TOWER_STATS[t.level] || G.TOWER_STATS.bois;
+    var A = G.proj(t.x, t.y), C = G.proj(t.x + t.w, t.y + t.h);
+    var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
+    var groundY = Math.max(G.proj(t.x, t.y + t.h)[1], C[1]);
+
+    // Base : chantier ou idle (meme ancrage, memes dimensions).
+    var baseKey = t.chantierDone ? "idle" : "chantier";
+    var base = G.hasSprite("tour", baseKey) ? G.SPRITES.tour[baseKey] : null;
+    if (!base) base = G.hasSprite("tour", "idle") ? G.SPRITES.tour.idle : null;
+    var dw = (t.w + t.h) * 0.5 * z, dh = 0, dx = cx - dw / 2, dy = groundY;
+    if (base) {
+      dh = dw * base.h / base.w;
+      dy = groundY - dh;
+      var fps = t.chantierDone ? (stats.idleFps || 4) : (stats.chantierFps || 8);
+      var img = base;
+      if (base.frames && base.frames.length > 0) {
+        var fi = Math.floor((G.state.time || 0) * fps) % base.frames.length;
+        img = { img: base.frames[fi], w: base.w, h: base.h };
+      } else {
+        img = base.img ? base : { img: base, w: base.w, h: base.h };
+      }
+      ctx.drawImage(img.img || img, dx, dy, dw, dh);
+    } else {
+      // Repli sans PNG : boite iso simple.
+      dh = t.h * 2 * z;
+      dy = groundY - dh;
+      ctx.fillStyle = "#7c5a3a";
+      ctx.fillRect(cx - dw * 0.15, dy, dw * 0.3, dh);
+    }
+
+    // Overlays de tir : moitie gauche (gauche) / moitie droite (droite).
+    // frame index depuis le timer d'anim restant (animDur -> 0).
+    function drawHalf(sideKey, animT, sx0, sx1) {
+      if (animT <= 0) return;
+      var sp = G.hasSprite("tour", sideKey) ? G.SPRITES.tour[sideKey] : null;
+      if (!sp || !sp.frames || sp.frames.length === 0) return;
+      var elapsed = (stats.animDur || 0.5) - animT;
+      var fi = Math.floor(elapsed * (sp.frames.length / (stats.animDur || 0.5)));
+      if (fi >= sp.frames.length) fi = sp.frames.length - 1;
+      var img = sp.frames[fi];
+      var sh = dh * sp.h / base.h;
+      var sw = sp.w * (sx1 - sx0);
+      ctx.drawImage(img, sx0 * sp.w, 0, sw, sp.h, dx + sx0 * dw, groundY - sh, dw * (sx1 - sx0), sh);
+    }
+    if (base) {
+      drawHalf("gauche", t.animL || 0, 0, 0.5);
+      drawHalf("droite", t.animR || 0, 0.5, 1);
+    }
+
+    // Barre de vie (uniquement si endommagee).
+    if (t.hp < t.maxHp) {
+      var ratio = Math.max(0, t.hp / t.maxHp);
+      var bw = Math.max(30, dw * 0.5);
+      var bby = groundY - dh - 6;
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.fillRect(cx - bw / 2 - 1, bby - 1, bw + 2, 5);
+      ctx.fillStyle = ratio < 0.3 ? "#ef4444" : "#22c55e";
+      ctx.fillRect(cx - bw / 2, bby, bw * ratio, 3);
+    }
   };
 
   G.drawWall = function (m) {
@@ -743,6 +866,11 @@
       var m = state.walls[wi];
       drawables.push({ depth: m.x + m.y, type: "wall", ref: m });
     }
+    for (var ti = 0; ti < (state.towers || []).length; ti++) {
+      var tw = state.towers[ti];
+      if (tw.x + tw.w < bnds.minX || tw.x > bnds.maxX || tw.y + tw.h < bnds.minY || tw.y > bnds.maxY) continue;
+      drawables.push({ depth: tw.x + tw.y, type: "tower", ref: tw });
+    }
     for (var zi = 0; zi < state.zombies.length; zi++) {
       var zb = state.zombies[zi];
       if (zb.x < bnds.minX || zb.x > bnds.maxX || zb.y < bnds.minY || zb.y > bnds.maxY) continue;
@@ -773,6 +901,7 @@
       }
       if (d.type === "building") G.drawBuilding(d.ref);
       else if (d.type === "wall") G.drawWall(d.ref);
+      else if (d.type === "tower") G.drawTower(d.ref);
       else if (d.type === "zombie") G.drawZombie(d.ref);
       else if (d.type === "bird") G.drawBird(d.ref);
       else if (d.type === "player") G.drawRemotePlayer(d.ref);

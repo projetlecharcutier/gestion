@@ -626,6 +626,17 @@
       { x: c - 1400, y: G.TOWN_MAX + 1200, taken: false, name: "Hache", color: "#b45309", kind: "outil" }
     ];
 
+    // Pièces d'or initiales : GOLD_ITEMS_START pièces pré-posées hors ville
+    // (récolte → coffre de la mairie), éloignées des bâtiments.
+    for (var gi = 0; gi < G.GOLD_ITEMS_START; gi++) {
+      var gx, gy, tries = 0;
+      do {
+        gx = Math.random() < 0.5 ? G.rand(60, G.TOWN_MIN - 80) : G.rand(G.TOWN_MAX + 80, G.WORLD - 60);
+        gy = Math.random() < 0.5 ? G.rand(60, G.TOWN_MIN - 80) : G.rand(G.TOWN_MAX + 80, G.WORLD - 60);
+      } while (G.nearBuilding(gx, gy, 40) && ++tries < 20);
+      state.items.push({ x: gx, y: gy, taken: false, name: "Pièce", color: "#fbbf24", kind: "or" });
+    }
+
     // Forêts : mêmes règles de distribution que l'ancien système d'arbres
     // (clusters de 1 à 10, ~5 en ville, 2400 hors ville, 5 en lisière), mais
     // comme bâtiments (isForet) avec collision identique aux bâtiments.
