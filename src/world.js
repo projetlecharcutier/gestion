@@ -156,6 +156,23 @@
     if (regrowSolid && G.ensureForetConnectivity) G.ensureForetConnectivity();
   };
 
+  // Repopulation nocturne des reliques : RELIQUES_PER_NIGHT nouvelles reliques
+  // apparaissent hors de la ville a chaque nouveau jour (elles restent
+  // ramassables tant que personne ne les prend). Evite les batiments pour ne
+  // pas apparaitre dans une maison/foret.
+  G.spawnNightReliques = function () {
+    var state = G.state;
+    if (!state || !state.items) return;
+    for (var i = 0; i < G.RELIQUES_PER_NIGHT; i++) {
+      var rx, ry, tries = 0;
+      do {
+        rx = Math.random() < 0.5 ? G.rand(60, G.TOWN_MIN - 80) : G.rand(G.TOWN_MAX + 80, G.WORLD - 60);
+        ry = Math.random() < 0.5 ? G.rand(60, G.TOWN_MIN - 80) : G.rand(G.TOWN_MAX + 80, G.WORLD - 60);
+      } while (G.nearBuilding(rx, ry, 40) && ++tries < 20);
+      state.items.push({ x: rx, y: ry, taken: false, name: "Relique", color: "#a855f7", kind: "objet" });
+    }
+  };
+
   // Grille spatiale des bâtiments (forêts + maisons + mairie) pour des
   // collisions en O(1) avec plusieurs milliers de forêts. Construite après
   // buildWorld() via rebuildBuildingGrid().

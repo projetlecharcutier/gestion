@@ -281,6 +281,16 @@
     var state = G.state;
     if (index < 0 || index >= state.bag.contents.length) return;
     var it = state.bag.contents[index];
+    // En ligne, le coffre est autorite serveur : on envoie l'objet (nom+type)
+    // et le snapshot met a jour sac + coffre. Le retrait local optimiste
+    // evite le double-affichage pendant l'aller-retour.
+    if (G.netConnected && G.netConnected()) {
+      G.netInput({ chestDeposit: { name: it.name, kind: it.kind } });
+      state.bag.contents.splice(index, 1);
+      state.inventory = state.bag.contents.length;
+      G.drawChest();
+      return;
+    }
     // Déséquipe si on dépose l'arme équipée ou la hache.
     if (it.kind === "arme" && state.equipped === it.name) state.equipped = null;
     if (it.kind === "outil" && it.name === "Hache") state.axeEquipped = false;
@@ -296,6 +306,13 @@
     var state = G.state;
     if (index < 0 || index >= state.chest.length) return;
     var it = state.chest[index];
+    // En ligne, le coffre est autorite serveur (index dans le coffre serveur).
+    if (G.netConnected && G.netConnected()) {
+      G.netInput({ chestWithdraw: index });
+      state.chest.splice(index, 1);
+      G.drawChest();
+      return;
+    }
     state.bag.contents.push(it);
     state.inventory = state.bag.contents.length;
     state.chest.splice(index, 1);

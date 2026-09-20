@@ -1042,8 +1042,6 @@
     // Traces de zombies morts : tout en bas, derriere tout sauf le fond.
     G.drawDeadTraces();
 
-    for (var i = 0; i < state.items.length; i++) G.drawItem(state.items[i]);
-
     var drawables = [];
     var bnds = G.visibleWorldBounds();
     for (var bi = 0; bi < state.buildings.length; bi++) {
@@ -1111,6 +1109,10 @@
       else if (d.type === "player") G.drawRemotePlayer(d.ref);
     }
     if (!drewPlayer) { G.drawPlayer(); G.drawPlayerHpBar(); }
+    // Objets au sol : dessines APRES la passe triee, au-dessus des batiments
+    // et des forets — un objet ne doit jamais etre cache par une maison ou un
+    // arbre (il reste toujours visible/ramassable).
+    for (var ii = 0; ii < state.items.length; ii++) G.drawItem(state.items[ii]);
 
     // Montgolfiere : au premier plan, apres le joueur et les zombies. Le
     // ballon (moitie haute du PNG) n'a aucune collision : un joueur qui passe

@@ -170,7 +170,10 @@
   // final (s4) la forêt n'est plus récoltable et devient traversable. Chaque
   // jour écoulé, la forêt regagne un état (remonte vers s0), sauf à s0.
   G.FORET_STAGES = 5;
-  G.FORET_PLANKS_PER_CHOP = 4;
+  G.FORET_PLANKS_PER_CHOP = 5;
+  // Reliques : 5 nouvelles reliques apparaissent hors ville a chaque nouveau
+  // jour (repop nocturne).
+  G.RELIQUES_PER_NIGHT = 5;
   // Rendu : biais de profondeur par état de coupe — une forêt coupée (stage
   // > 0) se dessine derriere ses voisines pleines (s0). Voir render().
   G.FORET_DEPTH_BIAS = 260;

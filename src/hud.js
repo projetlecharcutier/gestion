@@ -22,6 +22,16 @@
       for (var i = 0; i < state.buildings.length; i++) { if (state.buildings[i].isMairie) { mairie = state.buildings[i]; break; } }
       G.hudMairie.textContent = mairie ? String(Math.round(mairie.hp)) : "—";
     }
+    // Coffre ouvert avec un vote en cours : le decompte affiche dans la
+    // section Technologies doit avancer en temps reel (redessine seulement
+    // quand la seconde affichee change, pas a chaque frame).
+    if (state.chestOpen && state.vote && G.drawChest) {
+      var secLeft = Math.max(0, Math.ceil((state.vote.endsAt || 0) - state.time));
+      if (secLeft !== state._lastVoteSecShown) {
+        state._lastVoteSecShown = secLeft;
+        G.drawChest();
+      }
+    }
   };
 
   G.drawClock = function () {

@@ -253,6 +253,30 @@
       }
     }
     // Dépot de relique à l'église : +100 pièces d'or si une relique est dans le sac.
+    // Coffre de la mairie (partage entre joueurs) : depot d'un objet du sac
+    // (nom + type, le premier exemplaire) ou retrait (index dans le coffre).
+    // Identifie l'objet par nom+kind : le client affiche des groupes, l'index
+    // affiche change a chaque snapshot — le nom est stable.
+    if (input.chestDeposit) {
+      var dn = input.chestDeposit.name, dk = input.chestDeposit.kind;
+      var di = -1;
+      for (var dci = 0; dci < p.bag.contents.length; dci++) {
+        if (p.bag.contents[dci].name === dn && p.bag.contents[dci].kind === dk) { di = dci; break; }
+      }
+      if (di >= 0) {
+        var dit = p.bag.contents.splice(di, 1)[0];
+        state.chest.push(dit);
+        p.inventory = p.bag.contents.length;
+      }
+    }
+    if (input.chestWithdraw !== undefined) {
+      var wi = input.chestWithdraw;
+      if (wi >= 0 && wi < state.chest.length) {
+        var wit = state.chest.splice(wi, 1)[0];
+        p.bag.contents.push(wit);
+        p.inventory = p.bag.contents.length;
+      }
+    }
     if (input.churchDeposit) {
       var ri = -1;
       for (var ci = 0; ci < p.bag.contents.length; ci++) {
@@ -324,6 +348,7 @@
     // d'un état de coupe (vers s0 = pleine). Une forêt déjà à s0 ne change pas.
     if (state.day !== state.lastDay) {
       G.regenForets();
+      G.spawnNightReliques();
       state.lastDay = state.day;
     }
 
@@ -553,6 +578,7 @@
       mairieHp: mairieHp(),
       mairieMaxHp: G.MAIRIE_MAX_HP,
       mairieGold: state.mairieGold || 0,
+      chest: state.chest,
       scierieUnlocked: !!state.scierieUnlocked,
       universiteUnlocked: !!state.universiteUnlocked,
       montgolfiereUnlocked: !!state.montgolfiereUnlocked,

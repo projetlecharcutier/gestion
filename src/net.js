@@ -170,6 +170,10 @@
     state.mairieHp = s.mairieHp;
     state.mairieMaxHp = s.mairieMaxHp;
     if (s.mairieGold !== undefined) state.mairieGold = s.mairieGold;
+    // Coffre de la mairie partage (autorite serveur) : sans cette sync, un
+    // depot en ligne serait efface au snapshot suivant (le coffre local est
+    // remplace) et l'objet serait perdu.
+    if (s.chest !== undefined) state.chest = s.chest;
     // Batiments de ville (scierie, universite, montgolfiere...) : le serveur
     // est autorite (tech debloquee, position, avancement du chantier).
     if (G.TOWN_BUILDINGS) {
@@ -240,13 +244,23 @@
     }
     // Vote en cours a la mairie (affichage dans le coffre).
     if (s.vote !== undefined) {
+      // Detecte la fin d'un vote (actif -> null) pour rafraichir le coffre
+      // (le bouton redevient un achat/le statut passe a debloque).
+      var hadVote = !!state.vote;
       if (!s.vote) { state.vote = null; }
       else {
         if (!state.vote) state.vote = { votes: {} };
         state.vote.proposal = s.vote.proposal;
         state.vote.endsAt = (state.time || 0) + s.vote.endsAt;
       }
+      if (hadVote && !state.vote && state.chestOpen && G.drawChest) G.drawChest();
     }
+    // Deblocages de technologies de ville (vote passe cote serveur) : sans
+    // cette sync, le coffre continuerait d'afficher le bouton d'achat apres
+    // un vote reussi (le client ne saurait jamais que la tech est debloquee).
+    if (s.scierieUnlocked !== undefined) state.scierieUnlocked = !!s.scierieUnlocked;
+    if (s.universiteUnlocked !== undefined) state.universiteUnlocked = !!s.universiteUnlocked;
+    if (s.montgolfiereUnlocked !== undefined) state.montgolfiereUnlocked = !!s.montgolfiereUnlocked;
     if (s.waveCount !== undefined) state.waveCount = s.waveCount;
     if (s.zombieRamp !== undefined) state.zombieRamp = s.zombieRamp;
     if (s.waveActive !== undefined) state.waveActive = s.waveActive;
@@ -419,8 +433,12 @@
         var p2 = function (n) { return (n < 10 ? "0" : "") + n; };
         updated = "<div class=\"lobby__updated\">Dernière mise à jour : " +
           p2(d.getDate()) + "/" + p2(d.getMonth() + 1) + "/" + d.getFullYear() +
-          " " + p2(d.getHours()) + ":" + p2(d.getMinutes()) + "</div>";
+          " " + p2(d.getHours()) + ":" + p2(d.getMinutes()) +
+          (info.version ? " · v" + info.version : "") + "</div>";
       }
+    }
+    if (!updated && info.version) {
+      updated = "<div class=\"lobby__updated\">Version : v" + info.version + "</div>";
     }
     el.innerHTML =
       "<div class=\"lobby__info\">" +

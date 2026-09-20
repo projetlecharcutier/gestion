@@ -19,9 +19,11 @@
   // (le serveur est un clone mis a jour par update.sh). Repli : date de
   // modification de index.html si git n'est pas disponible.
   var updatedAt = null;
+  var version = null; // code de commit court (ex. 3b12130)
   try {
     var execSync = require("child_process").execSync;
     updatedAt = execSync("git log -1 --format=%cI", { cwd: __dirname, encoding: "utf8" }).trim();
+    version = execSync("git log -1 --format=%h", { cwd: __dirname, encoding: "utf8" }).trim();
   } catch (e) {}
   if (!updatedAt) {
     try {
@@ -57,7 +59,7 @@
     // Version deployee (affichee dans le menu d'accueil du client).
     if (url === "/version.json") {
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify({ updatedAt: updatedAt }));
+      res.end(JSON.stringify({ updatedAt: updatedAt, version: version }));
       return;
     }
     // Sécurité : empêche de remonter hors de WEB_ROOT.
@@ -75,7 +77,13 @@
         return;
       }
       var ext = path.extname(filePath).toLowerCase();
-      res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
+      // Anti-cache : le client doit toujours recharger la version deployee
+      // (update.sh deploye un nouveau main sans changer les noms de fichier).
+      var headers = { "Content-Type": MIME[ext] || "application/octet-stream" };
+      if (ext === ".html" || ext === ".js" || ext === ".json") {
+        headers["Cache-Control"] = "no-cache";
+      }
+      res.writeHead(200, headers);
       res.end(data);
     });
   });
@@ -124,6 +132,7 @@
       lobbyAcc = 0;
       var lobby = game.lobbySnapshot();
       lobby.updatedAt = updatedAt;
+      lobby.version = version;
       broadcast(lobby);
     }
 
