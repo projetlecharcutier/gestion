@@ -32,6 +32,24 @@
     return fi;
   };
 
+  // Indice de frame de l'animation de la montgolfiere : ne se joue qu'au clic
+  // du joueur (b.animStart), UN seul tour complet sur MONTGOLFIERE_ANIM_TIME,
+  // figée sur la dernière frame ensuite. Renvoie -1 si aucune animation
+  // n'est en cours (rendu : image statique idle.png).
+  G.montgolfiereAnimFrame = function (b, now) {
+    if (!b || b.animStart === undefined || b.animStart === null) return -1;
+    var dur = G.MONTGOLFIERE_ANIM_TIME || 4;
+    var p = ((now || 0) - b.animStart) / dur;
+    if (p < 0) p = 0;
+    var sp = (G.hasSprite && G.hasSprite("montgolfiere", "idle")) ? G.SPRITES.montgolfiere.idle : null;
+    var n = (sp && sp.frames) ? sp.frames.length : 0;
+    if (n <= 1) return -1;
+    if (p >= 1) return n - 1;
+    var fi = Math.floor(p * n);
+    if (fi > n - 1) fi = n - 1;
+    return fi;
+  };
+
   // Crée le bâtiment de ville `id` du registre TOWN_BUILDINGS (unique) à la
   // position cliquée. Même modèle pour tous : emprise carrée `side`, posé
   // dans state[def.stateField] + state.buildings, chantier puis chantierDone.

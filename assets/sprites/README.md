@@ -57,8 +57,12 @@ frames `chantier-0.png`, `chantier-1.png`... jouees en un seul tour sur les
 
 - `scierie/` : ouvre la construction des tours.
 - `universite/` : placeholder pour de futures ameliorations.
-- `montgolfiere/` : centre de decollage — au clic, annonce le volume et la
-  direction de la prochaine vague de zombies.
+- `montgolfiere/` : centre de decollage — au clic, l'animation `idle-0..N`
+  se joue une fois (4 s) puis un message au-dessus du batiment annonce le
+  volume et la direction de la prochaine vague de zombies. Le ballon est
+  dessine au premier plan (couvre le joueur) et seule la moitie basse du
+  PNG (emprise sol) est en collision. Les frames d'une serie peuvent avoir
+  des hauteurs differentes (ballon qui gonfle) : ancrage par le bas.
 
 ## Traces de zombies morts (`zomb/dead/`)
 

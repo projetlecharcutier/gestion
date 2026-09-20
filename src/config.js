@@ -208,8 +208,11 @@
   // automatiquement.
   //  - scierie   : ouvre la construction des tours (batiment modele).
   //  - universite : placeholder pret a recevoir de futures ameliorations.
-  //  - montgolfiere : au clic, indique le volume et la direction de la
-  //    prochaine vague (schéma pre-tire, cf. pendingWave dans zombies.js).
+  //  - montgolfiere : au clic, l'animation idle se joue une fois (4 s) puis
+  //    un message au-dessus du bâtiment annonce le volume et la direction de
+  //    la prochaine vague (schéma pre-tire, cf. pendingWave dans zombies.js).
+  //    Le ballon (moitié haute du PNG) n'a aucune collision et se dessine au
+  //    premier plan : le joueur qui passe dessus est caché.
   G.TOWN_BUILDINGS = {
     scierie: {
       label: "Scierie",
@@ -251,6 +254,10 @@
   // metal...) est une nouvelle entree : menu, combat et rendu la prennent en
   // compte automatiquement.
   G.TOWER_BUILD_TIME = 10; // duree du chantier (s), scierie et tours
+  // Montgolfiere : l'animation idle ne se joue qu'au clic du joueur, une
+  // seule fois, sur cette duree (s). A la fin, le message d'annonce de vague
+  // s'affiche au-dessus du batiment.
+  G.MONTGOLFIERE_ANIM_TIME = 4;
   G.TOWER_STATS = {
     bois: {
       label: "Tour en bois",

@@ -84,7 +84,8 @@ Nomenclature (sondage auto des frames `-0.png, -1.png…`, cf. README assets) :
 | `tour/droite-0..N.png` | overlay tir droite — idem, **moitié droite** |
 | `scierie/idle.png`, `scierie/chantier.png` | scierie construite / en chantier |
 | `universite/idle.png`, `universite/chantier.png` | université construite / en chantier |
-| `montgolfiere/idle.png`, `montgolfiere/chantier.png` | montgolfière construite / en chantier |
+| `montgolfiere/idle-0..N.png` | ballon au repos (`idle.png`) ; **au clic** sur le bâtiment, la série se joue en **un seul tour de 4 s** puis un message annonce la vague au-dessus du bâtiment |
+| `montgolfiere/chantier-0..N.png` | construction (un seul tour sur `TOWER_BUILD_TIME`) |
 
 Règles de dessin :
 - Toutes les frames d'une même série ont **exactement les mêmes dimensions**.
@@ -94,6 +95,26 @@ Règles de dessin :
   hauts** de la tour.
 - Tour détruite : aucune trace, **son** dédié (`assets/sounds/tourCasse.mp3`).
 
+### Montgolfière (rendu et interaction spécifiques)
+
+- **Premier plan** : le PNG est dessiné APRÈS le joueur (`drawMontgolfiereTop`
+  dans `render.js`) — un joueur qui passe « derrière » le ballon est caché.
+- **Collision réduite** : seule l'emprise sol (moitié BASSE du PNG, là o¹
+  s'ancre le losange) est solide pour le joueur ; le ballon (moitié haute)
+  n'entre en collision avec rien.
+- **Animation au clic uniquement** : `idle.png` statique au repos ; au clic
+  (bâtiment construit, rayon de clic standard), la série `idle-0..N` se joue
+  en un seul tour sur `MONTGOLFIERE_ANIM_TIME` (4 s), figée sur la dernière
+  frame ensuite.
+- **Message d'annonce** : à la fin de l'animation, un texte de 6 s
+  s'affiche au-dessus du ballon — volume de la prochaine horde, directions
+  (nord/sud/ouest/est, pré-tirage `pendingWave`) et montée en difficulté
+  éventuelle (+X% dégâts/PV/vitesse au plafond de 5000 zombies).
+- Les frames d'une même série peuvent avoir des **hauteurs différentes**
+  (le ballon gonfle) : chaque image est ancrée par le BAS sur le bord sud
+  du losange et mise à l'échelle de sa propre hauteur.
+- Multijoueur : effet visuel local — `pendingWave` est déjà synchronisé
+  par le serveur, chaque client voit l'animation de son propre clic.
 ## 6. Rendu des tours (ordre par frame)
 
 1. En chantier : draw `chantier` (frame = progression du chantier, **un seul

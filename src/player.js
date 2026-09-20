@@ -141,38 +141,52 @@
     if (G.churchScreen) G.churchScreen.hidden = true;
   };
 
-  // Centre de decollage de montgolfiere : affiche le volume et la direction
-  // de la prochaine vague (pre-tiree le matin, cf. rollWave dans zombies.js).
-  G.openMontgolfiere = function () {
+  // Centre de decollage de montgolfiere : le clic lance l'animation idle (un
+  // seul tour, cf. montgolfiereAnimFrame) ; a la fin, un message au-dessus du
+  // batiment annonce la prochaine vague (volume, directions, montee en
+  // difficulte). Pas d'ecran DOM : tout se passe sur la carte, le ballon est
+  // dessine au premier plan (cf. render.js).
+  G.triggerMontgolfiere = function (b) {
     var state = G.state;
-    state.paused = false;
-    G.pauseScreen.hidden = true;
-    G.drawMontgolfiere();
-    if (G.montgolfiereScreen) G.montgolfiereScreen.hidden = false;
+    if (!b || !b.chantierDone) return;
+    var dur = G.MONTGOLFIERE_ANIM_TIME || 4;
+    if (b.animStart !== undefined && (state.time - b.animStart) < dur) return;
+    b.animStart = state.time;
   };
 
-  G.closeMontgolfiere = function () {
-    if (G.montgolfiereScreen) G.montgolfiereScreen.hidden = true;
-  };
-
-  var SIDE_NAMES = ["nord", "sud", "ouest", "est"];
-
-  G.drawMontgolfiere = function () {
-    var info = G.montgolfiereInfo;
-    if (!info) return;
+  // Message d'annonce de la prochaine vague, affiche au-dessus du batiment
+  // pendant MONTGOLFIERE_MSG_TIME secondes apres l'animation. Renvoie un
+  // tableau de lignes, ou null si le message n'est pas actif.
+  G.MONTGOLFIERE_MSG_TIME = 6;
+  G.montgolfiereWaveMessage = function (b, now) {
+    if (!b || b.animStart === undefined || b.animStart === null) return null;
+    var t = (now || 0) - b.animStart;
+    var startAt = (G.MONTGOLFIERE_ANIM_TIME || 4);
+    if (t < startAt || t > startAt + G.MONTGOLFIERE_MSG_TIME) return null;
     var pw = G.state.pendingWave;
-    if (!pw) {
-      info.textContent = "Aucune observation pour le moment.";
-      return;
+    if (!pw) return null;
+    var dirNames = { 0: "du nord", 1: "du sud", 2: "de l'ouest", 3: "de l'est" };
+    var names = [];
+    for (var i = 0; i < pw.sides.length; i++) {
+      names.push(dirNames[pw.sides[i]] || "?");
     }
-    var dirTxt = pw.sides.map(function (s) { return SIDE_NAMES[s] || "?"; }).join(", ");
-    info.innerHTML = "";
-    var p1 = document.createElement("p");
-    p1.textContent = "Prochaine horde : " + pw.count + " zombies";
-    var p2 = document.createElement("p");
-    p2.textContent = "Arrivée : " + (pw.sides.length === 4 ? "de toutes parts" : (pw.sides.length === 1 ? "du " + dirTxt : "du " + dirTxt + " (tenaille)"));
-    info.appendChild(p1);
-    info.appendChild(p2);
+    var lines = [];
+    var dirTxt = pw.sides.length === 4 ? "de toutes parts"
+      : names.join(" et ");
+    lines.push("Prochaine horde : " + pw.count + " zombies");
+    lines.push("Arrivée : " + dirTxt);
+    // Montee en difficulte : chaque nuit au plafond ZOMBIE_WAVE_MAX monte les
+    // degats/s, les PV et la vitesse de +10% (capes a +50%).
+    var rampNights = 0;
+    if (G.ZOMBIE_WAVE_MAX && (pw.rawCount || pw.count) > G.ZOMBIE_WAVE_MAX) {
+      var overNights = Math.ceil(((pw.rawCount || pw.count) - G.ZOMBIE_WAVE_MAX) / G.ZOMBIE_WAVE_MAX);
+      rampNights = Math.min(overNights, Math.ceil(G.ZOMBIE_RAMP_MAX / G.ZOMBIE_RAMP_STEP));
+    }
+    if (rampNights > 0) {
+      var pct = Math.round(rampNights * G.ZOMBIE_RAMP_STEP * 100);
+      lines.push("Horde renforcée : +" + pct + "% dégâts, PV et vitesse");
+    }
+    return lines;
   };
 
   // Universite : placeholder pret a recevoir de futures ameliorations.

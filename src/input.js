@@ -149,15 +149,35 @@
         // selon le champ onClick du registre : buildMenu (scierie),
         // universite, montgolfiere.
         var clickRs = Math.max(b.w, b.h) / 2 + 10;
+        // Montgolfiere : le ballon (moitie haute du PNG, dessinee au premier
+        // plan et SANS collision) est bien plus grand que l'emprise sol. Le
+        // clic accepte aussi le rect ecran du PNG : cliquer sur le ballon
+        // declenche l'observation.
+        var mgSprite = null;
+        if (b.townBuilding === "montgolfiere" && G.hasSprite && G.hasSprite("montgolfiere", "idle")) {
+          mgSprite = G.SPRITES.montgolfiere.idle;
+        }
         var cxs = b.x + b.w / 2, cys = b.y + b.h / 2;
         var ddxs = w[0] - cxs, ddys = w[1] - cys;
-        if (Math.sqrt(ddxs * ddxs + ddys * ddys) < clickRs) {
+        var inClickR = Math.sqrt(ddxs * ddxs + ddys * ddys) < clickRs;
+        if (!inClickR && mgSprite) {
+          var zmg = G.state.zoom;
+          var Aw = G.proj(b.x, b.y), Cw = G.proj(b.x + b.w, b.y + b.h),
+              Dw = G.proj(b.x, b.y + b.h);
+          var cxm = (Aw[0] + Cw[0]) / 2, groundYm = Math.max(Cw[1], Dw[1]);
+          var dwm = (b.w + b.h) * 0.5 * zmg;
+          var dhm = dwm * mgSprite.h / mgSprite.w;
+          var sm = G.proj(w[0], w[1]);
+          inClickR = sm[0] > cxm - dwm / 2 && sm[0] < cxm + dwm / 2 &&
+                     sm[1] > groundYm - dhm && sm[1] < groundYm;
+        }
+        if (inClickR) {
           var reachs = clickRs + 60;
           var pdxs = p.x - cxs, pdys = p.y - cys;
           if (Math.sqrt(pdxs * pdxs + pdys * pdys) < reachs) {
             var tdef = G.TOWN_BUILDINGS[b.townBuilding];
             if (tdef.onClick === "buildMenu") G.openBuildMenu();
-            else if (tdef.onClick === "montgolfiere") G.openMontgolfiere();
+            else if (tdef.onClick === "montgolfiere") G.triggerMontgolfiere(b);
             else if (tdef.onClick === "universite") G.openUniversite();
             return;
           }
@@ -202,7 +222,6 @@
     if (e.code === "Escape") {
       if (state.started && state.buildMenuOpen) { G.closeBuildMenu(); return; }
       if (state.started && state.churchOpen) { G.closeChurch(); return; }
-      if (G.montgolfiereScreen && !G.montgolfiereScreen.hidden) { G.closeMontgolfiere(); return; }
       if (G.universiteScreen && !G.universiteScreen.hidden) { G.closeUniversite(); return; }
       if (state.started && state.chestOpen) { G.closeChest(); return; }
       if (state.started && state.bag.open) { state.bag.open = false; return; }
@@ -322,6 +341,5 @@
   G.closeChestBtn.addEventListener("click", G.closeChest);
   if (G.closeBuildMenuBtn) G.closeBuildMenuBtn.addEventListener("click", G.closeBuildMenu);
   if (G.closeChurchBtn) G.closeChurchBtn.addEventListener("click", G.closeChurch);
-  if (G.closeMontgolfiereBtn) G.closeMontgolfiereBtn.addEventListener("click", G.closeMontgolfiere);
   if (G.closeUniversiteBtn) G.closeUniversiteBtn.addEventListener("click", G.closeUniversite);
 })();

@@ -40,9 +40,6 @@
   G.churchBag = document.getElementById("churchBag");
   G.churchGold = document.getElementById("churchGold");
   G.closeChurchBtn = document.getElementById("closeChurchBtn");
-  G.montgolfiereScreen = document.getElementById("montgolfiereScreen");
-  G.montgolfiereInfo = document.getElementById("montgolfiereInfo");
-  G.closeMontgolfiereBtn = document.getElementById("closeMontgolfiereBtn");
   G.universiteScreen = document.getElementById("universiteScreen");
   G.universiteInfo = document.getElementById("universiteInfo");
   G.closeUniversiteBtn = document.getElementById("closeUniversiteBtn");

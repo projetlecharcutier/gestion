@@ -714,6 +714,75 @@
     }
   };
 
+  // Montgolfiere : rendu au premier plan (apres le joueur). Memes regles
+  // d'ancrage que drawBuilding (losange iso, bas du PNG sur le bord sud,
+  // opaqueDrop pour les PNG aeres). Le PNG ne doit entrer en collision avec
+  // rien : seule l'emprise sol (dans la moitie basse du PNG) est solide, le
+  // reste du ballon est purement decoratif. Animation idle UN seul tour de
+  // 4 s au clic (montgolfiereAnimFrame), frame statique sinon ; message
+  // d'annonce de vague au-dessus du batiment apres l'animation.
+  G.drawMontgolfiereTop = function () {
+    var state = G.state;
+    var b = state.montgolfiere;
+    if (!b) return;
+    var bnds = G.visibleWorldBounds();
+    if (b.x + b.w < bnds.minX || b.x > bnds.maxX || b.y + b.h < bnds.minY || b.y > bnds.maxY) return;
+    var ctx = G.ctx;
+    var z = state.zoom;
+    var A = G.proj(b.x, b.y), C = G.proj(b.x + b.w, b.y + b.h),
+        D = G.proj(b.x, b.y + b.h);
+    var cx = (A[0] + C[0]) / 2;
+    var groundY = Math.max(C[1], D[1]);
+    var hasIdle = G.hasSprite("montgolfiere", "idle");
+    var hasChantier = G.hasSprite("montgolfiere", "chantier");
+    var key = b.chantierDone ? "idle" : "chantier";
+    var sprite = (key === "idle" && hasIdle) ? G.SPRITES.montgolfiere.idle
+      : (key === "chantier" && hasChantier) ? G.SPRITES.montgolfiere.chantier
+      : (hasIdle ? G.SPRITES.montgolfiere.idle : null);
+    if (sprite) {
+      var losangeW = (b.w + b.h) * 0.5 * z;
+      var dw = losangeW;
+      var img;
+      if (b.chantierDone) {
+        var fi = G.montgolfiereAnimFrame(b, state.time);
+        img = (fi >= 0 && sprite.frames && sprite.frames[fi]) ? sprite.frames[fi] : sprite.img;
+      } else {
+        var nF = sprite.frames ? sprite.frames.length : 0;
+        if (nF > 1) {
+          var fi2 = G.chantierFrame(sprite, b.builtAt, state.time, nF);
+          img = sprite.frames[fi2];
+        } else {
+          img = sprite.img;
+        }
+      }
+      // Les frames de la serie idle ont des hauteurs differentes (le ballon
+      // gonfle) : chaque image est ancree par le BAS sur le bord sud du
+      // losange et mise a l'echelle sur sa propre hauteur.
+      var iw = (img && img.naturalWidth) || sprite.w;
+      var ih = (img && img.naturalHeight) || sprite.h;
+      var dh = dw * ih / iw;
+      ctx.drawImage(img, cx - dw / 2, groundY - dh, dw, dh);
+      // Message d'annonce de vague : au-dessus du ballon, apres l'animation.
+      var lines = G.montgolfiereWaveMessage(b, state.time);
+      if (lines) {
+        ctx.save();
+        ctx.font = "bold 14px Segoe UI, system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.fillStyle = "#fff";
+        ctx.strokeStyle = "rgba(2,6,23,0.8)";
+        ctx.lineWidth = 3;
+        var my = groundY - dh - 10;
+        for (var li = lines.length - 1; li >= 0; li--) {
+          ctx.strokeText(lines[li], cx, my);
+          ctx.fillText(lines[li], cx, my);
+          my -= 17;
+        }
+        ctx.restore();
+      }
+    }
+  };
+
   G.drawWall = function (m) {
     var ctx = G.ctx;
     var z = G.state.zoom;
@@ -943,6 +1012,9 @@
       var bld = state.buildings[bi];
       // Culling : ignore les bâtiments (forêts, maisons) hors écran.
       if (bld.x + bld.w < bnds.minX || bld.x > bnds.maxX || bld.y + bld.h < bnds.minY || bld.y > bnds.maxY) continue;
+      // La montgolfiere est rendue HORS de la passe triee, en premier plan
+      // (cf. drawMontgolfiereTop) : son ballon doit couvrir le joueur.
+      if (bld.townBuilding === "montgolfiere") continue;
       // Profondeur : une forêt coupée (stage > 0) se dessine DERIERE ses
       // voisines pleines (s0). refitForet réduit son AABB vers le centre quand
       // on la coupe, ce qui augmentait x+y et la faisait passer DEVANT : les
@@ -1001,6 +1073,11 @@
       else if (d.type === "player") G.drawRemotePlayer(d.ref);
     }
     if (!drewPlayer) { G.drawPlayer(); G.drawPlayerHpBar(); }
+
+    // Montgolfiere : au premier plan, apres le joueur et les zombies. Le
+    // ballon (moitie haute du PNG) n'a aucune collision : un joueur qui passe
+    // "derriere" le ballon est cache par celui-ci.
+    G.drawMontgolfiereTop();
 
     G.drawProjectiles();
     G.drawFloaters();
