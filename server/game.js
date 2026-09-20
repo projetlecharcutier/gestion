@@ -187,6 +187,8 @@
       p.planks = 0; p.inventory = 0;
       p.chopTarget = null; p.chopWall = null; p.chopTimer = 0;
       p.shootCd = 0;
+      p.lastShotAt = undefined;
+      p.chopStartedAt = undefined;
     }
   }
 
@@ -354,6 +356,8 @@
       if (p._fire && p.equipped && p.shootCd <= 0) {
         var st = G.WEAPON_STATS[p.equipped] || G.WEAPON_STATS["Mains nues"];
         p.shootCd = st.cd;
+        // Horodatage pour l'animation de tir du personnage (frames 0.1 s).
+        p.lastShotAt = state.time;
         var baseAng = Math.atan2(p._aimY ? p._aimY - p.y : 0, p._aimX ? p._aimX - p.x : 1);
         var weaponType = st.type || "pistolet";
         if (weaponType === "fusil") {
@@ -429,6 +433,13 @@
       p.chopTarget = state.chopTarget;
       p.chopWall = state.chopWall;
       p.chopTimer = state.chopTimer;
+      // Debut d'un nouveau cycle de coupe (cible changee ou relance apres un
+      // coup) : horodatage pour l'animation de la hache du joueur distant.
+      if (p.axeEquipped && (p.chopTarget || p.chopWall) && state.chopTimer < 0.15 &&
+          (p.chopStartedAt === undefined || (state.time - p.chopStartedAt) > 0.15)) {
+        p.chopStartedAt = state.time;
+      }
+      if (!p.chopTarget && !p.chopWall) p.chopStartedAt = undefined;
       state.player.x = oldChop.px; state.player.y = oldChop.py;
       state.axeEquipped = oldChop.ax; state.planks = oldChop.pl;
       state.inBuilding = oldChop.inB; state.bag.open = oldChop.bagO;
@@ -501,6 +512,11 @@
           hp: p.hp, alive: p.alive, face: p.face, moving: p.moving,
           equipped: p.equipped, axeEquipped: p.axeEquipped,
           lastDx: p.lastDx || 0, lastDy: p.lastDy || 0,
+          // Animation d'action du joueur distant : temps ecoule depuis le
+          // dernier tir (shotAge) ou le debut du cycle de hache (chopAge).
+          shotAge: p.lastShotAt !== undefined ? +((state.time - p.lastShotAt)).toFixed(2) : undefined,
+          chop: !!(p.axeEquipped && (p.chopTarget || p.chopWall)),
+          chopAge: p.chopStartedAt !== undefined ? +((state.time - p.chopStartedAt)).toFixed(2) : undefined,
           bag: p.bag.contents, inventory: p.bag.contents.length,
           planks: p.planks || 0,
           gold: p.gold || 0

@@ -78,6 +78,9 @@
       state.chopTarget = isWall ? null : cible;
       state.chopWall = isWall ? cible : null;
       state.chopTimer = 0;
+      // Debut d'un cycle de coupe : horodatage pour l'animation de la hache
+      // (persoHache_gauche/droite, 1 frame = 0.1 s, cycle = TREE_CHOP_TIME).
+      state.lastShotAt = G.state.time;
     }
     state.chopTimer += dt;
     if (state.chopTimer >= G.TREE_CHOP_TIME) {

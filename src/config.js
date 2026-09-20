@@ -33,7 +33,7 @@
       },
       "Pistolet": {
           type: "pistolet",
-          cd: 0.5,
+          cd: 0.4,
           speed: 600,
           life: 1.2, // Portée plus grande (vitesse * vie)
           dmg: 25,

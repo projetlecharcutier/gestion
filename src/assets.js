@@ -22,7 +22,7 @@
   // Animation par frames : convention <base>-0.png, <base>-1.png, ...
   // Si un sprite de base possede des frames -N (depuis 0), il est anime :
   // le rendu les parcourt en boucle selon le temps. Une seule image = statique.
-  var ANIM_FPS = 8; // vitesse du cycle d'animation (frames/seconde)
+  var ANIM_FPS = 10; // vitesse du cycle d'animation : 1 frame = 0.1 s exactement
 
   // Renvoie l'image (HTMLImageElement) a dessiner pour un sprite donne,
   // en parcourant les frames d'animation si elles existent, sinon l'image
@@ -34,6 +34,19 @@
       return sprite.frames[i];
     }
     return sprite.img;
+  };
+
+  // Frame d'une animation d'action (tir/hache) : NE BOUCLE PAS. L'animation
+  // demarre au declenchement de l'action (t = temps ecoule depuis le tir en
+  // secondes). 1 frame = 0.1 s. Apres la derniere frame, reste fige dessus (le
+  // prochain tir relancera le cycle). Retourne null si pas de frames.
+  G.actionFrame = function (sprite, t) {
+    if (!sprite || !sprite.frames || sprite.frames.length === 0) return null;
+    var n = sprite.frames.length;
+    var fi = Math.floor((t || 0) * ANIM_FPS);
+    if (fi > n - 1) fi = n - 1;
+    if (fi < 0) fi = 0;
+    return sprite.frames[fi];
   };
 
   // Renvoie le nombre de frames d'animation d'un sprite (1 = statique).
@@ -269,7 +282,11 @@
   // Stocke dans G.SPRITES.player sous les clés "perso_face", "persoHache_droite", etc.
   // La taille w/h est lue sur l'image réellement chargée.
   function probePlayer(onDone) {
-    var states = ["perso", "persoHache", "persoPistolet"];
+    // 5 etats d'equipement x 3 directions. persoFusil/persoArc sont sondés
+    // tolerant : si les PNG manquent (arc pas encore dessiné), le rendu fait
+    // repli sur perso. Les series sans PNG de base (ex: persoFusil_droite-0..6
+    // sans persoFusil_droite.png) sont chargees depuis la frame 0.
+    var states = ["perso", "persoHache", "persoPistolet", "persoFusil", "persoArc"];
     var dirs = ["face", "gauche", "droite"];
     var dir = "assets/sprites/player/";
     G.SPRITES.player = G.SPRITES.player || {};
@@ -286,7 +303,20 @@
           G.SPRITES.player[key] = sp;
           probeAnimFrames(sp, dir, key, function () { done(); });
         };
-        img.onerror = function () { done(); };
+        img.onerror = function () {
+          // Pas de PNG de base : la serie <base>-N.png peut exister seule.
+          // La frame 0 tient lieu d'image de base (comme probeTours).
+          var stub = { img: null, w: 0, h: 0, frames: null };
+          probeAnimFrames(stub, dir, key, function (frames) {
+            if (frames && frames.length > 0) {
+              stub.img = frames[0];
+              stub.w = frames[0].naturalWidth || 32;
+              stub.h = frames[0].naturalHeight || 48;
+              G.SPRITES.player[key] = stub;
+            }
+            done();
+          });
+        };
         img.src = bust(dir + key + ".png");
       })(toLoad[i]);
     }
@@ -551,24 +581,47 @@
     return null;
   };
 
-  // Choisi le sprite du joueur selon l'équipement (hache / pistolet / mains nues)
-  // et la direction de déplacement (face / gauche / droite).
-  // dx,dy = vecteur de déplacement (0,0 = statique -> face).
-  // Retourne null si aucun sprite nouveau n'est disponible (le rendu fait alors
-  // repli sur le système 8-directions ou le fallback pixel art).
-  G.playerSprite = function (equipped, axeEquipped, dx, dy) {
-    // État d'équipement : hache > pistolet > perso.
-    var state = axeEquipped ? "persoHache" : (equipped ? "persoPistolet" : "perso");
-    // Direction : gauche (W, NW, SW) / droite (E, NE, SE) / face (immobile, N, S).
+  // Préfixe de série PNG pour l'arme équipée (type dans WEAPON_STATS -> serie).
+  // Retourne null si l'arme n'a pas de série dédiée (couteau, bâton, mains nues).
+  G.playerWeaponPrefix = function (equipped) {
+    if (!equipped || !G.WEAPON_STATS) return null;
+    var st = G.WEAPON_STATS[equipped];
+    var type = st && st.type;
+    if (type === "pistolet") return "persoPistolet";
+    if (type === "fusil") return "persoFusil";
+    if (type === "arc") return "persoArc";
+    return null;
+  };
+
+  // Choisi le sprite du joueur :
+  // - action en cours (clic gauche) + arme/hache : série liée à l'équipement
+  //   (persoPistolet_/persoHache_/persoFusil_/persoArc_ + direction), animée
+  //   au rythme des tirs/coups.
+  // - mouvement (sans action) : perso_gauche / perso_droite (jamais perso_face).
+  // - immobile : perso_face, quel que soit l'équipement.
+  // action = { anim: true, t: temps d'animation (s) } ou null.
+  // Retourne null si aucun sprite disponible (repli pixel art).
+  G.playerSprite = function (equipped, axeEquipped, dx, dy, action, face) {
+    var moving = (dx !== 0 || dy !== 0);
     var dir = "face";
-    if (dx !== 0 || dy !== 0) {
-      var ang = Math.atan2(dy, dx) * 180 / Math.PI;
-      if (ang > 45 && ang < 135) dir = "face";       // vers le bas (S)
-      else if (ang < -45 && ang > -135) dir = "face"; // vers le haut (N)
-      else if (ang >= -45 && ang <= 45) dir = "droite"; // vers la droite (E)
-      else dir = "gauche";                              // vers la gauche (W)
+    if (moving || (action && action.anim)) {
+      // Direction visuelle gauche/droite : composante x du mouvement, sinon le
+      // sens du personnage (face). Jamais "face" pendant une action : le tir
+      // est lateral (persoPistolet_gauche/droite...).
+      if (dx > 0) dir = "droite";
+      else if (dx < 0) dir = "gauche";
+      else dir = (face === undefined || face >= 0) ? "droite" : "gauche";
     }
-    var key = state + "_" + dir;
+    // Action : sprite de l'arme équipée (tir) ou de la hache (coupe), prioritaire.
+    if (action && action.anim) {
+      var st = axeEquipped ? "persoHache" : G.playerWeaponPrefix(equipped);
+      if (st) {
+        var akey = st + "_" + dir;
+        if (G.hasSprite("player", akey)) return G.SPRITES.player[akey];
+      }
+    }
+    // Défaut : mouvement -> perso_gauche/droite ; immobile -> perso_face.
+    var key = "perso_" + dir;
     if (G.hasSprite("player", key)) return G.SPRITES.player[key];
     return null;
   };

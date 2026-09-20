@@ -350,9 +350,19 @@
     var z = G.state.zoom;
     var dx = (p.lastDx || 0);
     var dy = (p.lastDy || 0);
-    // Sprite du joueur : nouveau système (3 états × 3 directions) en priorité,
-    // repli sur le système 8-directions si le nouveau sprite manque.
-    var sprite = G.playerSprite ? G.playerSprite(G.state.equipped, G.state.axeEquipped, dx, dy) : null;
+    // Action en cours (tir arme ou coup de hache) : declenche l'animation
+    // dediee a l'equipement pendant le cycle (cadence de l'arme).
+    var action = null;
+    if (G.state.axeEquipped) {
+      if (G.chopProgress && G.chopProgress() >= 0) action = { anim: true, t: G.state.time - (G.state.lastShotAt || 0) };
+    } else if (G.state.equipped && G.state.lastShotAt !== undefined) {
+      var stA = G.equippedStats ? G.equippedStats() : null;
+      var cdA = stA ? stA.cd : 0.5;
+      var sinceShot = G.state.time - G.state.lastShotAt;
+      if (sinceShot >= 0 && sinceShot < cdA) action = { anim: true, t: sinceShot };
+    }
+    // Sprite du joueur : action > mouvement (gauche/droite, jamais face) > immobile (face).
+    var sprite = G.playerSprite ? G.playerSprite(G.state.equipped, G.state.axeEquipped, dx, dy, action, p.face) : null;
     if (!sprite) sprite = G.spriteFor("player", dx, dy);
     ctx.save();
     ctx.fillStyle = G.TEXTURES.player.shadow;
@@ -365,8 +375,17 @@
       // Les frames d'animation peuvent avoir une taille différente du sprite de
       // base : on utilise la taille réelle de l'image courante (frame ou base).
       var scale = z * 1.0;
-      var ptime = G.state.player.moving ? G.state.time : 0;
-      var img = G.animImg(sprite, ptime);
+      var img;
+      if (action && action.anim) {
+        // Animation d'action : non bouclante, figee sur la derniere frame
+        // jusqu'au prochain tir/coup. 1 frame = 0.1 s.
+        img = G.actionFrame(sprite, action.t);
+        if (!img) img = G.animImg(sprite, 0);
+      } else {
+        // Marche : cycle libre (1 frame = 0.1 s) ; immobile : image de base.
+        var ptime = G.state.player.moving ? G.state.time : 0;
+        img = G.animImg(sprite, ptime);
+      }
       var iw = (img && img.naturalWidth) || sprite.w;
       var ih = (img && img.naturalHeight) || sprite.h;
       var dw = iw * scale, dh = ih * scale;
@@ -408,12 +427,27 @@
     ctx.restore();
     var dx = (rp.lastDx || 0);
     var dy = (rp.lastDy || 0);
-    var sprite = G.playerSprite ? G.playerSprite(rp.equipped, rp.axeEquipped, dx, dy) : null;
+    // Action du joueur distant (anim de tir/hache) depuis le snapshot serveur :
+    // shotAge = temps ecoule depuis le dernier tir (s), chop = hache en action.
+    var raction = null;
+    if (rp.chop && rp.chopAge !== undefined) raction = { anim: true, t: rp.chopAge };
+    else if (rp.shotAge !== undefined && rp.shotAge >= 0) {
+      var rst = G.WEAPON_STATS[rp.equipped];
+      var rcd = rst ? rst.cd : 0.5;
+      if (rp.shotAge < rcd) raction = { anim: true, t: rp.shotAge };
+    }
+    var sprite = G.playerSprite ? G.playerSprite(rp.equipped, rp.axeEquipped, dx, dy, raction, rp.face) : null;
     if (!sprite) sprite = G.spriteFor("player", dx, dy);
     if (sprite) {
       var scale = z * 1.0;
-      var rptime = rp.moving ? G.state.time : 0;
-      var img = G.animImg(sprite, rptime);
+      var img;
+      if (raction && raction.anim) {
+        img = G.actionFrame(sprite, raction.t);
+        if (!img) img = G.animImg(sprite, 0);
+      } else {
+        var rptime = rp.moving ? G.state.time : 0;
+        img = G.animImg(sprite, rptime);
+      }
       var iw = (img && img.naturalWidth) || sprite.w;
       var ih = (img && img.naturalHeight) || sprite.h;
       var dw = iw * scale, dh = ih * scale;

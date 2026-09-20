@@ -19,6 +19,9 @@
         var tx = state.mouse.wx, ty = state.mouse.wy;
         var st = G.equippedStats();
         state.shootCd = st.cd;
+        // Horodatage du tir pour l'animation d'action du personnage
+        // (frames de tir de l'arme, 1 frame = 0.1 s, cycle = cadence).
+        state.lastShotAt = G.state.time;
         if (G.playSfx) G.playSfx("shoot");
 
         var ax = tx - p.x, ay = ty - p.y;
