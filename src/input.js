@@ -311,17 +311,18 @@
     state.churchOpen = false;
     if (G.chestScreen) G.chestScreen.hidden = true;
     if (G.churchScreen) G.churchScreen.hidden = true;
-    // Mode serveur : on rejoint la partie hébergée par le serveur. Le serveur
-    // construit le monde et pilote la simulation ; le client reçoit la carte
-    // au message "joined" (voir net.js). On ne démarre la simulation locale que
-    // si la connexion est établie.
-    if (G.playMode === "server" && G.netConnected && G.netConnected()) {
+    // Mode serveur : le serveur est TOUJOURS le générateur de la carte et
+    // l'autorité de la simulation. On ne construit JAMAIS de monde local —
+    // l'ancien repli (serveur pas encore connecté au moment du submit)
+    // générait une carte aléatoire côté client et le joueur se retrouvait
+    // seul sur une map différente de celle des autres.
+    if (G.playMode === "server") {
       G.netJoin(v);
       state.started = true; // le rendu démarre ; l'état réel arrive via net.
       G.nameInput.blur();
       return;
     }
-    // Mode local (ou serveur injoignable) : on construit le monde localement.
+    // Mode local : on construit le monde localement.
     function doBuild() {
       G.buildWorld();
       G.spawnBirds();

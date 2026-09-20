@@ -42,7 +42,16 @@
       console.warn("Connexion serveur impossible :", e);
       return;
     }
-    ws.onopen = function () { connected = true; };
+    ws.onopen = function () {
+      connected = true;
+      // Join en attente (le joueur a validé son nom avant que la connexion
+      // soit établie) : envoyé dès l'ouverture.
+      if (pendingJoin) {
+        var name = pendingJoin;
+        pendingJoin = null;
+        G.netSend({ type: "join", name: name });
+      }
+    };
     ws.onclose = function () { connected = false; setTimeout(G.netConnect, 2000); };
     ws.onerror = function () { connected = false; };
     ws.onmessage = function (ev) {
@@ -61,9 +70,14 @@
   G.netPlayerId = function () { return playerId; };
   G.netConnected = function () { return connected; };
 
-  // Rejoint la partie avec un nom.
+  // Rejoint la partie avec un nom. Si la connexion n'est pas encore
+  // ouverte, le join est mis en attente et envoyé à l'ouverture — sans cette
+  // file, le client tombait en mode local (carte générée par lui-même, pas
+  // celle du serveur : les joueurs n'étaient pas sur la même map).
+  var pendingJoin = null;
   G.netJoin = function (name) {
-    G.netSend({ type: "join", name: name });
+    if (connected) G.netSend({ type: "join", name: name });
+    else pendingJoin = name;
   };
 
   // Envoie un input (déplacement, tir, etc.).
