@@ -209,8 +209,8 @@
       stateField: "scierie",
       unlockedField: "scierieUnlocked",
       cost: { planks: 100, gold: 10 },
-      side: 80,
-      msg: "La scierie permet de construire des tours.",
+      side: 64,
+      msg: "La scierie permet de construire de nouveaux batiments en bois (tours d'attaque).",
       onClick: "buildMenu"
     },
     universite: {
@@ -232,7 +232,7 @@
       onClick: "montgolfiere"
     }
   };
-  G.SCIERIE_SIDE = 80;   // emprise sol de la scierie (unites monde)
+  G.SCIERIE_SIDE = 64;   // emprise sol de la scierie (unites monde)
   // Pieces d'or : 100 pre-poses hors ville au demarrage, drop regulier des
   // oiseaux (proba par oiseau tue).
   G.GOLD_ITEMS_START = 100;
