@@ -200,7 +200,19 @@
     if (!p || !p.alive || state.gameOver) return;
     if (input.dx !== undefined) p._dx = input.dx;
     if (input.dy !== undefined) p._dy = input.dy;
-    if (input.fire) p._fire = true;
+    // Fire est un ETAT persistant (clic maintenu), pas un evenement : le client
+    // l'envoie a chaque input (true ou false) et il reste valide jusqu'au
+    // prochain input. Le reinitialiser a chaque tick faisait echouer la coupe
+    // des qu'un tick ne recevait pas d'input (jitter reseau 20 Hz client / 20 Hz
+    // serveur) : chopTimer repartait de zero avant d'atteindre 1 s.
+    if (input.fire !== undefined) {
+      // Etat persistant (clic maintenu) + latch : un clic tres bref entre
+      // deux ticks serveur (20 Hz) ne doit pas etre perdu. Le latch est
+      // consomme par le prochain tick qui traite un tir, puis la domination
+      // revient a l'etat persistant.
+      if (input.fire && !p._fire) p._fireLatch = true;
+      p._fire = !!input.fire;
+    }
     if (input.aimX !== undefined) p._aimX = input.aimX;
     if (input.aimY !== undefined) p._aimY = input.aimY;
     if (input.build) p._build = true;
@@ -380,36 +392,43 @@
         p.moving = false; p.lastDx = 0; p.lastDy = 0;
       }
       // Tir.
-      if (p._fire && p.equipped && p.shootCd <= 0) {
-        var st = G.WEAPON_STATS[p.equipped] || G.WEAPON_STATS["Mains nues"];
-        p.shootCd = st.cd;
+      // Tir d'arme uniquement : la hache (axeEquipped) declenche la coupe via
+      // updateChop, jamais un tir. Sans arme equipee valide (dans le registre
+      // WEAPON_STATS), pas de tir du tout (l'ancien repli "Mains nues" tirait
+      // des poings si equipped contenait un nom inconnu, ex. apres un equip
+      // desynchronise).
+      var pSt = G.WEAPON_STATS[p.equipped];
+      var fireNow = (p._fire || p._fireLatch) && p.equipped && !p.axeEquipped && pSt && p.shootCd <= 0;
+      if (fireNow) {
+        p.shootCd = pSt.cd;
+        p._fireLatch = false;
         // Horodatage pour l'animation de tir du personnage (frames 0.1 s).
         p.lastShotAt = state.time;
         var baseAng = Math.atan2(p._aimY ? p._aimY - p.y : 0, p._aimX ? p._aimX - p.x : 1);
-        var weaponType = st.type || "pistolet";
+        var weaponType = pSt.type || "pistolet";
         if (weaponType === "fusil") {
-          var pelletCount = st.pellets || 5;
-          var coneSpread = st.coneSpread || 0.3;
+          var pelletCount = pSt.pellets || 5;
+          var coneSpread = pSt.coneSpread || 0.3;
           for (var pi = 0; pi < pelletCount; pi++) {
             var poffset = (pelletCount > 1) ? (pi / (pelletCount - 1) - 0.5) * coneSpread : 0;
-            var pang = baseAng + poffset + (Math.random() * 2 - 1) * st.spread;
+            var pang = baseAng + poffset + (Math.random() * 2 - 1) * pSt.spread;
             state.projectiles.push({
               x: p.x, y: p.y - G.PLAYER_H * 0.5,
-              vx: Math.cos(pang) * st.speed, vy: Math.sin(pang) * st.speed,
-              life: st.life, owner: p.id, dmg: st.dmg, color: st.color,
-              size: st.size || 3, type: st.type || "pistolet", trail: [],
+              vx: Math.cos(pang) * pSt.speed, vy: Math.sin(pang) * pSt.speed,
+              life: pSt.life, owner: p.id, dmg: pSt.dmg, color: pSt.color,
+              size: pSt.size || 3, type: pSt.type || "pistolet", trail: [],
               piercing: false, hitEntities: []
             });
           }
         } else {
-          var psp = (Math.random() * 2 - 1) * st.spread;
+          var psp = (Math.random() * 2 - 1) * pSt.spread;
           var spang = baseAng + psp;
           state.projectiles.push({
             x: p.x, y: p.y - G.PLAYER_H * 0.5,
-            vx: Math.cos(spang) * st.speed, vy: Math.sin(spang) * st.speed,
-            life: st.life, owner: p.id, dmg: st.dmg, color: st.color,
-            size: st.size || 3, type: st.type || "pistolet", trail: [],
-            piercing: !!st.piercing, pierceCount: st.pierceCount || (st.piercing ? 3 : 0),
+            vx: Math.cos(spang) * pSt.speed, vy: Math.sin(spang) * pSt.speed,
+            life: pSt.life, owner: p.id, dmg: pSt.dmg, color: pSt.color,
+            size: pSt.size || 3, type: pSt.type || "pistolet", trail: [],
+            piercing: !!pSt.piercing, pierceCount: pSt.pierceCount || (pSt.piercing ? 3 : 0),
             hitEntities: []
           });
         }
@@ -437,8 +456,6 @@
         p._placeBuild = null;
         state.buildSel = null;
       }
-      // Réinitialise les flags d'input consommés.
-      p._dx = undefined; p._dy = undefined;
       // Récolte de planches / destruction de palissade à la hache : on swappe
       // l'état global vers le joueur courant pour que updateChop() s'applique à ce joueur.
       var oldChop = { px: state.player.x, py: state.player.y, ax: state.axeEquipped,
@@ -474,8 +491,10 @@
       state.chopWall = oldChop.chW; state.chopTimer = oldChop.chTi;
       state.actionHeld = oldChop.ah;
       // Réinitialise les flags d'input consommés.
-      p._dx = undefined; p._dy = undefined;
-      p._fire = false; p._build = false; p._openBag = false; p._buildSel = undefined; p._placeBuild = null;
+      // Evenements ponctuels consommes ; dx/dy/fire restent persistants
+      // (le client renvoie l'etat complet a chaque input : dx:0, dy:0, fire:false
+      // quand les touches sont relachees).
+      p._build = false; p._openBag = false; p._buildSel = undefined; p._placeBuild = null;
     }
 
     // Chantiers (scierie, tours), combat des tours, votes a la mairie.
@@ -525,7 +544,23 @@
   }
 
   // Construit l'état à broadcaster (allégé : pas de textures, pas de HUD).
-  function snapshot() {
+  // Snapshot personnalise par joueur : cull les entites hors de la zone
+  // utile du joueur (zombies, projectiles, oiseaux). A 5000 zombies la nuit,
+  // le snapshot global faisait 1,3 Mo/s a 10 Hz et saturait la connexion ;
+  // chaque joueur ne voit qu'une petite portion de la horde (brouillard).
+  var SNAP_ZOMBIE_RANGE = 900;
+  function snapshot(forPlayerId) {
+    var me = null;
+    if (forPlayerId !== undefined) {
+      for (var spi = 0; spi < state.players.length; spi++) {
+        if (state.players[spi].id === forPlayerId) { me = state.players[spi]; break; }
+      }
+    }
+    function inRange(e) {
+      if (!me) return true;
+      var dx = e.x - me.x, dy = e.y - me.y;
+      return dx * dx + dy * dy < SNAP_ZOMBIE_RANGE * SNAP_ZOMBIE_RANGE;
+    }
     return {
       started: state.started,
       gameOver: state.gameOver,
@@ -552,7 +587,7 @@
       // Zombies en format compact [x, y, hp, lunge, ldx, ldy, leader] : a
       // 3000+ zombies la nuit, le format objet domine la bande passante
       // (200 Ko/s -> ~60 Ko/s a 10 Hz).
-      zombies: state.zombies.map(function (z) {
+      zombies: state.zombies.filter(inRange).map(function (z) {
         return [
           Math.round(z.x), Math.round(z.y), Math.round(z.hp),
           z.lunge > 0 ? +(z.lunge).toFixed(2) : 0,
@@ -566,7 +601,7 @@
       items: state.items.filter(function (it) { return !it.taken; }).map(function (it) {
         return { x: Math.round(it.x), y: Math.round(it.y), name: it.name, kind: it.kind, color: it.color };
       }),
-      projectiles: state.projectiles.map(function (pr) {
+      projectiles: state.projectiles.filter(inRange).map(function (pr) {
         return { x: Math.round(pr.x), y: Math.round(pr.y), vx: pr.vx, vy: pr.vy, color: pr.color, type: pr.type, size: pr.size, trail: pr.trail || [] };
       }),
       birds: state.birds.map(function (b) {

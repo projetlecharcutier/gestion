@@ -111,6 +111,15 @@
   // Ratio d'avancement de la récolte (0..1) pour le cercle de décompte, ou -1 si inactif.
   G.chopProgress = function () {
     var state = G.state;
+    // Mode serveur : le serveur fait autorite (chopTarget local toujours vide).
+    // remoteChop indique un cycle en cours ; la progression vient de l'age du
+    // cycle (lastShotAt = time - chopAge, cf. net.js) : le rond affiche le
+    // meme decompte de 1 s que le serveur simule.
+    if (state.remoteChop && state.lastShotAt !== undefined) {
+      var prog2 = (state.time - state.lastShotAt) / G.TREE_CHOP_TIME;
+      if (prog2 < 0) return -1;
+      return Math.min(prog2, 1);
+    }
     if (!state.axeEquipped || !state.actionHeld || (!state.chopTarget && !state.chopWall)) return -1;
     return state.chopTimer / G.TREE_CHOP_TIME;
   };

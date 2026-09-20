@@ -381,10 +381,17 @@
       var scale = z * 1.0;
       var img;
       if (action && action.anim) {
-        // Animation d'action : non bouclante, figee sur la derniere frame
-        // jusqu'au prochain tir/coup. 1 frame = 0.1 s.
-        img = G.actionFrame(sprite, action.t);
-        if (!img) img = G.animImg(sprite, 0);
+        // Coupe de hache : boucle a la cadence du cycle serveur (TREE_CHOP_TIME)
+        // tant que la coupe est active — les 5 frames d'anim couvrent un cycle
+        // complet de frappe. Tir : non bouclant, fige sur la derniere frame
+        // jusqu'au prochain tir (cadence de l'arme). 1 frame = 0.1 s.
+        if (G.state.axeEquipped) {
+          var cyc = (action.t % G.TREE_CHOP_TIME) / G.TREE_CHOP_TIME;
+          img = G.animImg(sprite, cyc * G.TREE_CHOP_TIME);
+        } else {
+          img = G.actionFrame(sprite, action.t);
+          if (!img) img = G.animImg(sprite, 0);
+        }
       } else {
         // Marche : cycle libre (1 frame = 0.1 s) ; immobile : image de base.
         var ptime = G.state.player.moving ? G.state.time : 0;

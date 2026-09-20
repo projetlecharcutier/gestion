@@ -136,14 +136,22 @@
       broadcast(lobby);
     }
 
-    // Broadcast état de jeu.
+    // Envoi de l'état de jeu : snapshot personnalise par joueur (culling des
+    // zombies/projectiles hors de portée — a 5000 zombies la nuit, le
+    // broadcast global saturait la connexion : 1,3 Mo/s par client).
     stateAcc += dt;
     if (stateAcc >= 1 / STATE_HZ) {
       stateAcc = 0;
       if (game.getState().started) {
-        var snap = game.snapshot();
-        snap.type = "state";
-        broadcast(snap);
+        for (var id in clients) {
+          var c = clients[id];
+          if (!c.joined || c.ws.readyState !== WebSocket.OPEN) continue;
+          try {
+            var snap = game.snapshot(c.id);
+            snap.type = "state";
+            c.ws.send(JSON.stringify(snap));
+          } catch (e) {}
+        }
       }
     }
   }

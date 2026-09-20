@@ -608,10 +608,13 @@
               };
               zcible = { x: seekPt.x, y: seekPt.y, isPlayer: false, wall: zNearWall, seeking: true };
             }
-          } else if (!zNearWall && state.towers && state.towers.length > 0 && !zcible.isPlayer) {
+          } else if (state.towers && state.towers.length > 0 && !zcible.isPlayer) {
             // Priorite 2 : tour accessible (palissade absente a portee).
             // Le zombie fonce sur la tour la plus proche a portee de sense et
-            // l'attaque comme une palissade (memes degats/cooldown).
+            // l'attaque comme une palissade (memes degats/cooldown). N.B. : on
+            // est dans le "else" du mur a portee : un mur hors de portee de
+            // sense ne doit PAS masquer la tour (zNearWall garde le mur le plus
+            // proche du monde entier, toujours defini s'il existe des murs).
             var zNearTower = null, zNearTowerD = Infinity, zNearTowerPt = null;
             for (var zt = 0; zt < state.towers.length; zt++) {
               var ztw = state.towers[zt];
