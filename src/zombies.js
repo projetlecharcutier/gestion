@@ -51,7 +51,7 @@
   // Tire le schéma de directions d'une vague : 1, 2 ou 4 bords de la carte
   // (1/3 chacun). Pré-tiré à chaque réarmement matinal dans
   // state.pendingWave { sides, count } : la montgolfière peut annoncer la
-  // vague de la nuit suivante AVANT minuit ; spawnWave consomme le tirage.
+  // vague de la nuit suivante AVANT 22h ; spawnWave consomme le tirage.
   // Facteur de montée en difficulté : les nuits où la vague atteint le
   // plafond ZOMBIE_WAVE_MAX, les stats des zombies montent de +10% par nuit
   // (dégâts/s, PV, vitesse), capées à +50%. waveCount est le nombre de
@@ -221,13 +221,14 @@
 
   G.updateZombies = function (dt) {
     var state = G.state;
-    // Cycle jour/nuit : les vagues sont pilotees par l'horloge (minuit = spawn,
+    // Cycle jour/nuit : les vagues sont pilotees par l'horloge (22h = spawn,
     // lever du jour = rearmement), pas par un simple timer d'elapsed.
     var prevClock = state.clock - (12 / G.DAY_SECONDS) * G.TIME_SCALE * dt;
     if (prevClock < 0) prevClock += 24;
-    // Minuit (passage a 0h) : spawn d'une nouvelle vague + message.
-    var crossedMidnight = prevClock > (G.NIGHT_START || 22) && state.clock < (G.NIGHT_END || 2);
-    if (crossedMidnight && !state.waveSpawnedForDay) {
+    // 22h (NIGHT_WAVE_HOUR) : spawn d'une nouvelle vague + message.
+    var waveHour = (G.NIGHT_WAVE_HOUR !== undefined) ? G.NIGHT_WAVE_HOUR : 22;
+    var crossedWaveHour = prevClock < waveHour && state.clock >= waveHour;
+    if (crossedWaveHour && !state.waveSpawnedForDay) {
       G.spawnWave();
       state.waveActive = true;
       state.waveSpawnedForDay = true;

@@ -81,8 +81,8 @@
   // musique, affichage HUD, phase lobby) lit ces bornes via isNight.
   G.NIGHT_START = 23;
   G.NIGHT_END = 7;
-  // Cycle jour/nuit des zombies : vague a minuit, rearmement au lever du jour.
-  G.NIGHT_WAVE_HOUR = 0;   // heure (jeu) de spawn de la vague
+  // Cycle jour/nuit des zombies : vague a 22h, rearmement au lever du jour.
+  G.NIGHT_WAVE_HOUR = 22;  // heure (jeu) de spawn de la vague
   G.ZOMBIE_RETREAT_HOUR = 8; // heure (jeu) de retraite des zombies
   G.ZOMBIE_RETREAT_DIST = 700; // distance de retraite hors de la ville
   G.ZOMBIE_SPEED = 117;

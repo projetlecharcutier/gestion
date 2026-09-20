@@ -16,7 +16,7 @@
   améliorations.
 - **Montgolfière** (centre de décollage) : au clic, annonce le **volume** et
   la **direction** de la prochaine vague (pré-tirage `G.rollWave` chaque
-  matin, consommé par `spawnWave` à minuit).
+  matin, consommé par `spawnWave` à 22h).
 - **Menu de construction** : touche **Z** → liste des bâtiments constructibles
   (palissade toujours ; bâtiments de ville débloqués et non posés ; tours si
   la scierie est construite) → clic sur un bâtiment → clic sur la carte pour le
