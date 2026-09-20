@@ -247,7 +247,15 @@
     }
     if (input.aimX !== undefined) p._aimX = input.aimX;
     if (input.aimY !== undefined) p._aimY = input.aimY;
-    if (input.build) p._build = true;
+    if (input.build !== undefined) {
+      // Mode build replique cote serveur, par joueur : sans lui, tryBuildWall
+      // appliquait WALL_BUILD_RANGE (180 px) a toutes les poses, meme en mode
+      // build ou le client peut poser n'importe ou (impossible de ceinturer la
+      // muraille). Stocke sur le joueur : un input d'un autre joueur ne doit
+      // pas quitter le mode build de celui-ci en plein pose.
+      p._buildMode = !!input.build;
+      p._build = true;
+    }
     if (input.rotate) G.state.plankRotation = G.state.plankRotation ? 0 : 1;
     if (input.openBag) p._openBag = true;
     if (input.buildWall) p._buildWall = { x: input.buildWall.wx, y: input.buildWall.wy };
@@ -532,7 +540,10 @@
       // Pose de planche.
       if (p._buildWall) {
         state.player.x = p.x; state.player.y = p.y; state.planks = p.planks || 0;
+        var oldBuildMode = state.buildMode;
+        state.buildMode = !!p._buildMode;
         G.tryBuildWall(p._buildWall.x, p._buildWall.y);
+        state.buildMode = oldBuildMode;
         // pushPlayerOutOfWall (appelé par tryBuildWall) a pu déplacer state.player
         // pour éviter un blocage : on récupère la nouvelle position.
         p.x = state.player.x; p.y = state.player.y;

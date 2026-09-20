@@ -134,6 +134,13 @@
         G.rebuildBuildingGrid();
       }
       if (msg.clock !== undefined) G.state.clock = msg.clock;
+      // La carte est arrivee : on peut enfin masquer le menu et demarrer le
+      // rendu. Avant, le menu etait masque des le submit (monde vide affiche
+      // tant que la connexion etait en cours).
+      if (G.startScreen) G.startScreen.hidden = true;
+      if (G.hud) G.hud.hidden = false;
+      var lobbyEl = document.getElementById("lobbyInfo");
+      if (lobbyEl) lobbyEl.hidden = true;
       // Démarre le rendu du jeu (le serveur pilote la simulation).
       G.state.started = true;
       G.state.gameOver = false;

@@ -281,6 +281,18 @@
     if (!v) v = "Habitant";
     var state = G.state;
     state.playerName = v;
+    // Mode serveur : l'ecran de menu reste affiche (avec le lobby) jusqu'a la
+    // reception du "joined" du serveur — la carte n'existe pas avant. L'ancien
+    // code masquait le menu immediatement et demarrait un rendu sur un monde
+    // vide : si la connexion etait lente (serveur distant), le joueur restait
+    // sur un ecran vide sans carte. netHandle("joined") masque le menu.
+    if (G.playMode === "server") {
+      G.netJoin(v);
+      var lobby = document.getElementById("lobbyInfo");
+      if (lobby) { lobby.hidden = false; lobby.textContent = "Connexion au serveur…"; }
+      G.nameInput.blur();
+      return;
+    }
     G.startScreen.hidden = true;
     G.hud.hidden = false;
     state.gameOver = false;
@@ -313,17 +325,6 @@
     state.churchOpen = false;
     if (G.chestScreen) G.chestScreen.hidden = true;
     if (G.churchScreen) G.churchScreen.hidden = true;
-    // Mode serveur : le serveur est TOUJOURS le générateur de la carte et
-    // l'autorité de la simulation. On ne construit JAMAIS de monde local —
-    // l'ancien repli (serveur pas encore connecté au moment du submit)
-    // générait une carte aléatoire côté client et le joueur se retrouvait
-    // seul sur une map différente de celle des autres.
-    if (G.playMode === "server") {
-      G.netJoin(v);
-      state.started = true; // le rendu démarre ; l'état réel arrive via net.
-      G.nameInput.blur();
-      return;
-    }
     // Mode local : on construit le monde localement.
     function doBuild() {
       G.buildWorld();
