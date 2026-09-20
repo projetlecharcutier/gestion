@@ -52,9 +52,24 @@
   // (1/3 chacun). Pré-tiré à chaque réarmement matinal dans
   // state.pendingWave { sides, count } : la montgolfière peut annoncer la
   // vague de la nuit suivante AVANT minuit ; spawnWave consomme le tirage.
+  // Facteur de montée en difficulté : les nuits où la vague atteint le
+  // plafond ZOMBIE_WAVE_MAX, les stats des zombies montent de +10% par nuit
+  // (dégâts/s, PV, vitesse), capées à +50%. waveCount est le nombre de
+  // zombies de la vague en cours (plafonné) : ramp = nuits de dépassement.
+  G.zombieRamp = function () {
+    var r = G.state.zombieRamp;
+    return (typeof r === "number" && r >= 1) ? r : 1;
+  };
+
   G.rollWave = function (day) {
     var state = G.state;
     var count = G.ZOMBIE_PER_WAVE_BASE * Math.pow(G.ZOMBIE_WAVE_GROWTH, day);
+    // Plafond : le nombre de zombies par nuit est capé a ZOMBIE_WAVE_MAX.
+    // Chaque nuit ou la vague demandee depasse le plafond monte la difficulte
+    // des zombies (deja en jeu comme futurs spawns) de +10% sur degats/s, PV
+    // et vitesse, capé a +50% (cf. state.zombieRamp ci-dessous).
+    var raw = count;
+    if (G.ZOMBIE_WAVE_MAX && raw > G.ZOMBIE_WAVE_MAX) raw = G.ZOMBIE_WAVE_MAX;
     var scheme = Math.random();
     var sides;
     if (scheme < 1 / 3) {
@@ -66,7 +81,7 @@
     } else {
       sides = [0, 1, 2, 3];
     }
-    state.pendingWave = { sides: sides, count: Math.round(count) };
+    state.pendingWave = { sides: sides, count: Math.round(raw), rawCount: Math.round(count) };
     return state.pendingWave;
   };
 
@@ -79,6 +94,16 @@
     state.pendingWave = null;
     var count = pending.count;
     state.waveCount = Math.round(count);
+    // Montee en difficulte : chaque nuit ou la vague demandee depasse le
+    // plafond ZOMBIE_WAVE_MAX augmente les degats/s, les PV et la vitesse des
+    // zombies de +10% (capé a +50%). Le ramp se cumule nuit apres nuit tant
+    // que la croissance demande plus de zombies que le plafond.
+    state.zombieRamp = 1;
+    if (G.ZOMBIE_WAVE_MAX && (pending.rawCount || count) > G.ZOMBIE_WAVE_MAX) {
+      var overNights = Math.ceil(((pending.rawCount || count) - G.ZOMBIE_WAVE_MAX) / G.ZOMBIE_WAVE_MAX);
+      var rampNights = Math.min(overNights, Math.ceil(G.ZOMBIE_RAMP_MAX / G.ZOMBIE_RAMP_STEP));
+      state.zombieRamp = 1 + rampNights * G.ZOMBIE_RAMP_STEP;
+    }
     var sides = pending.sides;
     state.waveSides = sides;
     var nbGroups = Math.ceil(count / G.GROUP_SIZE);
@@ -130,7 +155,7 @@
         // fusion animée). isLeader = zombie d'index 0 (mène la marche).
         var sf = 1 + G.rand(-G.ZOMBIE_SPEED_VAR, G.ZOMBIE_SPEED_VAR);
         var z = {
-          x: zx, y: zy, hp: G.ZOMBIE_HP, atkCd: 0, wallCd: 0, group: grp,
+          x: zx, y: zy, hp: Math.max(1, Math.round(G.ZOMBIE_HP * G.zombieRamp())), atkCd: 0, wallCd: 0, group: grp,
           slotAng: ang, slotDist: dist, slotAngT: ang, slotDistT: dist,
           speedFactor: G.clamp(sf, 0.4, 1.6),
           wanderPhase: Math.random() * Math.PI * 2,
@@ -385,7 +410,16 @@
             var md = Math.sqrt((clx - grp.x) * (clx - grp.x) + (cly - grp.y) * (cly - grp.y));
             if (md < bestD) { bestD = md; best = m; bestPt = { x: clx, y: cly }; }
           }
-          if (best && bestD < 40) {
+          // Objectif principal : la mairie. Le mur n'est ciblé que s'il
+          // barre réellement la route (mur le plus proche à moins de 40 px).
+          // Quand la planche attaquée tombe, la brèche rend le mur suivant
+          // plus loin que la mairie : le groupe re-vise la mairie au lieu de
+          // ronger toute la palissade planche par planche.
+          var mairieD = Infinity;
+          var mCx = mairie.x + mairie.w / 2, mCy = mairie.y + mairie.h / 2;
+          var mdx2 = mCx - grp.x, mdy2 = mCy - grp.y;
+          mairieD = Math.sqrt(mdx2 * mdx2 + mdy2 * mdy2);
+          if (best && bestD < 40 && bestD <= mairieD) {
             cible = { x: bestPt.x, y: bestPt.y, isPlayer: false, wall: best };
           } else {
             // Pilleurs : un groupe contenant des raiders dévie sa cible vers
@@ -424,7 +458,7 @@
         var ldx = cible.x - grp.x, ldy = cible.y - grp.y;
         var ld = Math.sqrt(ldx * ldx + ldy * ldy) || 1;
         // Bonus de vitesse en mode horde : le groupe avance plus vite.
-        var grpSpeed = grp.isHorde ? G.ZOMBIE_SPEED * (1 + G.ZOMBIE_HORDE_SPEED_BONUS) : G.ZOMBIE_SPEED;
+        var grpSpeed = (grp.isHorde ? G.ZOMBIE_SPEED * (1 + G.ZOMBIE_HORDE_SPEED_BONUS) : G.ZOMBIE_SPEED) * G.zombieRamp();
         // Chef pris a l'interieur d'une foret : la collision la traite comme
         // un bloc plein, aucune position interieure n'est valide. Il marche
         // vers le bord du massif situe dans la direction de sa cible (repli :
@@ -589,7 +623,7 @@
           if (zd < 14) {
             if (zcible.isPlayer && z.atkCd <= 0) {
               z.atkCd = G.ZOMBIE_ATTACK_CD;
-              p.hp -= G.ZOMBIE_PLAYER_DMG;
+              p.hp -= Math.round(G.ZOMBIE_PLAYER_DMG * G.zombieRamp());
               // Lunge / télégraphie : élan visuel vers le joueur.
               z.lunge = G.ZOMBIE_LUNGE_TIME;
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
@@ -598,19 +632,19 @@
               z.wallCd = G.ZOMBIE_WALL_CD;
               // Attaque de meute : bonus de dégâts par assaillant proche du
               // mur (impression de coups frappés ensemble).
-              zcible.wall.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
+              zcible.wall.hp -= Math.round(G.ZOMBIE_WALL_DMG * G.zombieRamp()) + swarmBonus(z);
               z.lunge = G.ZOMBIE_LUNGE_TIME;
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
             } else if (!zcible.isPlayer && zcible.tower && z.wallCd <= 0) {
               // Attaque de tour : memes regles que les palissades (degats +
               // bonus de meute, cooldown partage wallCd).
               z.wallCd = G.ZOMBIE_WALL_CD;
-              zcible.tower.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
+              zcible.tower.hp -= Math.round(G.ZOMBIE_WALL_DMG * G.zombieRamp()) + swarmBonus(z);
               z.lunge = G.ZOMBIE_LUNGE_TIME;
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
             } else if (!zcible.isPlayer && zcible.mairie && z.wallCd <= 0) {
               z.wallCd = G.ZOMBIE_WALL_CD;
-              zcible.mairie.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
+              zcible.mairie.hp -= Math.round(G.ZOMBIE_WALL_DMG * G.zombieRamp()) + swarmBonus(z);
               if (zcible.mairie.hp <= 0) { zcible.mairie.hp = 0; state.gameOver = true; state.gameOverCause = "mairie"; }
               z.lunge = G.ZOMBIE_LUNGE_TIME;
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
@@ -619,7 +653,7 @@
             if (z.wallCd <= 0) {
               z.wallCd = G.ZOMBIE_WALL_CD;
               var hitTarget = wallHit ? zcible.wall : zcible.tower;
-              hitTarget.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
+              hitTarget.hp -= Math.round(G.ZOMBIE_WALL_DMG * G.zombieRamp()) + swarmBonus(z);
               z.lunge = G.ZOMBIE_LUNGE_TIME;
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
             } else {
@@ -643,7 +677,7 @@
                 (ld <= G.ZOMBIE_WALL_SENSE ||
                  (zNearWall && zNearWallD < G.ZOMBIE_WALL_SENSE) ||
                  (zcible.tower && zd < G.ZOMBIE_WALL_SENSE * 2)) &&
-                zd > (zcible.seeking ? 14 : G.ZOMBIE_WALL_HIT);
+                zd > (zcible.seeking ? 14 : zcible.mairie ? 13 : G.ZOMBIE_WALL_HIT);
             if (arrive) {
               sx = zcible.x - z.x; sy = zcible.y - z.y;
               sd = Math.sqrt(sx * sx + sy * sy) || 1;
@@ -779,7 +813,7 @@
                       var atkWall = zNearWall || zcible.wall;
                       if (atkWall) {
                         z.wallCd = G.ZOMBIE_WALL_CD;
-                        atkWall.hp -= G.ZOMBIE_WALL_DMG + swarmBonus(z);
+                        atkWall.hp -= Math.round(G.ZOMBIE_WALL_DMG * G.zombieRamp()) + swarmBonus(z);
                         z.lunge = G.ZOMBIE_LUNGE_TIME;
                         z.lungeDx = mvx; z.lungeDy = mvy;
                         z.blockedSides = 0;

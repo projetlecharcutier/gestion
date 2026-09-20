@@ -214,6 +214,7 @@
       }
     }
     if (s.waveCount !== undefined) state.waveCount = s.waveCount;
+    if (s.zombieRamp !== undefined) state.zombieRamp = s.zombieRamp;
     if (s.waveActive !== undefined) state.waveActive = s.waveActive;
     if (s.waveMsgTimer !== undefined) state.waveMsgTimer = s.waveMsgTimer;
     if (s.hordeMsgTimer !== undefined) state.hordeMsgTimer = s.hordeMsgTimer;

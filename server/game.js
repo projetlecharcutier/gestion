@@ -92,6 +92,7 @@
       nextWaveAt: G.WAVE_EVERY,
       waveActive: false,
       waveCount: 0,
+      zombieRamp: 1,
       waveLeaveAt: 0,
       waveSpawnedForDay: false,
       zombieMode: "attack",
@@ -556,6 +557,7 @@
         yes: countYesVotes()
       } : null,
       waveCount: state.waveCount || 0,
+      zombieRamp: state.zombieRamp || 1,
       waveActive: state.waveActive || false,
       waveMsgTimer: state.waveMsgTimer || 0,
       hordeMsgTimer: state.hordeMsgTimer || 0,

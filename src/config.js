@@ -170,6 +170,13 @@
   G.WALL_GRACE = 1.5;
   G.ZOMBIE_PER_WAVE_BASE = 50;
   G.ZOMBIE_WAVE_GROWTH = 2;
+  // Plafond de la vague : le nombre de zombies par nuit est capé. Au-delaà, la
+  // difficulté monte autrement — chaque nuit passée au plafond augmente les
+  // dégâts/s, les PV et la vitesse des zombies de ZOMBIE_RAMP_STEP (capés à
+  // ZOMBIE_RAMP_MAX = +50%).
+  G.ZOMBIE_WAVE_MAX = 5000;
+  G.ZOMBIE_RAMP_STEP = 0.10; // +10% par nuit au plafond
+  G.ZOMBIE_RAMP_MAX = 0.50;  // cap a +50%
   G.BIRD_SPEED = 220;
   G.BIRD_HP = 1;
   G.BIRD_W = 10;
