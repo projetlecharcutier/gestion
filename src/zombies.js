@@ -281,6 +281,26 @@
     state.lastShot = lastShot;
 
     var p = state.player;
+    // Cibles vivantes : en mode serveur ce sont les vrais joueurs
+    // (state.players) ; en local, le joueur unique (state.player). Sans cette
+    // distinction, les zombies du serveur couraient vers le joueur fantingue
+    // du centre du monde et les vrais joueurs n'etaient jamais attaques.
+    var preys = [];
+    if (state.players && state.players.length > 0) {
+      for (var pri = 0; pri < state.players.length; pri++) {
+        if (state.players[pri].alive) preys.push(state.players[pri]);
+      }
+    }
+    if (preys.length === 0) preys.push(p);
+    function nearestPrey(x, y) {
+      var best = preys[0], bestD = Infinity;
+      for (var pri2 = 0; pri2 < preys.length; pri2++) {
+        var pr = preys[pri2];
+        var prd = (pr.x - x) * (pr.x - x) + (pr.y - y) * (pr.y - y);
+        if (prd < bestD) { bestD = prd; best = pr; }
+      }
+      return best;
+    }
     // La mairie est la cible principale des zombies (centre-ville).
     var mairie = null;
     for (var mi0 = 0; mi0 < state.buildings.length; mi0++) {
@@ -382,10 +402,11 @@
           sz.slotDist += (sz.slotDistT - sz.slotDist) * lerpF;
         }
         var cible = null;
-        var pdx = p.x - grp.x, pdy = p.y - grp.y;
+        var preyG = nearestPrey(grp.x, grp.y);
+        var pdx = preyG.x - grp.x, pdy = preyG.y - grp.y;
         var distP = Math.sqrt(pdx * pdx + pdy * pdy);
         if (distP < G.ZOMBIE_ATTACK_RANGE) {
-          cible = { x: p.x, y: p.y, isPlayer: true };
+          cible = { x: preyG.x, y: preyG.y, isPlayer: true, prey: preyG };
         } else if (retreating) {
           // Mode retraite (apres 8h) : s'eloigne de la ville, n'attaque pas la
           // mairie. MAIS attaque les murs à proximité (de nuit comme de jour,
@@ -575,9 +596,10 @@
           // groupe fonce sur la mairie/murs).
           var zcible = cible;
           if (z.harasser) {
-            var hpdx = p.x - z.x, hpdy = p.y - z.y;
+            var preyH = nearestPrey(z.x, z.y);
+            var hpdx = preyH.x - z.x, hpdy = preyH.y - z.y;
             if (Math.sqrt(hpdx * hpdx + hpdy * hpdy) < G.ZOMBIE_HARASS_RANGE) {
-              zcible = { x: p.x, y: p.y, isPlayer: true };
+              zcible = { x: preyH.x, y: preyH.y, isPlayer: true, prey: preyH };
             }
           }
           // Détection de mur individuelle : chaque zombie cherche le mur le
@@ -640,11 +662,26 @@
           if (zd < 14) {
             if (zcible.isPlayer && z.atkCd <= 0) {
               z.atkCd = G.ZOMBIE_ATTACK_CD;
-              p.hp -= Math.round(G.ZOMBIE_PLAYER_DMG * G.zombieRamp());
+              var tgt = zcible.prey || p;
+              tgt.hp -= Math.round(G.ZOMBIE_PLAYER_DMG * G.zombieRamp());
               // Lunge / télégraphie : élan visuel vers le joueur.
               z.lunge = G.ZOMBIE_LUNGE_TIME;
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
-              if (p.hp <= 0) { p.hp = 0; state.gameOver = true; state.gameOverCause = "player"; }
+              if (tgt.hp <= 0) {
+                tgt.hp = 0;
+                if (tgt !== p && state.players) {
+                  // Vrai joueur (serveur) : il meurt, la partie continue tant
+                  // qu'il reste un survivant.
+                  tgt.alive = false;
+                  var anyAlive = false;
+                  for (var pai = 0; pai < state.players.length; pai++) {
+                    if (state.players[pai].alive) { anyAlive = true; break; }
+                  }
+                  if (!anyAlive) { state.gameOver = true; state.gameOverCause = "player"; }
+                } else {
+                  state.gameOver = true; state.gameOverCause = "player";
+                }
+              }
             } else if (!zcible.isPlayer && zcible.wall && z.wallCd <= 0) {
               z.wallCd = G.ZOMBIE_WALL_CD;
               // Attaque de meute : bonus de dégâts par assaillant proche du

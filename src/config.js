@@ -17,9 +17,16 @@
   // client). En dessous, le client fait confiance à sa simulation locale ;
   // au-dessus (collision manquée, téléport), lerp doux vers le serveur.
   G.NET_SNAP_PX = 30;
+  // Au-dela de cet ecart avec le serveur, le client abandonne le lerp et
+  // se repositionne exactement (teleport d'un mur, regeneration du monde) :
+  // le lerp seul laissait un ecart residuel qui relançait la correction a
+  // chaque snapshot (effet elastique permanent).
+  G.NET_SNAP_FULL_PX = 60;
   // Delai serveur avant de lancer la partie apres l'arrivee du 1er joueur (s).
   G.START_DELAY = 3;
   G.NET_SNAP_LERP = 0.25;
+  // Capacite de la partie serveur (affichage du compteur de joueurs du HUD).
+  G.MAX_PLAYERS = 20;
   G.FOG_RADIUS = 200;
   G.TS = 1000;
 

@@ -127,14 +127,45 @@
     return n;
   }
 
+  // Cherche un point de spawn libre en ville : pas dans un batiment/palissade
+  // ET pas trop pres des autres joueurs (sinon tous les joueurs apparaissent
+  // empiles au meme endroit : sprites superposes, impossible de les distinguer).
+  function findSpawn(existing) {
+    var cx = G.WORLD / 2, cy = G.WORLD / 2 + 140;
+    var best = { x: cx, y: cy }, bestD = -1;
+    for (var a = 0; a < 48; a++) {
+      var x, y, ok = true;
+      if (a === 0) { x = cx; y = cy; }
+      else {
+        var ang = (a / 48) * Math.PI * 2 + Math.random() * 0.3;
+        var rad = 60 + (a % 4) * 55;
+        x = cx + Math.cos(ang) * rad;
+        y = cy + Math.sin(ang) * rad;
+      }
+      if (x < G.TOWN_MIN + 20 || x > G.TOWN_MAX - 20 ||
+          y < G.TOWN_MIN + 20 || y > G.TOWN_MAX - 20) continue;
+      if (G.aabbHitsBuildings(x, y)) continue;
+      if (G.aabbHitsWalls(x - G.PLAYER_HALF, y - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true)) continue;
+      var minOther = Infinity;
+      for (var oi = 0; oi < existing.length; oi++) {
+        var dx = existing[oi].x - x, dy = existing[oi].y - y;
+        var d = dx * dx + dy * dy;
+        if (d < minOther) minOther = d;
+      }
+      if (minOther > bestD) { bestD = minOther; best = { x: x, y: y }; }
+      if (bestD === Infinity) break;
+    }
+    return best;
+  }
+
   // Ajoute un joueur à la partie. Retourne le joueur ou null si complet.
   function addPlayer(id, name) {
     if (state.players.length >= MAX_PLAYERS) return null;
-    // Place le joueur à un endroit libre.
+    var spawn = findSpawn(state.players);
     var p = {
       id: id,
       name: name || ("Joueur" + (state.players.length + 1)),
-      x: G.WORLD / 2, y: G.WORLD / 2 + 140,
+      x: spawn.x, y: spawn.y,
       hp: G.PLAYER_MAX_HP,
       alive: true,
       face: 1,
@@ -151,12 +182,6 @@
       chopWall: null,
       chopTimer: 0
     };
-    var tries = 0;
-    while (G.aabbHitsBuildings(p.x, p.y)) {
-      p.x = G.rand(G.TOWN_MIN + 40, G.TOWN_MAX - 40);
-      p.y = G.rand(G.TOWN_MIN + 40, G.TOWN_MAX - 40);
-      if (++tries > 200) break;
-    }
     state.players.push(p);
     return p;
   }
@@ -179,10 +204,13 @@
     G.spawnBirds();
     state.started = true;
     state.startTimer = 0;
-    // Replace les joueurs existants.
+    // Replace les joueurs existants (spawn dispersés : jamais empilés).
+    var placed = [];
     for (var i = 0; i < state.players.length; i++) {
       var p = state.players[i];
-      p.x = G.WORLD / 2; p.y = G.WORLD / 2 + 140;
+      var spawn = findSpawn(placed);
+      p.x = spawn.x; p.y = spawn.y;
+      placed.push(p);
       p.hp = G.PLAYER_MAX_HP; p.alive = true;
       p.equipped = null; p.axeEquipped = false;
       p.bag = { contents: [] };
@@ -372,7 +400,20 @@
         var dx = p._dx, dy = p._dy;
         var dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > 0.001) {
+          // Le client vise avec sa souris depuis SA position predite ; si le
+          // serveur appliquait dx/dy depuis sa propre position, la direction
+          // divergeait (ecart de position = direction legerement differente)
+          // et chaque snapshot re-correction creait l'effet elastique
+          // (rollbacks). On recalcule la direction depuis la position serveur
+          // vers le point vise (aimX/aimY, envoyes avec l'input) : la
+          // trajectoire converge exactement vers le curseur, quelle que soit
+          // la derive de prediction.
           var nx = dx / dist, ny = dy / dist;
+          if (p._aimX !== undefined && p._aimY !== undefined) {
+            var adx = p._aimX - p.x, ady = p._aimY - p.y;
+            var adist = Math.sqrt(adx * adx + ady * ady);
+            if (adist > 0.001) { nx = adx / adist; ny = ady / adist; }
+          }
           // La direction du sprite (lastDx/lastDy/face) suit la souris meme si
           // le mouvement reel est minuscule ou bloque : l'image reflete la
           // direction visee, independamment de la distance souris.
@@ -596,7 +637,14 @@
         ];
       }),
       walls: state.walls.map(function (m) {
-        return { x: Math.round(m.x), y: Math.round(m.y), w: Math.round(m.w), h: Math.round(m.h), hp: m.hp, orient: m.orient, built: m.built };
+        // Grace anti-blocage : envoyee en DELTA de temps (temps restant), pas
+        // en horodatage absolu — les horloges client/serveur different. Sans
+        // cette sync, la palissade bloquait le joueur immediatement dans la
+        // prediction locale alors que le serveur l'ignorait encore pendant la
+        // grace : collision divergente = rollback a chaque snapshot.
+        var grace = m.noBlockUntil !== undefined ? +(m.noBlockUntil - state.time).toFixed(2) : undefined;
+        if (grace !== undefined && grace < 0) grace = 0;
+        return { x: Math.round(m.x), y: Math.round(m.y), w: Math.round(m.w), h: Math.round(m.h), hp: m.hp, orient: m.orient, built: m.built, grace: grace };
       }),
       items: state.items.filter(function (it) { return !it.taken; }).map(function (it) {
         return { x: Math.round(it.x), y: Math.round(it.y), name: it.name, kind: it.kind, color: it.color };
@@ -643,9 +691,11 @@
       waveActive: state.waveActive || false,
       waveMsgTimer: state.waveMsgTimer || 0,
       hordeMsgTimer: state.hordeMsgTimer || 0,
-      // Forets coupees : envoyees en format compact [x, y, stage]. On garde
-      // toutes les forets modifiees (le client en a besoin pour le rendu et la
-      // collision, meme recompilees)
+      // Forets coupees : envoyees en format compact [x, y, stage]. La cle est
+      // le centre exact ARRONDI du batiment serveur : le client memorise la
+      // meme cle (foretKey) depuis la carte recue au join, avant tout recalcul
+      // d'emprise PNG — les arrondis separes de x/y/w/h dans mapSnapshot
+      // declaçaient la cle reconstruite et le stage ne s'appliquait jamais.
       forets: state.buildings.filter(function (b) {
         return b.isForet && (b.foretStage || 0) > 0;
       }).map(function (b) {
@@ -691,8 +741,16 @@
   function mapSnapshot() {
     return {
       buildings: state.buildings.map(function (b) {
+        // Forets : positions en precision EXACTE (pas d'arrondi). Le client
+        // memorise la cle de sync foretKey = Math.round(x + w/2) depuis ces
+        // valeurs : les arrondis separes de x/y/w/h decalaient la cle de 1 px
+        // par rapport au snapshot et l'etat de coupe ne s'appliquait jamais.
+        var roundPos = !b.isForet;
         return {
-          x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h),
+          x: roundPos ? Math.round(b.x) : b.x,
+          y: roundPos ? Math.round(b.y) : b.y,
+          w: roundPos ? Math.round(b.w) : b.w,
+          h: roundPos ? Math.round(b.h) : b.h,
           name: b.name, isMairie: b.isMairie, isChurch: b.isChurch, isDecor: b.isDecor,
           isForet: b.isForet || false, foretFrame: b.foretFrame || null, foretStage: b.foretStage || 0,
           // Ne PAS serialiser l'objet sprite du serveur (stub sans image :

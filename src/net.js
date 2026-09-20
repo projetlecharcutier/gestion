@@ -14,6 +14,12 @@
   var equipSentAt = 0;
   var pendingEquip = null; // nom d'arme attendu (null = desequipe / hache)
 
+  // Memoire dediee pour le floater de recolte : dernier nombre de planches
+  // vu du serveur. On ne peut PAS comparer a state.planks, ecrase a chaque
+  // snapshot par la valeur serveur : l'ancien test re-emettait le floater
+  // en boucle des que les planches etaient non nulles.
+  var lastPlanksSeen = null;
+
   // URL du serveur : ws://hote:port. Le WebSocket utilise le même hôte et le
   // même port que la page HTTP servie (le serveur sert le client ET le WS sur
   // un seul port) — fonctionne directement via http://<ip>:<port>, sans DNS.
@@ -143,8 +149,16 @@
     var state = G.state;
     state.clock = s.clock;
     state.day = s.day;
+    // Le gameOver local peut etre INDIVIDUEL (joueur mort, cause "player")
+    // alors que le serveur continue la partie pour les survivants : on ne
+    // laisse pas l'etat global ecraser cet ecran de mort personnel.
+    var meWasDead = state.gameOver && state.gameOverCause === "player";
     state.gameOver = s.gameOver;
     state.gameOverCause = s.gameOverCause;
+    if (meWasDead && !s.gameOver) {
+      state.gameOver = true;
+      state.gameOverCause = "player";
+    }
     // Zombies : format compact [x, y, hp, lunge, ldx, ldy, leader] (bande
     // passante ~3x moindre la nuit). Decompression en objets pour le rendu.
     if (s.zombies) {
@@ -159,14 +173,25 @@
       }
       state.zombies = zout;
     } else state.zombies = [];
-    state.walls = s.walls || [];
+    // Murs : la grace anti-blocage arrive en delta de temps (temps restant).
+    // On la traduit en horodatage local pour aabbHitsWalls (forPlayer).
+    if (s.walls) {
+      var nwalls = [];
+      for (var wi = 0; wi < s.walls.length; wi++) {
+        var wm = s.walls[wi];
+        if (wm.grace !== undefined && wm.grace > 0) {
+          wm.noBlockUntil = state.time + wm.grace;
+        }
+        nwalls.push(wm);
+      }
+      state.walls = nwalls;
+    } else state.walls = [];
     state.items = s.items || [];
     state.projectiles = s.projectiles || [];
     state.birds = s.birds || [];
     // Traces de zombies morts : gerees cote serveur (autorite). Le client ne
     // fait que les afficher (rendu juste au-dessus du fond).
     if (s.deadTraces) state.deadTraces = s.deadTraces;
-    state.planks = s.planks || 0;
     state.mairieHp = s.mairieHp;
     state.mairieMaxHp = s.mairieMaxHp;
     if (s.mairieGold !== undefined) state.mairieGold = s.mairieGold;
@@ -278,11 +303,16 @@
       // Applique les stages ; la grille de collision n'est reconstruite que
       // si un stage CHANGE reellement (evite de reconstruire 10x/s une grille
       // de ~2400 forets a chaque snapshot).
+      // Cle : foretKey (centre exact serveur, arrondi, mémorisé au join)
+      // plutôt que le centre recalculé : refitForet change w/h à chaque état
+      // de coupe, la clé recalculée ne matchait plus jamais le snapshot et
+      // la forêt restait à son état local (invisible côté client).
       var changed = false;
       for (var bi = 0; bi < state.buildings.length; bi++) {
         var fb = state.buildings[bi];
         if (!fb.isForet) continue;
-        var k = Math.round(fb.x + fb.w / 2) + "," + Math.round(fb.y + fb.h / 2);
+        var k = fb.foretKey !== undefined ? fb.foretKey :
+          Math.round(fb.x + fb.w / 2) + "," + Math.round(fb.y + fb.h / 2);
         var ns = byPos[k] !== undefined ? byPos[k] : 0;
         if ((fb.foretStage || 0) !== ns) {
           fb.foretStage = ns;
@@ -303,16 +333,27 @@
     var local = null;
     if (s.players) {
       state.remotePlayers = [];
+      var meDead = false;
       for (var i = 0; i < s.players.length; i++) {
         var p = s.players[i];
         if (p.id === playerId) {
+          // Mort du joueur local (serveur autoritaire) : affiche l'ecran de
+          // fin individuel sans arreter la partie des autres survivants.
+          if (p.alive === false) meDead = true;
           // Prédiction client : le déplacement est simulé localement chaque
           // frame (main.js). On ne réaligne que si l'écart avec le serveur
           // dépasse NET_SNAP_PX (collision, téléport, dérive) : petit lerp
-          // doux, invisible en jeu normal.
+          // doux, invisible en jeu normal. Au-delà de NET_SNAP_FULL_PX
+          // (téléport, monde régénéré), repositionnement exact : un lerp
+          // seul ne résorbe jamais l'écart et le re-déclenche à chaque
+          // snapshot (élastique permanent).
           var pdx2 = p.x - state.player.x;
           var pdy2 = p.y - state.player.y;
-          if (pdx2 * pdx2 + pdy2 * pdy2 > G.NET_SNAP_PX * G.NET_SNAP_PX) {
+          var pdist2 = Math.sqrt(pdx2 * pdx2 + pdy2 * pdy2);
+          if (pdist2 > (G.NET_SNAP_FULL_PX || 60)) {
+            state.player.x = p.x;
+            state.player.y = p.y;
+          } else if (pdist2 > G.NET_SNAP_PX) {
             state.player.x += pdx2 * G.NET_SNAP_LERP;
             state.player.y += pdy2 * G.NET_SNAP_LERP;
           }
@@ -342,14 +383,19 @@
           if (p.bag) { state.bag.contents = p.bag; state.inventory = p.inventory; }
           // Floater de récolte : le serveur crédite les planches (bois coupé à
           // la hache), le client n'a pas d'événement dédié. On détecte
-          // l'incrément entre deux snapshots.
+          // l'incrément STRICT entre deux snapshots via lastPlanksSeen (une
+          // mémoire dédiée : state.planks est réécrit à chaque snapshot, le
+          // tester relançait le floater en boucle à 10 Hz).
           if (p.planks !== undefined) {
-            if (state.axeEquipped && p.planks > (state.planks || 0)) {
-              if (G.addFloater) G.addFloater("+" + (p.planks - state.planks) + " planches");
+            if (lastPlanksSeen !== null && p.planks > lastPlanksSeen &&
+                state.axeEquipped && G.addFloater) {
+              G.addFloater("+" + (p.planks - lastPlanksSeen) + " planches");
             }
+            lastPlanksSeen = p.planks;
             state.planks = p.planks;
           }
           if (p.gold !== undefined) state.gold = p.gold;
+          state.playersOnline = (s.players || []).length;
           // Animations d'action du joueur local en mode serveur : le tir est
           // simule cote serveur, le client n'a donc jamais l'evenement local.
           // On horodate lastShotAt a partir de shotAge pendant la fenetre de
@@ -370,6 +416,12 @@
         } else {
           state.remotePlayers.push(p);
         }
+      }
+      // Mort du joueur local : game over individuel (le gameOver global du
+      // serveur reste reserve a la destruction de la mairie).
+      if (meDead && !state.gameOver) {
+        state.gameOver = true;
+        state.gameOverCause = "player";
       }
     }
   };
@@ -405,6 +457,10 @@
       var stage = b.foretStage || 0;
       var fresh = G.makeForet(cx, cy, frame);
       fresh.foretStage = stage;
+      // Cle de sync stable : le centre serveur (positions arrondies envoyees
+      // dans la carte) memorise AVANT tout refitForet (qui change w/h a chaque
+      // etat de coupe). Les snapshots forets utilisent la meme cle.
+      fresh.foretKey = Math.round(cx) + "," + Math.round(cy);
       if (G.refitForet) G.refitForet(fresh);
       buildings[i] = fresh;
     }

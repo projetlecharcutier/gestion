@@ -402,6 +402,7 @@
       var ih = (img && img.naturalHeight) || sprite.h;
       var dw = iw * scale, dh = ih * scale;
       ctx.drawImage(img, base[0] - dw / 2, base[1] - dh, dw, dh);
+      _drawPlayerName(base, G.state.playerName);
       return;
     }
     // Fallback : sprite pixel art JS (ancien rendu, gauche/droite par miroir).
@@ -423,6 +424,22 @@
         ctx.fillRect(ox + cc * cell, oy + r * cell, cell + 0.5, cell + 0.5);
       }
     }
+    _drawPlayerName(base, G.state.playerName);
+  };
+
+  // Nom affiché sous le sprite du joueur local (comme les joueurs distants).
+  function _drawPlayerName(base, name) {
+    if (!name) return;
+    var ctx = G.ctx;
+    ctx.save();
+    ctx.font = "bold 11px monospace";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#fff";
+    ctx.strokeStyle = "rgba(0,0,0,0.7)";
+    ctx.lineWidth = 3;
+    ctx.strokeText(name, base[0], base[1] + 14);
+    ctx.fillText(name, base[0], base[1] + 14);
+    ctx.restore();
   };
 
   // Dessine un autre joueur (multijoueur). Repli simple : ombre + sprite local
@@ -473,19 +490,20 @@
         ctx.drawImage(img, base[0] - dw / 2, base[1] - dh, dw, dh);
       }
     }
-    // Nom + barre de vie.
+    // Nom (SOUS le sprite) + barre de vie (au-dessus).
     ctx.save();
     ctx.font = "bold 11px monospace";
     ctx.textAlign = "center";
     ctx.fillStyle = "#fff";
     ctx.strokeStyle = "rgba(0,0,0,0.7)";
     ctx.lineWidth = 3;
-    var ny = base[1] - (sprite ? sprite.h * z + 14 : 30);
+    var ny = base[1] + 14;
     ctx.strokeText(rp.name, base[0], ny);
     ctx.fillText(rp.name, base[0], ny);
+    var hy = base[1] - (sprite ? sprite.h * z + 8 : 24);
     if (rp.hp !== undefined && rp.hp < G.PLAYER_MAX_HP) {
       var bw = 28, bh = 4;
-      var bx = base[0] - bw / 2, by = ny + 4;
+      var bx = base[0] - bw / 2, by = hy;
       ctx.fillStyle = "#3a0a0a";
       ctx.fillRect(bx, by, bw, bh);
       ctx.fillStyle = "#e23b3b";

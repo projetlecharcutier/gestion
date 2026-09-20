@@ -126,7 +126,20 @@
     if (dt > 0.25) dt = 0.25; // clamp pour éviter les sauts.
 
     // Simulation à chaque frame (20 Hz effectif via setInterval).
+    var wasStarted = game.getState().started;
     game.tick(dt);
+    // La partie vient de démarrer (START_DELAY écoulé) : le monde a été
+    // RÉGÉNÉRÉ aléatoirement par startGame(). Les clients ont reçu l'ancienne
+    // carte au join — sans la nouvelle, leurs collisions locales divergeaient
+    // totalement de celles du serveur (rollbacks constants, injouable).
+    if (!wasStarted && game.getState().started) {
+      broadcast({
+        type: "restart",
+        clock: game.getState().clock,
+        map: game.mapSnapshot()
+      });
+      console.log("Partie démarrée : nouvelle carte diffusée à tous les joueurs.");
+    }
 
     // Broadcast lobby.
     lobbyAcc += dt;

@@ -9,6 +9,16 @@
     var p = state.player;
     G.hudZone.textContent = G.inTown(p.x, p.y) ? "Ville" : "Hors ville";
     G.hudPos.textContent = "(" + Math.round(p.x) + ", " + Math.round(p.y) + ")";
+    // Compteur de joueurs connectés : uniquement en mode serveur (le lobby
+    // d'accueil affiche déjà l'info avant le join).
+    if (G.hudPlayers) {
+      if (G.playMode === "server") {
+        G.hudPlayers.hidden = false;
+        G.hudPlayers.textContent = "Joueurs : " + (state.playersOnline || 0) + "/" + (G.MAX_PLAYERS || 20);
+      } else {
+        G.hudPlayers.hidden = true;
+      }
+    }
     G.hudInv.textContent = String(state.inventory);
     // Un seul objet equipe a la fois : arme OU hache.
     if (state.axeEquipped) G.hudWeapon.textContent = "Hache";
