@@ -61,7 +61,20 @@
   };
 
   // Envoie un input (déplacement, tir, etc.).
+  // Limite la frequence d'envoi des inputs de deplacement/tir : inutile
+  // d'envoyer 60 inputs/s au serveur qui tourne a 20 Hz (TICK_HZ) et qui
+  // n'utilise que le dernier input recu par tick. Les inputs ponctuels
+  // (equip, build, placeBuild...) passent toujours immediatement.
+  var lastMoveSentAt = 0;
+  var moveSendInterval = 1000 / 20; // 20 Hz, aligne sur TICK_HZ serveur
+
   G.netInput = function (input) {
+    var nowMs = (typeof performance !== "undefined" ? performance.now() : Date.now());
+    var isMoveOnly = input.buildWall === null && input.buildSel === undefined &&
+      input.placeBuild === undefined && input.equip === undefined &&
+      input.toggleAxe === undefined;
+    if (isMoveOnly && nowMs - lastMoveSentAt < moveSendInterval) return;
+    if (isMoveOnly) lastMoveSentAt = nowMs;
     // Marque le debut de la fenetre de reconciliation pour equip/toggleAxe.
     if (input.equip !== undefined) {
       equipSentAt = (typeof performance !== "undefined" ? performance.now() : Date.now());
@@ -250,9 +263,16 @@
       for (var i = 0; i < s.players.length; i++) {
         var p = s.players[i];
         if (p.id === playerId) {
-          // Interpolation douce vers la position serveur.
-          state.player.x += (p.x - state.player.x) * 0.4;
-          state.player.y += (p.y - state.player.y) * 0.4;
+          // Prédiction client : le déplacement est simulé localement chaque
+          // frame (main.js). On ne réaligne que si l'écart avec le serveur
+          // dépasse NET_SNAP_PX (collision, téléport, dérive) : petit lerp
+          // doux, invisible en jeu normal.
+          var pdx2 = p.x - state.player.x;
+          var pdy2 = p.y - state.player.y;
+          if (pdx2 * pdx2 + pdy2 * pdy2 > G.NET_SNAP_PX * G.NET_SNAP_PX) {
+            state.player.x += pdx2 * G.NET_SNAP_LERP;
+            state.player.y += pdy2 * G.NET_SNAP_LERP;
+          }
           state.player.hp = p.hp;
           state.player.face = p.face;
           state.player.moving = p.moving;

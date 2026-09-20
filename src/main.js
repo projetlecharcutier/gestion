@@ -42,8 +42,10 @@
 
     if (state.shootCd > 0) state.shootCd -= dt;
 
-    // Mode multijoueur : le serveur est autorité. On envoie les inputs et on
-    // consomme l'état distant (applyRemoteState dans net.js). On ne simule pas.
+    // Mode multijoueur : le serveur est autorité pour l'état du monde, mais
+    // le client PREDIT son propre déplacement (tryMove local, chaque frame)
+    // pour un rendu fluide. applyRemoteState (net.js) ne réaligne la position
+    // qu'en cas d'écart réel avec le serveur (seuil NET_SNAP_PX).
     var online = sendNetInput(dt);
 
     if (!online) {
@@ -90,6 +92,24 @@
     } else {
       // Hors-ligne les floaters/chop ne tournent pas ; en ligne ils restent côté serveur.
       G.updateFloaters(dt);
+      // Prédiction client : même simulation de déplacement qu'en local
+      // (tryMove sur la grille de collisions locale, identique au serveur).
+      if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.churchOpen && !state.gameOver) {
+        var pp = state.player;
+        if (state.keys.space && state.mouse.inside) {
+          var ptx = state.mouse.wx, pty = state.mouse.wy;
+          var pdx = ptx - pp.x, pdy = pty - pp.y;
+          var pdist = Math.sqrt(pdx * pdx + pdy * pdy);
+          if (pdist > 0.001) {
+            var pnx = pdx / pdist, pny = pdy / pdist;
+            pp.lastDx = pnx; pp.lastDy = pny;
+            if (pnx < 0) pp.face = -1; else if (pnx > 0) pp.face = 1;
+            pp.moving = G.tryMove(pp.x + pnx * G.SPEED * dt, pp.y + pny * G.SPEED * dt);
+          } else { pp.moving = false; pp.lastDx = 0; pp.lastDy = 0; }
+        } else { pp.moving = false; pp.lastDx = 0; pp.lastDy = 0; }
+      } else {
+        state.player.moving = false;
+      }
     }
 
     state.camera.x += (state.player.x - state.camera.x) * Math.min(1, dt * 6);

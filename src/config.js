@@ -13,6 +13,11 @@
   G.PLAYER_H = 15;
   G.PLAYER_HALF = 3;
   G.SPEED = 260;
+  // Réseau : seuil de réalignement de la position du joueur local (prédiction
+  // client). En dessous, le client fait confiance à sa simulation locale ;
+  // au-dessus (collision manquée, téléport), lerp doux vers le serveur.
+  G.NET_SNAP_PX = 30;
+  G.NET_SNAP_LERP = 0.25;
   G.FOG_RADIUS = 200;
   G.TS = 1000;
 
