@@ -77,9 +77,10 @@
         G.fillPoly([p1, p2, p3, p4], tile.fill, tile.stroke);
       }
     }
-    // Points de couleur (fleurs / pousses) sur chaque tuile visible : ~1% de
-    // la surface, position et couleur deterministes par (tuile, index) pour
-    // ne jamais scintiller quand la camera bouge ou le zoom change.
+    // Taches de couleur (fleurs / pousses) sur chaque tuile visible : ~0.5%
+    // de la surface, carres alignes sur les axes ecran, position et couleur
+    // deterministes par (tuile, index), aucun scintillement quand la camera
+    // bouge ou le zoom change.
     // Garde perf : au zoom minimal presque toute la carte est visible
     // (~100 tuiles), les points seraient sous-px et nombreux (~50k arcs).
     if (tx_.specks && tx_.specks.colors.length > 0 && G.state.zoom >= 2) {
@@ -107,8 +108,9 @@
   }
   function imul(x, y) { return (x * y) | 0; }
 
-  // Points de couleur d'une tuile : positions dans [0,1) et couleur tirees du
-  // hash (tx, ty, i). Rendu iso : petits disques de rayon radius * z.
+  // Taches de couleur d'une tuile : positions dans [0,1) et couleur tirees
+  // du hash (tx, ty, i). Rendu iso : carres alignes sur les axes ecran
+  // (horizontal / vertical), de cote side * z.
   var lastSpeckCi = -1;
   G.drawGroundSpecks = function (tx, ty) {
     var ctx = G.ctx;
@@ -119,15 +121,14 @@
     ctx.globalAlpha = sp.alpha;
     ctx.fillStyle = colors[0];
     lastSpeckCi = 0;
+    var s = sp.side * z;
     for (var i = 0; i < sp.perTile; i++) {
       var rx = speckRand(tx, ty, i * 2);
       var ry = speckRand(tx, ty, i * 2 + 1);
       var p = G.proj(wx0 + rx * G.TS, wy0 + ry * G.TS);
       var ci = Math.floor(speckRand(tx + 7919, ty + 104729, i) * colors.length);
       if (ci !== lastSpeckCi) { ctx.fillStyle = colors[ci]; lastSpeckCi = ci; }
-      ctx.beginPath();
-      ctx.arc(p[0], p[1], sp.radius * z, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillRect(p[0] - s / 2, p[1] - s / 2, s, s);
     }
     ctx.globalAlpha = 1;
   };
