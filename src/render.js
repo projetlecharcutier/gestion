@@ -354,7 +354,11 @@
     // dediee a l'equipement pendant le cycle (cadence de l'arme).
     var action = null;
     if (G.state.axeEquipped) {
-      if (G.chopProgress && G.chopProgress() >= 0) action = { anim: true, t: G.state.time - (G.state.lastShotAt || 0) };
+      // remoteChop : cycle de coupe confirme par le serveur (mode en ligne,
+      // chopProgress() local est vide car le serveur fait autorite).
+      if ((G.chopProgress && G.chopProgress() >= 0) || G.state.remoteChop) {
+        action = { anim: true, t: G.state.time - (G.state.lastShotAt || 0) };
+      }
     } else if (G.state.equipped && G.state.lastShotAt !== undefined) {
       var stA = G.equippedStats ? G.equippedStats() : null;
       var cdA = stA ? stA.cd : 0.5;

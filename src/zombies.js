@@ -259,11 +259,21 @@
     // (le nombre de projectiles augmente) attire les groupes proches pendant
     // ZOMBIE_NOISE_TIME s. On garde la position du dernier tir récent.
     var lastShot = state.lastShot || null;
-    var projN = state.projectiles ? state.projectiles.length : 0;
+    // Seuls les tirs des JOUEURS font du bruit : les fléches des tours sont
+    // tirées en continu et rafraîchiraient lastShot à chaque tick, collant
+    // les groupes indéfiniment sur un point sans rien attaquer.
+    var projN = 0, lastPlayerProj = null;
+    if (state.projectiles) {
+      for (var ppi = 0; ppi < state.projectiles.length; ppi++) {
+        var ppr = state.projectiles[ppi];
+        if (ppr.owner === "tour") continue;
+        projN++;
+        lastPlayerProj = ppr;
+      }
+    }
     var prevN = state._prevProjN || 0;
-    if (projN > prevN && projN > 0) {
-      var fresh = state.projectiles[projN - 1];
-      lastShot = { x: fresh.x, y: fresh.y, t: state.time };
+    if (projN > prevN && projN > 0 && lastPlayerProj) {
+      lastShot = { x: lastPlayerProj.x, y: lastPlayerProj.y, t: state.time };
     }
     state._prevProjN = projN;
     if (lastShot && (state.time - lastShot.t) > G.ZOMBIE_NOISE_TIME) lastShot = null;
@@ -451,7 +461,10 @@
         if (lastShot && !cible.isPlayer && !cible.wall) {
           var nsx = lastShot.x - grp.x, nsy = lastShot.y - grp.y;
           var nsd = Math.sqrt(nsx * nsx + nsy * nsy);
-          if (nsd < G.ZOMBIE_NOISE_RANGE) {
+          // Bruit consommé : une fois le groupe arrivé sur le point de tir,
+          // il n'y a plus rien à attaquer — il reprend son objectif principal
+          // (mairie/mur/tour) au lieu de rester parqué en formation sur place.
+          if (nsd < G.ZOMBIE_NOISE_RANGE && nsd > 60) {
             cible = { x: lastShot.x, y: lastShot.y, isPlayer: false, noise: true };
           }
         }

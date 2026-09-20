@@ -336,6 +336,23 @@
             state.planks = p.planks;
           }
           if (p.gold !== undefined) state.gold = p.gold;
+          // Animations d'action du joueur local en mode serveur : le tir est
+          // simule cote serveur, le client n'a donc jamais l'evenement local.
+          // On horodate lastShotAt a partir de shotAge pendant la fenetre de
+          // cadence de l'arme : la valeur reste stable (time - shotAge) le
+          // long de la fenetre, puis depasse cd quand l'anim doit s'arreter.
+          if (p.shotAge !== undefined && p.shotAge >= 0) {
+            var wst = G.WEAPON_STATS && G.WEAPON_STATS[p.equipped];
+            var wcd = wst ? wst.cd : 0.5;
+            if (!state.axeEquipped && p.shotAge < wcd) {
+              state.lastShotAt = state.time - p.shotAge;
+            }
+          }
+          // Hache : chop/chopAge indiquent un cycle de coupe en cours. On garde
+          // un flag dedie car chopProgress() lit l'etat local (chopTarget),
+          // toujours vide en ligne (le serveur fait autorite).
+          state.remoteChop = !!(p.chop && p.chopAge !== undefined);
+          if (state.remoteChop) state.lastShotAt = state.time - p.chopAge;
         } else {
           state.remotePlayers.push(p);
         }

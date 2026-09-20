@@ -590,9 +590,14 @@
         var vHouses = [];
         var first = placeHouseAt(vx, vy, false);
         if (first) vHouses.push(state.buildings[state.buildings.length - 1]);
+        // Garde : si la premiere maison n'a pas pu etre posee (zone occupee
+        // par une foret/village voisin), le village est abandonne —
+        // placeAdjacent sur une liste vide ferait crash (anchor undefined).
         var vCount = G.randi(5, 8);
-        for (var vc = 1; vc < vCount; vc++) {
-          if (placeAdjacent(vHouses, false)) vHouses.push(state.buildings[state.buildings.length - 1]);
+        if (vHouses.length > 0) {
+          for (var vc = 1; vc < vCount; vc++) {
+            if (placeAdjacent(vHouses, false)) vHouses.push(state.buildings[state.buildings.length - 1]);
+          }
         }
       }
     }
