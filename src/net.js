@@ -341,12 +341,23 @@
     }).join(", ") || "(aucun joueur)";
     var status = info.started ? "Partie en cours" : (info.startTimer > 0 ?
       "Départ dans " + Math.ceil(30 - info.startTimer) + "s" : "En attente de joueurs");
+    // Date de la derniere mise a jour deployee (communiquee par le serveur).
+    var updated = "";
+    if (info.updatedAt) {
+      var d = new Date(info.updatedAt);
+      if (!isNaN(d.getTime())) {
+        var p2 = function (n) { return (n < 10 ? "0" : "") + n; };
+        updated = "<div class=\"lobby__updated\">Dernière mise à jour : " +
+          p2(d.getDate()) + "/" + p2(d.getMonth() + 1) + "/" + d.getFullYear() +
+          " " + p2(d.getHours()) + ":" + p2(d.getMinutes()) + "</div>";
+      }
+    }
     el.innerHTML =
       "<div class=\"lobby__info\">" +
         "<div><b>" + phase + " · " + timeStr + "</b></div>" +
         "<div>Joueurs : " + info.playerCount + "/" + info.maxPlayers + " · Survivants : " + info.aliveCount + "</div>" +
         "<div class=\"lobby__status\">" + status + "</div>" +
         "<div class=\"lobby__names\">" + names + "</div>" +
-      "</div>";
+      "</div>" + updated;
   };
 })();

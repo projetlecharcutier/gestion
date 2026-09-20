@@ -131,6 +131,7 @@ canvas#game {
 .lobby__info b { color: var(--text); }
 .lobby__status { color: var(--accent-soft); margin-top: 4px; }
 .lobby__names { margin-top: 6px; font-size: 0.82rem; opacity: 0.85; }
+.lobby__updated { margin-top: 6px; font-size: 0.78rem; opacity: 0.7; }
 
 #nameInput {
   width: 100%;

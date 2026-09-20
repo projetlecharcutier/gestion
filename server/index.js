@@ -15,6 +15,20 @@
   var LOBBY_HZ = 2;
   var STATE_HZ = 10;
 
+  // Date de la derniere mise a jour deployee : date du dernier commit git
+  // (le serveur est un clone mis a jour par update.sh). Repli : date de
+  // modification de index.html si git n'est pas disponible.
+  var updatedAt = null;
+  try {
+    var execSync = require("child_process").execSync;
+    updatedAt = execSync("git log -1 --format=%cI", { cwd: __dirname, encoding: "utf8" }).trim();
+  } catch (e) {}
+  if (!updatedAt) {
+    try {
+      updatedAt = new Date(fs.statSync(path.join(WEB_ROOT, "index.html")).mtimeMs).toISOString();
+    } catch (e2) {}
+  }
+
   // Racine des fichiers statiques (index.html, src/, assets/) : dossier
   // parent de server/, c'est-à-dire la racine du dépôt.
   var WEB_ROOT = path.join(__dirname, "..");
@@ -40,6 +54,12 @@
   var server = http.createServer(function (req, res) {
     var url = req.url.split("?")[0];
     if (url === "/") url = "/index.html";
+    // Version deployee (affichee dans le menu d'accueil du client).
+    if (url === "/version.json") {
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ updatedAt: updatedAt }));
+      return;
+    }
     // Sécurité : empêche de remonter hors de WEB_ROOT.
     var rel = path.normalize(url).replace(/^(\.\.[\/\\])+/, "");
     var filePath = path.join(WEB_ROOT, rel);
@@ -103,6 +123,7 @@
     if (lobbyAcc >= 1 / LOBBY_HZ) {
       lobbyAcc = 0;
       var lobby = game.lobbySnapshot();
+      lobby.updatedAt = updatedAt;
       broadcast(lobby);
     }
 
