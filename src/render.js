@@ -549,6 +549,15 @@
   // une zone de visibilité (union des dégradés radiaux). Uniquement hors
   // ville (la ville est toujours visible). Le joueur "se sent en sécurité"
   // à proximité d'une tour, même hors les murs.
+  // Brouillard multi-sources : le joueur + chaque tour construite degagent
+  // une zone de visibilite (union des degradees radiaux). Uniquement hors
+  // ville (la ville est toujours visible). Le joueur "se sent en securite" a
+  // proximite d'une tour, meme hors les murs.
+  // Implementation : calque offscreen rempli une fois avec le brouillard
+  // maximal, puis chaque source "troue" ce calque en destination-out (les
+  // trous s'additionnent : une zone degagee par une source ne peut pas etre
+  // rebouchee par une autre). Le calque est ensuite composite sur le canvas.
+  var fogCanvas = null, fogCtx = null;
   G.drawFog = function () {
     var ctx = G.ctx;
     var state = G.state;
@@ -569,25 +578,43 @@
     var t = G.TEXTURES.fog;
     var z = state.zoom;
     // Le brouillard ne se dessine que si le joueur est hors ville (les tours
-    // ne dégagent que si le brouillard est actif).
+    // ne degagent que si le brouillard est actif).
     if (G.inTown(p.x, p.y)) return;
-    ctx.save();
+    if (!fogCanvas) {
+      fogCanvas = document.createElement("canvas");
+      fogCtx = fogCanvas.getContext("2d");
+    }
+    var dpr = window.devicePixelRatio || 1;
+    if (fogCanvas.width !== G.canvas.width || fogCanvas.height !== G.canvas.height) {
+      fogCanvas.width = G.canvas.width;
+      fogCanvas.height = G.canvas.height;
+    }
+    fogCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var full = t.stops[t.stops.length - 1];
+    // 1) Calque rempli du brouillard maximal (couleur/alpha du stop externe).
+    fogCtx.globalCompositeOperation = "source-over";
+    fogCtx.clearRect(0, 0, W, H);
+    fogCtx.fillStyle = "rgba(" + t.color + "," + full.alpha + ")";
+    fogCtx.fillRect(0, 0, W, H);
+    // 2) Chaque source troue le calque : union des zones degagees.
+    fogCtx.globalCompositeOperation = "destination-out";
     for (var si = 0; si < sources.length; si++) {
       var src = sources[si];
       var s = G.proj(src.x, src.y);
       var rx = src.r * 0.5 * z * 2;
       var ry = src.r * 0.25 * z * 2;
-      var grad = ctx.createRadialGradient(s[0], s[1], Math.min(rx, ry) * 0.5, s[0], s[1], Math.max(rx, ry) * 1.3);
+      var grad = fogCtx.createRadialGradient(s[0], s[1], Math.min(rx, ry) * 0.5, s[0], s[1], Math.max(rx, ry) * 1.3);
+      // Degrade de trou : meme courbe que TEXTURES.fog.stops (alpha du trou
+      // = 1 - alpha de brouillard a chaque arret).
       for (var i = 0; i < t.stops.length; i++) {
-        grad.addColorStop(t.stops[i].at, "rgba(" + t.color + "," + t.stops[i].alpha + ")");
+        grad.addColorStop(t.stops[i].at, "rgba(0,0,0," + (1 - t.stops[i].alpha) + ")");
       }
-      // Composite : chaque dégradé "trou" le brouillard par-dessus le
-      // précédent (les zones dégagées fusionnent en union).
-      ctx.globalCompositeOperation = si === 0 ? "source-over" : "source-over";
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, W, H);
+      fogCtx.fillStyle = grad;
+      fogCtx.fillRect(0, 0, W, H);
     }
-    ctx.restore();
+    fogCtx.globalCompositeOperation = "source-over";
+    // 3) Composite du calque de brouillard sur la scene.
+    ctx.drawImage(fogCanvas, 0, 0, W, H);
   };
 
   G.drawCrosshair = function () {
