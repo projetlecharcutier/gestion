@@ -376,7 +376,9 @@
           nextSeries();
           return;
         }
-        // Base statique (premiere frame) puis frames animees.
+        // Base statique (premiere frame) puis frames animees. Si le PNG de
+        // base est absent mais que des frames <base>-0.png... existent, la
+        // serie est quand meme chargee (base = premiere frame).
         var img = new Image();
         img.onload = function () {
           if (img.naturalWidth > 0) {
@@ -387,7 +389,18 @@
           }
           nextSeries();
         };
-        img.onerror = function () { nextSeries(); };
+        img.onerror = function () {
+          var stub = { frames: null };
+          probeAnimFrames(stub, s.dir, s.base, function (frames) {
+            if (frames && frames.length > 0) {
+              stub.img = frames[0];
+              stub.w = frames[0].naturalWidth;
+              stub.h = frames[0].naturalHeight;
+              G.SPRITES[s.ent][s.base] = stub;
+            }
+            nextSeries();
+          });
+        };
         img.src = bust(s.dir + s.base + ".png");
       }
       nextSeries();

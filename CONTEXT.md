@@ -73,7 +73,7 @@ Schéma complet dans `src/state.js`. Champs clés :
 | `ZOMBIE_PER_WAVE_BASE` | 50 | Zombies à la 1ère vague |
 | `ZOMBIE_WAVE_GROWTH` | 2 | ×2 zombies chaque nuit (+100%) |
 | `SCIERIE_COST` | 100 planches + 10 or | Tech scierie à la mairie (or : coffre commun, planches : poseur) |
-| `SCIERIE_SIDE` | 40 | Taille de l'empreinte scierie (px) |
+| `SCIERIE_SIDE` | 80 | Taille de l'empreinte scierie (px) |
 | `GOLD_ITEMS_START` | 100 | Pièces d'or posées hors ville au démarrage |
 | `BIRD_GOLD_CHANCE` | 0.5 | Proba qu'un oiseau tué lâche une pièce d'or |
 | `VOTE_DURATION` | 15 | Durée d'un vote tech (s) |
@@ -136,7 +136,7 @@ Voir `docs/textures.md` pour la spec.
 Spec complète : `docs/towers.md`. En résumé :
 
 1. **Techs de bâtiments de ville** (scierie, université, montgolfière) au coffre de la mairie (section Technologies) : 100 planches + 10 or chacune. En solo achat direct ; en multi vote à la majorité stricte des connectés (15 s, initiateur compte « pour », refus → cooldown 30 s). L'or sort du coffre commun (`mairieGold`), les planches du joueur initiateur.
-2. **Flux de construction** : touche **Z** → **menu de construction** (DOM) qui liste les bâtiments constructibles → clic sur un bâtiment → mode pose → clic sur la carte. Palissade toujours présente ; bâtiments de ville (scierie, université, montgolfière — uniques, en ville, empreinte 40 px, chantier 10 s) si leur tech est débloquée ; tours si la scierie est construite. Clic droit / Échap annule la sélection.
+2. **Flux de construction** : touche **Z** → **menu de construction** (DOM) qui liste les bâtiments constructibles → clic sur un bâtiment → mode pose → clic sur la carte. Palissade toujours présente ; bâtiments de ville (scierie — empreinte 80 px, université et montgolfière — empreinte 40 px ; uniques, en ville, chantier 10 s) si leur tech est débloquée ; tours si la scierie est construite. Clic droit / Échap annule la sélection.
 3. **Tour d'attaque** (`tour:<niveau>` dans le menu) : posable partout, empreinte = taille du PNG, chantier 10 s. Dès le début du chantier elle est attaquable (PV 500, dégradée comme une palissade).
 4. **Combat** : chaque tour porte 2 archers (gauche/droite) indépendants. Ciblage par demi-espace (`z.x < tour.x` = gauche), zombie le plus proche à portée, cooldown 1 s/côté, flèche = trait noir non-perforant (`type:"fleche", owner:"tour"`), éjectée depuis les 10 % les plus hauts du PNG, passe au-dessus des palissades, ne touche jamais les joueurs.
 5. **Rendu** (`drawTower` dans `src/render.js`) : PNG complet par côté (gauche/droite) découpé en moitiés disjointes au rendu → tirs simultanés sans recouvrement.

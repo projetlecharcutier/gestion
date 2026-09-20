@@ -7,14 +7,14 @@
 
   // --- Construction ---
 
-  // Emprise sol d'un bâtiment de tour : 4x la taille du PNG (comme les
-  // bâtiments), repli sur TOWER_FALLBACK_SIDE si le PNG n'est pas chargé
-  // (serveur sans assets).
+  // Emprise sol d'un bâtiment de tour derivee du PNG (reduite de 30% par
+  // rapport aux bâtiments), repli sur fallbackSide si le PNG n'est pas
+  // charge (serveur sans assets).
   G.towerSide = function (level) {
     var stats = G.TOWER_STATS[level] || G.TOWER_STATS.bois;
     var side = stats.fallbackSide;
     var sp = (G.hasSprite && G.hasSprite("tour", "idle")) ? G.SPRITES.tour.idle : null;
-    if (sp) side = sp.w * 2;
+    if (sp) side = sp.w * 1.4;
     return side;
   };
 

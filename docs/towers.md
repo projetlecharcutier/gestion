@@ -59,8 +59,8 @@
   → **menu de construction** listant les bâtiments constructibles :
   « Palissade », « Tour en bois » (généré depuis les tables : toute nouvelle
   entrée de `TOWER_STATS` s'affiche automatiquement).
-- Sélection → mode pose avec **empreinte = taille du PNG** (même règle que
-  `wallSpriteDims` : collision = 4× le PNG, comme les bâtiments). La tour
+- Sélection → mode pose avec **empreinte réduite de 30 %** par rapport aux
+  bâtiments : `side = PNG.w × 1,4` (repli `fallbackSide: 84`). La tour
   **ne pivote pas**.
 - Pose : vérif chevauchement bâtiments/murs, paiement au coffre (tour :
   1 or + 20 planches), grace period + `pushPlayerOutOfWall` réutilisés.
