@@ -13,6 +13,7 @@ Chaque fichier ci-dessous documente un système : son contrat, ses entrées/sort
 | Récolte de planches (hache) | [chop.md](chop.md) | `src/chop.js` |
 | Armes & projectiles | [weapons.md](weapons.md) | `src/weapons.js` |
 | Zombies | [zombies.md](zombies.md) | `src/zombies.js` |
+| Zombies — déplacement & attaque (détail) | [zombies-deplacement-attaque.md](zombies-deplacement-attaque.md) | `src/zombies.js` |
 | Sac & inventaire | [bag.md](bag.md) | `src/bag.js` |
 | HUD & overlays | [hud.md](hud.md) | `src/hud.js` |
 | Rendu | [render.md](render.md) | `src/render.js` |
