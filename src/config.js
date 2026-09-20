@@ -17,6 +17,8 @@
   // client). En dessous, le client fait confiance à sa simulation locale ;
   // au-dessus (collision manquée, téléport), lerp doux vers le serveur.
   G.NET_SNAP_PX = 30;
+  // Delai serveur avant de lancer la partie apres l'arrivee du 1er joueur (s).
+  G.START_DELAY = 3;
   G.NET_SNAP_LERP = 0.25;
   G.FOG_RADIUS = 200;
   G.TS = 1000;

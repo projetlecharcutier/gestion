@@ -35,7 +35,9 @@
   load("zombies.js");
 
   var MAX_PLAYERS = 20;
-  var START_DELAY = 30; // 30 s avant de lancer la partie si un joueur rejoint.
+  var START_DELAY = 3; // court delai avant de lancer la partie : le premier joueur
+                       // ne doit pas attendre (avant : 30 s sans simulation ni
+                       // snapshot -> ville "vide", chop/pickup impossibles).
 
   function createInitialState() {
     return {
@@ -522,13 +524,16 @@
           gold: p.gold || 0
         };
       }),
+      // Zombies en format compact [x, y, hp, lunge, ldx, ldy, leader] : a
+      // 3000+ zombies la nuit, le format objet domine la bande passante
+      // (200 Ko/s -> ~60 Ko/s a 10 Hz).
       zombies: state.zombies.map(function (z) {
-        return {
-          x: Math.round(z.x), y: Math.round(z.y), hp: z.hp,
-          lunge: z.lunge > 0 ? +(z.lunge).toFixed(2) : 0,
-          ldx: z.lungeDx || 0, ldy: z.lungeDy || 0,
-          leader: !!z.isLeader
-        };
+        return [
+          Math.round(z.x), Math.round(z.y), Math.round(z.hp),
+          z.lunge > 0 ? +(z.lunge).toFixed(2) : 0,
+          +(z.lungeDx || 0).toFixed(2), +(z.lungeDy || 0).toFixed(2),
+          z.isLeader ? 1 : 0
+        ];
       }),
       walls: state.walls.map(function (m) {
         return { x: Math.round(m.x), y: Math.round(m.y), w: Math.round(m.w), h: Math.round(m.h), hp: m.hp, orient: m.orient, built: m.built };
@@ -577,10 +582,13 @@
       waveActive: state.waveActive || false,
       waveMsgTimer: state.waveMsgTimer || 0,
       hordeMsgTimer: state.hordeMsgTimer || 0,
+      // Forets coupees : envoyees en format compact [x, y, stage]. On garde
+      // toutes les forets modifiees (le client en a besoin pour le rendu et la
+      // collision, meme recompilees)
       forets: state.buildings.filter(function (b) {
         return b.isForet && (b.foretStage || 0) > 0;
       }).map(function (b) {
-        return { x: Math.round(b.x + b.w / 2), y: Math.round(b.y + b.h / 2), stage: b.foretStage || 0 };
+        return [Math.round(b.x + b.w / 2), Math.round(b.y + b.h / 2), b.foretStage || 0];
       })
     };
   }
@@ -632,6 +640,16 @@
           houseSpriteName: b.houseSpriteName || null,
           hp: b.hp, maxHp: b.maxHp, height: b.height
         };
+      }),
+      // Murs et objets : envoyes des le join pour que le client affiche la
+      // ville complete immediatement (sinon il faut attendre le premier
+      // snapshot 10 Hz, et celui-ci n'est emis qu'une fois la partie
+      // demarree apres START_DELAY).
+      walls: state.walls.map(function (m) {
+        return { x: Math.round(m.x), y: Math.round(m.y), w: Math.round(m.w), h: Math.round(m.h), hp: m.hp, orient: m.orient, built: m.built };
+      }),
+      items: state.items.filter(function (it) { return !it.taken; }).map(function (it) {
+        return { x: Math.round(it.x), y: Math.round(it.y), name: it.name, kind: it.kind, color: it.color };
       })
     };
   }

@@ -104,6 +104,10 @@
           if (it.kind === "or") {
             if (G.netConnected && G.netConnected()) {
               G.netInput({ pickup: { x: Math.round(it.x), y: Math.round(it.y) } });
+              // Message optimiste : le serveur est autorite, mais l'aller-retour
+              // de confirmation n'apporte rien au joueur. Le snapshot retirera
+              // l'item de l'affichage.
+              if (G.addFloater) G.addFloater("+1 pièce");
             } else {
               it.taken = true;
               state.mairieGold = (state.mairieGold || 0) + 1;
@@ -114,6 +118,8 @@
           }
           if (G.netConnected && G.netConnected()) {
             G.netInput({ pickup: { x: Math.round(it.x), y: Math.round(it.y) } });
+            // Message optimiste (le serveur valide et retire l'item du snapshot).
+            if (G.addFloater) G.addFloater(it.name);
           } else {
             it.taken = true;
             state.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });

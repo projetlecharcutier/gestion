@@ -107,6 +107,10 @@
         state.buildings = msg.map.buildings || [];
         _applyHouseSprites(state.buildings);
         _applyForetsCollision(state.buildings);
+        // Murs et objets : la carte complete arrive des le join (plus besoin
+        // d'attendre le premier snapshot 10 Hz apres START_DELAY).
+        state.walls = msg.map.walls || [];
+        state.items = msg.map.items || [];
         G.rebuildBuildingGrid();
       }
       if (msg.clock !== undefined) G.state.clock = msg.clock;
@@ -122,6 +126,8 @@
         G.state.buildings = msg.map.buildings || [];
         _applyHouseSprites(G.state.buildings);
         _applyForetsCollision(G.state.buildings);
+        G.state.walls = msg.map.walls || [];
+        G.state.items = msg.map.items || [];
         G.rebuildBuildingGrid();
       }
       if (msg.clock !== undefined) G.state.clock = msg.clock;
@@ -139,7 +145,20 @@
     state.day = s.day;
     state.gameOver = s.gameOver;
     state.gameOverCause = s.gameOverCause;
-    state.zombies = s.zombies || [];
+    // Zombies : format compact [x, y, hp, lunge, ldx, ldy, leader] (bande
+    // passante ~3x moindre la nuit). Decompression en objets pour le rendu.
+    if (s.zombies) {
+      var zout = [];
+      for (var zi = 0; zi < s.zombies.length; zi++) {
+        var za = s.zombies[zi];
+        if (za.length) {
+          zout.push({ x: za[0], y: za[1], hp: za[2], lunge: za[3], lungeDx: za[4], lungeDy: za[5], leader: !!za[6] });
+        } else {
+          zout.push(za);
+        }
+      }
+      state.zombies = zout;
+    } else state.zombies = [];
     state.walls = s.walls || [];
     state.items = s.items || [];
     state.projectiles = s.projectiles || [];
@@ -234,22 +253,30 @@
     if (s.waveMsgTimer !== undefined) state.waveMsgTimer = s.waveMsgTimer;
     if (s.hordeMsgTimer !== undefined) state.hordeMsgTimer = s.hordeMsgTimer;
     // Met à jour l'état de coupe des forêts depuis le snapshot serveur.
+    // Format compact [x, y, stage] (tolérant au format objet historique).
     if (s.forets) {
       var byPos = {};
       for (var fx = 0; fx < s.forets.length; fx++) {
-        byPos[s.forets[fx].x + "," + s.forets[fx].y] = s.forets[fx].stage;
+        var fr = s.forets[fx];
+        if (fr.length) byPos[fr[0] + "," + fr[1]] = fr[2];
+        else byPos[fr.x + "," + fr.y] = fr.stage;
       }
-      var regrewSolid = false;
+      // Applique les stages ; la grille de collision n'est reconstruite que
+      // si un stage CHANGE reellement (evite de reconstruire 10x/s une grille
+      // de ~2400 forets a chaque snapshot).
+      var changed = false;
       for (var bi = 0; bi < state.buildings.length; bi++) {
         var fb = state.buildings[bi];
         if (!fb.isForet) continue;
         var k = Math.round(fb.x + fb.w / 2) + "," + Math.round(fb.y + fb.h / 2);
-        if (byPos[k] !== undefined) fb.foretStage = byPos[k];
-        else fb.foretStage = 0;
-        if (G.refitForet) G.refitForet(fb);
-        if ((fb.foretStage || 0) < (G.FORET_STAGES - 1)) regrewSolid = true;
+        var ns = byPos[k] !== undefined ? byPos[k] : 0;
+        if ((fb.foretStage || 0) !== ns) {
+          fb.foretStage = ns;
+          if (G.refitForet) G.refitForet(fb);
+          changed = true;
+        }
       }
-      if (regrewSolid && G.rebuildBuildingGrid) G.rebuildBuildingGrid();
+      if (changed && G.rebuildBuildingGrid) G.rebuildBuildingGrid();
     }
     // Met à jour les PV de la mairie (pour le HUD) depuis l'état serveur.
     if (s.mairieHp !== undefined) {
@@ -299,7 +326,15 @@
           }
           // Sac / inventaire / planches gérés côté serveur (autorité).
           if (p.bag) { state.bag.contents = p.bag; state.inventory = p.inventory; }
-          if (p.planks !== undefined) state.planks = p.planks;
+          // Floater de récolte : le serveur crédite les planches (bois coupé à
+          // la hache), le client n'a pas d'événement dédié. On détecte
+          // l'incrément entre deux snapshots.
+          if (p.planks !== undefined) {
+            if (state.axeEquipped && p.planks > (state.planks || 0)) {
+              if (G.addFloater) G.addFloater("+" + (p.planks - state.planks) + " planches");
+            }
+            state.planks = p.planks;
+          }
           if (p.gold !== undefined) state.gold = p.gold;
         } else {
           state.remotePlayers.push(p);
@@ -358,7 +393,7 @@
       return p.name + (p.alive ? "" : " †");
     }).join(", ") || "(aucun joueur)";
     var status = info.started ? "Partie en cours" : (info.startTimer > 0 ?
-      "Départ dans " + Math.ceil(30 - info.startTimer) + "s" : "En attente de joueurs");
+      "Départ dans " + Math.ceil((G.START_DELAY || 3) - info.startTimer) + "s" : "En attente de joueurs");
     // Date de la derniere mise a jour deployee (communiquee par le serveur).
     var updated = "";
     if (info.updatedAt) {
