@@ -77,11 +77,59 @@
         G.fillPoly([p1, p2, p3, p4], tile.fill, tile.stroke);
       }
     }
+    // Points de couleur (fleurs / pousses) sur chaque tuile visible : ~1% de
+    // la surface, position et couleur deterministes par (tuile, index) pour
+    // ne jamais scintiller quand la camera bouge ou le zoom change.
+    // Garde perf : au zoom minimal presque toute la carte est visible
+    // (~100 tuiles), les points seraient sous-px et nombreux (~50k arcs).
+    if (tx_.specks && tx_.specks.colors.length > 0 && G.state.zoom >= 2) {
+      for (var sx2 = startTX; sx2 <= endTX; sx2++) {
+        for (var sy2 = startTY; sy2 <= endTY; sy2++) {
+          G.drawGroundSpecks(sx2, sy2);
+        }
+      }
+    }
     var c1 = G.proj(G.TOWN_MIN, G.TOWN_MIN), c2 = G.proj(G.TOWN_MAX, G.TOWN_MIN),
         c3 = G.proj(G.TOWN_MAX, G.TOWN_MAX), c4 = G.proj(G.TOWN_MIN, G.TOWN_MAX);
     G.fillPoly([c1, c2, c3, c4], null, tx_.border);
 
     G.drawPaths();
+  };
+
+  // Hash entier deterministe : meme entree -> meme sortie, independant du
+  // Math.random global (stable entre frames et entre parties).
+  function speckRand(a, b, n) {
+    var h = (a * 374761393 + b * 668265263 + n * 2246822519) | 0;
+    h = (h ^ (h >>> 13)) | 0;
+    h = (imul(h, 1274126177)) | 0;
+    h = (h ^ (h >>> 16)) | 0;
+    return (h >>> 0) / 4294967296;
+  }
+  function imul(x, y) { return (x * y) | 0; }
+
+  // Points de couleur d'une tuile : positions dans [0,1) et couleur tirees du
+  // hash (tx, ty, i). Rendu iso : petits disques de rayon radius * z.
+  var lastSpeckCi = -1;
+  G.drawGroundSpecks = function (tx, ty) {
+    var ctx = G.ctx;
+    var sp = G.TEXTURES.ground.specks;
+    var colors = sp.colors;
+    var z = G.state.zoom;
+    var wx0 = tx * G.TS, wy0 = ty * G.TS;
+    ctx.globalAlpha = sp.alpha;
+    ctx.fillStyle = colors[0];
+    lastSpeckCi = 0;
+    for (var i = 0; i < sp.perTile; i++) {
+      var rx = speckRand(tx, ty, i * 2);
+      var ry = speckRand(tx, ty, i * 2 + 1);
+      var p = G.proj(wx0 + rx * G.TS, wy0 + ry * G.TS);
+      var ci = Math.floor(speckRand(tx + 7919, ty + 104729, i) * colors.length);
+      if (ci !== lastSpeckCi) { ctx.fillStyle = colors[ci]; lastSpeckCi = ci; }
+      ctx.beginPath();
+      ctx.arc(p[0], p[1], sp.radius * z, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
   };
 
   // Dessine la couleur #fffabc sous chaque bâtiment (empreinte au sol,
