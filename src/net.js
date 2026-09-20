@@ -105,6 +105,7 @@
       if (msg.map) {
         var state = G.state;
         state.buildings = msg.map.buildings || [];
+        _applyHouseSprites(state.buildings);
         _applyForetsCollision(state.buildings);
         G.rebuildBuildingGrid();
       }
@@ -119,6 +120,7 @@
       // Redémarrage de partie : recharge la carte.
       if (msg.map) {
         G.state.buildings = msg.map.buildings || [];
+        _applyHouseSprites(G.state.buildings);
         _applyForetsCollision(G.state.buildings);
         G.rebuildBuildingGrid();
       }
@@ -305,6 +307,22 @@
       }
     }
   };
+
+  // Maisons décoratives : le serveur n'envoie que le nom du sprite (H1, H2,
+  // ...) — jamais l'objet sprite (côté serveur c'est un stub sans image qui
+  // ferait drawImage(null)). On résout le PNG réel côté client.
+  function _applyHouseSprites(buildings) {
+    for (var i = 0; i < buildings.length; i++) {
+      var b = buildings[i];
+      if (!b.isDecor) continue;
+      if (b.houseSprite && b.houseSprite.img) continue; // déjà résolu
+      var name = b.houseSpriteName || (b.houseSprite && typeof b.houseSprite === "string" ? b.houseSprite : null);
+      if (name && G.hasSprite("house", name)) {
+        b.houseSprite = G.SPRITES.house[name];
+        b.height = b.houseSprite.h;
+      }
+    }
+  }
 
   // Les forêts reçues du serveur n'ont pas leurs bornes PNG (le serveur n'a
   // pas d'images). On recalcule ici l'emprise de collision de chaque forêt à

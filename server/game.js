@@ -610,7 +610,10 @@
           x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h),
           name: b.name, isMairie: b.isMairie, isChurch: b.isChurch, isDecor: b.isDecor,
           isForet: b.isForet || false, foretFrame: b.foretFrame || null, foretStage: b.foretStage || 0,
-          houseSprite: b.houseSprite ? b.houseSprite : null,
+          // Ne PAS serialiser l'objet sprite du serveur (stub sans image :
+          // drawImage(null) cote client). Le client retrouve le PNG par nom
+          // (G.SPRITES.house[houseSpriteName]) a la reception de la carte.
+          houseSpriteName: b.houseSpriteName || null,
           hp: b.hp, maxHp: b.maxHp, height: b.height
         };
       })

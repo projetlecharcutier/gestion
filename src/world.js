@@ -20,12 +20,17 @@
     b.x = cx - b.w / 2; b.y = by - b.h / 2;
   }
 
-  G.makeHouse = function (x, y, sprite) {
+  // Maison decorative. `sprite` est l'entree G.SPRITES.house (client : PNG
+  // charge ; serveur : stub {w,h} sans image). `name` est le nom de la frame
+  // (H1, H2...) : il permet de retrouver le sprite cote client apres transfert
+  // reseau (le serveur ne serialise PAS l'objet sprite, qui contiendrait un
+  // stub sans image -> drawImage(null) cote client).
+  G.makeHouse = function (x, y, sprite, name) {
     var side = sprite.w * 2;
     var b = {
       x: x - side / 2, y: y - side / 2, w: side, h: side,
       name: "Maison", msg: "", height: sprite.h,
-      isDecor: true, houseSprite: sprite,
+      isDecor: true, houseSprite: sprite, houseSpriteName: name || null,
       door: { x: x, y: y + side / 2 }
     };
     return b;
@@ -522,7 +527,7 @@
               hy - side / 2 < ob.y + ob.h + 1 && hy + side / 2 > ob.y - 1) return false;
         }
         if (inTown !== undefined && G.inTown(hx, hy) !== inTown) return false;
-        var h = G.makeHouse(hx, hy, sp);
+        var h = G.makeHouse(hx, hy, sp, frame);
         shrinkToOpaque(h, "house", frame);
         state.buildings.push(h);
         return true;
