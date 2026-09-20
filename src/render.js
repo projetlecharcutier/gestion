@@ -133,29 +133,81 @@
     ctx.globalAlpha = 1;
   };
 
-  // Dessine la couleur #fffabc sous chaque bâtiment (empreinte au sol,
-  // losange iso). Appelé depuis drawGround, avant les bâtiments (décor au
-  // fond). Dépasse de 15 px autour du bâtiment avec des bords arrondis.
-  G.drawPaths = function () {
+  // Empreinte de sol sous chaque bâtiment : blob organique (aucune ligne
+  // droite). Rayons multiples autour du centre, bruit basse frequence
+  // determine par hash du bâtiment (speckRand : stable entre frames,
+  // identique pour tous les clients d'un même serveur, different pour
+  // chaque bâtiment). Les points sont relis par courbes quadratiques
+  // (points de controle au milieu des segments) : courbes lentes.
+  // Double couche : halo externe plus large et translucide (bord "usé"
+  // qui elimine l'effet pochoir), puis blob interne plein.
+  var _pathBlobCache = {};
+  function pathBlobAngles(b) {
+    var key = Math.round(b.x) + ":" + Math.round(b.y);
+    if (_pathBlobCache[key] !== undefined) return _pathBlobCache[key];
+    var N = 12;
+    var angs = [];
+    var phase = speckRand(Math.round(b.x), Math.round(b.y), 977) * Math.PI * 2;
+    var freq = 2 + Math.floor(speckRand(Math.round(b.x), Math.round(b.y), 131) * 2);
+    for (var i = 0; i < N; i++) {
+      var base = (i / N) * Math.PI * 2;
+      // Onde lente (2-3 lobes) + jitter individuel par sommet.
+      var wave = Math.sin(base * freq + phase) * 0.16;
+      var jitter = (speckRand(Math.round(b.x), Math.round(b.y), i * 3 + 5) - 0.5) * 0.12;
+      angs.push(base + wave + jitter);
+    }
+    _pathBlobCache[key] = angs;
+    return angs;
+  }
+  function drawPathBlob(b, scale, alpha, color) {
     var ctx = G.ctx;
-    var state = G.state;
-    var PATH_COLOR = "#fffabc";
+    var A = G.proj(b.x, b.y), B = G.proj(b.x + b.w, b.y),
+        C = G.proj(b.x + b.w, b.y + b.h), D = G.proj(b.x, b.y + b.h);
+    var cx = (A[0] + C[0]) / 2, cy = (A[1] + C[1]) / 2;
+    // Rayons de base selon la direction : le losange iso est plus large
+    // horizontalement que verticalement (rapport proj), on en derive des
+    // rayons elliptiques naturels.
+    var rx = Math.max(Math.abs(A[0] - C[0]), Math.abs(B[0] - D[0])) / 2;
+    var ry = Math.max(Math.abs(A[1] - C[1]), Math.abs(B[1] - D[1])) / 2;
+    // Marge piétinée autour du bâtiment (px ecran) + variation par bâtiment.
     var PAD = 15;
-    var RADIUS = 12;
+    var padVar = 6 + speckRand(Math.round(b.x), Math.round(b.y), 401) * 10;
+    var angs = pathBlobAngles(b);
+    var N = angs.length;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    var px = [], py = [];
+    for (var i = 0; i < N; i++) {
+      var ang = angs[i];
+      var wobble = speckRand(Math.round(b.x), Math.round(b.y), i * 3 + 7);
+      var r = 1 + (wobble - 0.5) * 0.22;
+      px.push(cx + Math.cos(ang) * (rx + PAD + padVar) * scale * r);
+      py.push(cy + Math.sin(ang) * (ry + PAD + padVar) * scale * r);
+    }
+    // Courbes quadratiques : point de controle au milieu de chaque segment
+    // (vers le centre -> courbure douce, jamais d'angle vif ni de droite).
+    var mx = (px[N - 1] + px[0]) / 2, my = (py[N - 1] + py[0]) / 2;
+    ctx.moveTo(mx, my);
+    for (var j = 0; j < N; j++) {
+      var nx = (px[j] + px[(j + 1) % N]) / 2;
+      var ny = (py[j] + py[(j + 1) % N]) / 2;
+      ctx.quadraticCurveTo(px[j], py[j], nx, ny);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  G.drawPaths = function () {
+    var state = G.state;
     for (var bi = 0; bi < state.buildings.length; bi++) {
       var b = state.buildings[bi];
       // Pas de jaune sous les forêts (éléments naturels, pas des bâtiments).
       if (b.isForet) continue;
-      var A = G.proj(b.x, b.y), B = G.proj(b.x + b.w, b.y),
-          C = G.proj(b.x + b.w, b.y + b.h), D = G.proj(b.x, b.y + b.h);
-      // Bounding box écran du losange, agrandie de PAD px.
-      var minX = Math.min(A[0], B[0], C[0], D[0]) - PAD;
-      var maxX = Math.max(A[0], B[0], C[0], D[0]) + PAD;
-      var minY = Math.min(A[1], B[1], C[1], D[1]) - PAD;
-      var maxY = Math.max(A[1], B[1], C[1], D[1]) + PAD;
-      ctx.fillStyle = PATH_COLOR;
-      G.roundRect(minX, minY, maxX - minX, maxY - minY, RADIUS);
-      ctx.fill();
+      // Halo externe translucide, plus large (bord degradé "usé").
+      drawPathBlob(b, 1.18, 0.35, "#e8d99a");
+      // Blob interne plein.
+      drawPathBlob(b, 1, 1, "#fffabc");
     }
   };
 
