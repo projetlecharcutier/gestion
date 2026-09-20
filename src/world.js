@@ -383,6 +383,22 @@
     return null;
   };
 
+  // Vrai si la boîte monde (bx, by, bw, bh) touche l'anneau de palissades du
+  // perimètre de la ville, avec la marge G.FORET_WALL_GAP de chaque cote :
+  // les forets de l'init ne doivent pas coller aux murs. L'anneau est un
+  // rectangle creux (bande autour de TOWN_MIN..TOWN_MAX), pas un rectangle
+  // plein : une foret au centre de la ville reste valide.
+  G.foretNearTownWall = function (bx, by, bw, bh) {
+    var m = G.FORET_WALL_GAP || 0;
+    if (bx - m > G.TOWN_MAX || bx + bw + m < G.TOWN_MIN) return false;
+    if (by - m > G.TOWN_MAX || by + bh + m < G.TOWN_MIN) return false;
+    // Intersection avec le rectangle plein : si la boite est entierement a
+    // l'interieur (marge comprise), elle ne touche aucun des 4 murs.
+    if (bx - m >= G.TOWN_MIN && bx + bw + m <= G.TOWN_MAX &&
+        by - m >= G.TOWN_MIN && by + bh + m <= G.TOWN_MAX) return false;
+    return true;
+  };
+
   // Fait poper `total` forêts, regroupées en clusters de 1 à 10 (même
   // distribution que l'ancien système d'arbres). Les forêts vont dans
   // state.buildings[] avec isForet. Si inTown est vrai, elles sont placées
@@ -402,6 +418,11 @@
       var k0 = gkey(ob0.x, ob0.y);
       if (!grid[k0]) grid[k0] = [];
       grid[k0].push(ob0);
+    }
+    // Vrai si la boîte (tx, ty, half) touche la palissade de perimetre (avec
+    // la marge G.FORET_WALL_GAP) : les forets ne doivent pas coller aux murs.
+    function nearTownWall(tx, ty, half) {
+      return G.foretNearTownWall(tx - half, ty - half, half * 2, half * 2);
     }
     function nearForet(tx, ty, half) {
       var minCx = Math.floor((tx - half) / cell), maxCx = Math.floor((tx + half) / cell);
@@ -453,6 +474,7 @@
         var ty = gy + Math.sin(ang) * dist;
         if (tx < half || tx > G.WORLD - half || ty < half || ty > G.WORLD - half) continue;
         if (!inTown && G.inTown(tx, ty)) continue;
+        if (nearTownWall(tx, ty, half)) continue;
         if (nearForet(tx, ty, half)) continue;
         addForet(tx, ty, frame);
         placed++;
@@ -687,7 +709,13 @@
       else if (fs === 1) { ftx = G.rand(G.TOWN_MIN, G.TOWN_MAX); fty = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); }
       else if (fs === 2) { ftx = G.rand(G.TOWN_MIN - 280, G.TOWN_MIN - 20); fty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
       else { ftx = G.rand(G.TOWN_MAX + 20, G.TOWN_MAX + 280); fty = G.rand(G.TOWN_MIN, G.TOWN_MAX); }
-      if (!G.nearBuilding(ftx, fty, 10)) state.buildings.push(G.makeForet(ftx, fty, names[G.randi(0, names.length - 1)]));
+      var fFrame = names[G.randi(0, names.length - 1)];
+      var fSp = G.SPRITES.foret && G.SPRITES.foret[fFrame];
+      var fSide = (fSp ? fSp.w : 64) * 2;
+      if (!G.nearBuilding(ftx, fty, 10) &&
+          !G.foretNearTownWall(ftx - fSide / 2, fty - fSide / 2, fSide, fSide)) {
+        state.buildings.push(G.makeForet(ftx, fty, fFrame));
+      }
     }
 
     state.zombies = [];

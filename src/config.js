@@ -157,6 +157,8 @@
   G.PLAYER_MAX_HP = 100;
   G.FOOD_HEAL = 25;
   G.DEAD_TRACES_MAX = 500;
+  // Taille des taches de sang des zombies morts (1 = taille sprite d'origine).
+  G.DEAD_TRACES_SCALE = 3;
   G.MAIRIE_MAX_HP = 1000;
   G.ZOMBIE_HP = 1;
   G.ZOMBIE_ATTACK_CD = 1.0;
@@ -171,6 +173,9 @@
   // jour écoulé, la forêt regagne un état (remonte vers s0), sauf à s0.
   G.FORET_STAGES = 5;
   G.FORET_PLANKS_PER_CHOP = 5;
+  // Ecart minimal (px) entre les forets et la palissade de perimetre a
+  // l'initialisation du monde : les forets ne collent plus aux murs.
+  G.FORET_WALL_GAP = 40;
   // Reliques : 5 nouvelles reliques apparaissent hors ville a chaque nouveau
   // jour (repop nocturne).
   G.RELIQUES_PER_NIGHT = 5;

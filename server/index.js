@@ -20,10 +20,12 @@
   // modification de index.html si git n'est pas disponible.
   var updatedAt = null;
   var version = null; // code de commit court (ex. 3b12130)
+  var commitName = null; // titre du dernier commit (affiche dans le menu)
   try {
     var execSync = require("child_process").execSync;
     updatedAt = execSync("git log -1 --format=%cI", { cwd: __dirname, encoding: "utf8" }).trim();
     version = execSync("git log -1 --format=%h", { cwd: __dirname, encoding: "utf8" }).trim();
+    commitName = execSync("git log -1 --format=%s", { cwd: __dirname, encoding: "utf8" }).trim();
   } catch (e) {}
   if (!updatedAt) {
     try {
@@ -59,7 +61,7 @@
     // Version deployee (affichee dans le menu d'accueil du client).
     if (url === "/version.json") {
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify({ updatedAt: updatedAt, version: version }));
+      res.end(JSON.stringify({ updatedAt: updatedAt, version: version, commitName: commitName }));
       return;
     }
     // Sécurité : empêche de remonter hors de WEB_ROOT.
@@ -133,6 +135,7 @@
       var lobby = game.lobbySnapshot();
       lobby.updatedAt = updatedAt;
       lobby.version = version;
+      lobby.commitName = commitName;
       broadcast(lobby);
     }
 

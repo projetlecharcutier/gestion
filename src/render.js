@@ -181,7 +181,8 @@
       var p = G.proj(tr.x, tr.y);
       // Taille : le sprite est ancre bas-centre sur sa position au sol.
       // La largeur en pixels ecran suit le zoom (comme les objets au sol).
-      var dw = sp.w * z * 0.25;
+      // G.DEAD_TRACES_SCALE grossit la tache de sang (x3 par defaut).
+      var dw = sp.w * z * (G.DEAD_TRACES_SCALE || 0.25);
       var dh = dw * sp.h / sp.w;
       if (dw < 6) dw = 6;
       if (dh < 6) dh = 6;

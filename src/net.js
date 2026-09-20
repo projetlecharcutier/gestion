@@ -440,10 +440,18 @@
     if (!updated && info.version) {
       updated = "<div class=\"lobby__updated\">Version : v" + info.version + "</div>";
     }
+    // Numero de version + nom du dernier commit deploye, juste apres la
+    // ligne Joueurs/Survivants.
+    var versionLine = "";
+    if (info.version) {
+      versionLine = "<div class=\"lobby__version\">v" + info.version +
+        (info.commitName ? " : " + info.commitName : "") + "</div>";
+    }
     el.innerHTML =
       "<div class=\"lobby__info\">" +
         "<div><b>" + phase + " · " + timeStr + "</b></div>" +
         "<div>Joueurs : " + info.playerCount + "/" + info.maxPlayers + " · Survivants : " + info.aliveCount + "</div>" +
+        versionLine +
         "<div class=\"lobby__status\">" + status + "</div>" +
         "<div class=\"lobby__names\">" + names + "</div>" +
       "</div>" + updated;
