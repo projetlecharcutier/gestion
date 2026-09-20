@@ -185,6 +185,7 @@
             if (tdef.onClick === "buildMenu") G.openBuildMenu();
             else if (tdef.onClick === "montgolfiere") G.triggerMontgolfiere(b);
             else if (tdef.onClick === "universite") G.openUniversite();
+            else if (tdef.onClick === "marche") G.openMarche();
             return;
           }
         }
@@ -229,6 +230,7 @@
       if (state.started && state.buildMenuOpen) { G.closeBuildMenu(); return; }
       if (state.started && state.churchOpen) { G.closeChurch(); return; }
       if (G.universiteScreen && !G.universiteScreen.hidden) { G.closeUniversite(); return; }
+      if (G.marcheScreen && !G.marcheScreen.hidden) { G.closeMarche(); return; }
       if (state.started && state.chestOpen) { G.closeChest(); return; }
       if (state.started && state.bag.open) { state.bag.open = false; return; }
       if (state.started && state.buildMode) { state.buildMode = false; state.buildSel = null; return; }
@@ -349,4 +351,5 @@
   if (G.closeBuildMenuBtn) G.closeBuildMenuBtn.addEventListener("click", G.closeBuildMenu);
   if (G.closeChurchBtn) G.closeChurchBtn.addEventListener("click", G.closeChurch);
   if (G.closeUniversiteBtn) G.closeUniversiteBtn.addEventListener("click", G.closeUniversite);
+  if (G.closeMarcheBtn) G.closeMarcheBtn.addEventListener("click", G.closeMarche);
 })();

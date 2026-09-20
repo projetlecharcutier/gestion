@@ -72,8 +72,96 @@
           coneSpread: 0.3 // Largeur du cône
       },
       "Couteau":     { speed: 520,  life: 0.4, cd: 0.25, dmg: 2, color: "#e2e8f0", spread: 0.0,  label: "couteau" },
-      "Bâton":       { speed: 680,  life: 0.8, cd: 0.50, dmg: 3, color: "#d6bb89", spread: 0.06, label: "bâton" }
+      "Bâton":       { speed: 680,  life: 0.8, cd: 0.50, dmg: 3, color: "#d6bb89", spread: 0.06, label: "bâton" },
+      // Armes développées à l'université : la grenade explose en zone à
+      // l'impact, le lance-flammes projette des flammes courtes qui brûlent
+      // en zone continue.
+      "Grenade": {
+          type: "grenade",
+          cd: 2.0,
+          speed: 320,
+          life: 0.9,
+          dmg: 80,
+          blastRadius: 120,
+          spread: 0.03,
+          color: "#4d7c0f",
+          size: 6
+      },
+      "Lance-flammes": {
+          type: "flamme",
+          cd: 0.08,
+          speed: 260,
+          life: 0.45,
+          dmg: 7,
+          blastRadius: 30,
+          spread: 0.12,
+          color: "#fb923c",
+          size: 8
+      }
   };
+
+  // Dégâts effectifs d'une arme : le bonus université (+25%) s'applique au
+  // moment du tir, côté client (solo) comme côté serveur (tir autoritaire).
+  G.WEAPON_DMG_BONUS = 0.25;
+  G.weaponDmg = function (weaponName) {
+      var st = G.WEAPON_STATS[weaponName] || G.WEAPON_STATS["Mains nues"];
+      var d = st.dmg || 0;
+      var state = G.state;
+      if (state && state.universiteUpgrades && state.universiteUpgrades.weaponDmg) {
+          d = Math.round(d * (1 + G.WEAPON_DMG_BONUS));
+      }
+      return d;
+  };
+
+  // Améliorations de l'université : débloquées par le même système de vote
+  // que la mairie. Coût en pièces d'or (coffre commun de la mairie) ou
+  // gratuit si l'initiateur porte un Parchemin (consommé à la résolution).
+  //   - weaponDmg    : +25% de dégâts sur les armes à feu (pistolet, arc, fusil).
+  //   - peacefulNight : la prochaine nuit (22h) passe sans vague de zombies.
+  //   - towerRange   : +40% de portée pour toutes les tours de défense.
+  //   - towerCd      : les tours tirent 40% plus vite.
+  G.UNIVERSITE_UPGRADES = {
+      weaponDmg: {
+          label: "Balistique avancée",
+          desc: "+25% de dégâts pour toutes les armes (pistolet, arc, fusil...)",
+          cost: 100,
+          repeatable: false
+      },
+      peacefulNight: {
+          label: "Nuit de tranquillité",
+          desc: "La prochaine nuit passe sans vague de zombies (une seule nuit).",
+          cost: 50,
+          repeatable: true
+      },
+      towerRange: {
+          label: "Optique de guet",
+          desc: "+40% de portée pour les tours de défense.",
+          cost: 50,
+          repeatable: false
+      },
+      towerCd: {
+          label: "Arcs renforcés",
+          desc: "Les tours de défense tirent 40% plus vite.",
+          cost: 50,
+          repeatable: false
+      }
+  };
+  // Effets tours : multiplicateurs dérivés des améliorations de l'université.
+  G.TOWER_RANGE_BONUS = 0.4;
+  G.TOWER_CD_BONUS = 0.4;
+
+  // Marché : armes et objets achetables avec l'or du coffre commun de la
+  // mairie. L'objet est livré dans le sac du joueur qui achète.
+  G.MARCHE_ITEMS = [
+      { name: "Pistolet",    kind: "arme",  color: "#94a3b8", price: 20 },
+      { name: "Arc",         kind: "arme",  color: "#a16207", price: 30 },
+      { name: "Fusil",       kind: "arme",  color: "#64748b", price: 40 },
+      { name: "Grenade",     kind: "arme",  color: "#4d7c0f", price: 60 },
+      { name: "Lance-flammes", kind: "arme", color: "#fb923c", price: 100 },
+      { name: "Nourriture",  kind: "objet", color: "#f59e0b", price: 5 },
+      { name: "Potion",      kind: "objet", color: "#ef4444", price: 15 },
+      { name: "Parchemin",   kind: "objet", color: "#fde68a", price: 80 }
+  ];
 
   G.DAY_SECONDS = 300;
   G.NIGHT_SECONDS = 120;
@@ -262,6 +350,15 @@
       side: 40,
       msg: "La montgolfière surveille l'arrivée de la prochaine horde.",
       onClick: "montgolfiere"
+    },
+    marche: {
+      label: "Marché",
+      stateField: "marche",
+      unlockedField: "marcheUnlocked",
+      cost: { planks: 100, gold: 10 },
+      side: 48,
+      msg: "Le marché vend des armes et des objets contre l'or du coffre de la mairie.",
+      onClick: "marche"
     }
   };
   G.SCIERIE_SIDE = 64;   // emprise sol de la scierie (unites monde)

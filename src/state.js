@@ -43,7 +43,12 @@
   G.closeChurchBtn = document.getElementById("closeChurchBtn");
   G.universiteScreen = document.getElementById("universiteScreen");
   G.universiteInfo = document.getElementById("universiteInfo");
+  G.universiteGold = document.getElementById("universiteGold");
   G.closeUniversiteBtn = document.getElementById("closeUniversiteBtn");
+  G.marcheScreen = document.getElementById("marcheScreen");
+  G.marcheList = document.getElementById("marcheList");
+  G.marcheGold = document.getElementById("marcheGold");
+  G.closeMarcheBtn = document.getElementById("closeMarcheBtn");
 
   G.state = {
     started: false,
@@ -64,6 +69,10 @@
     scierie: null,
     universiteUnlocked: false,
     universite: null,
+    universiteUpgrades: {},
+    peacefulNight: false,
+    marcheUnlocked: false,
+    marche: null,
     montgolfiereUnlocked: false,
     montgolfiere: null,
     pendingWave: null,

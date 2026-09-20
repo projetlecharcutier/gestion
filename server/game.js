@@ -69,6 +69,10 @@
       scierie: null,
       universiteUnlocked: false,
       universite: null,
+      universiteUpgrades: {},
+      peacefulNight: false,
+      marcheUnlocked: false,
+      marche: null,
       montgolfiereUnlocked: false,
       montgolfiere: null,
       pendingWave: null,
@@ -252,19 +256,50 @@
     if (input.placeBuild) {
       p._placeBuild = { x: input.placeBuild.wx, y: input.placeBuild.wy };
     }
-    // Vote technologique a la mairie : l'initiateur lance, les autres votent.
-    // Generique pour tout batiment de ville du registre TOWN_BUILDINGS.
+    // Vote technologique a la mairie / universite : l'initiateur lance, les
+    // autres votent. Generique pour tout batiment de ville du registre
+    // TOWN_BUILDINGS, plus les ameliorations de l'universite ("up:<id>").
     if (input.techVote) {
+      var isUnivUp = input.techVote.indexOf("up:") === 0;
+      var canPayUp = false;
+      if (isUnivUp) {
+        var upId0 = input.techVote.slice(3);
+        var udef0 = G.UNIVERSITE_UPGRADES[upId0];
+        if (udef0 && state.universite && state.universite.chantierDone) {
+          var alreadyUp = state.universiteUpgrades && state.universiteUpgrades[upId0] && !udef0.repeatable;
+          var hasScroll0 = false;
+          for (var sci = 0; sci < p.bag.contents.length; sci++) {
+            if (p.bag.contents[sci].name === "Parchemin") { hasScroll0 = true; break; }
+          }
+          canPayUp = !alreadyUp && (hasScroll0 || (state.mairieGold || 0) >= udef0.cost);
+        }
+      }
       var tdef = G.TOWN_BUILDINGS[input.techVote];
-      if (tdef && !state[tdef.unlockedField]) {
+      if ((isUnivUp && canPayUp) || (tdef && !state[tdef.unlockedField])) {
         if (!state.vote) {
-          // L'initiateur doit pouvoir payer (planches) et le coffre aussi (or).
-          if ((state.mairieGold || 0) >= tdef.cost.gold && (p.planks || 0) >= tdef.cost.planks) {
+          // L'initiateur doit pouvoir payer (planches ; or du coffre commun,
+          // ou parchemin pour les ameliorations d'universite).
+          if (isUnivUp || ((state.mairieGold || 0) >= tdef.cost.gold && (p.planks || 0) >= tdef.cost.planks)) {
             G.startVote(input.techVote, p.id);
           }
         } else {
           // Un clic pendant un vote en cours = vote "pour".
           G.castVote(p.id, true);
+        }
+      }
+    }
+    // Achat au marche : l'or vient du coffre commun de la mairie, l'objet est
+    // livre dans le sac du joueur qui achete.
+    if (input.marketBuy !== undefined) {
+      if (state.marche && state.marche.chantierDone) {
+        var mitem = null;
+        for (var mi = 0; mi < G.MARCHE_ITEMS.length; mi++) {
+          if (G.MARCHE_ITEMS[mi].name === input.marketBuy) { mitem = G.MARCHE_ITEMS[mi]; break; }
+        }
+        if (mitem && (state.mairieGold || 0) >= mitem.price) {
+          state.mairieGold -= mitem.price;
+          p.bag.contents.push({ name: mitem.name, kind: mitem.kind, color: mitem.color });
+          p.inventory = p.bag.contents.length;
         }
       }
     }
@@ -447,7 +482,26 @@
         p.lastShotAt = state.time;
         var baseAng = Math.atan2(p._aimY ? p._aimY - p.y : 0, p._aimX ? p._aimX - p.x : 1);
         var weaponType = pSt.type || "pistolet";
-        if (weaponType === "fusil") {
+        if (weaponType === "flamme") {
+          var fang = baseAng + (Math.random() * 2 - 1) * pSt.spread;
+          var fspd = pSt.speed * (0.85 + Math.random() * 0.3);
+          state.projectiles.push({
+            x: p.x, y: p.y - G.PLAYER_H * 0.5,
+            vx: Math.cos(fang) * fspd, vy: Math.sin(fang) * fspd,
+            life: pSt.life, owner: p.id, dmg: G.weaponDmg(p.equipped), color: pSt.color,
+            size: pSt.size || 8, type: "flamme", blast: true, blastRadius: pSt.blastRadius || 30,
+            trail: [], piercing: false, hitEntities: []
+          });
+        } else if (weaponType === "grenade") {
+          var gang = baseAng + (Math.random() * 2 - 1) * pSt.spread;
+          state.projectiles.push({
+            x: p.x, y: p.y - G.PLAYER_H * 0.5,
+            vx: Math.cos(gang) * pSt.speed, vy: Math.sin(gang) * pSt.speed,
+            life: pSt.life, owner: p.id, dmg: G.weaponDmg(p.equipped), color: pSt.color,
+            size: pSt.size || 6, type: "grenade", blast: true, blastRadius: pSt.blastRadius || 120,
+            trail: [], piercing: false, hitEntities: []
+          });
+        } else if (weaponType === "fusil") {
           var pelletCount = pSt.pellets || 5;
           var coneSpread = pSt.coneSpread || 0.3;
           for (var pi = 0; pi < pelletCount; pi++) {
@@ -456,7 +510,7 @@
             state.projectiles.push({
               x: p.x, y: p.y - G.PLAYER_H * 0.5,
               vx: Math.cos(pang) * pSt.speed, vy: Math.sin(pang) * pSt.speed,
-              life: pSt.life, owner: p.id, dmg: pSt.dmg, color: pSt.color,
+              life: pSt.life, owner: p.id, dmg: G.weaponDmg(p.equipped), color: pSt.color,
               size: pSt.size || 3, type: pSt.type || "pistolet", trail: [],
               piercing: false, hitEntities: []
             });
@@ -467,7 +521,7 @@
           state.projectiles.push({
             x: p.x, y: p.y - G.PLAYER_H * 0.5,
             vx: Math.cos(spang) * pSt.speed, vy: Math.sin(spang) * pSt.speed,
-            life: pSt.life, owner: p.id, dmg: pSt.dmg, color: pSt.color,
+            life: pSt.life, owner: p.id, dmg: G.weaponDmg(p.equipped), color: pSt.color,
             size: pSt.size || 3, type: pSt.type || "pistolet", trail: [],
             piercing: !!pSt.piercing, pierceCount: pSt.pierceCount || (pSt.piercing ? 3 : 0),
             hitEntities: []
@@ -544,6 +598,9 @@
     G.cleanupTowers();
     if (state.vote) {
       var voteInitiator = state.vote.initiator;
+      // Parchemin de l'initiateur : amelioration d'universite gratuite s'il en
+      // porte un (consomme a la resolution reussie).
+      var scrollUsedFor = null;
       G.resolveVote(alivePlayers(), function (cost) {
         // Debite les planches du joueur initiateur du vote (or : coffre commun,
         // deja debite par resolveVote).
@@ -551,7 +608,26 @@
         if (!init || (init.planks || 0) < cost) return false;
         init.planks -= cost;
         return true;
+      }, function () {
+        var init = voteInitiator !== undefined ? findPlayer(voteInitiator) : null;
+        if (!init) return false;
+        for (var si = 0; si < init.bag.contents.length; si++) {
+          if (init.bag.contents[si].name === "Parchemin") { scrollUsedFor = init.id; return true; }
+        }
+        return false;
       });
+      if (scrollUsedFor !== null) {
+        var scrollP = findPlayer(scrollUsedFor);
+        if (scrollP) {
+          for (var sc = 0; sc < scrollP.bag.contents.length; sc++) {
+            if (scrollP.bag.contents[sc].name === "Parchemin") {
+              scrollP.bag.contents.splice(sc, 1);
+              scrollP.inventory = scrollP.bag.contents.length;
+              break;
+            }
+          }
+        }
+      }
     }
 
     // Zombies, projectiles, oiseaux.
@@ -665,9 +741,13 @@
       scierieUnlocked: !!state.scierieUnlocked,
       universiteUnlocked: !!state.universiteUnlocked,
       montgolfiereUnlocked: !!state.montgolfiereUnlocked,
+      marcheUnlocked: !!state.marcheUnlocked,
       scierie: snapshotTownBuilding(state.scierie),
       universite: snapshotTownBuilding(state.universite),
       montgolfiere: snapshotTownBuilding(state.montgolfiere),
+      marche: snapshotTownBuilding(state.marche),
+      universiteUpgrades: state.universiteUpgrades || {},
+      peacefulNight: !!state.peacefulNight,
       pendingWave: state.pendingWave ? {
         sides: state.pendingWave.sides,
         count: state.pendingWave.count

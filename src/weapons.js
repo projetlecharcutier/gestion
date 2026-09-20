@@ -42,7 +42,7 @@
                     vx: Math.cos(ang) * st.speed,
                     vy: Math.sin(ang) * st.speed,
                     life: st.life,
-                    dmg: st.dmg,
+                    dmg: G.weaponDmg(state.equipped),
                     color: st.color,
                     size: st.size || 3,       // <-- Taille personnalisée (ex: 2 pour le fusil, 5 pour le pistolet)
                     type: st.type || "pistolet", // <-- Permet de savoir si c'est un arc, fusil, etc.
@@ -51,6 +51,33 @@
                     hitEntities: [] // Évite de toucher plusieurs fois la même entité par projectile unique
                 });
             }
+        }
+        // Lance-flammes : jets de flammes courts, dégâts de zone au contact,
+        // cadence très rapide. Pas de transpercement : la flamme consume en zone.
+        else if (weaponType === "flamme") {
+            var fang = baseAng + (Math.random() * 2 - 1) * st.spread;
+            var fspd = st.speed * (0.85 + Math.random() * 0.3);
+            state.projectiles.push({
+                x: p.x, y: p.y - G.PLAYER_H * 0.5,
+                vx: Math.cos(fang) * fspd, vy: Math.sin(fang) * fspd,
+                life: st.life, dmg: G.weaponDmg(state.equipped),
+                color: st.color, size: st.size || 8,
+                type: "flamme", blast: true, blastRadius: st.blastRadius || 30,
+                trail: [], piercing: false, pierceCount: 0, hitEntities: []
+            });
+        }
+        // Grenade : projectile en cloche qui explose en zone à l'impact
+        // (ou à court terme de vie), dégâts à tous les zombies dans le rayon.
+        else if (weaponType === "grenade") {
+            var gang = baseAng + (Math.random() * 2 - 1) * st.spread;
+            state.projectiles.push({
+                x: p.x, y: p.y - G.PLAYER_H * 0.5,
+                vx: Math.cos(gang) * st.speed, vy: Math.sin(gang) * st.speed,
+                life: st.life, dmg: G.weaponDmg(state.equipped),
+                color: st.color, size: st.size || 6,
+                type: "grenade", blast: true, blastRadius: st.blastRadius || 120,
+                trail: [], piercing: false, pierceCount: 0, hitEntities: []
+            });
         }
         // Gestion de l'Arc, Pistolet et autres armes standards (1 projectile)
         else {
@@ -62,7 +89,7 @@
                 vx: Math.cos(ang) * st.speed,
                 vy: Math.sin(ang) * st.speed,
                 life: st.life,
-                dmg: st.dmg,
+                dmg: G.weaponDmg(state.equipped),
                 color: st.color,
                 size: st.size || 3,       // <-- Taille personnalisée (ex: 2 pour le fusil, 5 pour le pistolet)
                 type: st.type || "pistolet", // <-- Permet de savoir si c'est un arc, fusil, etc.
@@ -76,6 +103,30 @@
         if (state.projectiles.length > 120) state.projectiles.shift();
     };
 
+    // Explosion de zone (grenade, lance-flammes) : applique les degats du
+    // projectile a toutes les entites vivantes dans blastRadius autour du
+    // point d'impact (zombies, oiseaux). Les flammes ont un petit rayon qui
+    // prolonge le cone de feu, la grenade un grand rayon devastateur.
+    G.blastAt = function (pr, x, y) {
+        var state = G.state;
+        var r = pr.blastRadius || 60;
+        var dmg = pr.dmg || 0;
+        for (var zi = 0; zi < state.zombies.length; zi++) {
+            var z = state.zombies[zi];
+            if (z.hp <= 0) continue;
+            var dx = z.x - x, dy = z.y - y;
+            if (Math.sqrt(dx * dx + dy * dy) <= r) z.hp -= dmg;
+        }
+        for (var bi = 0; bi < state.birds.length; bi++) {
+            var b = state.birds[bi];
+            if (b.hp <= 0) continue;
+            var bdx = b.x - x, bdy = b.y - y;
+            if (Math.sqrt(bdx * bdx + bdy * bdy) <= r) {
+                b.hp -= dmg;
+                if (b.hp <= 0 && G.birdDrop) G.birdDrop(b.x, b.y);
+            }
+        }
+    };
     // Déplacement des projectiles + collisions avec zombies et oiseaux. Appelé depuis update().
     G.updateProjectiles = function (dt) {
         var state = G.state;
@@ -89,6 +140,15 @@
 
             var shouldDestroy = false;
 
+            // Projectiles a explosion (grenade, lance-flammes) : en fin de vie
+            // (portee atteinte) ou sortie de carte, les degats s'appliquent en
+            // zone autour du point d'impact. L'impact direct sur un zombie est
+            // gere plus bas par la collision standard puis l'explosion.
+            if (pr.blast && (pr.life <= 0 || pr.x < 0 || pr.x > G.WORLD || pr.y < 0 || pr.y > G.WORLD)) {
+                G.blastAt(pr, pr.x, pr.y);
+                state.projectiles.splice(i, 1);
+                continue;
+            }
             // 1. Collisions avec les Zombies
             for (var zi = 0; zi < state.zombies.length; zi++) {
                 var z = state.zombies[zi];
@@ -98,6 +158,14 @@
 
                 var zdx = pr.x - z.x, zdy = pr.y - z.y;
                 if (Math.sqrt(zdx * zdx + zdy * zdy) < 14) {
+                    // Projectile explosif : la collision declenche l'explosion
+                    // en zone (tous les zombies dans le rayon) et le projectile
+                    // disparait immediatement.
+                    if (pr.blast) {
+                        G.blastAt(pr, pr.x, pr.y);
+                        shouldDestroy = true;
+                        break;
+                    }
                     z.hp -= pr.dmg;
                     pr.hitEntities.push(z);
 

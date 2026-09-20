@@ -111,9 +111,17 @@
   <div class="overlay" id="universiteScreen" hidden>
     <div class="panel">
       <h2>🎓 Université</h2>
-      <p class="panel__sub">Des améliorations y seront enseignées plus tard.</p>
-      <div class="chest__vault" id="universiteInfo">Aucune amélioration disponible pour le moment.</div>
+      <p class="panel__sub">Améliorations déblocables par le même système de vote que la mairie. L'or vient du coffre commun ; un Parchemin rend l'amélioration gratuite. Or du coffre : <b id="universiteGold">0</b></p>
+      <div class="chest__vault" id="universiteInfo"></div>
       <button class="btn btn--primary" id="closeUniversiteBtn" type="button">Fermer</button>
+    </div>
+  </div>
+  <div class="overlay" id="marcheScreen" hidden>
+    <div class="panel">
+      <h2>🛖 Marché</h2>
+      <p class="panel__sub">Armes et objets payés avec l'or du coffre de la mairie, livrés dans votre sac. Or du coffre : <b id="marcheGold">0</b></p>
+      <div class="chest__vault" id="marcheList"></div>
+      <button class="btn btn--primary" id="closeMarcheBtn" type="button">Fermer</button>
     </div>
   </div>
 

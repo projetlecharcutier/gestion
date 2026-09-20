@@ -228,7 +228,23 @@
     // 22h (NIGHT_WAVE_HOUR) : spawn d'une nouvelle vague + message.
     var waveHour = (G.NIGHT_WAVE_HOUR !== undefined) ? G.NIGHT_WAVE_HOUR : 22;
     var crossedWaveHour = prevClock < waveHour && state.clock >= waveHour;
-    if (crossedWaveHour && !state.waveSpawnedForDay) {
+    // Nuit de tranquillite (amelioration universite) : la vague de cette nuit
+    // est annulee, le drapeau de vague reste armee pour la nuit suivante.
+    if (state.peacefulNight) {
+      if (crossedWaveHour && !state.waveSpawnedForDay) {
+        state.peacefulNight = false;
+        state.waveSpawnedForDay = true;
+        state.waveMsgTimer = 8;
+        if (G.addFloater) G.addFloater("Nuit de tranquillite : pas de vague cette nuit");
+      }
+      var crossedMorningP = prevClock < 8 && state.clock >= 8;
+      if (crossedMorningP) {
+        state.waveSpawnedForDay = false;
+        G.rollWave(state.day + 1);
+      }
+      state.waveActive = false;
+    }
+    if (crossedWaveHour && !state.waveSpawnedForDay && !state.peacefulNight) {
       G.spawnWave();
       state.waveActive = true;
       state.waveSpawnedForDay = true;

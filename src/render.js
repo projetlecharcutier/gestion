@@ -594,6 +594,32 @@
                 ctx.fill();
                 ctx.restore();
             }
+            // Flamme (lance-flammes) : boule de feu vive qui grossit puis
+            // s'eteint avec la vie restante, coeur clair.
+            else if (pr.type === "flamme") {
+                var lifeRatio = Math.max(0, Math.min(1, (pr.life || 0) / 0.45));
+                var frad = (pr.size || 8) * (0.6 + 0.7 * (1 - lifeRatio));
+                var grd = ctx.createRadialGradient(h[0], h[1], 0, h[0], h[1], frad);
+                grd.addColorStop(0, "#fef3c7");
+                grd.addColorStop(0.4, "#f97316");
+                grd.addColorStop(1, "rgba(220,38,3,0)");
+                ctx.fillStyle = grd;
+                ctx.beginPath();
+                ctx.arc(h[0], h[1], frad, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // Grenade : boule verte avec reflet, rotation du levier.
+            else if (pr.type === "grenade") {
+                var grad = pr.size || 6;
+                ctx.fillStyle = "#4d7c0f";
+                ctx.beginPath();
+                ctx.arc(h[0], h[1], grad, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#84cc16";
+                ctx.beginPath();
+                ctx.arc(h[0] - grad * 0.3, h[1] - grad * 0.3, grad * 0.35, 0, Math.PI * 2);
+                ctx.fill();
+            }
             // Sinon, affichage standard en rond (pour pistolet, fusil, etc.)
             else {
                 var rad = pr.size !== undefined ? pr.size : (t.sizeBase + (pr.dmg || 1) * t.sizePerDmg);

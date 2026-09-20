@@ -189,7 +189,9 @@
     return lines;
   };
 
-  // Universite : placeholder pret a recevoir de futures ameliorations.
+  // Universite : ameliorations deblocables par le meme systeme de vote que
+  // la mairie (techVote "up:<id>"). Paiement en or du coffre commun, ou
+  // gratuit si l'initiateur porte un Parchemin (consomme a la reussite).
   G.openUniversite = function () {
     var state = G.state;
     state.paused = false;
@@ -197,15 +199,160 @@
     G.drawUniversite();
     if (G.universiteScreen) G.universiteScreen.hidden = false;
   };
-
   G.closeUniversite = function () {
     if (G.universiteScreen) G.universiteScreen.hidden = true;
   };
-
+  G.hasParchemin = function () {
+    var state = G.state;
+    for (var pi = 0; pi < state.bag.contents.length; pi++) {
+      if (state.bag.contents[pi].name === "Parchemin") return true;
+    }
+    return false;
+  };
   G.drawUniversite = function () {
     var info = G.universiteInfo;
     if (!info) return;
-    info.textContent = "Aucune amélioration disponible pour le moment. De futures recherches y seront enseignées.";
+    if (G.universiteGold) G.universiteGold.textContent = String(G.state.mairieGold || 0);
+    info.innerHTML = "";
+    var list = document.createElement("div");
+    list.className = "chest__list";
+    var h = document.createElement("p");
+    h.textContent = "Améliorations";
+    list.appendChild(h);
+    var state = G.state;
+    if (!state.universite || !state.universite.chantierDone) {
+      var note = document.createElement("p");
+      note.textContent = "Terminez la construction de l'université pour y enseigner des améliorations.";
+      list.appendChild(note);
+      info.appendChild(list);
+      return;
+    }
+    var hasScroll = G.hasParchemin();
+    for (var upId in G.UNIVERSITE_UPGRADES) {
+      if (!G.UNIVERSITE_UPGRADES.hasOwnProperty(upId)) continue;
+      var udef = G.UNIVERSITE_UPGRADES[upId];
+      var owned = state.universiteUpgrades && state.universiteUpgrades[upId];
+      var el = document.createElement("button");
+      el.type = "button";
+      el.className = "btn chest__item";
+      var label = udef.label + " — " + udef.desc;
+      if (owned && !udef.repeatable) {
+        el = document.createElement("p");
+        el.textContent = udef.label + " : acquise";
+      } else if (upId === "peacefulNight" && state.peacefulNight) {
+        el = document.createElement("p");
+        el.textContent = udef.label + " : prête pour la nuit qui vient";
+      } else {
+        var net = G.netConnected && G.netConnected();
+        var voteActive = net && state.vote && state.vote.proposal === ("up:" + upId);
+        if (hasScroll) label += " — GRATUIT (Parchemin)";
+        else label += " — " + udef.cost + " pièces d'or";
+        if (voteActive) {
+          label += " — VOTE en cours : " + Math.max(0, Math.ceil((state.vote.endsAt || 0) - (state.time || 0))) + " s (clic = voter pour)";
+        }
+        el.textContent = label;
+        (function (id) {
+          el.addEventListener("click", function () { G.buyUniversiteUpgrade(id); });
+        })(upId);
+      }
+      list.appendChild(el);
+    }
+    info.appendChild(list);
+  };
+  // Demande une amelioration de l'universite : achat/vote direct en solo
+  // (le joueur seul est majoritaire), proposition de vote en multijoueur.
+  G.buyUniversiteUpgrade = function (upId) {
+    var state = G.state;
+    var udef = G.UNIVERSITE_UPGRADES[upId];
+    if (!udef) return;
+    var owned = state.universiteUpgrades && state.universiteUpgrades[upId];
+    if (owned && !udef.repeatable) return;
+    if (G.netConnected && G.netConnected()) {
+      G.netInput({ techVote: "up:" + upId });
+      if (G.addFloater) G.addFloater("Vote lancé (15 s)");
+      G.drawUniversite();
+      return;
+    }
+    if (!G.startVote) return;
+    if (!G.startVote("up:" + upId, "me")) return;
+    G.castVote("me", true);
+    var scrollIdx = -1;
+    for (var si = 0; si < state.bag.contents.length; si++) {
+      if (state.bag.contents[si].name === "Parchemin") { scrollIdx = si; break; }
+    }
+    var res = G.resolveVote(1, null, function () { return scrollIdx !== -1; });
+    if (res === "passed") {
+      if (scrollIdx !== -1) state.bag.contents.splice(scrollIdx, 1);
+      if (G.addFloater) G.addFloater(udef.label + " acquise !");
+    } else {
+      if (G.addFloater) G.addFloater("Ressources insuffisantes (or du coffre ou Parchemin)");
+    }
+    G.drawUniversite();
+    G.updateHud();
+  };
+  // Marche : achat d'armes et d'objets avec l'or du coffre commun.
+  G.openMarche = function () {
+    var state = G.state;
+    state.paused = false;
+    G.pauseScreen.hidden = true;
+    G.drawMarche();
+    if (G.marcheScreen) G.marcheScreen.hidden = false;
+  };
+  G.closeMarche = function () {
+    if (G.marcheScreen) G.marcheScreen.hidden = true;
+  };
+  G.drawMarche = function () {
+    var list = G.marcheList;
+    if (!list) return;
+    if (G.marcheGold) G.marcheGold.textContent = String(G.state.mairieGold || 0);
+    list.innerHTML = "";
+    var wrap = document.createElement("div");
+    wrap.className = "chest__list";
+    var h2 = document.createElement("p");
+    h2.textContent = "À vendre";
+    wrap.appendChild(h2);
+    var state = G.state;
+    if (!state.marche || !state.marche.chantierDone) {
+      var note = document.createElement("p");
+      note.textContent = "Terminez la construction du marché pour pouvoir acheter.";
+      wrap.appendChild(note);
+      list.appendChild(wrap);
+      return;
+    }
+    for (var i = 0; i < G.MARCHE_ITEMS.length; i++) {
+      var m = G.MARCHE_ITEMS[i];
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn chest__item";
+      btn.textContent = m.name + " — " + m.price + " pièces d'or" + (m.kind === "arme" ? " (arme)" : " (objet)");
+      (function (name) {
+        btn.addEventListener("click", function () { G.buyMarcheItem(name); });
+      })(m.name);
+      wrap.appendChild(btn);
+    }
+    list.appendChild(wrap);
+  };
+  G.buyMarcheItem = function (name) {
+    var state = G.state;
+    var m = null;
+    for (var i = 0; i < G.MARCHE_ITEMS.length; i++) {
+      if (G.MARCHE_ITEMS[i].name === name) { m = G.MARCHE_ITEMS[i]; break; }
+    }
+    if (!m) return;
+    if (G.netConnected && G.netConnected()) {
+      G.netInput({ marketBuy: name });
+      G.drawMarche();
+      return;
+    }
+    if ((state.mairieGold || 0) < m.price) {
+      if (G.addFloater) G.addFloater("Le coffre de la mairie n'a pas assez d'or");
+      return;
+    }
+    state.mairieGold -= m.price;
+    state.bag.contents.push({ name: m.name, kind: m.kind, color: m.color });
+    if (G.addFloater) G.addFloater(m.name + " acheté !");
+    G.drawMarche();
+    G.updateHud();
   };
 
   // Vend une relique (index dans le sac) : +100 or. En réseau, le serveur

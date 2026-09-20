@@ -219,6 +219,12 @@
       var t = state.towers[i];
       if (!t.chantierDone) continue;
       var stats = G.TOWER_STATS[t.level] || G.TOWER_STATS.bois;
+      // Ameliorations de l'universite : portee et cadence des tours sont
+      // multipliees quand les techs correspondantes sont debloquees (partage
+      // via state.universiteUpgrades, sync serveur -> clients).
+      var up = (G.state && G.state.universiteUpgrades) || {};
+      var range = stats.range * (up.towerRange ? (1 + G.TOWER_RANGE_BONUS) : 1);
+      var cd = stats.cd * (up.towerCd ? (1 - G.TOWER_CD_BONUS) : 1);
       if (t.cdL > 0) t.cdL -= dt;
       if (t.cdR > 0) t.cdR -= dt;
       if (t.animL > 0) t.animL -= dt;
@@ -237,7 +243,7 @@
           if (isLeft ? z.x >= cx : z.x < cx) continue;
           var dx = z.x - cx, dy = z.y - topY;
           var d = Math.sqrt(dx * dx + dy * dy);
-          if (d <= stats.range && d < bestD) { bestD = d; best = z; }
+          if (d <= range && d < bestD) { bestD = d; best = z; }
         }
         if (best) {
           var sx = cx, sy = topY;
@@ -249,7 +255,7 @@
             x: sx, y: sy, vx: vx, vy: vy,
             dmg: stats.dmg,
             speed: stats.arrowSpeed,
-            life: stats.range / stats.arrowSpeed,
+            life: range / stats.arrowSpeed,
             color: "#111111",
             size: 1,
             type: "fleche",
@@ -259,8 +265,8 @@
             trail: [],
             hitEntities: []
           });
-          if (isLeft) { t.cdL = stats.cd; t.animL = stats.animDur; }
-          else { t.cdR = stats.cd; t.animR = stats.animDur; }
+          if (isLeft) { t.cdL = cd; t.animL = stats.animDur; }
+          else { t.cdR = cd; t.animR = stats.animDur; }
         }
       }
     }
@@ -390,7 +396,11 @@
   // debiter les planches du joueur initiateur (multi) ; en solo, null ->
   // on debite state.planks directement.
   // Renvoie "passed", "failed" ou null (pas de vote en cours).
-  G.resolveVote = function (connectedCount, payerPlanks) {
+  // hasScroll (3e argument, optionnel) : callback () => boolean qui indique
+  // si le joueur initiateur porte un Parchemin ; si oui l'amelioration
+  // universite est gratuite et le parchemin est consomme par l'appelant.
+  G.resolveVote = function (connectedCount, payerPlanks, hasScroll) {
+    if (!hasScroll) hasScroll = function () { return false; };
     var state = G.state;
     if (!state.vote) return null;
     if (state.time < state.vote.endsAt) return null;
@@ -402,6 +412,25 @@
     var proposal = state.vote.proposal;
     state.vote = null;
     if (passed) {
+      // Amelioration de l'universite (proposal "up:<id>") : paiement en or du
+      // coffre commun, ou gratuit si l'initiateur porte un Parchemin
+      // (consomme). En solo, le Parchemin vient du sac du joueur local.
+      if (proposal.indexOf && proposal.indexOf("up:") === 0) {
+        var upId = proposal.slice(3);
+        var udef = G.UNIVERSITE_UPGRADES[upId];
+        if (udef && !G.state.universiteUpgrades) G.state.universiteUpgrades = {};
+        if (udef && (udef.repeatable || !G.state.universiteUpgrades[upId])) {
+          var useScroll = hasScroll();
+          if (!useScroll) {
+            if ((G.state.mairieGold || 0) < udef.cost) return "failed";
+            G.state.mairieGold -= udef.cost;
+          }
+          G.state.universiteUpgrades[upId] = true;
+          if (upId === "peacefulNight") G.state.peacefulNight = true;
+          return "passed";
+        }
+        return "failed";
+      }
       var tdef = G.TOWN_BUILDINGS[proposal];
       if (tdef) {
         if (payerPlanks) {

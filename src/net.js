@@ -300,6 +300,11 @@
     if (s.scierieUnlocked !== undefined) state.scierieUnlocked = !!s.scierieUnlocked;
     if (s.universiteUnlocked !== undefined) state.universiteUnlocked = !!s.universiteUnlocked;
     if (s.montgolfiereUnlocked !== undefined) state.montgolfiereUnlocked = !!s.montgolfiereUnlocked;
+    // Ameliorations de l'universite + nuit de tranquillite + marche : le
+    // serveur est autoritaire sur les effets (degats d'armes, tours, vagues).
+    if (s.universiteUpgrades !== undefined) state.universiteUpgrades = s.universiteUpgrades;
+    if (s.peacefulNight !== undefined) state.peacefulNight = !!s.peacefulNight;
+    if (s.marcheUnlocked !== undefined) state.marcheUnlocked = !!s.marcheUnlocked;
     if (s.waveCount !== undefined) state.waveCount = s.waveCount;
     if (s.zombieRamp !== undefined) state.zombieRamp = s.zombieRamp;
     if (s.waveActive !== undefined) state.waveActive = s.waveActive;

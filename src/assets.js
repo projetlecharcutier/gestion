@@ -130,6 +130,9 @@
     universite: {
       idle: { src: "assets/sprites/universite/idle.png", w: 96, h: 96 }
     },
+    marche: {
+      idle: { src: "assets/sprites/marche/idle.png", w: 96, h: 96 }
+    },
     montgolfiere: {
       idle: { src: "assets/sprites/montgolfiere/idle.png", w: 96, h: 96 }
     }
@@ -393,6 +396,8 @@
         { ent: "scierie", dir: "assets/sprites/scierie/", base: "chantier" },
         { ent: "universite", dir: "assets/sprites/universite/", base: "idle" },
         { ent: "universite", dir: "assets/sprites/universite/", base: "chantier" },
+        { ent: "marche", dir: "assets/sprites/marche/", base: "idle" },
+        { ent: "marche", dir: "assets/sprites/marche/", base: "chantier" },
         { ent: "montgolfiere", dir: "assets/sprites/montgolfiere/", base: "idle" },
         { ent: "montgolfiere", dir: "assets/sprites/montgolfiere/", base: "chantier" }
       ];

@@ -72,7 +72,7 @@
   frame ensuite), aucun fonctionnement pendant le chantier,
   bâtiment **dès le début** solide et attaquable.
 
-## 5. Sprites (`assets/sprites/tour/`, `assets/sprites/scierie/`, `assets/sprites/universite/`, `assets/sprites/montgolfiere/`)
+## 5. Sprites (`assets/sprites/tour/`, `assets/sprites/scierie/`, `assets/sprites/universite/`, `assets/sprites/montgolfiere/`, `assets/sprites/marche/`)
 
 Nomenclature (sondage auto des frames `-0.png, -1.png…`, cf. README assets) :
 
@@ -86,6 +86,7 @@ Nomenclature (sondage auto des frames `-0.png, -1.png…`, cf. README assets) :
 | `universite/idle.png`, `universite/chantier.png` | université construite / en chantier |
 | `montgolfiere/idle-0..N.png` | ballon au repos (`idle.png`) ; **au clic** sur le bâtiment, la série se joue en **un seul tour de 4 s** puis un message annonce la vague au-dessus du bâtiment |
 | `montgolfiere/chantier-0..N.png` | construction (un seul tour sur `TOWER_BUILD_TIME`) |
+| `marche/idle.png`, `marche/chantier.png` | marché construit / en chantier |
 
 Règles de dessin :
 - Toutes les frames d'une même série ont **exactement les mêmes dimensions**.
