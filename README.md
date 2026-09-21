@@ -11,6 +11,7 @@
 - « Captivant de bout en bout, impossible de décrocher. » — Le Nouvel Obs
 
 Un jeu d'aventure isométrique (vue de haut) jouable dans un navigateur, en HTML/CSS/JavaScript natif (aucune dépendance).
+Jeu quasiment entierement VibeCodé avec Mistral. Cocorico.
 
 ## Lancer le jeu
 
