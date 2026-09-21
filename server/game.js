@@ -546,6 +546,74 @@
   }
 
   // Simulation : un tick à dt secondes.
+  // --- Swap d'état global par joueur, UNIFIE ---
+  // Les modules de simulation partagés (chop, weapons, walls, towers) lisent
+  // l'état d'un joueur global (state.player, state.planks, state.axeEquipped,
+  // state.buildMode, state.actionHeld, state.buildSel...) alors que le
+  // serveur gère N joueurs. Chaque site de swap sauvegardait SA liste de
+  // champs : un champ oublié = un bug multijoueur (le bug du mode build est
+  // né exactement ainsi). Toute la sauvegarde/restauration passe désormais
+  // par CE seul helper : la liste des champs est écrite UNE fois, ici.
+  // opts.tir/pose/chop pretent les champs utiles à l'usage ; tout le reste
+  // est quand même sauvegardé puis restauré, donc un champ lu à l'insu d'un
+  // appel ne peut plus fuiter vers le joueur suivant.
+  var PLAYER_SWAP_FIELDS = [
+    "equipped", "axeEquipped", "shootCd", "lastShotAt", "inBuilding",
+    "paused", "gameOver", "buildMode", "actionHeld", "planks",
+    "buildSel", "plankRotation", "chopTarget", "chopWall", "chopTimer"
+  ];
+  function withPlayer(p, opts, fn) {
+    var s = G.state;
+    var saved = { px: s.player.x, py: s.player.y, bagOpen: s.bag.open, chestOpen: s.chestOpen, mwx: s.mouse.wx, mwy: s.mouse.wy };
+    for (var fi = 0; fi < PLAYER_SWAP_FIELDS.length; fi++) saved[PLAYER_SWAP_FIELDS[fi]] = s[PLAYER_SWAP_FIELDS[fi]];
+    s.player.x = p.x; s.player.y = p.y;
+    s.bag.open = false; s.chestOpen = false; s.inBuilding = null; s.paused = false; s.gameOver = false;
+    if (opts.tir) {
+      s.equipped = p.equipped; s.axeEquipped = p.axeEquipped;
+      s.shootCd = p.shootCd || 0;
+      s.actionHeld = true;
+      s.mouse.wx = p._aimX !== undefined ? p._aimX : p.x;
+      s.mouse.wy = p._aimY !== undefined ? p._aimY : p.y;
+      s.buildMode = false;
+    } else if (opts.pose) {
+      s.planks = p.planks || 0;
+      if (p._buildSel !== undefined) s.buildSel = p._buildSel;
+      s.buildMode = !!p._buildMode;
+      s.plankRotation = p._plankRotation !== undefined ? p._plankRotation : s.plankRotation;
+      s.actionHeld = false;
+    } else if (opts.chop) {
+      s.axeEquipped = p.axeEquipped;
+      s.planks = p.planks || 0;
+      s.actionHeld = !!(p._fire || p._fireLatch);
+      s.chopTarget = p.chopTarget || null;
+      s.chopWall = p.chopWall || null;
+      s.chopTimer = p.chopTimer || 0;
+    }
+    fn();
+    // Les modules ont pu déplacer state.player (pushPlayerOutOfWall,
+    // tryMove) : on récupère la position de sortie.
+    p.x = s.player.x; p.y = s.player.y;
+    // Retours spécifiques par usage (ce que le tick relit après l'appel).
+    if (opts.tir) {
+      p.shootCd = s.shootCd;
+      if (s.lastShotAt !== saved.lastShotAt) p.lastShotAt = s.lastShotAt;
+      // le latch n'est consommé que si un tir a effectivement eu lieu.
+      if (p.shootCd > 0) p._fireLatch = false;
+    }
+    if (opts.pose) {
+      p.planks = s.planks;
+    }
+    if (opts.chop) {
+      p.planks = s.planks;
+      p.chopTarget = s.chopTarget;
+      p.chopWall = s.chopWall;
+      p.chopTimer = s.chopTimer;
+    }
+    s.player.x = saved.px; s.player.y = saved.py;
+    s.bag.open = saved.bagOpen; s.chestOpen = saved.chestOpen;
+    s.mouse.wx = saved.mwx; s.mouse.wy = saved.mwy;
+    for (var ri = 0; ri < PLAYER_SWAP_FIELDS.length; ri++) s[PLAYER_SWAP_FIELDS[ri]] = saved[PLAYER_SWAP_FIELDS[ri]];
+  }
   function tick(dt) {
     state.time += dt;
 
@@ -605,10 +673,10 @@
           var stepX = p.x + nx * G.SPEED * dt;
           var stepY = p.y + ny * G.SPEED * dt;
           // tryMove valide les collisions (bâtiments, arbres, murs).
-          var oldPx = state.player.x, oldPy = state.player.y;
-          state.player.x = p.x; state.player.y = p.y;
-          p.moving = G.tryMove(stepX, stepY);
-          p.x = state.player.x; p.y = state.player.y;
+          // tryMove valide les collisions (batiments, arbres, murs).
+          withPlayer(p, {}, function () {
+            p.moving = G.tryMove(stepX, stepY);
+          });
         } else {
           p.moving = false; p.lastDx = 0; p.lastDy = 0;
         }
@@ -629,50 +697,16 @@
       // fantome des qu'il equipe une arme (clic maintenu pendant la coupe).
       if (p._fireLatch && !wantShot) p._fireLatch = false;
       if (wantShot) {
-        var oldShot = {
-          px: state.player.x, py: state.player.y, eq: state.equipped,
-          ax: state.axeEquipped, cd: state.shootCd, lsa: state.lastShotAt,
-          inB: state.inBuilding, paused: state.paused, bagO: state.bag.open,
-          chO: state.chestOpen, go: state.gameOver, bm: state.buildMode,
-          ah: state.actionHeld,
-          mwx: state.mouse.wx, mwy: state.mouse.wy, nProj: state.projectiles.length
-        };
-        state.player.x = p.x; state.player.y = p.y;
-        state.equipped = p.equipped;
-        state.axeEquipped = p.axeEquipped;
-        state.shootCd = p.shootCd || 0;
-        state.inBuilding = null;
-        state.paused = false;
-        state.bag.open = false;
-        state.chestOpen = false;
-        state.gameOver = false;
-        state.buildMode = false;
-        // wantShot a deja valide l'intention de tir (clic/latch) : on la prete
-        // telle quelle a handleShooting qui lit state.actionHeld.
-        state.actionHeld = true;
-        state.mouse.wx = p._aimX !== undefined ? p._aimX : p.x;
-        state.mouse.wy = p._aimY !== undefined ? p._aimY : p.y;
-        G.handleShooting();
+        var nProjBefore = state.projectiles.length;
+        withPlayer(p, { tir: true }, function () {
+          G.handleShooting();
+        });
         // Les projectiles crees par ce tir appartiennent au joueur : le tag
         // owner sert au bruit des tirs (attraction des zombies) et au rendu.
-        var newProj = state.projectiles.length - oldShot.nProj;
+        var newProj = state.projectiles.length - nProjBefore;
         for (var np = state.projectiles.length - 1; np >= 0 && newProj > 0; np--, newProj--) {
           state.projectiles[np].owner = p.id;
         }
-        p.x = state.player.x; p.y = state.player.y;
-        p.shootCd = state.shootCd;
-        if (state.lastShotAt !== oldShot.lsa) p.lastShotAt = state.lastShotAt;
-        state.player.x = oldShot.px; state.player.y = oldShot.py;
-        state.equipped = oldShot.eq; state.axeEquipped = oldShot.ax;
-        state.shootCd = oldShot.cd; state.lastShotAt = oldShot.lsa;
-        state.inBuilding = oldShot.inB; state.paused = oldShot.paused;
-        state.bag.open = oldShot.bagO; state.chestOpen = oldShot.chO;
-        state.gameOver = oldShot.go; state.buildMode = oldShot.bm;
-        state.actionHeld = oldShot.ah;
-        state.mouse.wx = oldShot.mwx; state.mouse.wy = oldShot.mwy;
-        // Le latch n'est consomme que si un tir a effectivement eu lieu (si le
-        // cooldown a refuse le tir ce tick, le latch attend le suivant).
-        if (p.shootCd > 0) p._fireLatch = false;
         // Son de tir : le client en ligne n'appelle jamais handleShooting
         // (le serveur pilote les projectiles), il n'a donc aucun evenement
         // pour jouer shoot.mp3. Le tir d'un joueur distant doit aussi
@@ -683,18 +717,9 @@
       if (p.shootCd > 0) p.shootCd -= dt;
       // Pose de planche.
       if (p._buildWall) {
-        state.player.x = p.x; state.player.y = p.y; state.planks = p.planks || 0;
-        var oldBuildMode = state.buildMode;
-        var oldRotation = state.plankRotation;
-        state.buildMode = !!p._buildMode;
-        state.plankRotation = p._plankRotation !== undefined ? p._plankRotation : state.plankRotation;
-        G.tryBuildWall(p._buildWall.x, p._buildWall.y);
-        state.buildMode = oldBuildMode;
-        state.plankRotation = oldRotation;
-        // pushPlayerOutOfWall (appelé par tryBuildWall) a pu déplacer state.player
-        // pour éviter un blocage : on récupère la nouvelle position.
-        p.x = state.player.x; p.y = state.player.y;
-        p.planks = state.planks;
+        withPlayer(p, { pose: true }, function () {
+          G.tryBuildWall(p._buildWall.x, p._buildWall.y);
+        });
         p._buildWall = null;
       }
       // Pose de batiment depuis le menu de la scierie (tour, scierie) :
@@ -717,41 +742,18 @@
       }
       // Récolte de planches / destruction de palissade à la hache : on swappe
       // l'état global vers le joueur courant pour que updateChop() s'applique à ce joueur.
-      var oldChop = { px: state.player.x, py: state.player.y, ax: state.axeEquipped,
-                      pl: state.planks, inB: state.inBuilding, bagO: state.bag.open,
-                      chO: state.chestOpen, chT: state.chopTarget, chW: state.chopWall, chTi: state.chopTimer,
-                      ah: state.actionHeld };
-      // actionHeld suit brut le clic maintenu (sans filtre d'arme) : la
-      // factorisation du tir a un moment filtre la hache, ce qui cassait la
-      // coupe cote serveur. updateChop gere la hache ; le tir a son propre swap.
-      state.actionHeld = !!(p._fire || p._fireLatch);
-      state.player.x = p.x; state.player.y = p.y;
-      state.axeEquipped = p.axeEquipped;
-      state.planks = p.planks || 0;
-      state.inBuilding = null;
-      state.bag.open = false;
-      state.chestOpen = false;
-      state.chopTarget = p.chopTarget || null;
-      state.chopWall = p.chopWall || null;
-      state.chopTimer = p.chopTimer || 0;
-      G.updateChop(dt);
-      p.planks = state.planks;
-      p.chopTarget = state.chopTarget;
-      p.chopWall = state.chopWall;
-      p.chopTimer = state.chopTimer;
+      // Recolte de planches / destruction de palissade a la hache : swap unifie
+      // via withPlayer (meme liste de champs que le tir et la pose).
+      withPlayer(p, { chop: true }, function () {
+        G.updateChop(dt);
+      });
       // Debut d'un nouveau cycle de coupe (cible changee ou relance apres un
       // coup) : horodatage pour l'animation de la hache du joueur distant.
-      if (p.axeEquipped && (p.chopTarget || p.chopWall) && state.chopTimer < 0.15 &&
+      if (p.axeEquipped && (p.chopTarget || p.chopWall) && p.chopTimer < 0.15 &&
           (p.chopStartedAt === undefined || (state.time - p.chopStartedAt) > 0.15)) {
         p.chopStartedAt = state.time;
       }
       if (!p.chopTarget && !p.chopWall) p.chopStartedAt = undefined;
-      state.player.x = oldChop.px; state.player.y = oldChop.py;
-      state.axeEquipped = oldChop.ax; state.planks = oldChop.pl;
-      state.inBuilding = oldChop.inB; state.bag.open = oldChop.bagO;
-      state.chestOpen = oldChop.chO; state.chopTarget = oldChop.chT;
-      state.chopWall = oldChop.chW; state.chopTimer = oldChop.chTi;
-      state.actionHeld = oldChop.ah;
       // Réinitialise les flags d'input consommés.
       // Evenements ponctuels consommes ; dx/dy/fire restent persistants
       // (le client renvoie l'etat complet a chaque input : dx:0, dy:0, fire:false
