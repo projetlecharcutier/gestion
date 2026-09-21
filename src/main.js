@@ -92,6 +92,18 @@
     } else {
       // Hors-ligne les floaters/chop ne tournent pas ; en ligne ils restent côté serveur.
       G.updateFloaters(dt);
+      // Oiseaux : le snapshot (10 Hz) ne donne que position + direction ; on
+      // extrapole en ligne droite entre deux snapshots pour un vol fluide a
+      // 60 fps (rebonds et dégâts restent côté serveur). Sans vx/vy le sprite
+      // directionnel retombait aussi sur idle et le vol était saccadé.
+      var fb = G.state.birds;
+      for (var fbi = 0; fbi < fb.length; fbi++) {
+        var fbd = fb[fbi];
+        if (fbd.vx === undefined) continue;
+        fbd.x += fbd.vx * dt;
+        fbd.y += fbd.vy * dt;
+        fbd.wing = (fbd.wing || 0) + dt * 12;
+      }
       // Prédiction client : même simulation de déplacement qu'en local
       // (tryMove sur la grille de collisions locale, identique au serveur).
       if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.churchOpen && !state.gameOver) {

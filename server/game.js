@@ -943,7 +943,9 @@
         return { x: Math.round(pr.x), y: Math.round(pr.y), vx: pr.vx, vy: pr.vy, color: pr.color, type: pr.type, size: pr.size, trail: pr.trail || [] };
       }),
       birds: state.birds.map(function (b) {
-        return { x: Math.round(b.x), y: Math.round(b.y), hp: b.hp };
+        // vx/vy : le client extrapole entre deux snapshots (10 Hz -> 60 fps)
+        // et choisit le sprite directionnel (idle sinon).
+        return { x: Math.round(b.x), y: Math.round(b.y), vx: Math.round(b.vx), vy: Math.round(b.vy), hp: b.hp };
       }),
       deadTraces: (state.deadTraces || []).map(function (t) {
         return { x: t.x, y: t.y, v: t.v, r: t.r };

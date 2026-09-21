@@ -153,6 +153,13 @@
       // repart a zero) ferait afficher un faux floater "-N planches" ou
       // manquerait la premiere recolte de la nouvelle partie.
       lastPlanksSeen = null;
+      // Le cooldown de vote etait horodate sur state.time (non remis a zero
+      // par le snapshot) : un vote lance juste avant la destruction de la
+      // mairie gardait le bouton grise pendant la nouvelle partie.
+      G.state.voteCooldownUntil = 0;
+      // Floaters en cours : messages de la partie finie ("... est mort",
+      // "vote echoue"...) qui n'ont plus de sens sur la nouvelle carte.
+      if (G.state.floaters) G.state.floaters.length = 0;
       if (msg.map) {
         G.state.buildings = msg.map.buildings || [];
         _applyHouseSprites(G.state.buildings);
