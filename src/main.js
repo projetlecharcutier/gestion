@@ -104,6 +104,20 @@
         fbd.y += fbd.vy * dt;
         fbd.wing = (fbd.wing || 0) + dt * 12;
       }
+      // Zombies : meme traitement — le snapshot (10 Hz) est trop espacé pour
+      // un rendu fluide, on extrapole en ligne droite avec la velocite serveur.
+      // Le prochain snapshot recale exactement (l'extrapolation ne s'accumule
+      // JAMAIS : elle repart de la position serveur a chaque reception).
+      // Sans cela, les zombies sautent de ~12 px toutes les 100 ms : sous
+      // latence, un zombie qui saute vers le joueur au moment d'une attaque
+      // passe pour un sprinteur ("certains vont vraiment trop vite").
+      var fz = G.state.zombies;
+      for (var fzi = 0; fzi < fz.length; fzi++) {
+        var fzd = fz[fzi];
+        if (fzd.vx === undefined || fzd.hp <= 0) continue;
+        fzd.x += fzd.vx * dt;
+        fzd.y += fzd.vy * dt;
+      }
       // Prédiction client : même simulation de déplacement qu'en local
       // (tryMove sur la grille de collisions locale, identique au serveur).
       if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.churchOpen && !state.gameOver) {

@@ -122,17 +122,23 @@ srv.applyInput("a1", { techVote: "up:weaponDmg" });
 assert(!!st.vote && st.vote.proposal === "up:weaponDmg", "vote up: accepte pres de l'universite");
 for (var t3 = 0; t3 < 400 && st.vote; t3++) srv.tick(0.05);
 
-// --- 8) pickup : rayon serveur 120 px (parite avec le client src/input.js).
+// --- 8) pickup : rayon serveur 150 px (client 120 + marge de latence : le
+// client clique sur sa position PREDITE, en avance sur le serveur ; a 120
+// strict le serveur refusait des pickups legitimement cliques).
 // Le client envoie les coordonnees DE L'ITEM clique (pas du joueur).
 var bag8 = pa.bag.contents.length;
 st.items = [];
+st.items.push({ x: pa.x + 160, y: pa.y, name: "Pistolet", kind: "arme", color: "#333" });
+srv.applyInput("a1", { pickup: { x: pa.x + 160, y: pa.y } });
+assert(pa.bag.contents.length === bag8 && !st.items[0].taken, "pickup refuse a 160 px (rayon 150)");
+st.items = [];
 st.items.push({ x: pa.x + 130, y: pa.y, name: "Pistolet", kind: "arme", color: "#333" });
 srv.applyInput("a1", { pickup: { x: pa.x + 130, y: pa.y } });
-assert(pa.bag.contents.length === bag8 && !st.items[0].taken, "pickup refuse a 130 px (rayon 120)");
+assert(pa.bag.contents.length === bag8 + 1 && st.items[0].taken, "pickup accepte a 130 px (marge latence)");
 st.items = [];
 st.items.push({ x: pa.x + 110, y: pa.y, name: "Pistolet", kind: "arme", color: "#333" });
 srv.applyInput("a1", { pickup: { x: pa.x + 110, y: pa.y } });
-assert(pa.bag.contents.length === bag8 + 1 && st.items[0].taken, "pickup accepte a 110 px, item marque pris");
+assert(pa.bag.contents.length === bag8 + 2 && st.items[0].taken, "pickup accepte a 110 px, item marque pris");
 
 if (fails > 0) { console.log(fails + " FAIL"); process.exit(1); }
 console.log("OK validations serveur (proximite + retrait nom/kind + pickup 120)");

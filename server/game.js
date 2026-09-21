@@ -441,7 +441,11 @@
         if (it.taken) continue;
         if (Math.abs(it.x - tx) < 5 && Math.abs(it.y - ty) < 5) {
           var pdx = p.x - it.x, pdy = p.y - it.y;
-          if (Math.sqrt(pdx * pdx + pdy * pdy) < 120) {
+          // 150 px : rayon client (120) + marge de latence reseau. Le client
+          // autorise le clic sur sa position PREDITE (en avance sur le serveur
+          // du temps d'un aller-retour) : a 120 strict, le serveur refusait
+          // des pickups legitimement cliques et l'objet restait au sol.
+          if (Math.sqrt(pdx * pdx + pdy * pdy) < 150) {
             // Pièce d'or : crédit direct au coffre de la mairie (commun).
             if (it.kind === "or") {
               it.taken = true;
@@ -839,7 +843,25 @@
       if (state.players[di].alive) deadNames.push(state.players[di].name);
     }
     // Zombies, projectiles, oiseaux.
+    // Position des zombies au tick precedent : sert a calculer la velocite
+    // effective (vx/vy) envoyee dans le snapshot. Le client extrapole entre
+    // deux snapshots (10 Hz) pour un mouvement fluide a 60 fps — sans elle,
+    // les zombies avancaient par sauts de ~12 px toutes les 100 ms, ce qui
+    // passait pour des pics de vitesse ("certains vont trop vite").
+    var zPrev = [];
+    for (var zpi = 0; zpi < state.zombies.length; zpi++) {
+      zPrev.push(state.zombies[zpi].x + "," + state.zombies[zpi].y);
+    }
     G.updateZombies(dt);
+    // Velocite effective de chaque zombie (position actuelle - precedente).
+    // Les morts (hp <= 0) ne bougent plus : velocite nulle.
+    for (var zvi = 0; zvi < state.zombies.length && zvi < zPrev.length; zvi++) {
+      var zv = state.zombies[zvi];
+      if (zv.hp <= 0) { zv.vx = 0; zv.vy = 0; continue; }
+      var zpp = zPrev[zvi].split(",");
+      zv.vx = (zv.x - parseFloat(zpp[0])) / dt;
+      zv.vy = (zv.y - parseFloat(zpp[1])) / dt;
+    }
     G.updateProjectiles(dt);
     // Cap projectiles (parite avec src/weapons.js) : sans lui, un lance-
     // flammes par joueur fait croitre le tableau sans limite serveur.
@@ -917,15 +939,19 @@
           gold: p.gold || 0
         };
       }),
-      // Zombies en format compact [x, y, hp, lunge, ldx, ldy, leader] : a
-      // 3000+ zombies la nuit, le format objet domine la bande passante
-      // (200 Ko/s -> ~60 Ko/s a 10 Hz).
+      // Zombies en format compact [x, y, hp, lunge, ldx, ldy, leader, vx, vy] :
+      // a 3000+ zombies la nuit, le format objet domine la bande passante
+      // (200 Ko/s -> ~60 Ko/s a 10 Hz). vx/vy = velocite effective (px/s)
+      // mesuree au tick precedent : le client extrapole entre snapshots pour
+      // un rendu fluide (sinon, sauts de ~12 px toutes les 100 ms perçus comme
+      // des pics de vitesse / de la teleportation selon la latence).
       zombies: state.zombies.filter(inRange).map(function (z) {
         return [
           Math.round(z.x), Math.round(z.y), Math.round(z.hp),
           z.lunge > 0 ? +(z.lunge).toFixed(2) : 0,
           +(z.lungeDx || 0).toFixed(2), +(z.lungeDy || 0).toFixed(2),
-          z.isLeader ? 1 : 0
+          z.isLeader ? 1 : 0,
+          +((z.vx || 0)).toFixed(0), +((z.vy || 0)).toFixed(0)
         ];
       }),
       walls: state.walls.map(function (m) {

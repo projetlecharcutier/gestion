@@ -181,10 +181,14 @@
   G.NIGHT_WAVE_HOUR = 22;  // heure (jeu) de spawn de la vague
   G.ZOMBIE_RETREAT_HOUR = 8; // heure (jeu) de retraite des zombies
   G.ZOMBIE_RETREAT_DIST = 700; // distance de retraite hors de la ville
-  G.ZOMBIE_SPEED = 117;
+  // Vitesse de base : le zombie le plus rapide du premier jour (base x
+  // variance) reste nettement plus lent que le joueur (260 px/s). Avant, la
+  // variance +-50% laissait filer des zombies a ~71% de la vitesse du joueur
+  // des la premiere nuit.
+  G.ZOMBIE_SPEED = 90;
   // --- Comportement de déplacement (mouvement vivant) ---
   // Variation de vitesse entre zombies (facteur multiplicatif sur ZOMBIE_SPEED).
-  G.ZOMBIE_SPEED_VAR = 0.5;   // [0..1] : speedFactor ∈ [1-VAR, 1+VAR]
+  G.ZOMBIE_SPEED_VAR = 0.35;  // [0..1] : speedFactor ∈ [1-VAR, 1+VAR]
   // Allure erratique : amplitude (ratio de cap, 0..1) et fréquence (rad/s)
   // de l'oscillation perpendiculaire au déplacement, par zombie, pour un
   // "drunken walk" (cap qui dérive de part et d'autre).

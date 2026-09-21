@@ -227,14 +227,15 @@
       state.gameOver = true;
       state.gameOverCause = "player";
     }
-    // Zombies : format compact [x, y, hp, lunge, ldx, ldy, leader] (bande
-    // passante ~3x moindre la nuit). Decompression en objets pour le rendu.
+    // Zombies : format compact [x, y, hp, lunge, ldx, ldy, leader, vx, vy]
+    // (bande passante ~3x moindre la nuit). Decompression en objets pour le
+    // rendu. vx/vy : velocite serveur pour l'extrapolation entre snapshots.
     if (s.zombies) {
       var zout = [];
       for (var zi = 0; zi < s.zombies.length; zi++) {
         var za = s.zombies[zi];
         if (za.length) {
-          zout.push({ x: za[0], y: za[1], hp: za[2], lunge: za[3], lungeDx: za[4], lungeDy: za[5], leader: !!za[6] });
+          zout.push({ x: za[0], y: za[1], hp: za[2], lunge: za[3], lungeDx: za[4], lungeDy: za[5], leader: !!za[6], vx: za[7] || 0, vy: za[8] || 0 });
         } else {
           zout.push(za);
         }
