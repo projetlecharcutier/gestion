@@ -174,6 +174,35 @@
     return n;
   }
 
+  // Distance du joueur au centre d'un batiment.
+  function distToBuilding(p, b) {
+    if (!b) return Infinity;
+    var dx = p.x - (b.x + b.w / 2), dy = p.y - (b.y + b.h / 2);
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // Proximite obligatoire : le client n'ouvre ces ecrans que pres du batiment
+  // (rayon d'ouverture input.js) ; sans ce controle serveur, un client modifie
+  // pouvait deposer/voter/acheter depuis n'importe ou sur la carte.
+  var REACH_MAIRIE = 250;   // ouverture coffre : max(w,h)+10+60 = 190, marge
+  var REACH_EGLISE = 150;   // ouverture eglise : 45+10+60 = 115, marge
+  var REACH_VILLE = 130;    // batiments de ville (universite/marche...) : side/2+10+60
+  function nearMairie(p) {
+    for (var i = 0; i < state.buildings.length; i++) {
+      if (state.buildings[i].isMairie) return distToBuilding(p, state.buildings[i]) < REACH_MAIRIE;
+    }
+    return false;
+  }
+  function nearEglise(p) {
+    for (var i = 0; i < state.buildings.length; i++) {
+      if (state.buildings[i].isChurch) return distToBuilding(p, state.buildings[i]) < REACH_EGLISE;
+    }
+    return false;
+  }
+  function nearBuilding(p, b) {
+    return distToBuilding(p, b) < REACH_VILLE;
+  }
+
   // Cherche un point de spawn libre en ville : pas dans un batiment/palissade
   // ET pas trop pres des autres joueurs (sinon tous les joueurs apparaissent
   // empiles au meme endroit : sprites superposes, impossible de les distinguer).
@@ -339,7 +368,13 @@
     // Vote technologique a la mairie / universite : l'initiateur lance, les
     // autres votent. Generique pour tout batiment de ville du registre
     // TOWN_BUILDINGS, plus les ameliorations de l'universite ("up:<id>").
+    // Proximite obligatoire : tech de ville -> mairie ; amelioration ->
+    // universite posee (le client n'ouvre ces menus que pres du batiment).
     if (input.techVote) {
+      var isUnivUp0 = input.techVote.indexOf("up:") === 0;
+      var nearVote = isUnivUp0
+        ? (state.universite && nearBuilding(p, state.universite))
+        : nearMairie(p);
       var isUnivUp = input.techVote.indexOf("up:") === 0;
       var canPayUp = false;
       if (isUnivUp) {
@@ -356,7 +391,10 @@
       }
       var tdef = G.TOWN_BUILDINGS[input.techVote];
       if ((isUnivUp && canPayUp) || (tdef && !state[tdef.unlockedField])) {
-        if (!state.vote) {
+        if (!nearVote) {
+          // Trop loin du batiment : ignore (le client legitime est toujours a
+          // portee quand il clique ; un client modifie votait depuis loin).
+        } else if (!state.vote) {
           // L'initiateur doit pouvoir payer (planches ; or du coffre commun,
           // ou parchemin pour les ameliorations d'universite).
           if (isUnivUp || ((state.mairieGold || 0) >= tdef.cost.gold && (p.planks || 0) >= tdef.cost.planks)) {
@@ -375,9 +413,9 @@
       }
     }
     // Achat au marche : l'or vient du coffre commun de la mairie, l'objet est
-    // livre dans le sac du joueur qui achete.
+    // livre dans le sac du joueur qui achete. Proximite obligatoire.
     if (input.marketBuy !== undefined) {
-      if (state.marche && state.marche.chantierDone) {
+      if (state.marche && state.marche.chantierDone && nearBuilding(p, state.marche)) {
         var mitem = null;
         for (var mi = 0; mi < G.MARCHE_ITEMS.length; mi++) {
           if (G.MARCHE_ITEMS[mi].name === input.marketBuy) { mitem = G.MARCHE_ITEMS[mi]; break; }
@@ -403,7 +441,7 @@
         if (it.taken) continue;
         if (Math.abs(it.x - tx) < 5 && Math.abs(it.y - ty) < 5) {
           var pdx = p.x - it.x, pdy = p.y - it.y;
-          if (Math.sqrt(pdx * pdx + pdy * pdy) < 140) {
+          if (Math.sqrt(pdx * pdx + pdy * pdy) < 120) {
             // Pièce d'or : crédit direct au coffre de la mairie (commun).
             if (it.kind === "or") {
               it.taken = true;
@@ -424,29 +462,44 @@
     // Identifie l'objet par nom+kind : le client affiche des groupes, l'index
     // affiche change a chaque snapshot — le nom est stable.
     if (input.chestDeposit) {
+      // Proximite mairie obligatoire ; PAS de return : la suite d'applyInput
+      // (equip, eat...) reste valide pour un joueur qui n'est pas au coffre.
       var dn = input.chestDeposit.name, dk = input.chestDeposit.kind;
       var di = -1;
-      for (var dci = 0; dci < p.bag.contents.length; dci++) {
-        if (p.bag.contents[dci].name === dn && p.bag.contents[dci].kind === dk) { di = dci; break; }
-      }
-      if (di >= 0) {
-        var dit = p.bag.contents.splice(di, 1)[0];
-        state.chest.push(dit);
-        p.inventory = p.bag.contents.length;
+      if (nearMairie(p)) {
+        for (var dci = 0; dci < p.bag.contents.length; dci++) {
+          if (p.bag.contents[dci].name === dn && p.bag.contents[dci].kind === dk) { di = dci; break; }
+        }
+        if (di >= 0) {
+          var dit = p.bag.contents.splice(di, 1)[0];
+          state.chest.push(dit);
+          p.inventory = p.bag.contents.length;
+        }
       }
     }
     if (input.chestWithdraw !== undefined) {
-      var wi = input.chestWithdraw;
-      if (wi >= 0 && wi < state.chest.length) {
-        var wit = state.chest.splice(wi, 1)[0];
-        p.bag.contents.push(wit);
-        p.inventory = p.bag.contents.length;
+      // Retrait par nom+kind (le client affiche des groupes) : l'ancien index
+      // faisait retirer le mauvais objet si le coffre changeait entre le
+      // snapshot et le clic (fenetre de ~100 ms). Proximite mairie requise.
+      var wd = input.chestWithdraw;
+      if (nearMairie(p) && wd && wd.name !== undefined) {
+        var wIdx = -1;
+        for (var wci = 0; wci < state.chest.length; wci++) {
+          if (state.chest[wci].name === wd.name && state.chest[wci].kind === wd.kind) { wIdx = wci; break; }
+        }
+        if (wIdx >= 0) {
+          var wit = state.chest.splice(wIdx, 1)[0];
+          p.bag.contents.push(wit);
+          p.inventory = p.bag.contents.length;
+        }
       }
     }
     if (input.churchDeposit) {
       var ri = -1;
-      for (var ci = 0; ci < p.bag.contents.length; ci++) {
-        if (p.bag.contents[ci].name === "Relique") { ri = ci; break; }
+      if (nearEglise(p)) {
+        for (var ci = 0; ci < p.bag.contents.length; ci++) {
+          if (p.bag.contents[ci].name === "Relique") { ri = ci; break; }
+        }
       }
       if (ri >= 0) {
         p.bag.contents.splice(ri, 1);
@@ -786,6 +839,9 @@
     // Zombies, projectiles, oiseaux.
     G.updateZombies(dt);
     G.updateProjectiles(dt);
+    // Cap projectiles (parite avec src/weapons.js) : sans lui, un lance-
+    // flammes par joueur fait croitre le tableau sans limite serveur.
+    while (state.projectiles.length > 120) state.projectiles.shift();
     G.cleanupZombies();
     G.cleanupBirds();
     G.cleanupWalls();

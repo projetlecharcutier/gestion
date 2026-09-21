@@ -13,6 +13,8 @@ srv.addPlayer("a1", "alice");
 srv.addPlayer("b2", "bob");
 var pa = st.players[0], pb = st.players[1];
 pa.planks = 500; pb.planks = 500;
+function moveNear(p, b) { p.x = b.x + b.w / 2 + 40; p.y = b.y + b.h / 2 + 40; }
+moveNear(pa, mairie); moveNear(pb, mairie);
 
 // Universite + marche : deblocage tech + pose + chantier fini.
 st.mairieGold = 1000;
@@ -50,6 +52,7 @@ assert(st.universite.chantierDone, "chantier universite fini");
 assert(st.marche.chantierDone, "chantier marche fini");
 
 // 1) Vote amelioration degats d'armes (100 or, non repetable).
+moveNear(pa, st.universite); moveNear(pb, st.universite);
 var goldBefore = st.mairieGold;
 srv.applyInput("a1", { techVote: "up:weaponDmg" });
 assert(st.vote && st.vote.proposal === "up:weaponDmg", "vote up:weaponDmg lance");
@@ -69,6 +72,7 @@ assert(!st.vote, "weaponDmg deja acquise : pas de vote");
 // 2) Amelioration gratuite avec Parchemin : alice porte un parchemin.
 pa.bag.contents.push({ name: "Parchemin", kind: "objet", color: "#fde68a" });
 goldBefore = st.mairieGold;
+moveNear(pa, st.universite); moveNear(pb, st.universite);
 srv.applyInput("a1", { techVote: "up:towerRange" });
 srv.applyInput("b2", { techVote: "up:towerRange" });
 for (var k2 = 0; k2 < 320; k2++) srv.tick(0.05);
@@ -77,6 +81,7 @@ assert(st.mairieGold === goldBefore, "parchemin : or intact");
 assert(!pa.bag.contents.some(function (it) { return it.name === "Parchemin"; }), "parchemin consomme");
 
 // 3) Nuit de tranquillite (50 or, repetable) : la vague de 22h est annulee.
+moveNear(pa, st.universite); moveNear(pb, st.universite);
 srv.applyInput("a1", { techVote: "up:peacefulNight" });
 srv.applyInput("b2", { techVote: "up:peacefulNight" });
 for (var k3 = 0; k3 < 320; k3++) srv.tick(0.05);
@@ -93,9 +98,11 @@ assert(st.zombieMode !== "attack" || st.zombies.length === 0, "pas de vague spaw
 
 // 4) Achats au marche : or du coffre commun, objet livre dans le sac.
 var goldA = st.mairieGold;
+moveNear(pa, st.marche);
 srv.applyInput("a1", { marketBuy: "Grenade" });
 assert(pa.bag.contents.some(function (it) { return it.name === "Grenade"; }), "grenade livree");
 assert(st.mairieGold === goldA - 60, "or debite marche (obtenu " + st.mairieGold + ")");
+moveNear(pb, st.marche);
 srv.applyInput("b2", { marketBuy: "Lance-flammes" });
 assert(pb.bag.contents.some(function (it) { return it.name === "Lance-flammes"; }), "lance-flammes livre");
 

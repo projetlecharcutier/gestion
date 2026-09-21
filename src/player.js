@@ -457,7 +457,11 @@
     var it = state.chest[index];
     // En ligne, le coffre est autorite serveur (index dans le coffre serveur).
     if (G.netConnected && G.netConnected()) {
-      G.netInput({ chestWithdraw: index });
+      // Retrait par nom+kind : le coffre serveur peut avoir change entre le
+      // snapshot et le clic (depot d'un autre joueur) ; l'index faisait
+      // retirer le mauvais objet. Le retrait local optimiste garde l'ecran
+      // coherent pendant l'aller-retour (le snapshot confirmera).
+      G.netInput({ chestWithdraw: { name: it.name, kind: it.kind } });
       state.chest.splice(index, 1);
       G.drawChest();
       return;

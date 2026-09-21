@@ -12,6 +12,10 @@ srv.addPlayer("a1", "alice");
 srv.addPlayer("b2", "bob");
 var pa = st.players[0], pb = st.players[1];
 pa.planks = 500; pb.planks = 500;
+// Le vote tech exige la proximite de la mairie (audit anti-triche) : le
+// client legitime clique le bouton du coffre ouvert pres de la mairie.
+pa.x = mairie.x + mairie.w / 2 + 40; pa.y = mairie.y + mairie.h / 2 + 40;
+pb.x = mairie.x + mairie.w / 2 - 40; pb.y = mairie.y + mairie.h / 2 - 40;
 
 // 1) Vote tech universite (2 joueurs, majorite stricte = 2)
 srv.applyInput("a1", { techVote: "universite" });

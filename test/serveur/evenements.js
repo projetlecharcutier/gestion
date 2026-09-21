@@ -21,6 +21,11 @@ function hasEv(evs, t, msgPart) {
   }
   return false;
 }
+// Les actions serveur exigent la proximite du batiment (comme le client,
+// qui n'ouvre ces ecrans que pres du batiment) : on place les joueurs.
+function moveNear(p, b) { p.x = b.x + b.w / 2 + 40; p.y = b.y + b.h / 2 + 40; }
+var eglise = st.buildings.filter(function (b) { return b.isChurch; })[0];
+var mairie = st.buildings.filter(function (b) { return b.isMairie; })[0];
 
 // --- 1) eat : evenement dedie au joueur qui mange ---
 pa.bag.contents.push({ name: "Nourriture", kind: "objet", color: "#a00" });
@@ -30,24 +35,46 @@ var ev1 = lastEvents("a1");
 assert(hasEv(ev1, "eat"), "eat emis pour le joueur qui mange");
 assert(lastEvents("b2").length === 0, "eat non diffuse aux autres");
 
-// --- 2) depot d'eglise : retour +100 or ---
+// --- 2) depot d'eglise : retour +100 or (proximite requise) ---
 pa.bag.contents.push({ name: "Relique", kind: "objet", color: "#daa" });
+moveNear(pa, eglise);
 srv.applyInput("a1", { churchDeposit: true });
 assert(hasEv(lastEvents("a1"), "msg", "100 pièces d'or"), "eglise : message 100 pieces d'or");
+// Loin de l'eglise : depot refuse (validation serveur partie 4).
+pa.bag.contents.push({ name: "Relique", kind: "objet", color: "#daa" });
+pa.x = 2000; pa.y = 2000;
+srv.applyInput("a1", { churchDeposit: true });
+assert(pa.bag.contents.length === 1, "eglise : depot refuse a distance");
+pa.bag.contents.splice(0, 1);
+moveNear(pa, mairie);
 
 // --- 3) marche : achat reussi + echec (or insuffisant) ---
 st.marche = { x: 4800, y: 4800, w: 100, h: 100, chantierDone: true };
 st.mairieGold = 300;
+moveNear(pb, st.marche);
 srv.applyInput("b2", { marketBuy: "Fusil" });
 assert(hasEv(lastEvents("b2"), "msg", "acheté !"), "marche : achat confirme");
+// Loin du marche : achat refuse.
+pb.x = 2000; pb.y = 2000;
+srv.applyInput("b2", { marketBuy: "Grenade" });
+assert(st.mairieGold === 260, "marche : achat refuse a distance (or intact)");
+moveNear(pb, st.marche);
 st.mairieGold = 0;
 srv.applyInput("b2", { marketBuy: "Grenade" });
 assert(hasEv(lastEvents("b2"), "msg", "pas assez d'or"), "marche : echec d'achat communique");
 
 // --- 4) techVote sans ressources : refus communique (pas de vote fantome) ---
+moveNear(pb, mairie);
+pb.planks = 0;
 srv.applyInput("b2", { techVote: "universite" });
 assert(!st.vote, "vote non lance sans ressources");
 assert(hasEv(lastEvents("b2"), "msg", "planches"), "refus de vote communique");
+// Loin de la mairie : vote refuse meme avec les ressources.
+pb.planks = 500; st.mairieGold = 100;
+pb.x = 2000; pb.y = 2000;
+srv.applyInput("b2", { techVote: "universite" });
+assert(!st.vote, "vote refuse a distance de la mairie");
+moveNear(pb, mairie);
 
 // --- 5) vote complet : resolution reussie diffusee a TOUS les joueurs ---
 // Majorite stricte des joueurs CONNECTES : avec 2 joueurs, il faut 2 oui.

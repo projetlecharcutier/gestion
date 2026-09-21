@@ -77,7 +77,31 @@ setTimeout(function () {
             ws.send(JSON.stringify({ type: "input", churchDeposit: true }));
             waitUntil(function () { return snap.mairieGold >= 100; }, function () {
               console.log("[1] coffre:", snap.mairieGold, "or | planches:", snap.players[0].planks);
-              ws.send(JSON.stringify({ type: "input", techVote: "scierie" }));
+              // Le vote tech exige < 250 px de la mairie (audit anti-triche) :
+              // on y marche avant de voter (comportement client legitime,
+              // bouton du coffre ouvert pres de la mairie).
+              var mairie = null;
+              for (var mi = 0; mi < mapBuildings.length; mi++) if (mapBuildings[mi].isMairie) { mairie = mapBuildings[mi]; break; }
+              var mx = mairie.x + mairie.w / 2, my = mairie.y + mairie.h / 2;
+              var mStuck = 0, mLastX = 0, mLastY = 0;
+              var mIv = setInterval(function () {
+                var me2 = snap.players[0];
+                if (!me2) return;
+                var mdx = mx - me2.x, mdy = my - me2.y, md = Math.hypot(mdx, mdy);
+                if (md < 230) {
+                  clearInterval(mIv);
+                  ws.send(JSON.stringify({ type: "input", dx: 0, dy: 0 }));
+                  ws.send(JSON.stringify({ type: "input", techVote: "scierie" }));
+                  return;
+                }
+                if (Math.hypot(me2.x - mLastX, me2.y - mLastY) < 10) {
+                  mStuck++;
+                  var mAng = Math.atan2(mdy, mdx) + (mStuck % 2 === 0 ? 1 : -1) * (Math.PI / 3);
+                  mdx = Math.cos(mAng) * md; mdy = Math.sin(mAng) * md;
+                } else mStuck = 0;
+                mLastX = me2.x; mLastY = me2.y;
+                ws.send(JSON.stringify({ type: "input", dx: mdx / md, dy: mdy / md }));
+              }, 100);
               waitUntil(function () { return snap && snap.vote; }, function () {
                 console.log("[2] vote lance");
                 ws.send(JSON.stringify({ type: "input", techVote: "scierie" }));
