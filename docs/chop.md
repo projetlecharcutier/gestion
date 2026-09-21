@@ -8,7 +8,7 @@ Récolte de planches : avec une hache équipée, rester à côté d'une forêt p
 - `chopProgress()` — ratio d'avancement `0..1` pour le cercle de décompte, ou `-1` si inactif (consommé par `src/hud.js` `drawChopProgress`).
 
 ## Logique
-1. Garde : si `!started || paused || gameOver || inBuilding || bag.open || !axeEquipped` → réinitialise `chopTarget`/`chopTimer` et retourne.
+1. Garde : si `!started || paused || gameOver || inBuilding || bag.open || !axeEquipped` → réinitialise `chopTarget`/`chopWall`/`chopTimer` et retourne. Clic relâché (`!actionHeld`) → même réinitialisation complète (sinon le serveur ré-armait `chopStartedAt` en boucle et le client rejouait l'animation de hache + le cercle après un coup fini).
 2. Trouve l'arbre le plus proche à `< AXE_RANGE` du joueur (`nearestChoppableTree()`).
    - Aucun arbre → réinitialise et retourne.
 3. Si l'arbre visé change (`chopTarget !== target`) → relance le décompte (`chopTimer = 0`).

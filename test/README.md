@@ -55,6 +55,9 @@ emplacement de clone.
 - `flux_reel.js` : pickup hache -> equip -> fire maintenu -> planches creditees.
 - `cinq_planches.js` : 5 planches par coup de hache (hors ville).
 - `animation_hache_srv.js` : animation de hache et tir pistolet en ligne (serveur).
+- `anim_arret_relachement.js` : apres un coup complet, le relachement du clic doit
+  arreter l'emission de chop/chopAge (sinon l'animation de hache et le cercle de
+  decompte bouclent cote client tant qu'on reste pres de l'arbre).
 
 ### `buildings/` — batiments de ville et tours
 - `batiments_ville.js` / `chantiers.js` : scierie/universite/montgolfiere, chantiers

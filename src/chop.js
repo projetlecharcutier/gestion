@@ -56,6 +56,8 @@
     // Action manuelle : il faut maintenir le clic gauche (actionHeld) pour
     // utiliser la hache.
     if (!state.actionHeld) {
+      state.chopTarget = null;
+      state.chopWall = null;
       state.chopTimer = 0;
       return;
     }
