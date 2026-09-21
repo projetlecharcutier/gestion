@@ -149,6 +149,10 @@
       G.applyRemoteState(msg);
     } else if (msg.type === "restart") {
       // Redémarrage de partie : recharge la carte.
+      // Memoires locales perimees : lastPlanksSeen (le compteur de planches
+      // repart a zero) ferait afficher un faux floater "-N planches" ou
+      // manquerait la premiere recolte de la nouvelle partie.
+      lastPlanksSeen = null;
       if (msg.map) {
         G.state.buildings = msg.map.buildings || [];
         _applyHouseSprites(G.state.buildings);
@@ -165,9 +169,45 @@
     }
   };
 
+  // Consomme les evenements serveur (canal dedie : votes, achats, sons,
+  // morts, deblocages). En solo ces retours viennent du code client ; en
+  // ligne le serveur est la seule autorite et ces evenements restaient sans
+  // echo (echecs d'achat silencieux, aucun son de tir/manger/tour cassee).
+  var EVENT_SFX = { shoot: "shoot", eat: "eat", tourCasse: "tourCasse" };
+  var EVENT_RANGE = 900; // memes entites cull-ees que le snapshot (portee ecran)
+  function applyEvents(evs) {
+    if (!evs || !evs.length) return;
+    for (var i = 0; i < evs.length; i++) {
+      var ev = evs[i];
+      var sfx = EVENT_SFX[ev.t];
+      if (sfx) {
+        // Son positionne : audible seulement si l'origine est a portee de
+        // l'ecran du joueur local (un tir a l'autre bout de la carte ne
+        // doit pas se faire entendre).
+        var ok = true;
+        if (ev.x !== undefined && ev.y !== undefined) {
+          var dx = ev.x - G.state.player.x, dy = ev.y - G.state.player.y;
+          ok = dx * dx + dy * dy < EVENT_RANGE * EVENT_RANGE;
+        }
+        if (ok && G.playSfx) G.playSfx(sfx);
+      }
+      if (ev.t === "eat" && G.addFloater) G.addFloater("Nourriture (Soin)");
+      if (ev.t === "msg" && G.addFloater) G.addFloater(ev.msg);
+      if (ev.t === "montgolfiere") {
+        // Decollage declenche cote serveur : on aligne l'animation locale du
+        // batiment (meme horloge pour tous les clients).
+        var mgs = G.state.buildings;
+        for (var mb = 0; mb < mgs.length; mb++) {
+          if (mgs[mb].townBuilding === "montgolfiere") { mgs[mb].animStart = (G.state.time || 0); break; }
+        }
+      }
+    }
+  }
+
   // Applique l'état distant reçu au state local (pour le rendu).
   G.applyRemoteState = function (s) {
     var state = G.state;
+    applyEvents(s.events);
     state.clock = s.clock;
     state.day = s.day;
     // Le gameOver local peut etre INDIVIDUEL (joueur mort, cause "player")
@@ -255,6 +295,13 @@
     }
     // Prochaine vague (pre-tiree) : annoncee par la montgolfiere.
     if (s.pendingWave !== undefined) state.pendingWave = s.pendingWave;
+    // Montgolfiere : age serveur du declenchement -> horodatage local
+    // (state.time avance a chaque frame, meme en ligne). Sans cette sync,
+    // chaque client declenchait sa propre animation et les autres ne voyaient
+    // jamais le ballon decoller.
+    if (s.montgolfiereAnim !== undefined && s.montgolfiereAnim !== null && state.montgolfiere) {
+      state.montgolfiere.animStart = (state.time || 0) - s.montgolfiereAnim;
+    }
     // Tours : recreation depuis le snapshot (le serveur simule le combat).
     if (s.towers !== undefined) {
       var kept = [];

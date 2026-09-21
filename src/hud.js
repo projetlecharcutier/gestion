@@ -202,7 +202,15 @@
     ctx.fillText((dead ? "Les zombies ont rasé la ville. " : "") + "Vous avez survécu jusqu'au jour " + G.state.day, W / 2, H / 2 + 20);
     ctx.fillStyle = t.hint;
     ctx.font = "14px Segoe UI, system-ui, sans-serif";
-    ctx.fillText("Rechargez la page pour recommencer", W / 2, H / 2 + 48);
+    // En ligne, la partie redemarre toute seule (serveur autoritaire, nouvelle
+    // carte diffusee) : "rechargez la page" etait faux et remettait au menu.
+    var online = G.netConnected && G.netConnected();
+    ctx.fillText(dead && online
+      ? "Nouvelle partie dans quelques secondes..."
+      : (dead ? "Rechargez la page pour recommencer"
+              : (online ? "Vous êtes spectateur : la partie continue pour les survivants"
+                        : "Rechargez la page pour recommencer")),
+      W / 2, H / 2 + 48);
     ctx.restore();
   };
 })();

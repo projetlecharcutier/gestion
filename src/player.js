@@ -268,8 +268,10 @@
     var owned = state.universiteUpgrades && state.universiteUpgrades[upId];
     if (owned && !udef.repeatable) return;
     if (G.netConnected && G.netConnected()) {
+      // Pas de floater optimiste "Vote lancé" : le serveur confirme par
+      // evenement (refus de paiement inclus). Un floater local affichait un
+      // vote alors que le serveur venait de le refuser.
       G.netInput({ techVote: "up:" + upId });
-      if (G.addFloater) G.addFloater("Vote lancé (15 s)");
       G.drawUniversite();
       return;
     }
@@ -474,8 +476,9 @@
     var state = G.state;
     if (state.scierieUnlocked) return;
     if (G.netConnected && G.netConnected()) {
+      // Pas de floater optimiste : le serveur confirme le lancement (ou le
+      // refus de ressources) par evenement.
       G.netInput({ techVote: "scierie" });
-      if (G.addFloater) G.addFloater("Vote lancé (15 s)");
       G.drawChest();
       return;
     }
@@ -537,8 +540,8 @@
     var tdef = G.TOWN_BUILDINGS[id];
     if (!tdef || state[tdef.unlockedField]) return;
     if (G.netConnected && G.netConnected()) {
+      // Pas de floater optimiste : le serveur confirme par evenement.
       G.netInput({ techVote: id });
-      if (G.addFloater) G.addFloater("Vote lancé (15 s)");
       G.drawChest();
       return;
     }

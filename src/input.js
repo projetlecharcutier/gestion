@@ -183,7 +183,12 @@
           if (Math.sqrt(pdxs * pdxs + pdys * pdys) < reachs) {
             var tdef = G.TOWN_BUILDINGS[b.townBuilding];
             if (tdef.onClick === "buildMenu") G.openBuildMenu();
-            else if (tdef.onClick === "montgolfiere") G.triggerMontgolfiere(b);
+            else if (tdef.onClick === "montgolfiere") {
+              // En ligne, le declenchement vient du serveur (evenement diffuse,
+              // animation synchronisee pour tous) ; en solo, animation locale.
+              if (G.netConnected && G.netConnected()) G.netInput({ montgolfiere: true });
+              else G.triggerMontgolfiere(b);
+            }
             else if (tdef.onClick === "universite") G.openUniversite();
             else if (tdef.onClick === "marche") G.openMarche();
             return;

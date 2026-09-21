@@ -106,12 +106,55 @@
       hordeMsgTimer: 0,
       time: 0,
       startTimer: 0,
-      floaters: []
+      floaters: [],
+      // Canal d'evenements serveur -> client (votes, achats, sons, mort,
+      // deblocages) : en solo ces retours viennent du code client, en ligne le
+      // serveur est la seule autorite et n'envoyait RIEN (echecs d'achat et
+      // resultats de votes silencieux, aucun son de tir/manger/tour cassee).
+      // Chaque evenement est reserve a son destinataire (playerId) ou diffuse
+      // a tous (null), et consomme au snapshot du joueur concerne.
+      events: []
     };
   }
 
   var state = createInitialState();
   G.state = state;
+
+  // Empile un evenement pour un joueur (to === null : diffuse a tous les
+  // joueurs connectes). Garde-fou memoire : un evenement adresse a un joueur
+  // parti n'est pas empile ; les evenements perimes (joueur parti sans
+  // consommer, broadcast plus d'actualite) sont purges par age.
+  var EVENT_TTL = 5;
+  function pushEvent(to, ev) {
+    if (to === null || findPlayer(to)) {
+      state.events.push({ to: to === null ? undefined : to, t: ev.t, msg: ev.msg, name: ev.name, x: ev.x, y: ev.y, sent: {}, at: state.time });
+    }
+  }
+
+  // Consomme les evenements visibles par un joueur (appel depuis snapshot :
+  // un evenement adresse n'est pas livre a un autre ; un broadcast n'est
+  // retire que quand chaque joueur connecte l'a recu — le premier snapshot
+  // ne doit pas l'avaler pour tous les autres).
+  function takeEvents(forPlayerId) {
+    var out = [];
+    var keep = [];
+    for (var i = 0; i < state.events.length; i++) {
+      var e = state.events[i];
+      if (e.to !== undefined && e.to !== forPlayerId) { keep.push(e); continue; }
+      if (!e.sent[forPlayerId]) {
+        out.push({ t: e.t, msg: e.msg, name: e.name, x: e.x, y: e.y });
+        e.sent[forPlayerId] = true;
+      }
+      // Broadcast livre a tous les joueurs connectes (ou perime) : purge.
+      var allGot = true;
+      for (var pi = 0; pi < state.players.length; pi++) {
+        if (!e.sent[state.players[pi].id]) { allGot = false; break; }
+      }
+      if (!allGot && (state.time - (e.at || state.time)) < EVENT_TTL) keep.push(e);
+    }
+    state.events = keep;
+    return out;
+  }
 
   // Construit le monde (sans assets PNG : les collisions replient sur les
   // dimensions par défaut ; le serveur n'a pas besoin de rendu).
@@ -234,6 +277,9 @@
       p.lastShotAt = undefined;
       p.chopStartedAt = undefined;
     }
+    // La file d'evenements de la partie precedente est perimee (batiments et
+    // ressources reinitialises).
+    state.events = [];
   }
 
   // Applique un input envoyé par un client au joueur correspondant.
@@ -276,6 +322,20 @@
     if (input.placeBuild) {
       p._placeBuild = { x: input.placeBuild.wx, y: input.placeBuild.wy };
     }
+    // Montgolfiere : le clic client declenche l'animation LOCALEMENT chez
+    // lui seul (animStart sur le batiment local). En ligne, on declenche
+    // cote serveur et on diffuse l'horodatage : tous les clients voient le
+    // meme decollage et le meme message de vague.
+    if (input.montgolfiere) {
+      var mg = state.montgolfiere;
+      if (mg && mg.chantierDone) {
+        var mgDur = G.MONTGOLFIERE_ANIM_TIME || 4;
+        if (mg.animStart === undefined || (state.time - mg.animStart) >= mgDur) {
+          mg.animStart = state.time;
+          pushEvent(null, { t: "montgolfiere", x: Math.round(mg.x), y: Math.round(mg.y) });
+        }
+      }
+    }
     // Vote technologique a la mairie / universite : l'initiateur lance, les
     // autres votent. Generique pour tout batiment de ville du registre
     // TOWN_BUILDINGS, plus les ameliorations de l'universite ("up:<id>").
@@ -301,6 +361,12 @@
           // ou parchemin pour les ameliorations d'universite).
           if (isUnivUp || ((state.mairieGold || 0) >= tdef.cost.gold && (p.planks || 0) >= tdef.cost.planks)) {
             G.startVote(input.techVote, p.id);
+          } else {
+            // Meme retour que le solo (buyTownTech/buyUniversiteUpgrade) : le
+            // refus de paiement n'etait avant jamais communique en ligne.
+            pushEvent(p.id, { t: "msg", msg: isUnivUp
+              ? "Ressources insuffisantes (or du coffre ou Parchemin)"
+              : "Il faut " + tdef.cost.planks + " planches + " + tdef.cost.gold + " or au coffre" });
           }
         } else {
           // Un clic pendant un vote en cours = vote "pour".
@@ -320,6 +386,11 @@
           state.mairieGold -= mitem.price;
           p.bag.contents.push({ name: mitem.name, kind: mitem.kind, color: mitem.color });
           p.inventory = p.bag.contents.length;
+          pushEvent(p.id, { t: "msg", msg: mitem.name + " acheté !" });
+        } else if (mitem) {
+          // Echec d'achat (or du coffre insuffisant) : avant, silencieux en
+          // ligne (le client n'affichait rien dans ce mode).
+          pushEvent(p.id, { t: "msg", msg: "Le coffre de la mairie n'a pas assez d'or" });
         }
       }
     }
@@ -381,6 +452,8 @@
         p.bag.contents.splice(ri, 1);
         p.inventory = p.bag.contents.length;
         state.mairieGold = (state.mairieGold || 0) + 100;
+        // Meme retour que le solo (sellRelic) : +100 or.
+        pushEvent(p.id, { t: "msg", msg: "100 pièces d'or" });
       }
     }
     // Équipement : un seul objet équipé à la fois.
@@ -412,6 +485,9 @@
         p.bag.contents.splice(fi, 1);
         p.inventory = p.bag.contents.length;
         p.hp = Math.min(G.PLAYER_MAX_HP, p.hp + G.FOOD_HEAL);
+        // Le client joue le son/floater localement en solo ; en ligne, le
+        // serveur est autorite et n'envoyait rien (manger etait invisible).
+        pushEvent(p.id, { t: "eat" });
       }
     }
   }
@@ -544,6 +620,12 @@
         // Le latch n'est consomme que si un tir a effectivement eu lieu (si le
         // cooldown a refuse le tir ce tick, le latch attend le suivant).
         if (p.shootCd > 0) p._fireLatch = false;
+        // Son de tir : le client en ligne n'appelle jamais handleShooting
+        // (le serveur pilote les projectiles), il n'a donc aucun evenement
+        // pour jouer shoot.mp3. Le tir d'un joueur distant doit aussi
+        // s'entendre chez les autres : l'evenement est diffuse a tous,
+        // filtre de proximite cote client.
+        if (p.shootCd > 0) pushEvent(null, { t: "shoot", x: Math.round(p.x), y: Math.round(p.y) });
       }
       if (p.shootCd > 0) p.shootCd -= dt;
       // Pose de planche.
@@ -632,13 +714,21 @@
     // Chantiers (scierie, tours), combat des tours, votes a la mairie.
     G.updateBuildSites(dt);
     G.updateTowers(dt);
+    // Tours cassees : avant que cleanupTowers ne les retire, on emet un
+    // evenement diffuse (son tourCasse chez tous les clients a portee).
+    for (var twi = 0; twi < state.towers.length; twi++) {
+      if (state.towers[twi].hp <= 0) {
+        pushEvent(null, { t: "tourCasse", x: Math.round(state.towers[twi].x), y: Math.round(state.towers[twi].y) });
+      }
+    }
     G.cleanupTowers();
     if (state.vote) {
       var voteInitiator = state.vote.initiator;
+      var voteProposal = state.vote.proposal;
       // Parchemin de l'initiateur : amelioration d'universite gratuite s'il en
       // porte un (consomme a la resolution reussie).
       var scrollUsedFor = null;
-      G.resolveVote(alivePlayers(), function (cost) {
+      var voteRes = G.resolveVote(alivePlayers(), function (cost) {
         // Debite les planches du joueur initiateur du vote (or : coffre commun,
         // deja debite par resolveVote).
         var init = voteInitiator !== undefined ? findPlayer(voteInitiator) : null;
@@ -667,6 +757,32 @@
       }
     }
 
+    // Resultat du vote a la resolution (meme retour que le solo) : avant, un
+    // vote echoue en ligne n'affichait rien du tout. Label lisible de la
+    // proposition (batiment de ville ou amelioration d'universite).
+    if (voteRes === "passed" || voteRes === "failed") {
+      var lab = null;
+      if (voteProposal.indexOf("up:") === 0) {
+        var udef2 = G.UNIVERSITE_UPGRADES[voteProposal.slice(3)];
+        lab = udef2 ? udef2.label : voteProposal;
+      } else {
+        var tdef2 = G.TOWN_BUILDINGS[voteProposal];
+        lab = tdef2 ? tdef2.label : voteProposal;
+      }
+      if (voteRes === "passed") {
+        pushEvent(null, { t: "msg", msg: lab + " : voté et débloqué ! Z + posez le bâtiment en ville" });
+      } else {
+        pushEvent(null, { t: "msg", msg: lab + " : le vote a échoué (majorité non atteinte ou paiement impossible)" });
+      }
+    }
+
+    // Mort des joueurs : zombiee.js gere la mort dans le module partage,
+    // on ne peut pas emettre depuis la ; on compare avant/apres updateZombies
+    // pour diffuser l'annonce a tous les joueurs.
+    var deadNames = [];
+    for (var di = 0; di < state.players.length; di++) {
+      if (state.players[di].alive) deadNames.push(state.players[di].name);
+    }
     // Zombies, projectiles, oiseaux.
     G.updateZombies(dt);
     G.updateProjectiles(dt);
@@ -674,6 +790,11 @@
     G.cleanupBirds();
     G.cleanupWalls();
     G.updateBirds(dt);
+    for (var di2 = 0; di2 < state.players.length; di2++) {
+      if (!state.players[di2].alive && deadNames.indexOf(state.players[di2].name) >= 0) {
+        pushEvent(null, { t: "msg", msg: state.players[di2].name + " est mort" });
+      }
+    }
 
     // Game over si mairie détruite.
     var mairie = null;
@@ -817,7 +938,15 @@
         return b.isForet && (b.foretStage || 0) > 0;
       }).map(function (b) {
         return [Math.round(b.x + b.w / 2), Math.round(b.y + b.h / 2), b.foretStage || 0];
-      })
+      }),
+      // Montgolfiere : horodatage serveur du declenchement, converti en age
+      // pour eviter le decalage d'horloges client/serveur. Le client applique
+      // animStart = state.time - age sur son batiment local.
+      montgolfiereAnim: (state.montgolfiere && state.montgolfiere.animStart !== undefined) ?
+        +(state.time - state.montgolfiere.animStart).toFixed(2) : null,
+      // Evenements consommes par CE joueur (diffuses ou qui lui sont
+      // destines). Consommes a la lecture : jamais livres deux fois.
+      events: takeEvents(forPlayerId)
     };
   }
 
