@@ -19,6 +19,40 @@
         G.hudPlayers.hidden = true;
       }
     }
+    // Liste des joueurs connectés (panneau droit, mode serveur uniquement).
+    // Le DOM n'est reconstruit que si la liste change (noms/ordre/état mort) :
+    // updateHud tourne à chaque frame, inutile de toucher au DOM sinon.
+    if (G.hudPlayerList && G.hudPlayerListNames && G.hudPlayerListCount) {
+      if (G.playMode === "server") {
+        var names = [];
+        // Mort du joueur local : gameOver individuel reserve au joueur mort
+        // (net.js), le serveur continue la partie pour les survivants.
+        var meDead = state.gameOver && state.gameOverCause === "player";
+        if (state.playerName) names.push(state.playerName + (meDead ? " †" : "") + " (vous)");
+        var rp = state.remotePlayers || [];
+        for (var pli = 0; pli < rp.length; pli++) names.push(rp[pli].name + (rp[pli].alive === false ? " †" : ""));
+        var sig = names.join("|");
+        G.hudPlayerList.hidden = false;
+        G.hudPlayerListCount.textContent = String(names.length);
+        if (sig !== state._lastPlayerListSig) {
+          state._lastPlayerListSig = sig;
+          while (G.hudPlayerListNames.firstChild) G.hudPlayerListNames.removeChild(G.hudPlayerListNames.firstChild);
+          var li0 = document.createElement("li");
+          li0.className = "is-me";
+          if (meDead) li0.className += " is-dead";
+          li0.textContent = state.playerName ? state.playerName + (meDead ? " †" : "") + " (vous)" : "";
+          if (li0.textContent) G.hudPlayerListNames.appendChild(li0);
+          for (var plj = 0; plj < rp.length; plj++) {
+            var li = document.createElement("li");
+            if (rp[plj].alive === false) li.className = "is-dead";
+            li.textContent = rp[plj].name + (rp[plj].alive === false ? " †" : "");
+            G.hudPlayerListNames.appendChild(li);
+          }
+        }
+      } else {
+        G.hudPlayerList.hidden = true;
+      }
+    }
     G.hudInv.textContent = String(state.inventory);
     // Un seul objet equipe a la fois : arme OU hache.
     if (state.axeEquipped) G.hudWeapon.textContent = "Hache";

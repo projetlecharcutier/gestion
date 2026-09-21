@@ -209,6 +209,40 @@ canvas#game {
 }
 #soundBtn { right: 12px; }
 #sfxBtn { right: 96px; }
+/* Liste des joueurs connectés (droite, sous les boutons son) */
+.playerlist {
+  position: fixed;
+  top: 52px;
+  right: 12px;
+  z-index: 5;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  pointer-events: none;
+  min-width: 130px;
+  max-width: 220px;
+}
+.playerlist__title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  padding-bottom: 4px;
+}
+.playerlist__names {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.playerlist__names li {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.playerlist__names li.is-dead { color: #f87171; }
+.playerlist__names li.is-me { font-weight: 700; }
 .sound-btn:hover { background: var(--accent-soft); }
 .sc-hidden {
   position: fixed;

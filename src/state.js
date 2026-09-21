@@ -11,6 +11,9 @@
   G.hudZone = document.getElementById("hudZone");
   G.hudPos = document.getElementById("hudPos");
   G.hudPlayers = document.getElementById("hudPlayers");
+  G.hudPlayerList = document.getElementById("playerList");
+  G.hudPlayerListNames = document.getElementById("playerListNames");
+  G.hudPlayerListCount = document.getElementById("playerListCount");
   G.hudInv = document.getElementById("hudInv");
   G.hudWeapon = document.getElementById("hudWeapon");
   G.hudAxe = document.getElementById("hudAxe");
