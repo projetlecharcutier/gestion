@@ -34,7 +34,7 @@
       "Mains nues": {
           speed: 600,
           life: 1.0,
-          cd: 0.30,
+          cd: 0.60,
           dmg: 1,
           color: "#fff7ad",
           spread: 0.10,
@@ -42,7 +42,7 @@
       },
       "Pistolet": {
           type: "pistolet",
-          cd: 0.4,
+          cd: 0.8,
           speed: 600,
           life: 1.2, // Portée plus grande (vitesse * vie)
           dmg: 25,
@@ -51,7 +51,7 @@
       },
       "Arc": {
           type: "arc",
-          cd: 0.9,
+          cd: 1.8,
           speed: 400,
           life: 0.7, // Portée réduite
           dmg: 40,
@@ -62,7 +62,7 @@
       },
       "Fusil": {
           type: "fusil",
-          cd: 0.7,
+          cd: 1.4,
           speed: 500,
           life: 0.5, // Portée courte en cône
           dmg: 15,
@@ -71,14 +71,14 @@
           pellets: 8, // Nombre de plombs
           coneSpread: 0.3 // Largeur du cône
       },
-      "Couteau":     { speed: 520,  life: 0.4, cd: 0.25, dmg: 2, color: "#e2e8f0", spread: 0.0,  label: "couteau" },
-      "Bâton":       { speed: 680,  life: 0.8, cd: 0.50, dmg: 3, color: "#d6bb89", spread: 0.06, label: "bâton" },
+      "Couteau":     { speed: 520,  life: 0.4, cd: 0.5,  dmg: 2, color: "#e2e8f0", spread: 0.0,  label: "couteau" },
+      "Bâton":       { speed: 680,  life: 0.8, cd: 1.0,  dmg: 3, color: "#d6bb89", spread: 0.06, label: "bâton" },
       // Armes développées à l'université : la grenade explose en zone à
       // l'impact, le lance-flammes projette des flammes courtes qui brûlent
       // en zone continue.
       "Grenade": {
           type: "grenade",
-          cd: 2.0,
+          cd: 3.5,
           speed: 320,
           life: 0.9,
           dmg: 80,
@@ -89,7 +89,7 @@
       },
       "Lance-flammes": {
           type: "flamme",
-          cd: 0.08,
+          cd: 0.12,
           speed: 260,
           life: 0.45,
           dmg: 7,
@@ -166,9 +166,10 @@
   G.DAY_SECONDS = 300;
   G.NIGHT_SECONDS = 120;
   G.CYCLE_SECONDS = G.DAY_SECONDS * 2;
-  // Multiplicateur global de vitesse d'écoulement du temps de jeu : 3x plus
-  // rapide (le cycle jour/nuit et les horloges avancent 3 fois plus vite).
-  G.TIME_SCALE = 3;
+  // Multiplicateur global de vitesse d'écoulement du temps de jeu : le cycle
+  // jour/nuit et les horloges avancent d'autant plus vite. 2.4 = 20% plus
+  // lent que l'ancien 3x.
+  G.TIME_SCALE = 2.4;
   G.WAVE_EVERY = 420;
   G.WAVE_LEAVE = 600;
   // Bornes de la nuit (heures de jeu) : la nuit commence a 23h et se
@@ -293,18 +294,21 @@
   G.BIRD_HALF = 5;
   G.BIRD_COUNT = 20;
   G.BIRD_HIT_R = 14;
-  // Objets droppables par les oiseaux.
+  // Objets droppables par les oiseaux, avec poids (plus de chances d'armes
+  // et de reliques qu'avant : l'ancienne liste uniforme de 10 donnait ~20%
+  // d'armes et 0% de reliques).
   G.BIRD_DROPS = [
-    { name: "Pistolet", color: "#94a3b8", kind: "arme" },
-    { name: "Fusil", color: "#64748b", kind: "arme" },
-    { name: "Arc", color: "#a16207", kind: "arme" },
-    { name: "Couteau", color: "#cbd5e1", kind: "arme" },
-    { name: "Bâton", color: "#7c5e3c", kind: "arme" },
-    { name: "Hache", color: "#b45309", kind: "outil" },
-    { name: "Pièce", color: "#fbbf24", kind: "objet" },
-    { name: "Potion", color: "#ef4444", kind: "objet" },
-    { name: "Nourriture", color: "#f59e0b", kind: "objet" },
-    { name: "Gemme", color: "#22d3ee", kind: "objet" }
+    { name: "Pistolet", color: "#94a3b8", kind: "arme", weight: 10 },
+    { name: "Fusil", color: "#64748b", kind: "arme", weight: 6 },
+    { name: "Arc", color: "#a16207", kind: "arme", weight: 8 },
+    { name: "Couteau", color: "#cbd5e1", kind: "arme", weight: 8 },
+    { name: "Bâton", color: "#7c5e3c", kind: "arme", weight: 8 },
+    { name: "Hache", color: "#b45309", kind: "outil", weight: 5 },
+    { name: "Relique", color: "#a855f7", kind: "objet", weight: 15 },
+    { name: "Gemme", color: "#22d3ee", kind: "objet", weight: 10 },
+    { name: "Pièce", color: "#fbbf24", kind: "objet", weight: 10 },
+    { name: "Potion", color: "#ef4444", kind: "objet", weight: 10 },
+    { name: "Nourriture", color: "#f59e0b", kind: "objet", weight: 10 }
   ];
 
   // Scierie & tours : deplacement debloque a la mairie (cf. docs/towers.md).

@@ -86,7 +86,16 @@
         name: "Pièce", color: "#fbbf24", kind: "or"
       });
     }
-    var drop = G.BIRD_DROPS[G.randi(0, G.BIRD_DROPS.length - 1)];
+    // Drop pondere : chaque entree de BIRD_DROPS porte un poids (les armes
+    // et reliques tombent plus souvent qu'a l'ancien tirage uniforme).
+    var total = 0;
+    for (var di = 0; di < G.BIRD_DROPS.length; di++) total += G.BIRD_DROPS[di].weight || 1;
+    var roll = Math.random() * total;
+    var drop = G.BIRD_DROPS[G.BIRD_DROPS.length - 1];
+    for (var dj = 0; dj < G.BIRD_DROPS.length; dj++) {
+      roll -= G.BIRD_DROPS[dj].weight || 1;
+      if (roll <= 0) { drop = G.BIRD_DROPS[dj]; break; }
+    }
     G.state.items.push({
       x: x, y: y, taken: false,
       name: drop.name, color: drop.color, kind: drop.kind

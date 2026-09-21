@@ -128,6 +128,9 @@ for (var gi = 0; gi < 60; gi++) srv.tick(0.05);
 assert(gz.hp < 200, "grenade : zombie touche (hp " + gz.hp + ")");
 
 // 7) Lance-flammes : flux de flammes cadence rapide.
+// Le cooldown de la grenade (3.5 s) n'est pas tombe a zero apres les 3 s de
+// ticks de propagation : on le reinitialise pour isoler cette section.
+pa.shootCd = 0;
 var fz = { x: pa.x + 30, y: pa.y, hp: 100, atkCd: 0, wallCd: 0, group: null, speedFactor: 1, lunge: 0, lungeDx: 0, lungeDy: 0 };
 st.zombies.push(fz);
 pa.equipped = "Lance-flammes";
