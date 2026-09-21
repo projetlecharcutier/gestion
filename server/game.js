@@ -186,6 +186,12 @@
       chopWall: null,
       chopTimer: 0
     };
+    // Aides aux tests d'integration (loopback) : stock de planches de depart,
+    // equivalent a un joueur qui aurait deja coupe du bois. Variable
+    // d'environnement fixee par le test au lancement du serveur — un client
+    // ne peut pas la controler (input.planks, supprime, etait une faille).
+    var tp = parseInt(process.env.TEST_START_PLANKS || "0", 10);
+    if (tp > 0) p.planks = tp;
     state.players.push(p);
     return p;
   }
@@ -219,6 +225,10 @@
       p.equipped = null; p.axeEquipped = false;
       p.bag = { contents: [] };
       p.planks = 0; p.inventory = 0;
+      // Aide aux tests d'integration : TEST_START_PLANKS reapplique ici car
+      // le startGame (START_DELAY apres le join) remet les planches a zero.
+      var tp2 = parseInt(process.env.TEST_START_PLANKS || "0", 10);
+      if (tp2 > 0) p.planks = tp2;
       p.chopTarget = null; p.chopWall = null; p.chopTimer = 0;
       p.shootCd = 0;
       p.lastShotAt = undefined;
@@ -257,7 +267,6 @@
       p._build = true;
     }
     if (input.rotate) G.state.plankRotation = G.state.plankRotation ? 0 : 1;
-    if (input.openBag) p._openBag = true;
     if (input.buildWall) p._buildWall = { x: input.buildWall.wx, y: input.buildWall.wy };
     // Selection dans le menu de construction (scierie) + pose du batiment.
     if (input.buildSel !== undefined) p._buildSel = input.buildSel;
@@ -390,7 +399,6 @@
       }
       if (hasAxe) { p.axeEquipped = !p.axeEquipped; if (p.axeEquipped) p.equipped = null; }
     }
-    if (input.planks !== undefined) p.planks = input.planks;
     // Consommation de nourriture : retire un exemplaire du sac et rend des PV.
     if (input.eat) {
       var fi = -1;
@@ -475,66 +483,64 @@
       } else {
         p.moving = false; p.lastDx = 0; p.lastDy = 0;
       }
-      // Tir.
       // Tir d'arme uniquement : la hache (axeEquipped) declenche la coupe via
-      // updateChop, jamais un tir. Sans arme equipee valide (dans le registre
-      // WEAPON_STATS), pas de tir du tout (l'ancien repli "Mains nues" tirait
-      // des poings si equipped contenait un nom inconnu, ex. apres un equip
-      // desynchronise).
+      // updateChop, jamais un tir. Le tir utilise le MEME handleShooting que le
+      // client (src/weapons.js) avec un swap d'etat par joueur : avant, la
+      // logique etait dupliquee ici et toute arme ajoutee dans weapons.js
+      // n'etait pas simulee par le serveur (desync silencieuse : le else final
+      // la faisait partir comme un projectile "pistolet standard").
       var pSt = G.WEAPON_STATS[p.equipped];
-      var fireNow = (p._fire || p._fireLatch) && p.equipped && !p.axeEquipped && pSt && p.shootCd <= 0;
-      if (fireNow) {
-        p.shootCd = pSt.cd;
-        p._fireLatch = false;
-        // Horodatage pour l'animation de tir du personnage (frames 0.1 s).
-        p.lastShotAt = state.time;
-        var baseAng = Math.atan2(p._aimY ? p._aimY - p.y : 0, p._aimX ? p._aimX - p.x : 1);
-        var weaponType = pSt.type || "pistolet";
-        if (weaponType === "flamme") {
-          var fang = baseAng + (Math.random() * 2 - 1) * pSt.spread;
-          var fspd = pSt.speed * (0.85 + Math.random() * 0.3);
-          state.projectiles.push({
-            x: p.x, y: p.y - G.PLAYER_H * 0.5,
-            vx: Math.cos(fang) * fspd, vy: Math.sin(fang) * fspd,
-            life: pSt.life, owner: p.id, dmg: G.weaponDmg(p.equipped), color: pSt.color,
-            size: pSt.size || 8, type: "flamme", blast: true, blastRadius: pSt.blastRadius || 30,
-            trail: [], piercing: false, hitEntities: []
-          });
-        } else if (weaponType === "grenade") {
-          var gang = baseAng + (Math.random() * 2 - 1) * pSt.spread;
-          state.projectiles.push({
-            x: p.x, y: p.y - G.PLAYER_H * 0.5,
-            vx: Math.cos(gang) * pSt.speed, vy: Math.sin(gang) * pSt.speed,
-            life: pSt.life, owner: p.id, dmg: G.weaponDmg(p.equipped), color: pSt.color,
-            size: pSt.size || 6, type: "grenade", blast: true, blastRadius: pSt.blastRadius || 120,
-            trail: [], piercing: false, hitEntities: []
-          });
-        } else if (weaponType === "fusil") {
-          var pelletCount = pSt.pellets || 5;
-          var coneSpread = pSt.coneSpread || 0.3;
-          for (var pi = 0; pi < pelletCount; pi++) {
-            var poffset = (pelletCount > 1) ? (pi / (pelletCount - 1) - 0.5) * coneSpread : 0;
-            var pang = baseAng + poffset + (Math.random() * 2 - 1) * pSt.spread;
-            state.projectiles.push({
-              x: p.x, y: p.y - G.PLAYER_H * 0.5,
-              vx: Math.cos(pang) * pSt.speed, vy: Math.sin(pang) * pSt.speed,
-              life: pSt.life, owner: p.id, dmg: G.weaponDmg(p.equipped), color: pSt.color,
-              size: pSt.size || 3, type: pSt.type || "pistolet", trail: [],
-              piercing: false, hitEntities: []
-            });
-          }
-        } else {
-          var psp = (Math.random() * 2 - 1) * pSt.spread;
-          var spang = baseAng + psp;
-          state.projectiles.push({
-            x: p.x, y: p.y - G.PLAYER_H * 0.5,
-            vx: Math.cos(spang) * pSt.speed, vy: Math.sin(spang) * pSt.speed,
-            life: pSt.life, owner: p.id, dmg: G.weaponDmg(p.equipped), color: pSt.color,
-            size: pSt.size || 3, type: pSt.type || "pistolet", trail: [],
-            piercing: !!pSt.piercing, pierceCount: pSt.pierceCount || (pSt.piercing ? 3 : 0),
-            hitEntities: []
-          });
+      var wantShot = (p._fire || p._fireLatch) && p.equipped && !p.axeEquipped && !!pSt;
+      // Purge du latch obsolote : le latch ne sert qu'a ne pas perdre un clic
+      // bref entre deux ticks serveur. Si le joueur ne peut pas tirer ce tick
+      // (hache equipee, pas d'arme), le garder en attente ferait partir un tir
+      // fantome des qu'il equipe une arme (clic maintenu pendant la coupe).
+      if (p._fireLatch && !wantShot) p._fireLatch = false;
+      if (wantShot) {
+        var oldShot = {
+          px: state.player.x, py: state.player.y, eq: state.equipped,
+          ax: state.axeEquipped, cd: state.shootCd, lsa: state.lastShotAt,
+          inB: state.inBuilding, paused: state.paused, bagO: state.bag.open,
+          chO: state.chestOpen, go: state.gameOver, bm: state.buildMode,
+          ah: state.actionHeld,
+          mwx: state.mouse.wx, mwy: state.mouse.wy, nProj: state.projectiles.length
+        };
+        state.player.x = p.x; state.player.y = p.y;
+        state.equipped = p.equipped;
+        state.axeEquipped = p.axeEquipped;
+        state.shootCd = p.shootCd || 0;
+        state.inBuilding = null;
+        state.paused = false;
+        state.bag.open = false;
+        state.chestOpen = false;
+        state.gameOver = false;
+        state.buildMode = false;
+        // wantShot a deja valide l'intention de tir (clic/latch) : on la prete
+        // telle quelle a handleShooting qui lit state.actionHeld.
+        state.actionHeld = true;
+        state.mouse.wx = p._aimX !== undefined ? p._aimX : p.x;
+        state.mouse.wy = p._aimY !== undefined ? p._aimY : p.y;
+        G.handleShooting();
+        // Les projectiles crees par ce tir appartiennent au joueur : le tag
+        // owner sert au bruit des tirs (attraction des zombies) et au rendu.
+        var newProj = state.projectiles.length - oldShot.nProj;
+        for (var np = state.projectiles.length - 1; np >= 0 && newProj > 0; np--, newProj--) {
+          state.projectiles[np].owner = p.id;
         }
+        p.x = state.player.x; p.y = state.player.y;
+        p.shootCd = state.shootCd;
+        if (state.lastShotAt !== oldShot.lsa) p.lastShotAt = state.lastShotAt;
+        state.player.x = oldShot.px; state.player.y = oldShot.py;
+        state.equipped = oldShot.eq; state.axeEquipped = oldShot.ax;
+        state.shootCd = oldShot.cd; state.lastShotAt = oldShot.lsa;
+        state.inBuilding = oldShot.inB; state.paused = oldShot.paused;
+        state.bag.open = oldShot.bagO; state.chestOpen = oldShot.chO;
+        state.gameOver = oldShot.go; state.buildMode = oldShot.bm;
+        state.actionHeld = oldShot.ah;
+        state.mouse.wx = oldShot.mwx; state.mouse.wy = oldShot.mwy;
+        // Le latch n'est consomme que si un tir a effectivement eu lieu (si le
+        // cooldown a refuse le tir ce tick, le latch attend le suivant).
+        if (p.shootCd > 0) p._fireLatch = false;
       }
       if (p.shootCd > 0) p.shootCd -= dt;
       // Pose de planche.
@@ -568,7 +574,10 @@
                       pl: state.planks, inB: state.inBuilding, bagO: state.bag.open,
                       chO: state.chestOpen, chT: state.chopTarget, chW: state.chopWall, chTi: state.chopTimer,
                       ah: state.actionHeld };
-      state.actionHeld = !!p._fire;
+      // actionHeld suit brut le clic maintenu (sans filtre d'arme) : la
+      // factorisation du tir a un moment filtre la hache, ce qui cassait la
+      // coupe cote serveur. updateChop gere la hache ; le tir a son propre swap.
+      state.actionHeld = !!(p._fire || p._fireLatch);
       state.player.x = p.x; state.player.y = p.y;
       state.axeEquipped = p.axeEquipped;
       state.planks = p.planks || 0;
@@ -600,7 +609,7 @@
       // Evenements ponctuels consommes ; dx/dy/fire restent persistants
       // (le client renvoie l'etat complet a chaque input : dx:0, dy:0, fire:false
       // quand les touches sont relachees).
-      p._build = false; p._openBag = false; p._buildSel = undefined; p._placeBuild = null;
+      p._build = false; p._buildSel = undefined; p._placeBuild = null;
     }
 
     // Chantiers (scierie, tours), combat des tours, votes a la mairie.

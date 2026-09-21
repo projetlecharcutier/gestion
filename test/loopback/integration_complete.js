@@ -2,7 +2,7 @@
 // scierie->menu (buildSel)->pose scierie->chantier->pose tour hors ville.
 var WebSocket = require("../../server/node_modules/ws");
 var PORT = 45742;
-var srv = require("child_process").spawn("node", ["index.js"], { cwd: require("path").join(__dirname, "..", "..", "server"), env: { PATH: process.env.PATH, PORT: String(PORT) }, stdio: ["ignore", "pipe", "pipe"] });
+var srv = require("child_process").spawn("node", ["index.js"], { cwd: require("path").join(__dirname, "..", "..", "server"), env: { PATH: process.env.PATH, PORT: String(PORT), TEST_START_PLANKS: "150" }, stdio: ["ignore", "pipe", "pipe"] });
 var logs = []; srv.stdout.on("data", function (d) { logs.push(d.toString()); }); srv.stderr.on("data", function (d) { logs.push("ERR:" + d.toString()); });
 setTimeout(function () {
   var ws = new WebSocket("ws://127.0.0.1:" + PORT);
@@ -29,7 +29,8 @@ setTimeout(function () {
   }
   waitUntil(function () { return snap && snap.started === true && snap.players.length > 0; }, function () {
     console.log("[0] partie demarree");
-    ws.send(JSON.stringify({ type: "input", planks: 150 }));
+    // Planches de depart : TEST_START_PLANKS au spawn du serveur (le protocole
+    // input.planks a ete supprime : faille de triche).
     // Marche vers la relique en ville, sinon reliques hors ville proches.
     var c = 5000;
     var relicList = [[c - 100, c + 330], [c + 1800, c + 3300], [c - 800, c + 2600]];
