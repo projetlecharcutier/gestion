@@ -644,6 +644,7 @@
       // Équipement de départ en ville.
       { x: c - 60, y: c - 40, taken: false, name: "Pistolet", color: "#94a3b8", kind: "arme" },
       { x: c + 60, y: c - 40, taken: false, name: "Hache", color: "#b45309", kind: "outil" },
+      { x: c + 180, y: c - 40, taken: false, name: "Lance-flammes", color: "#fb923c", kind: "arme" },
       { x: c - 80, y: c + 20, taken: false, name: "Pièce", color: "#fbbf24", kind: "objet" },
       { x: c + 90, y: c - 60, taken: false, name: "Pièce", color: "#fbbf24", kind: "objet" },
       { x: c - 200, y: c - 180, taken: false, name: "Potion", color: "#ef4444", kind: "objet" },
