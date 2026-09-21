@@ -211,8 +211,11 @@
     e.preventDefault();
     // En mode build : la molette tourne la palissade (pas de zoom).
     if (G.state.buildMode && !G.state.paused && !G.state.inBuilding && !G.state.gameOver) {
-      if (G.netConnected && G.netConnected()) G.netInput({ rotate: true });
+      // Valeur absolue (0/1), pas un toggle : la rotation doit etre PAR JOUEUR
+      // cote serveur. Avant, le serveur basculait un etat global partage :
+      // si A tournait sa palissade, B voyait la sienne tourner aussi.
       G.rotatePlank();
+      if (G.netConnected && G.netConnected()) G.netInput({ rotate: G.state.plankRotation });
       return;
     }
     var factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;

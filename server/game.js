@@ -266,7 +266,10 @@
       p._buildMode = !!input.build;
       p._build = true;
     }
-    if (input.rotate) G.state.plankRotation = G.state.plankRotation ? 0 : 1;
+    // Rotation de palissade : valeur ABSOLUE (0/1) par joueur. L'ancien toggle
+    // global partage l'orientation entre tous les joueurs (si A tournait sa
+    // palissade, B voyait la sienne tourner). 0 est falsy : test !== undefined.
+    if (input.rotate !== undefined) p._plankRotation = input.rotate ? 1 : 0;
     if (input.buildWall) p._buildWall = { x: input.buildWall.wx, y: input.buildWall.wy };
     // Selection dans le menu de construction (scierie) + pose du batiment.
     if (input.buildSel !== undefined) p._buildSel = input.buildSel;
@@ -547,9 +550,12 @@
       if (p._buildWall) {
         state.player.x = p.x; state.player.y = p.y; state.planks = p.planks || 0;
         var oldBuildMode = state.buildMode;
+        var oldRotation = state.plankRotation;
         state.buildMode = !!p._buildMode;
+        state.plankRotation = p._plankRotation !== undefined ? p._plankRotation : state.plankRotation;
         G.tryBuildWall(p._buildWall.x, p._buildWall.y);
         state.buildMode = oldBuildMode;
+        state.plankRotation = oldRotation;
         // pushPlayerOutOfWall (appelé par tryBuildWall) a pu déplacer state.player
         // pour éviter un blocage : on récupère la nouvelle position.
         p.x = state.player.x; p.y = state.player.y;
@@ -558,15 +564,21 @@
       }
       // Pose de batiment depuis le menu de la scierie (tour, scierie) :
       // l'or vient du coffre commun, les planches du joueur.
-      if (p._buildSel !== undefined) state.buildSel = p._buildSel;
+      // buildSel PAR JOUEUR : la selection est pretee au global seulement
+      // pendant placeFromBuildMenu puis restauree. Avant, `state.buildSel =
+      // p._buildSel` fuyait dans le global : si la selection et la pose
+      // arrivaient dans deux inputs differents, un autre joueur pouvait
+      // consommer la selection residuelle d'un tiers a sa propre pose.
       if (p._placeBuild) {
         state.player.x = p.x; state.player.y = p.y;
         state.planks = p.planks || 0;
+        var oldBuildSel = state.buildSel;
+        if (p._buildSel !== undefined) state.buildSel = p._buildSel;
         G.placeFromBuildMenu(p._placeBuild.x, p._placeBuild.y);
+        state.buildSel = oldBuildSel;
         p.x = state.player.x; p.y = state.player.y;
         p.planks = state.planks;
         p._placeBuild = null;
-        state.buildSel = null;
       }
       // Récolte de planches / destruction de palissade à la hache : on swappe
       // l'état global vers le joueur courant pour que updateChop() s'applique à ce joueur.
@@ -609,7 +621,12 @@
       // Evenements ponctuels consommes ; dx/dy/fire restent persistants
       // (le client renvoie l'etat complet a chaque input : dx:0, dy:0, fire:false
       // quand les touches sont relachees).
-      p._build = false; p._buildSel = undefined; p._placeBuild = null;
+      // _buildSel N'EST PAS purge : c'est un etat persistant de selection par
+      // joueur (comme le menu local). L'ancienne purge au bout d'un tick
+      // cassait les poses ou la selection et le clic carte arrivaient dans
+      // deux inputs differents : placeFromBuildMenu lisait alors la selection
+      // residuelle du global, eventuellement celle d'un autre joueur.
+      p._build = false; p._placeBuild = null;
     }
 
     // Chantiers (scierie, tours), combat des tours, votes a la mairie.
