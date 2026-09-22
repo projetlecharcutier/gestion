@@ -377,6 +377,7 @@
     state.bag.contents.splice(index, 1);
     state.inventory = state.bag.contents.length;
     state.mairieGold = (state.mairieGold || 0) + 100;
+    if (G.statsAddGold) G.statsAddGold(100);
     if (G.addFloater) G.addFloater("100 pièces d'or");
     G.drawChurch();
     G.updateHud();

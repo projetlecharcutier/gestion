@@ -94,11 +94,13 @@
           if (wi >= 0) state.walls.splice(wi, 1);
           // Récupère les 4 planches qui formaient la palissade.
           state.planks += G.WALL_PLANKS;
+          if (G.statsAddPlanks) G.statsAddPlanks(G.WALL_PLANKS);
         }
       } else {
         // Récolte : 4 planches, la forêt avance d'un état de coupe.
         // À l'état final elle n'est plus récoltable et devient traversable.
         state.planks += G.FORET_PLANKS_PER_CHOP;
+        if (G.statsAddPlanks) G.statsAddPlanks(G.FORET_PLANKS_PER_CHOP);
         cible.foretStage = (cible.foretStage || 0) + 1;
         if (G.refitForet) G.refitForet(cible);
         if (G.foretDepleted(cible) && G.buildingGrid) G.rebuildBuildingGrid();

@@ -19,6 +19,9 @@
         var tx = state.mouse.wx, ty = state.mouse.wy;
         var st = G.equippedStats();
         state.shootCd = st.cd;
+        // Stats de fin de partie : un "coup de feu" par declenchement du tir
+        // (le fusil compte 1 coup, pas 5 pellets).
+        if (G.statsAddShot) G.statsAddShot();
         // Horodatage du tir pour l'animation d'action du personnage
         // (frames de tir de l'arme, 1 frame = 0.1 s, cycle = cadence).
         state.lastShotAt = G.state.time;
@@ -115,7 +118,20 @@
             var z = state.zombies[zi];
             if (z.hp <= 0) continue;
             var dx = z.x - x, dy = z.y - y;
-            if (Math.sqrt(dx * dx + dy * dy) <= r) z.hp -= dmg;
+            if (Math.sqrt(dx * dx + dy * dy) <= r) {
+                var wasAlive = z.hp > 0;
+                z.hp -= dmg;
+                // Attribution du kill (stats de fin de partie) : le zombie
+                // porte l'id du tueur pour que le serveur credite le bon
+                // joueur avant le cleanup. Sans owner = tir local (solo).
+                if (wasAlive && z.hp <= 0) {
+                    if (!pr.owner || pr.owner === "local") {
+                        if (G.statsAddKill) G.statsAddKill();
+                    } else {
+                        z.killedBy = pr.owner;
+                    }
+                }
+            }
         }
         for (var bi = 0; bi < state.birds.length; bi++) {
             var b = state.birds[bi];
@@ -166,7 +182,19 @@
                         shouldDestroy = true;
                         break;
                     }
+                    var wasAliveZ = z.hp > 0;
                     z.hp -= pr.dmg;
+                    // Kill attribue au proprietaire du projectile (stats fin
+                    // de partie). Sans owner = tir local (solo).
+                    if (wasAliveZ && z.hp <= 0) {
+                        if (pr.owner === "tour") {
+                            if (G.statsAddTowerKill) G.statsAddTowerKill();
+                        } else if (!pr.owner || pr.owner === "local") {
+                            if (G.statsAddKill) G.statsAddKill();
+                        } else {
+                            z.killedBy = pr.owner;
+                        }
+                    }
                     pr.hitEntities.push(z);
 
                     if (pr.piercing && pr.pierceCount > 0) {

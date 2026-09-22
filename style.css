@@ -209,10 +209,10 @@ canvas#game {
 }
 #soundBtn { right: 12px; }
 #sfxBtn { right: 96px; }
-/* Liste des joueurs connectés (droite, sous les boutons son) */
+/* Liste des joueurs connectés (droite, sous l'horloge/jour et les boutons son) */
 .playerlist {
   position: fixed;
-  top: 52px;
+  top: 130px;
   right: 12px;
   z-index: 5;
   background: rgba(15, 23, 42, 0.78);

@@ -34,7 +34,7 @@
       "Mains nues": {
           speed: 600,
           life: 1.0,
-          cd: 0.60,
+          cd: 0.45,
           dmg: 1,
           color: "#fff7ad",
           spread: 0.10,
@@ -42,7 +42,7 @@
       },
       "Pistolet": {
           type: "pistolet",
-          cd: 0.8,
+          cd: 0.6,
           speed: 600,
           life: 1.2, // Portée plus grande (vitesse * vie)
           dmg: 25,
@@ -51,7 +51,7 @@
       },
       "Arc": {
           type: "arc",
-          cd: 1.8,
+          cd: 1.35,
           speed: 400,
           life: 0.7, // Portée réduite
           dmg: 40,
@@ -62,7 +62,7 @@
       },
       "Fusil": {
           type: "fusil",
-          cd: 1.4,
+          cd: 1.05,
           speed: 500,
           life: 0.5, // Portée courte en cône
           dmg: 15,
@@ -71,14 +71,14 @@
           pellets: 8, // Nombre de plombs
           coneSpread: 0.3 // Largeur du cône
       },
-      "Couteau":     { speed: 520,  life: 0.4, cd: 0.5,  dmg: 2, color: "#e2e8f0", spread: 0.0,  label: "couteau" },
-      "Bâton":       { speed: 680,  life: 0.8, cd: 1.0,  dmg: 3, color: "#d6bb89", spread: 0.06, label: "bâton" },
+      "Couteau":     { speed: 520,  life: 0.4, cd: 0.35,  dmg: 2, color: "#e2e8f0", spread: 0.0,  label: "couteau" },
+      "Bâton":       { speed: 680,  life: 0.8, cd: 0.7,  dmg: 3, color: "#d6bb89", spread: 0.06, label: "bâton" },
       // Armes développées à l'université : la grenade explose en zone à
       // l'impact, le lance-flammes projette des flammes courtes qui brûlent
       // en zone continue.
       "Grenade": {
           type: "grenade",
-          cd: 3.5,
+          cd: 2.5,
           speed: 320,
           life: 0.9,
           dmg: 80,
@@ -89,7 +89,7 @@
       },
       "Lance-flammes": {
           type: "flamme",
-          cd: 0.12,
+          cd: 0.09,
           speed: 260,
           life: 0.45,
           dmg: 7,

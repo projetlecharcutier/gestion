@@ -106,6 +106,13 @@
     }
     var sides = pending.sides;
     state.waveSides = sides;
+    // Stats de fin de partie : resume de la vague (volume + amelioration
+    // zombieRamp de la nuit, cappee a +50%). Enregistre AUSSI la vague
+    // demandee avant plafond (rawCount) pour montrer la montee en puissance.
+    if (G.statsRecordWave) {
+      G.statsRecordWave(state.day, state.waveCount, state.zombieRamp,
+                        pending.rawCount || state.waveCount);
+    }
     var nbGroups = Math.ceil(count / G.GROUP_SIZE);
     state.zombieGroups = [];
     for (var g = 0; g < nbGroups; g++) {

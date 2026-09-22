@@ -24,6 +24,7 @@
   }
   // Ordre : config d'abord, puis projection, puis world/zombies/walls/chop/weapons/birds.
   load("config.js");
+  load("stats.js");
   load("projection.js");
   load("world.js");
   load("player.js");
@@ -46,7 +47,9 @@
       gameOver: false,
       gameOverCause: "",
       inBuilding: null,
-      players: [],        // [{id, name, x, y, hp, alive, face, moving, equipped, axeEquipped, lastDx, lastDy, bag}]
+      players: [],        // [{id, name, x, y, hp, alive, face, moving, equipped, axeEquipped, lastDx, lastDy, bag, stats}]
+      // Stats de fin de partie (vagues recues, kills par tours/joueurs).
+      globalStats: G.newGlobalStats ? G.newGlobalStats() : null,
       player: { x: G.WORLD / 2, y: G.WORLD / 2, face: 1, moving: false, hp: G.PLAYER_MAX_HP },
       camera: { x: G.WORLD / 2, y: G.WORLD / 2 },
       zoom: 8,
@@ -256,7 +259,9 @@
       gold: 0,
       chopTarget: null,
       chopWall: null,
-      chopTimer: 0
+      chopTimer: 0,
+      // Stats de fin de partie (cf. src/stats.js) : compteurs par joueur.
+      stats: G.newPlayerStats ? G.newPlayerStats() : null
     };
     // Aides aux tests d'integration (loopback) : stock de planches de depart,
     // equivalent a un joueur qui aurait deja coupe du bois. Variable
@@ -302,6 +307,8 @@
       var tp2 = parseInt(process.env.TEST_START_PLANKS || "0", 10);
       if (tp2 > 0) p.planks = tp2;
       p.chopTarget = null; p.chopWall = null; p.chopTimer = 0;
+      // Stats de fin de partie : nouvelle partie = compteurs remis a zero.
+      p.stats = G.newPlayerStats ? G.newPlayerStats() : null;
       p.shootCd = 0;
       p.lastShotAt = undefined;
       p.chopStartedAt = undefined;
@@ -450,6 +457,8 @@
             if (it.kind === "or") {
               it.taken = true;
               state.mairieGold = (state.mairieGold || 0) + 1;
+              // Stats de fin de partie : or recolte par CE joueur.
+              if (p.stats) p.stats.gold += 1;
             } else {
               it.taken = true;
               p.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });
@@ -509,6 +518,8 @@
         p.bag.contents.splice(ri, 1);
         p.inventory = p.bag.contents.length;
         state.mairieGold = (state.mairieGold || 0) + 100;
+        // Stats de fin de partie : or gagne par CE joueur (relique vendue).
+        if (p.stats) p.stats.gold += 100;
         // Meme retour que le solo (sellRelic) : +100 or.
         pushEvent(p.id, { t: "msg", msg: "100 pièces d'or" });
       }
@@ -708,9 +719,16 @@
         // Les projectiles crees par ce tir appartiennent au joueur : le tag
         // owner sert au bruit des tirs (attraction des zombies) et au rendu.
         var newProj = state.projectiles.length - nProjBefore;
+        // La boucle de tag consomme newProj (compteur de decrementation) :
+        // le nombre de projectiles crees est sauvegarde avant pour les stats.
+        var shotCount = newProj;
         for (var np = state.projectiles.length - 1; np >= 0 && newProj > 0; np--, newProj--) {
           state.projectiles[np].owner = p.id;
         }
+        // Stats de fin de partie : coups de feu du joueur. Le fusil tire
+        // plusieurs projectiles en UN coup : on compte les pellets comme un
+        // seul tir (parite avec le solo, qui compte par declenchement).
+        if (shotCount > 0 && p.stats) p.stats.shots += 1;
         // Son de tir : le client en ligne n'appelle jamais handleShooting
         // (le serveur pilote les projectiles), il n'a donc aucun evenement
         // pour jouer shoot.mp3. Le tir d'un joueur distant doit aussi
@@ -721,9 +739,12 @@
       if (p.shootCd > 0) p.shootCd -= dt;
       // Pose de planche.
       if (p._buildWall) {
+        var nWallsBefore = state.walls.length;
         withPlayer(p, { pose: true }, function () {
           G.tryBuildWall(p._buildWall.x, p._buildWall.y);
         });
+        // Stats de fin de partie : palissade posee (pose reussie seulement).
+        if (state.walls.length > nWallsBefore && p.stats) p.stats.built += 1;
         p._buildWall = null;
       }
       // Pose de batiment depuis le menu de la scierie (tour, scierie) :
@@ -738,19 +759,27 @@
         state.planks = p.planks || 0;
         var oldBuildSel = state.buildSel;
         if (p._buildSel !== undefined) state.buildSel = p._buildSel;
+        var nBuildBefore = state.buildings.length + state.towers.length;
         G.placeFromBuildMenu(p._placeBuild.x, p._placeBuild.y);
+        // Stats de fin de partie : tour ou batiment de ville pose (reussi).
+        if (state.buildings.length + state.towers.length > nBuildBefore && p.stats) p.stats.built += 1;
         state.buildSel = oldBuildSel;
         p.x = state.player.x; p.y = state.player.y;
         p.planks = state.planks;
         p._placeBuild = null;
       }
-      // Récolte de planches / destruction de palissade à la hache : on swappe
-      // l'état global vers le joueur courant pour que updateChop() s'applique à ce joueur.
       // Recolte de planches / destruction de palissade a la hache : swap unifie
       // via withPlayer (meme liste de champs que le tir et la pose).
+      // Stats de fin de partie : le delta de planches pendant le swap chop est
+      // credite au joueur (chop.js appelle statsAddPlanks, qui est un no-op
+      // cote serveur car state.localStats n'existe pas : on compte ici).
+      var planksBeforeChop = p.planks || 0;
       withPlayer(p, { chop: true }, function () {
         G.updateChop(dt);
       });
+      if (p.planks > planksBeforeChop && p.stats) {
+        p.stats.planks += p.planks - planksBeforeChop;
+      }
       // Debut d'un nouveau cycle de coupe (cible changee ou relance apres un
       // coup) : horodatage pour l'animation de la hache du joueur distant.
       if (p.axeEquipped && (p.chopTarget || p.chopWall) && p.chopTimer < 0.15 &&
@@ -866,6 +895,24 @@
     // Cap projectiles (parite avec src/weapons.js) : sans lui, un lance-
     // flammes par joueur fait croitre le tableau sans limite serveur.
     while (state.projectiles.length > 120) state.projectiles.shift();
+    // Stats de fin de partie : attribution des kills. weapons.js marque chaque
+    // zombie tue par un projectile avec killedBy = id du proprietaire (ou
+    // "tour") ; on credite les joueurs AVANT le cleanup qui supprime les
+    // morts. Les kills par tours alimentent le compteur global towerKills.
+    for (var ki = 0; ki < state.zombies.length; ki++) {
+      var kz = state.zombies[ki];
+      if (kz.killedBy === undefined || kz.hp > 0) continue;
+      if (kz.killedBy === "tour") {
+        if (state.globalStats) state.globalStats.towerKills += 1;
+      } else {
+        var kp = findPlayer(kz.killedBy);
+        if (kp && kp.stats) {
+          kp.stats.kills += 1;
+          if (state.globalStats) state.globalStats.playerKills += 1;
+        }
+      }
+      kz.killedBy = undefined;
+    }
     G.cleanupZombies();
     G.cleanupBirds();
     G.cleanupWalls();
@@ -923,6 +970,8 @@
       clock: state.clock,
       day: state.day,
       startTimer: state.startTimer,
+      // Stats globales de fin de partie (vagues par nuit, kills tours/joueurs).
+      globalStats: state.gameOver ? (state.globalStats || null) : undefined,
       players: state.players.map(function (p) {
         return {
           id: p.id, name: p.name, x: Math.round(p.x), y: Math.round(p.y),
@@ -936,7 +985,13 @@
           chopAge: p.chopStartedAt !== undefined ? +((state.time - p.chopStartedAt)).toFixed(2) : undefined,
           bag: p.bag.contents, inventory: p.bag.contents.length,
           planks: p.planks || 0,
-          gold: p.gold || 0
+          gold: p.gold || 0,
+          // Stats de fin de partie : compteurs du joueur (affiches au game
+          // over). Envoyes a chaque snapshot pour simplifier (leger).
+          stats: p.stats ? {
+            gold: p.stats.gold, planks: p.stats.planks,
+            built: p.stats.built, kills: p.stats.kills, shots: p.stats.shots
+          } : undefined
         };
       }),
       // Zombies en format compact [x, y, hp, lunge, ldx, ldy, leader, vx, vy] :

@@ -222,18 +222,99 @@
     var t = G.TEXTURES.gameOver;
     var W = G.canvas.width / (window.devicePixelRatio || 1);
     var H = G.canvas.height / (window.devicePixelRatio || 1);
+    var state = G.state;
     ctx.save();
     ctx.fillStyle = t.veil;
     ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = t.title;
-    ctx.font = "bold 40px Segoe UI, system-ui, sans-serif";
+    ctx.font = "bold 34px Segoe UI, system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    var dead = G.state.gameOverCause === "mairie";
-    ctx.fillText(dead ? "La Mairie est détruite" : "Vous êtes mort", W / 2, H / 2 - 20);
+    var dead = state.gameOverCause === "mairie";
+    ctx.fillText(dead ? "La Mairie est détruite" : "Vous êtes mort", W / 2, 44);
     ctx.fillStyle = t.text;
-    ctx.font = "18px Segoe UI, system-ui, sans-serif";
-    ctx.fillText((dead ? "Les zombies ont rasé la ville. " : "") + "Vous avez survécu jusqu'au jour " + G.state.day, W / 2, H / 2 + 20);
+    ctx.font = "17px Segoe UI, system-ui, sans-serif";
+    ctx.fillText((dead ? "Les zombies ont rasé la ville. " : "") + "Vous avez survécu jusqu'au jour " + state.day, W / 2, 76);
+
+    // --- Statistiques de fin de partie ---
+    // Par joueur : or recolte, batiments construits, planches recoltees,
+    // zombies tues, coups de feu. Solo : state.localStats ; en ligne : les
+    // compteurs viennent du snapshot serveur (autoritaire), le joueur local
+    // via state.localStats et les distants via remotePlayers[].stats.
+    var rows = [];
+    var mine = state.localStats;
+    if (mine) rows.push({ name: (state.playerName || "Vous") + " (vous)", me: true, s: mine });
+    var rp = state.remotePlayers || [];
+    for (var ri = 0; ri < rp.length; ri++) {
+      if (rp[ri].stats) rows.push({ name: rp[ri].name + (rp[ri].alive === false ? " †" : ""), me: false, s: rp[ri].stats });
+    }
+    var y = 118;
+    if (rows.length) {
+      ctx.font = "bold 15px Segoe UI, system-ui, sans-serif";
+      ctx.fillStyle = t.text;
+      ctx.textAlign = "left";
+      ctx.fillText("Joueur", 40, y);
+      ctx.textAlign = "right";
+      ctx.fillText("Or", W * 0.42, y);
+      ctx.fillText("Bât.", W * 0.52, y);
+      ctx.fillText("Planches", W * 0.64, y);
+      ctx.fillText("Zombies", W * 0.76, y);
+      ctx.fillText("Tirs", W - 40, y);
+      ctx.strokeStyle = "rgba(148,163,184,0.35)";
+      ctx.beginPath();
+      ctx.moveTo(40, y + 10);
+      ctx.lineTo(W - 40, y + 10);
+      ctx.stroke();
+      y += 24;
+      ctx.font = "14px Segoe UI, system-ui, sans-serif";
+      for (var rr = 0; rr < rows.length && y < H - 150; rr++) {
+        var row = rows[rr];
+        ctx.textAlign = "left";
+        ctx.fillStyle = row.me ? t.title : t.text;
+        if (row.me) ctx.font = "bold 14px Segoe UI, system-ui, sans-serif";
+        else ctx.font = "14px Segoe UI, system-ui, sans-serif";
+        ctx.fillText(row.name, 40, y);
+        ctx.textAlign = "right";
+        ctx.fillText(String(row.s.gold || 0), W * 0.42, y);
+        ctx.fillText(String(row.s.built || 0), W * 0.52, y);
+        ctx.fillText(String(row.s.planks || 0), W * 0.64, y);
+        ctx.fillText(String(row.s.kills || 0), W * 0.76, y);
+        ctx.fillText(String(row.s.shots || 0), W - 40, y);
+        y += 20;
+      }
+    }
+
+    // --- Stats globales : jours survecus, vagues par nuit (volume +
+    // ameliorations zombies), kills par tours vs joueurs ---
+    // Stats globales : absentes tant que la partie n'est pas finie pour de
+    // bon (mort individuelle en ligne : le serveur ne diffuse pas encore le
+    // resume, on n'affiche rien plutot qu'un resume faux a zero).
+    var gs = state.globalStats;
+    if (gs) {
+      y += 8;
+      ctx.textAlign = "left";
+      ctx.font = "bold 15px Segoe UI, system-ui, sans-serif";
+      ctx.fillStyle = t.text;
+      ctx.fillText("La partie", 40, y);
+      ctx.font = "13px Segoe UI, system-ui, sans-serif";
+      ctx.fillStyle = t.hint;
+      y += 20;
+      ctx.fillText("Zombies tués par les tours : " + (gs.towerKills || 0) +
+        " · par les joueurs : " + (gs.playerKills || 0), 40, y);
+      y += 18;
+      if (gs.waves && gs.waves.length) {
+        ctx.fillText("Vagues reçues (" + gs.waves.length + ") : " +
+          gs.waves.map(function (w) {
+            var txt = "nuit " + w.night + " : " + w.count;
+            if (w.ramp && w.ramp > 1) txt += " (+" + Math.round((w.ramp - 1) * 100) + "% stats zombies)";
+            return txt;
+          }).join(" · "), 40, y);
+      } else {
+        ctx.fillText("Aucune vague reçue", 40, y);
+      }
+    }
+    y += 26;
+    ctx.textAlign = "center";
     ctx.fillStyle = t.hint;
     ctx.font = "14px Segoe UI, system-ui, sans-serif";
     // En ligne, la partie redemarre toute seule (serveur autoritaire, nouvelle
@@ -244,7 +325,7 @@
       : (dead ? "Rechargez la page pour recommencer"
               : (online ? "Vous êtes spectateur : la partie continue pour les survivants"
                         : "Rechargez la page pour recommencer")),
-      W / 2, H / 2 + 48);
+      W / 2, H - 40);
     ctx.restore();
   };
 })();

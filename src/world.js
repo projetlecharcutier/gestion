@@ -683,7 +683,7 @@
       { x: G.TOWN_MIN - 700, y: c + 360, taken: false, name: "Hache", color: "#b45309", kind: "outil" },
       { x: G.TOWN_MAX + 840, y: c - 440, taken: false, name: "Hache", color: "#b45309", kind: "outil" },
       { x: c - 1400, y: G.TOWN_MAX + 1200, taken: false, name: "Hache", color: "#b45309", kind: "outil" }
-    ];
+];
 
     // Pièces d'or initiales : GOLD_ITEMS_START pièces pré-posées hors ville
     // (récolte → coffre de la mairie), éloignées des bâtiments.
@@ -725,5 +725,37 @@
     // les massifs qui enferment des poches inaccessibles, pour que chaque
     // point de spawn hors ville garde un chemin vers la palissade.
     if (G.ensureForetConnectivity) G.ensureForetConnectivity();
+    // Le lance-flammes de depart etait pose a une position FIXE (c+180, c-40)
+    // qui tombait parfois DANS une foret/maison de la ville aleatoire : il
+    // etait invisible sous le sprite et impossible a ramasser. On le deplace
+    // au premier emplacement libre autour de sa cible (spirale), APRES la
+    // pose des forets qui est la derniere a remplir la ville. 40 px d'ecart
+    // minimum avec les autres items (la hache est a c+60, c-40).
+    var lfItem = null;
+    for (var lfi = 0; lfi < state.items.length; lfi++) {
+      if (state.items[lfi].name === "Lance-flammes") { lfItem = state.items[lfi]; break; }
+    }
+    if (lfItem) {
+      var placedLf = false;
+      for (var lfr = 0; lfr <= 400 && !placedLf; lfr += 40) {
+        for (var lfa = 0; lfa < Math.PI * 2; lfa += Math.PI / 6) {
+          var lfx = (c + 180) + Math.cos(lfa) * lfr;
+          var lfy = (c - 40) + Math.sin(lfa) * lfr;
+          if (G.nearBuilding(lfx, lfy, 25)) continue;
+          var tooClose = false;
+          for (var lfo = 0; lfo < state.items.length; lfo++) {
+            var lo = state.items[lfo];
+            if (lo === lfItem || lo.taken) continue;
+            var lod = (lo.x - lfx) * (lo.x - lfx) + (lo.y - lfy) * (lo.y - lfy);
+            if (lod < 40 * 40) { tooClose = true; break; }
+          }
+          if (!tooClose) {
+            lfItem.x = lfx; lfItem.y = lfy;
+            placedLf = true;
+            break;
+          }
+        }
+      }
+    }
   };
 })();

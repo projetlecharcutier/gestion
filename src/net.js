@@ -227,6 +227,8 @@
       state.gameOver = true;
       state.gameOverCause = "player";
     }
+    // Stats globales : envoyees seulement au game over (fin de partie).
+    if (s.globalStats !== undefined) state.globalStats = s.globalStats;
     // Zombies : format compact [x, y, hp, lunge, ldx, ldy, leader, vx, vy]
     // (bande passante ~3x moindre la nuit). Decompression en objets pour le
     // rendu. vx/vy : velocite serveur pour l'extrapolation entre snapshots.
@@ -476,6 +478,9 @@
             state.planks = p.planks;
           }
           if (p.gold !== undefined) state.gold = p.gold;
+          // Stats de fin de partie : compteurs du joueur local, recus du
+          // serveur autoritaire (le client ne simule ni le tir ni la coupe).
+          if (p.stats) state.localStats = p.stats;
           state.playersOnline = (s.players || []).length;
           // Animations d'action du joueur local en mode serveur : le tir est
           // simule cote serveur, le client n'a donc jamais l'evenement local.
@@ -495,6 +500,7 @@
           state.remoteChop = !!(p.chop && p.chopAge !== undefined);
           if (state.remoteChop) state.lastShotAt = state.time - p.chopAge;
         } else {
+          // Les stats voyagent avec le joueur distant (affichees au game over).
           state.remotePlayers.push(p);
         }
       }

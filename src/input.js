@@ -111,6 +111,7 @@
             } else {
               it.taken = true;
               state.mairieGold = (state.mairieGold || 0) + 1;
+              if (G.statsAddGold) G.statsAddGold(1);
               if (G.addFloater) G.addFloater("+1 pièce");
               G.updateHud();
             }
@@ -331,6 +332,9 @@
     state.chest = [];
     state.chestOpen = false;
     state.churchOpen = false;
+    // Stats de fin de partie : compteurs du joueur local + globals (vagues).
+    state.localStats = G.newPlayerStats ? G.newPlayerStats() : null;
+    state.globalStats = G.newGlobalStats ? G.newGlobalStats() : null;
     if (G.chestScreen) G.chestScreen.hidden = true;
     if (G.churchScreen) G.churchScreen.hidden = true;
     // Mode local : on construit le monde localement.

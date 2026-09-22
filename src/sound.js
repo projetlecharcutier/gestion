@@ -18,8 +18,20 @@
   var sfxCache = {};
   var SFX_DIR = "assets/sounds/";
   // Noms d'effets attendus : "shoot" (tir), "zombie_die" (zombie tué).
+  // Delai minimal (s) entre deux declenchements du MEME effet : le
+  // lance-flammes tire ~11x/s et relancait le meme Audio a chaque tir ->
+  // son de tir en boucle continue des que le clic restait enfonce. On laisse
+  // un son finir (ou presque) avant de le relancer.
+  var sfxLastAt = {};
+  var SFX_THROTTLE = { shoot: 0.18, eat: 0.2, tourCasse: 0.25 };
   G.playSfx = function (name) {
     if (!sfxEnabled) return;
+    // Throttle : un effet relance sans arret se recouvre en une boucle
+    // stridente ; les re-declenchements trop rapproches sont ignores.
+    var now = (typeof performance !== "undefined" ? performance.now() : Date.now()) / 1000;
+    var min = SFX_THROTTLE[name] || 0.05;
+    if (sfxLastAt[name] !== undefined && (now - sfxLastAt[name]) < min) return;
+    sfxLastAt[name] = now;
     if (!sfxCache[name]) {
       var a = new Audio(SFX_DIR + name + ".mp3");
       a.preload = "auto";
@@ -27,8 +39,11 @@
       sfxCache[name] = a;
     }
     try {
-      sfxCache[name].currentTime = 0;
-      var pr = sfxCache[name].play();
+      // Clone : le tir suivant peut demarrer avant la fin du precedent
+      // (chevauchement naturel) sans couper ni reboucler le son en cours.
+      var clone = sfxCache[name].cloneNode();
+      clone.volume = 0.5;
+      var pr = clone.play();
       if (pr && pr.catch) pr.catch(function () {});
     } catch (e) {}
   };

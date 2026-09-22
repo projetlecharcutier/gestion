@@ -55,6 +55,8 @@
     // apres sa pose, pour eviter qu'il se retrouve coince dessus.
     var wall = { x: mx, y: my, w: w, h: h, hp: G.WALL_MAX_HP, orient: w > h ? "h" : "v", built: true, noBlockUntil: state.time + G.WALL_GRACE };
     state.walls.push(wall);
+    // Stats de fin de partie : batiment construit (palissade posee).
+    if (G.statsAddBuilt) G.statsAddBuilt();
     // Anti-blocage : si le joueur est à l'intérieur de la palissade, le repousser
     // vers le bord le plus proche, juste à l'extérieur. On tente les 4 bords et
     // on garde la position libre la plus proche.

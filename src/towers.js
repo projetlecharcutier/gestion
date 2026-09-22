@@ -159,6 +159,8 @@
       state.buildings.push(b);
       G.pushPlayerOutOfWall(b);
       state.buildSel = null;
+      // Stats de fin de partie : batiment de ville construit.
+      if (G.statsAddBuilt) G.statsAddBuilt();
       return true;
     }
 
@@ -183,6 +185,8 @@
       state.planks -= stats.cost.planks;
       state.towers.push(tower);
       state.buildSel = null;
+      // Stats de fin de partie : tour construite.
+      if (G.statsAddBuilt) G.statsAddBuilt();
       return true;
     }
     return false;
