@@ -216,6 +216,23 @@
     ctx.restore();
   };
 
+  // Enveloppe un texte sur plusieurs lignes selon une largeur max (px) :
+  // sert au resume des vagues qui peut etre long (une ligne par nuit).
+  function wrapText(ctx, text, maxW) {
+    var words = text.split(" ");
+    var lines = [], cur = "";
+    for (var wi = 0; wi < words.length; wi++) {
+      var tryLine = cur ? cur + " " + words[wi] : words[wi];
+      if (ctx.measureText(tryLine).width > maxW && cur) {
+        lines.push(cur);
+        cur = words[wi];
+      } else {
+        cur = tryLine;
+      }
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
   G.drawGameOver = function () {
     if (!G.state.gameOver) return;
     var ctx = G.ctx;
@@ -224,108 +241,137 @@
     var H = G.canvas.height / (window.devicePixelRatio || 1);
     var state = G.state;
     ctx.save();
+    // Voile plein ecran, puis FENETRE CENTREE de 50% de la taille de l'ecran :
+    // les stats ne doivent pas occuper toute la page.
     ctx.fillStyle = t.veil;
     ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = t.title;
-    ctx.font = "bold 34px Segoe UI, system-ui, sans-serif";
+    var bw = W * 0.5, bh = H * 0.5;
+    var bx = (W - bw) / 2, by = (H - bh) / 2;
+    var pad = 18;
+    ctx.fillStyle = "rgba(15,23,42,0.95)";
+    ctx.strokeStyle = "rgba(148,163,184,0.45)";
+    ctx.lineWidth = 1.5;
+    // Fenetre avec coins arrondis.
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 12);
+    else ctx.rect(bx, by, bw, bh);
+    ctx.fill();
+    ctx.stroke();
+    // Clip : le contenu ne deborde JAMAIS de la fenetre.
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 12);
+    else ctx.rect(bx, by, bw, bh);
+    ctx.clip();
+    var y = by + 30;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     var dead = state.gameOverCause === "mairie";
-    ctx.fillText(dead ? "La Mairie est détruite" : "Vous êtes mort", W / 2, 44);
+    ctx.fillStyle = t.title;
+    ctx.font = "bold 24px Segoe UI, system-ui, sans-serif";
+    ctx.fillText(dead ? "La Mairie est détruite" : "Vous êtes mort", bx + bw / 2, y);
+    y += 24;
     ctx.fillStyle = t.text;
-    ctx.font = "17px Segoe UI, system-ui, sans-serif";
-    ctx.fillText((dead ? "Les zombies ont rasé la ville. " : "") + "Vous avez survécu jusqu'au jour " + state.day, W / 2, 76);
+    ctx.font = "14px Segoe UI, system-ui, sans-serif";
+    ctx.fillText((dead ? "Les zombies ont rasé la ville. " : "") + "Jour " + state.day, bx + bw / 2, y);
 
-    // --- Statistiques de fin de partie ---
-    // Par joueur : or recolte, batiments construits, planches recoltees,
-    // zombies tues, coups de feu. Solo : state.localStats ; en ligne : les
-    // compteurs viennent du snapshot serveur (autoritaire), le joueur local
-    // via state.localStats et les distants via remotePlayers[].stats.
+    // --- Statistiques par joueur (dans la fenetre) ---
     var rows = [];
     var mine = state.localStats;
-    if (mine) rows.push({ name: (state.playerName || "Vous") + " (vous)", me: true, s: mine });
+    if (mine) rows.push({ name: (state.playerName || "Vous"), me: true, s: mine });
     var rp = state.remotePlayers || [];
     for (var ri = 0; ri < rp.length; ri++) {
       if (rp[ri].stats) rows.push({ name: rp[ri].name + (rp[ri].alive === false ? " †" : ""), me: false, s: rp[ri].stats });
     }
-    var y = 118;
+    var maxBottom = by + bh - 16;
+    y += 16;
     if (rows.length) {
-      ctx.font = "bold 15px Segoe UI, system-ui, sans-serif";
-      ctx.fillStyle = t.text;
+      // Colonnes : nom | or | bat. | planches | zombies | tirs
+      var cName = bx + pad;
+      var cOr = bx + bw * 0.48;
+      var cBat = bx + bw * 0.58;
+      var cPlan = bx + bw * 0.68;
+      var cZom = bx + bw * 0.82;
+      var cTir = bx + bw - pad;
+      ctx.font = "bold 12px Segoe UI, system-ui, sans-serif";
+      ctx.fillStyle = t.hint;
       ctx.textAlign = "left";
-      ctx.fillText("Joueur", 40, y);
+      ctx.fillText("Joueur", cName, y);
       ctx.textAlign = "right";
-      ctx.fillText("Or", W * 0.42, y);
-      ctx.fillText("Bât.", W * 0.52, y);
-      ctx.fillText("Planches", W * 0.64, y);
-      ctx.fillText("Zombies", W * 0.76, y);
-      ctx.fillText("Tirs", W - 40, y);
-      ctx.strokeStyle = "rgba(148,163,184,0.35)";
+      ctx.fillText("Or", cOr, y);
+      ctx.fillText("Bât.", cBat, y);
+      ctx.fillText("Bois", cPlan, y);
+      ctx.fillText("Kills", cZom, y);
+      ctx.fillText("Tirs", cTir, y);
+      y += 8;
+      ctx.strokeStyle = "rgba(148,163,184,0.3)";
       ctx.beginPath();
-      ctx.moveTo(40, y + 10);
-      ctx.lineTo(W - 40, y + 10);
+      ctx.moveTo(bx + pad, y);
+      ctx.lineTo(bx + bw - pad, y);
       ctx.stroke();
-      y += 24;
-      ctx.font = "14px Segoe UI, system-ui, sans-serif";
-      for (var rr = 0; rr < rows.length && y < H - 150; rr++) {
+      y += 12;
+      ctx.font = "12px Segoe UI, system-ui, sans-serif";
+      // Si trop de joueurs pour la fenetre : on limite aux premiers (clip
+      // deja actif, mais on evite de dessiner hors zone inutilement).
+      for (var rr = 0; rr < rows.length && y < maxBottom - 110; rr++) {
         var row = rows[rr];
         ctx.textAlign = "left";
         ctx.fillStyle = row.me ? t.title : t.text;
-        if (row.me) ctx.font = "bold 14px Segoe UI, system-ui, sans-serif";
-        else ctx.font = "14px Segoe UI, system-ui, sans-serif";
-        ctx.fillText(row.name, 40, y);
+        if (row.me) ctx.font = "bold 12px Segoe UI, system-ui, sans-serif";
+        else ctx.font = "12px Segoe UI, system-ui, sans-serif";
+        ctx.fillText(row.name, cName, y);
         ctx.textAlign = "right";
-        ctx.fillText(String(row.s.gold || 0), W * 0.42, y);
-        ctx.fillText(String(row.s.built || 0), W * 0.52, y);
-        ctx.fillText(String(row.s.planks || 0), W * 0.64, y);
-        ctx.fillText(String(row.s.kills || 0), W * 0.76, y);
-        ctx.fillText(String(row.s.shots || 0), W - 40, y);
-        y += 20;
+        ctx.fillText(String(row.s.gold || 0), cOr, y);
+        ctx.fillText(String(row.s.built || 0), cBat, y);
+        ctx.fillText(String(row.s.planks || 0), cPlan, y);
+        ctx.fillText(String(row.s.kills || 0), cZom, y);
+        ctx.fillText(String(row.s.shots || 0), cTir, y);
+        y += 16;
       }
     }
 
-    // --- Stats globales : jours survecus, vagues par nuit (volume +
-    // ameliorations zombies), kills par tours vs joueurs ---
-    // Stats globales : absentes tant que la partie n'est pas finie pour de
-    // bon (mort individuelle en ligne : le serveur ne diffuse pas encore le
-    // resume, on n'affiche rien plutot qu'un resume faux a zero).
+    // --- Stats globales de la partie ---
     var gs = state.globalStats;
-    if (gs) {
-      y += 8;
+    if (gs && y < maxBottom - 20) {
+      y += 6;
       ctx.textAlign = "left";
-      ctx.font = "bold 15px Segoe UI, system-ui, sans-serif";
+      ctx.font = "bold 12px Segoe UI, system-ui, sans-serif";
       ctx.fillStyle = t.text;
-      ctx.fillText("La partie", 40, y);
-      ctx.font = "13px Segoe UI, system-ui, sans-serif";
+      ctx.fillText("La partie", bx + pad, y);
+      y += 15;
+      ctx.font = "11px Segoe UI, system-ui, sans-serif";
       ctx.fillStyle = t.hint;
-      y += 20;
-      ctx.fillText("Zombies tués par les tours : " + (gs.towerKills || 0) +
-        " · par les joueurs : " + (gs.playerKills || 0), 40, y);
-      y += 18;
+      ctx.fillText("Zombies tués : tours " + (gs.towerKills || 0) +
+        " · joueurs " + (gs.playerKills || 0), bx + pad, y);
+      y += 14;
       if (gs.waves && gs.waves.length) {
-        ctx.fillText("Vagues reçues (" + gs.waves.length + ") : " +
+        var waveTxt = "Vagues (" + gs.waves.length + ") — " +
           gs.waves.map(function (w) {
-            var txt = "nuit " + w.night + " : " + w.count;
-            if (w.ramp && w.ramp > 1) txt += " (+" + Math.round((w.ramp - 1) * 100) + "% stats zombies)";
+            var txt = "n" + w.night + " : " + w.count;
+            if (w.ramp && w.ramp > 1) txt += " (+" + Math.round((w.ramp - 1) * 100) + "%)";
             return txt;
-          }).join(" · "), 40, y);
+          }).join(" · ");
+        ctx.font = "11px Segoe UI, system-ui, sans-serif";
+        var wl = wrapText(ctx, waveTxt, bw - pad * 2);
+        for (var li = 0; li < wl.length && y < maxBottom - 8; li++) {
+          ctx.fillText(wl[li], bx + pad, y);
+          y += 14;
+        }
       } else {
-        ctx.fillText("Aucune vague reçue", 40, y);
+        ctx.fillText("Aucune vague reçue", bx + pad, y);
       }
     }
-    y += 26;
+    // Message de fin (bas de la fenetre) : en ligne la partie redemarre
+    // toute seule (serveur autoritaire, nouvelle carte diffusee).
+    var online = G.netConnected && G.netConnected();
     ctx.textAlign = "center";
     ctx.fillStyle = t.hint;
-    ctx.font = "14px Segoe UI, system-ui, sans-serif";
-    // En ligne, la partie redemarre toute seule (serveur autoritaire, nouvelle
-    // carte diffusee) : "rechargez la page" etait faux et remettait au menu.
-    var online = G.netConnected && G.netConnected();
+    ctx.font = "11px Segoe UI, system-ui, sans-serif";
     ctx.fillText(dead && online
       ? "Nouvelle partie dans quelques secondes..."
       : (dead ? "Rechargez la page pour recommencer"
               : (online ? "Vous êtes spectateur : la partie continue pour les survivants"
                         : "Rechargez la page pour recommencer")),
-      W / 2, H - 40);
+      bx + bw / 2, by + bh - 14);
     ctx.restore();
   };
 })();
