@@ -83,6 +83,8 @@
       G.updateBuildSites(dt);
       G.updateTowers(dt);
       G.cleanupTowers();
+      G.updateSieges(dt);
+      G.cleanupSieges();
       G.cleanupZombies();
       G.cleanupBirds();
       G.cleanupWalls();

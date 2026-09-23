@@ -402,6 +402,23 @@
   };
 
   G.GROUP_SIZE = 8;
+
+  // Tour de siège (cf. docs/siege.md) : vitesse (moitié d'un zombie),
+  // PV (100 x plus résistante qu'un zombie, qui a ZOMBIE_HP = 1 PV),
+  // nombre de zombies libérés au contact d'un mur, emprise de
+  // collision (les 10 % les plus bas du PNG), plafond du nombre de tours,
+  // taille de repli sans PNG.
+  G.SIEGE_SPEED = G.ZOMBIE_SPEED * 0.5;
+  G.SIEGE_HP = 100;
+  G.SIEGE_RELEASE_COUNT = 100;
+  G.SIEGE_COLLIDE_BOTTOM = 0.10;
+  G.SIEGE_MAX_TOWERS = 10;
+  G.SIEGE_SIDE = 100;
+  // Distance (px) sous laquelle une tour est consideree collee au mur
+  // cible : le contact AABB (mur fin) ne bloque jamais les deux axes, on
+  // mesure donc l'ecart entre l'emprise de la tour et le mur vise.
+  G.SIEGE_CONTACT_GAP = 4;
+
   G.GROUP_FORMATION = 90;
   G.GROUP_MERGE_DIST = 320;
   G.GROUP_MERGE_INTERVAL = 2.0;

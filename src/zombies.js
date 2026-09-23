@@ -778,8 +778,8 @@
                   var stepX = z.x + mvx * inc;
                   var stepY = z.y + mvy * inc;
                   var blocked = true;
-                  if (!G.aabbHitsWalls(stepX - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(stepX, z.y, zs)) { z.x = stepX; blocked = false; }
-                  if (!G.aabbHitsWalls(z.x - zs, stepY - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(z.x, stepY, zs)) { z.y = stepY; blocked = false; }
+                  if (!G.aabbHitsWalls(stepX - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(stepX, z.y, zs) && !G.hitsSiegeFoot(stepX - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = stepX; blocked = false; }
+                  if (!G.aabbHitsWalls(z.x - zs, stepY - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(z.x, stepY, zs) && !G.hitsSiegeFoot(z.x - zs, stepY - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = stepY; blocked = false; }
                   if (blocked) { hitWall = true; break; }
                   done += inc;
                 }

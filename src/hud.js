@@ -103,6 +103,11 @@
       ctx.font = "bold 16px Segoe UI, system-ui, sans-serif";
       ctx.fillText("☠ La horde arrive !", W / 2, 60);
     }
+    if (G.state.siegeMsgTimer > 0) {
+      ctx.fillStyle = t.waveColor;
+      ctx.font = "bold 14px Segoe UI, system-ui, sans-serif";
+      ctx.fillText("🏯 Tours de siège en approche !", W / 2, 80);
+    }
     ctx.textAlign = "right";
     ctx.fillStyle = t.dayColor;
     ctx.font = "bold 16px Segoe UI, system-ui, sans-serif";

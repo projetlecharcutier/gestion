@@ -379,7 +379,8 @@
       }
     }
     function finish() { _ready = true; if (onReady) onReady(); }
-    function afterTraces() { probeDeadTraces(finish); }
+    function afterSiege() { probeSiege(finish); }
+    function afterTraces() { probeDeadTraces(afterSiege); }
     function afterHouses() { probeForets(afterTraces); }
     function afterTours() { probeHouses(afterHouses); }
     function afterPlayer() { probeTours(afterTours); }
@@ -493,6 +494,84 @@
         next();
       };
       img.src = bust(dir + "deadzomb" + n + ".png");
+    }
+    next();
+  }
+
+  // Sonde les sprites de la tour de siège dans Git/Sprite/tour de
+  // défense/ : 4 directions (sud-est-vers-nord-ouest, ...) × 2 états
+  // (ferme = déplacement, ouvert = collée à un mur) + le PNG de
+  // destruction (trace au sol). Tolérant : charge ceux qui existent, ignore
+  // les 404 (repli dessin vectoriel dans render.js).
+  // Stocke dans G.SPRITES.siege sous les clés "<dir>/ferme", "<dir>/ouvert"
+  // et G.SPRITES.siegeDead (trace de destruction).
+  function probeSiege(onDone) {
+    var base = "Git/Sprite/tour de défense/";
+    G.SPRITES.siege = {};
+    G.SPRITES.siegeDead = [];
+    var dirs = G.SIEGE_DIRS || [];
+    var states = ["ferme", "ouvert"];
+    var toLoad = [];
+    for (var di = 0; di < dirs.length; di++) {
+      for (var st = 0; st < states.length; st++) {
+        toLoad.push({ key: dirs[di].key + "/" + states[st], dir: base + dirs[di].key + "/", base: states[st] });
+      }
+    }
+    var loaded = 0;
+    function done() { loaded++; if (loaded >= toLoad.length) probeSiegeDead(onDone); }
+    function loadOne(job) {
+      var img = new Image();
+      img.onload = function () {
+        if (img.naturalWidth > 0) {
+          var sp = { img: img, w: img.naturalWidth, h: img.naturalHeight };
+          G.SPRITES.siege[job.key] = sp;
+          probeAnimFrames(sp, job.dir, job.base, function () { done(); });
+          return;
+        }
+        done();
+      };
+      img.onerror = function () {
+        // La série <base>-0.png peut exister seule : la frame 0 tient lieu
+        // de sprite de base (comme probeTours).
+        var stub = { frames: null };
+        probeAnimFrames(stub, job.dir, job.base, function (frames) {
+          if (frames && frames.length > 0) {
+            stub.img = frames[0];
+            stub.w = frames[0].naturalWidth;
+            stub.h = frames[0].naturalHeight;
+            G.SPRITES.siege[job.key] = stub;
+          }
+          done();
+        });
+      };
+      img.src = bust(job.dir + job.base + ".png");
+    }
+    for (var i = 0; i < toLoad.length; i++) loadOne(toLoad[i]);
+  }
+  // Traces de destruction : Git/Sprite/tour de défense/destruction/
+  // destruction1.png, destruction2.png, ... (numérotation depuis 1, sonde
+  // jusqu'à 3 numéros manquants consécutifs). Un PNG choisi au hasard
+  // à chaque destruction.
+  function probeSiegeDead(onDone) {
+    var dir = "Git/Sprite/tour de défense/destruction/";
+    // destruction.png seul (nom simple documenté dans le README), puis la
+    // série numérotée destruction1.png, destruction2.png, ...
+    var names = [dir + "destruction.png"];
+    var n = 1;
+    var consecMiss = 0;
+    function next() {
+      if (names.length === 0 && consecMiss >= 3) { onDone(); return; }
+      var img = new Image();
+      img.onload = function () {
+        if (img.naturalWidth > 0) {
+          G.SPRITES.siegeDead.push({ img: img, w: img.naturalWidth, h: img.naturalHeight });
+          consecMiss = 0;
+        } else consecMiss++;
+        n++;
+        next();
+      };
+      img.onerror = function () { consecMiss++; n++; next(); };
+      img.src = bust(names.length > 0 ? names.shift() : dir + "destruction" + n + ".png");
     }
     next();
   }

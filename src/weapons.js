@@ -142,6 +142,17 @@
                 if (b.hp <= 0 && G.birdDrop) G.birdDrop(b.x, b.y);
             }
         }
+        // Tours de siège : l'explosion les endommage aussi (centre de la
+        // tour dans le rayon de blast).
+        if (G.hitsSiegeFoot) {
+            var sieges = state.sieges || [];
+            for (var si = 0; si < sieges.length; si++) {
+                var st = sieges[si];
+                if (st.hp <= 0) continue;
+                var sdx = st.x - x, sdy = st.y - y;
+                if (Math.sqrt(sdx * sdx + sdy * sdy) <= r) st.hp -= dmg;
+            }
+        }
     };
     // Déplacement des projectiles + collisions avec zombies et oiseaux. Appelé depuis update().
     G.updateProjectiles = function (dt) {
@@ -206,6 +217,18 @@
                         shouldDestroy = true;
                     }
                     break;
+                }
+            }
+
+            // 1b. Collisions avec les tours de siège (emprise basse 10 % du
+            // PNG, cf. siege.js) : tout projectile les endommage. La tour est
+            // solide pour les projectiles : pas de transpercement.
+            if (!shouldDestroy && G.hitsSiegeFoot) {
+                var sg = G.hitsSiegeFoot(pr.x - 4, pr.y - 4, 8, 8);
+                if (sg && pr.hitEntities.indexOf(sg) === -1) {
+                    sg.hp -= pr.dmg;
+                    pr.hitEntities.push(sg);
+                    shouldDestroy = true;
                 }
             }
 

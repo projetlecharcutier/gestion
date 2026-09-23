@@ -973,6 +973,77 @@
     ctx.fillRect(cx - bw / 2, by - 1, bw * ratio, 3);
   };
 
+  // Tour de siège : PNG par direction (déplacement) et état fermé/ouvert.
+  // Ancrée bas-centre comme les autres entités : le bas du PNG sur le sol,
+  // emprise de collision = 10 % du bas (cf. siege.js). Repli vectoriel :
+  // tour de bois iso sombre + roues.
+  G.drawSiegeTower = function (s) {
+    var ctx = G.ctx;
+    var z = G.state.zoom;
+    var base = G.proj(s.x, s.y);
+    var stateKey = s.open ? "ouvert" : "ferme";
+    var spriteKey = s.dir + "/" + stateKey;
+    var sprite = (G.hasSprite("siege", spriteKey)) ? G.SPRITES.siege[spriteKey] : null;
+    // Repli : autre direction avec le même état, puis n'importe quel
+    // sprite de la direction courante (le PNG "ferme" par défaut).
+    if (!sprite && G.hasSprite("siege", s.dir + "/ferme")) sprite = G.SPRITES.siege[s.dir + "/ferme"];
+    if (sprite) {
+      // Échelle : le PNG couvre l'emprise complète (SIEGE_SIDE * 2 comme
+      // les bâtiments, largeur du losange iso).
+      var dw = (s.w + s.w) * 0.5 * z;
+      var dh = dw * sprite.h / sprite.w;
+      var img = G.animImg(sprite, G.state.time);
+      ctx.drawImage(img, base[0] - dw / 2, base[1] - dh, dw, dh);
+    } else {
+      // Repli vectoriel : masse sombre en forme de tour sur roues.
+      var cw = s.w * z * 0.5;
+      var chh = s.w * z * 0.9;
+      ctx.fillStyle = "#4a3324";
+      ctx.fillRect(base[0] - cw / 2, base[1] - chh, cw, chh);
+      ctx.fillStyle = "#2f1f14";
+      ctx.fillRect(base[0] - cw / 2, base[1] - chh * 0.2, cw, chh * 0.2);
+      // Roues.
+      ctx.fillStyle = "#1f1410";
+      ctx.beginPath();
+      ctx.arc(base[0] - cw * 0.5, base[1], cw * 0.25, 0, Math.PI * 2);
+      ctx.arc(base[0] + cw * 0.5, base[1], cw * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Barre de vie (uniquement si endommagée).
+    if (s.hp < s.maxHp) {
+      var ratio = Math.max(0, s.hp / s.maxHp);
+      var bw = Math.max(30, s.w * z * 0.5);
+      var topY = base[1] - (s.w * z * 0.9) - 8;
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.fillRect(base[0] - bw / 2 - 1, topY - 1, bw + 2, 5);
+      ctx.fillStyle = ratio < 0.3 ? "#ef4444" : "#22c55e";
+      ctx.fillRect(base[0] - bw / 2, topY, bw * ratio, 3);
+    }
+  };
+
+  // Traces de destruction des tours de siège : dessinées juste après le
+  // fond (comme les traces de zombies), jamais collisionnables.
+  G.drawSiegeTraces = function () {
+    var ctx = G.ctx;
+    var z = G.state.zoom;
+    var traces = G.state.siegeTraces;
+    if (!traces || traces.length === 0) return;
+    var list = G.SPRITES.siegeDead;
+    if (!list || list.length === 0) return;
+    var bnds = G.visibleWorldBounds();
+    for (var i = 0; i < traces.length; i++) {
+      var tr = traces[i];
+      if (tr.x < bnds.minX || tr.x > bnds.maxX || tr.y < bnds.minY || tr.y > bnds.maxY) continue;
+      var sp = list[tr.v % list.length];
+      if (!sp || !sp.img) continue;
+      var p = G.proj(tr.x, tr.y);
+      var dw = sp.w * z * 0.5;
+      var dh = dw * sp.h / sp.w;
+      if (dw < 8) dw = 8;
+      ctx.drawImage(sp.img, p[0] - dw / 2, p[1] - dh, dw, dh);
+    }
+  };
+
   G.drawZombie = function (z) {
     var ctx = G.ctx;
     var t = G.TEXTURES.zombie;
@@ -1145,6 +1216,9 @@
 
     // Traces de zombies morts : tout en bas, derriere tout sauf le fond.
     G.drawDeadTraces();
+    // Traces de destruction des tours de siège : même couche que les traces
+    // de zombies (juste au-dessus du fond, derrière tout le reste).
+    G.drawSiegeTraces();
 
     var drawables = [];
     var bnds = G.visibleWorldBounds();
@@ -1177,6 +1251,11 @@
       if (tw.x + tw.w < bnds.minX || tw.x > bnds.maxX || tw.y + tw.h < bnds.minY || tw.y > bnds.maxY) continue;
       drawables.push({ depth: tw.x + tw.y, type: "tower", ref: tw });
     }
+    for (var sgi = 0; sgi < (state.sieges || []).length; sgi++) {
+      var sg = state.sieges[sgi];
+      if (sg.x + sg.w < bnds.minX || sg.x > bnds.maxX || sg.y + sg.h < bnds.minY || sg.y > bnds.maxY) continue;
+      drawables.push({ depth: sg.x + sg.y, type: "siege", ref: sg });
+    }
     for (var zi = 0; zi < state.zombies.length; zi++) {
       var zb = state.zombies[zi];
       if (zb.x < bnds.minX || zb.x > bnds.maxX || zb.y < bnds.minY || zb.y > bnds.maxY) continue;
@@ -1208,6 +1287,7 @@
       if (d.type === "building") G.drawBuilding(d.ref);
       else if (d.type === "wall") G.drawWall(d.ref);
       else if (d.type === "tower") G.drawTower(d.ref);
+      else if (d.type === "siege") G.drawSiegeTower(d.ref);
       else if (d.type === "zombie") G.drawZombie(d.ref);
       else if (d.type === "bird") G.drawBird(d.ref);
       else if (d.type === "player") G.drawRemotePlayer(d.ref);

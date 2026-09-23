@@ -45,7 +45,7 @@
     var advanced = false;
     var testX = p.x;
     var testY = ny;
-    if (!G.aabbHitsBuildings(testX, testY) && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true) &&
+    if (!G.aabbHitsBuildings(testX, testY) && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true) && !G.aabbHitsSieges(testX, testY) &&
         testX >= G.PLAYER_HALF && testX <= G.WORLD - G.PLAYER_HALF &&
         testY >= G.PLAYER_HALF && testY <= G.WORLD - G.PLAYER_HALF) {
       p.y = testY;
@@ -53,7 +53,7 @@
     }
     testY = p.y;
     testX = nx;
-    if (!G.aabbHitsBuildings(testX, testY) && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true) &&
+    if (!G.aabbHitsBuildings(testX, testY) && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true) && !G.aabbHitsSieges(testX, testY) &&
         testX >= G.PLAYER_HALF && testX <= G.WORLD - G.PLAYER_HALF &&
         testY >= G.PLAYER_HALF && testY <= G.WORLD - G.PLAYER_HALF) {
       p.x = testX;
@@ -175,6 +175,15 @@
       : names.join(" et ");
     lines.push("Prochaine horde : " + pw.count + " zombies");
     lines.push("Arrivée : " + dirTxt);
+    // Tours de siège prévues pour la nuit suivante : la vague pré-tirée est
+    // celle de la nuit du jour en cours (22h du jour state.day), comme
+    // spawnSieges qui lit siegeCountForDay(state.day).
+    if (G.siegeCountForDay) {
+      var siegeN = G.siegeCountForDay(G.state.day || 0);
+      if (siegeN > 0) {
+        lines.push("Tours de siège : " + siegeN);
+      }
+    }
     // Montee en difficulte : chaque nuit au plafond ZOMBIE_WAVE_MAX monte les
     // degats/s, les PV et la vitesse de +10% (capes a +50%).
     var rampNights = 0;

@@ -9,7 +9,7 @@ global.Image = function () {};
 global.document = { getElementById: function () { return { style: {}, addEventListener: function () {}, appendChild: function () {}, innerHTML: "" }; } };
 global.addEventListener = function () {};
 function load(f) { (0, eval)(fs.readFileSync(path.join(REPO, "src", f), "utf8")); }
-["config.js", "projection.js", "world.js", "player.js", "walls.js", "towers.js", "chop.js", "weapons.js", "birds.js", "zombies.js"].forEach(load);
+["config.js", "projection.js", "world.js", "player.js", "walls.js", "towers.js", "chop.js", "weapons.js", "birds.js", "siege.js", "zombies.js"].forEach(load);
 var G = global.GAME;
 G.hasSprite = function () { return false; };
 G.houseNames = function () { return []; };

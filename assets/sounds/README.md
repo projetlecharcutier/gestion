@@ -15,6 +15,8 @@ quand un effet est déclenché (tolérant : aucun fichier = pas de son).
 | `shoot.mp3`      | Tir du joueur (Espace)       |
 | `zombie_die.mp3` | Un zombie est tué            |
 | `church.mp3`     | Clic sur l'église (dépot de relique) |
+| `siegeCasse.mp3` | Une tour de siège est détruite |
+| `siegeOpen.mp3`  | Une tour de siège se colle à un mur |
 
 Pour ajouter un nouvel effet : dépose le fichier `assets/sounds/<nom>.mp3`
 puis appelle `G.playSfx("<nom>")` dans le code au moment voulu.

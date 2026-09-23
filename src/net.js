@@ -180,7 +180,7 @@
   // morts, deblocages). En solo ces retours viennent du code client ; en
   // ligne le serveur est la seule autorite et ces evenements restaient sans
   // echo (echecs d'achat silencieux, aucun son de tir/manger/tour cassee).
-  var EVENT_SFX = { shoot: "shoot", eat: "eat", tourCasse: "tourCasse" };
+  var EVENT_SFX = { shoot: "shoot", eat: "eat", tourCasse: "tourCasse", siegeOpen: "siegeOpen", siegeCasse: "siegeCasse" };
   var EVENT_RANGE = 900; // memes entites cull-ees que le snapshot (portee ecran)
   function applyEvents(evs) {
     if (!evs || !evs.length) return;
@@ -312,6 +312,42 @@
     if (s.montgolfiereAnim !== undefined && s.montgolfiereAnim !== null && state.montgolfiere) {
       state.montgolfiere.animStart = (state.time || 0) - s.montgolfiereAnim;
     }
+    // Tours de siège : format compact [x, y, dir, hp, open]. On conserve
+    // les tours locales encore vivantes (positions réalignées) pour éviter
+    // un re-création complète à chaque snapshot, puis on ajoute les nouvelles.
+    if (s.sieges !== undefined) {
+      var sOut = [];
+      var siegeByPos = {};
+      for (var sgi = 0; sgi < s.sieges.length; sgi++) {
+        siegeByPos[s.sieges[sgi][0] + "," + s.sieges[sgi][1]] = s.sieges[sgi];
+      }
+      for (var ssk = 0; ssk < state.sieges.length; ssk++) {
+        var ls = state.sieges[ssk];
+        var skey = Math.round(ls.x) + "," + Math.round(ls.y);
+        if (siegeByPos[skey] !== undefined) {
+          var ss = siegeByPos[skey];
+          ls.hp = ss[3]; ls.open = !!ss[4];
+          if (ls.open && ls.state !== "open") { ls.state = "open"; ls.released = true; }
+          sOut.push(ls);
+          delete siegeByPos[skey];
+        }
+      }
+      for (var snk in siegeByPos) {
+        if (!siegeByPos.hasOwnProperty(snk)) continue;
+        var ns = siegeByPos[snk];
+        var ndir = null;
+        for (var sd = 0; sd < G.SIEGE_DIRS.length; sd++) {
+          if (G.SIEGE_DIRS[sd].key === ns[2]) { ndir = G.SIEGE_DIRS[sd]; break; }
+        }
+        sOut.push({ x: ns[0], y: ns[1], w: G.SIEGE_SIDE, h: G.SIEGE_SIDE,
+                    dir: ns[2], dx: ndir ? ndir.dx : -1, dy: ndir ? ndir.dy : -1,
+                    hp: ns[3], maxHp: G.SIEGE_HP, open: !!ns[4],
+                    state: ns[4] ? "open" : "move", released: !!ns[4],
+                    isSiege: true });
+      }
+      state.sieges = sOut;
+    } else state.sieges = [];
+    if (s.siegeTraces !== undefined) state.siegeTraces = s.siegeTraces;
     // Tours : recreation depuis le snapshot (le serveur simule le combat).
     if (s.towers !== undefined) {
       var kept = [];

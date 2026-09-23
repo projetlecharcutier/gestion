@@ -33,6 +33,7 @@
   load("chop.js");
   load("weapons.js");
   load("birds.js");
+  load("siege.js");
   load("zombies.js");
 
   var MAX_PLAYERS = 20;
@@ -80,6 +81,10 @@
       montgolfiere: null,
       pendingWave: null,
       towers: [],
+      sieges: [],
+      siegeTraces: [],
+      siegeSpawnedForDay: false,
+      siegeMsgTimer: 0,
       buildSel: null,
       vote: null,
       voteCooldownUntil: 0,
@@ -810,6 +815,20 @@
       }
     }
     G.cleanupTowers();
+    // Tours de siège : spawn nocturne (des la 2e nuit), avancee vers la
+    // palissade, liberation des zombies au contact. Evenement diffuse quand
+    // une tour se colle (son + message chez tous les clients a portee).
+    G.updateSieges(dt);
+    for (var sgi = 0; sgi < state.sieges.length; sgi++) {
+      if (state.sieges[sgi].open && !state.sieges[sgi]._openEvt) {
+        state.sieges[sgi]._openEvt = true;
+        pushEvent(null, { t: "siegeOpen", x: Math.round(state.sieges[sgi].x), y: Math.round(state.sieges[sgi].y) });
+      }
+      if (state.sieges[sgi].hp <= 0) {
+        pushEvent(null, { t: "siegeCasse", x: Math.round(state.sieges[sgi].x), y: Math.round(state.sieges[sgi].y) });
+      }
+    }
+    G.cleanupSieges();
     if (state.vote) {
       var voteInitiator = state.vote.initiator;
       var voteProposal = state.vote.proposal;
@@ -1051,6 +1070,15 @@
         sides: state.pendingWave.sides,
         count: state.pendingWave.count
       } : null,
+      // Tours de siège : format compact [x, y, dir, hp, open]. Le client
+      // recrée l'état complet (taille, états) depuis ces champs.
+      sieges: state.sieges.map(function (s) {
+        return [Math.round(s.x), Math.round(s.y), s.dir,
+                Math.round(s.hp), s.open ? 1 : 0];
+      }),
+      siegeTraces: state.siegeTraces.map(function (t) {
+        return { x: t.x, y: t.y, v: t.v };
+      }),
       towers: state.towers.map(function (t) {
         return {
           x: Math.round(t.x), y: Math.round(t.y), w: Math.round(t.w), h: Math.round(t.h),
