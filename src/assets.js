@@ -498,15 +498,15 @@
     next();
   }
 
-  // Sonde les sprites de la tour de siège dans Git/Sprite/tour de
-  // défense/ : 4 directions (sud-est-vers-nord-ouest, ...) × 2 états
+  // Sonde les sprites de la tour de siège dans assets/sprites/siege/ :
+  // 4 directions (sud-est-vers-nord-ouest, ...) × 2 états
   // (ferme = déplacement, ouvert = collée à un mur) + le PNG de
   // destruction (trace au sol). Tolérant : charge ceux qui existent, ignore
   // les 404 (repli dessin vectoriel dans render.js).
   // Stocke dans G.SPRITES.siege sous les clés "<dir>/ferme", "<dir>/ouvert"
   // et G.SPRITES.siegeDead (trace de destruction).
   function probeSiege(onDone) {
-    var base = "Git/Sprite/tour de défense/";
+    var base = "assets/sprites/siege/";
     G.SPRITES.siege = {};
     G.SPRITES.siegeDead = [];
     var dirs = G.SIEGE_DIRS || [];
@@ -548,12 +548,12 @@
     }
     for (var i = 0; i < toLoad.length; i++) loadOne(toLoad[i]);
   }
-  // Traces de destruction : Git/Sprite/tour de défense/destruction/
+  // Traces de destruction : assets/sprites/siege/destruction/
   // destruction1.png, destruction2.png, ... (numérotation depuis 1, sonde
   // jusqu'à 3 numéros manquants consécutifs). Un PNG choisi au hasard
   // à chaque destruction.
   function probeSiegeDead(onDone) {
-    var dir = "Git/Sprite/tour de défense/destruction/";
+    var dir = "assets/sprites/siege/destruction/";
     // destruction.png seul (nom simple documenté dans le README), puis la
     // série numérotée destruction1.png, destruction2.png, ...
     var names = [dir + "destruction.png"];

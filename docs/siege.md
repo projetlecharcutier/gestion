@@ -53,9 +53,9 @@ marche (celui des dossiers de PNG) :
 
 Chaque direction a 2 états : `ferme` (déplacement, par défaut) et
 `ouvert` (collée au mur). PNG dans
-`Git/Sprite/tour de défense/<direction>/ferme.png` et `ouvert.png`
+`assets/sprites/siege/<direction>/ferme.png` et `ouvert.png`
 (éventuelles séries animées `ferme-0.png`, ...), traces dans
-`Git/Sprite/tour de défense/destruction/` (`destruction.png` seul ou
+`assets/sprites/siege/destruction/` (`destruction.png` seul ou
 `destruction1.png`, `destruction2.png`, ...). Chargement tolérant
 (`src/assets.js`) : sans PNG, repli vectoriel dans `src/render.js`.
 Le sens de marche est fixé au spawn et ne change pas en cours de route.
