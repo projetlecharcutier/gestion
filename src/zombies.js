@@ -114,7 +114,11 @@
                         pending.rawCount || state.waveCount);
     }
     var nbGroups = Math.ceil(count / G.GROUP_SIZE);
-    state.zombieGroups = [];
+    // Ne vide PAS les groupes existants (zombies libérés par une tour de
+    // siège encore en jeu) : la nouvelle vague s'ajoute aux groupes
+    // vivants, sinon les libérés se retrouveraient sans groupe et l'IA ne
+    // les mettrait plus à jour (ni mouvement, ni attaque).
+    if (!state.zombieGroups) state.zombieGroups = [];
     for (var g = 0; g < nbGroups; g++) {
       // Chaque groupe vient d'un des bords tirés pour cette vague (au-delà
       // de la ville), réparti sur les directions du schéma.

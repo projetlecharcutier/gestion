@@ -988,16 +988,17 @@
     // sprite de la direction courante (le PNG "ferme" par défaut).
     if (!sprite && G.hasSprite("siege", s.dir + "/ferme")) sprite = G.SPRITES.siege[s.dir + "/ferme"];
     if (sprite) {
-      // Échelle : le PNG couvre l'emprise complète (SIEGE_SIDE * 2 comme
-      // les bâtiments, largeur du losange iso).
-      var dw = (s.w + s.w) * 0.5 * z;
+      // Échelle : le PNG est dessiné à la moitié de l'emprise monde
+      // (SIEGE_SIDE / 2), cohérent avec les palissades (~40 px) et le
+      // joueur (~6 px). Ancré bas-centre : le bas du PNG sur le sol.
+      var dw = s.w * 0.5 * z;
       var dh = dw * sprite.h / sprite.w;
       var img = G.animImg(sprite, G.state.time);
       ctx.drawImage(img, base[0] - dw / 2, base[1] - dh, dw, dh);
     } else {
       // Repli vectoriel : masse sombre en forme de tour sur roues.
-      var cw = s.w * z * 0.5;
-      var chh = s.w * z * 0.9;
+      var cw = s.w * z * 0.25;
+      var chh = s.w * z * 0.45;
       ctx.fillStyle = "#4a3324";
       ctx.fillRect(base[0] - cw / 2, base[1] - chh, cw, chh);
       ctx.fillStyle = "#2f1f14";
@@ -1009,11 +1010,12 @@
       ctx.arc(base[0] + cw * 0.5, base[1], cw * 0.25, 0, Math.PI * 2);
       ctx.fill();
     }
-    // Barre de vie (uniquement si endommagée).
+    // Barre de vie (uniquement si endommagée), au-dessus du sprite rendu.
     if (s.hp < s.maxHp) {
       var ratio = Math.max(0, s.hp / s.maxHp);
       var bw = Math.max(30, s.w * z * 0.5);
-      var topY = base[1] - (s.w * z * 0.9) - 8;
+      var spriteH = sprite ? (s.w * 0.5 * z) * (sprite.h / sprite.w) : s.w * z * 0.45;
+      var topY = base[1] - spriteH - 8;
       ctx.fillStyle = "rgba(0,0,0,0.5)";
       ctx.fillRect(base[0] - bw / 2 - 1, topY - 1, bw + 2, 5);
       ctx.fillStyle = ratio < 0.3 ? "#ef4444" : "#22c55e";

@@ -122,8 +122,9 @@
 
   // Libère les zombies "de l'autre côté de la palissade" : 100 zombies
   // spawner en éventail côté ville (autour de l'axe tour -> point de
-  // libération, jamais derrière lui), en formation informelle (pas de
-  // groupe : ils rejoignent l'IA standard en ciblant la mairie). Chaque
+  // libération, jamais derrière lui), regroupés en groupes standard
+  // (GROUP_SIZE membres) comme les vagues : l'IA zombie les anime et les
+  // fait attaquer exactement comme n'importe quel zombie. Chaque
   // point est re-projeté hors des murs et des forêts.
   G.siegeReleaseZombies = function (s) {
     var state = G.state;
@@ -131,7 +132,19 @@
     var cy = s.y + (s.releaseDy || 0);
     var base = Math.atan2(cy - s.y, cx - s.x);
     var zs = G.ZOMBIE_W / 2;
-    for (var i = 0; i < G.SIEGE_RELEASE_COUNT; i++) {
+    var total = G.SIEGE_RELEASE_COUNT;
+    var nbGroups = Math.ceil(total / G.GROUP_SIZE);
+    if (!state.zombieGroups) state.zombieGroups = [];
+    for (var gi = 0; gi < nbGroups; gi++) {
+      // Le groupe se forme autour du point de libération, côté ville.
+      var grp = { x: cx, y: cy, members: [], hasRaider: false, spawnSide: -1,
+                  formation: Math.floor(Math.random() * 4),
+                  formPhase: Math.random() * Math.PI * 2,
+                  isHorde: false, retreat: false, hordeMsgShown: false,
+                  releasedBySiege: true };
+      state.zombieGroups.push(grp);
+      var n = Math.min(G.GROUP_SIZE, total - gi * G.GROUP_SIZE);
+      for (var i = 0; i < n; i++) {
       var zx = cx, zy = cy, ok = false;
       for (var a = 0; a < 8 && !ok; a++) {
         // Éventail ±80° autour de l'axe de libération : chaque point est
@@ -141,29 +154,37 @@
         var dist = (a === 0) ? G.rand(10, 90) : G.rand(30, 120);
         zx = cx + Math.cos(ang) * dist;
         zy = cy + Math.sin(ang) * dist;
-        ok = !G.aabbHitsWalls(zx - zs, zy - zs, G.ZOMBIE_W, G.ZOMBIE_W) &&
-          !(G.aabbHitsForets && G.aabbHitsForets(zx, zy, zs));
+        ok = zx > 12 && zx < G.WORLD - 12 && zy > 12 && zy < G.WORLD - 12 &&
+          !G.aabbHitsWalls(zx - zs, zy - zs, G.ZOMBIE_W, G.ZOMBIE_W) &&
+          !(G.aabbHitsForets && G.aabbHitsForets(zx, zy, zs)) &&
+          !(G.foretAt && G.foretAt(zx, zy));
       }
       if (!ok) { zx = cx; zy = cy; }
+      var slot = G.zombieSlot(grp, i, n);
+      var sf = 1 + G.rand(-G.ZOMBIE_SPEED_VAR, G.ZOMBIE_SPEED_VAR);
       var z = {
         x: zx, y: zy,
         hp: Math.max(1, Math.round(G.ZOMBIE_HP * G.zombieRamp())),
         atkCd: 0, wallCd: 0,
-        group: null,
-        slotAng: 0, slotDist: 0, slotAngT: 0, slotDistT: 0,
-        speedFactor: G.clamp(1 + G.rand(-G.ZOMBIE_SPEED_VAR, G.ZOMBIE_SPEED_VAR), 0.4, 1.6),
+        group: grp,
+        slotAng: slot.ang, slotDist: slot.dist,
+        slotAngT: slot.ang, slotDistT: slot.dist,
+        speedFactor: G.clamp(sf, 0.4, 1.6),
         wanderPhase: Math.random() * Math.PI * 2,
         wanderFreq: G.ZOMBIE_WANDER_FREQ * (0.7 + Math.random() * 0.6),
         blockedSides: 0,
         harasser: Math.random() < G.ZOMBIE_HARASS_RATIO,
-        raider: false,
-        wallBreaker: true,
+        raider: Math.random() < G.ZOMBIE_RAIDER_RATIO,
+        wallBreaker: Math.random() < G.ZOMBIE_BREAKER_RATIO,
         seekDir: 0,
         lunge: 0, lungeDx: 0, lungeDy: 0,
-        isLeader: false,
+        isLeader: i === 0,
         releasedBySiege: true
       };
+      if (z.raider) grp.hasRaider = true;
+      grp.members.push(z);
       state.zombies.push(z);
+    }
     }
   };
 
@@ -180,10 +201,39 @@
     return gapX <= G.SIEGE_CONTACT_GAP && gapY <= G.SIEGE_CONTACT_GAP;
   }
 
+  // Teste si la boîte (cx,cy,cw,ch) chevauche un bâtiment solide (forêt
+  // non épuisée ou tout autre bâtiment, comme pour le joueur et les
+  // zombies — cf. aabbHitsBuildings). Utilisé pour le déplacement de la
+  // tour : elle ne traverse ni les forêts ni les bâtiments.
+  function hitsBuildingBox(cx, cy, cw, ch) {
+    var buildings = G.state.buildings || [];
+    for (var i = 0; i < buildings.length; i++) {
+      var b = buildings[i];
+      if (b.isForet && G.foretDepleted && G.foretDepleted(b)) continue;
+      if (cx < b.x + b.w && cx + cw > b.x && cy < b.y + b.h && cy + ch > b.y) return true;
+    }
+    return false;
+  }
+
+  // Teste si la boîte (cx,cy,cw,ch) chevauche l'emprise d'une AUTRE tour
+  // de siège (les tours ne se traversent pas).
+  function hitsOtherSiege(cx, cy, cw, ch, self) {
+    var sieges = G.state.sieges || [];
+    for (var i = 0; i < sieges.length; i++) {
+      var o = sieges[i];
+      if (o === self || o.hp <= 0) continue;
+      var fp = G.siegeFootprint(o);
+      if (cx < fp.x + fp.w && cx + cw > fp.x && cy < fp.y + fp.h && cy + ch > fp.y) return true;
+    }
+    return false;
+  }
+
   // Avance une tour de siège vers sa cible (le mur le plus proche, sinon le
   // centre-ville) à SIEGE_SPEED (moitié de ZOMBIE_SPEED). Sous-pas axe par
-  // axe contre les murs (glissement le long de la palissade) : la tour
-  // écrase les forêts, rien ne doit l'empêcher d'atteindre son mur.
+  // axe : la tour est bloquée par les murs, les bâtiments/forêts et les
+  // autres tours (glissement le long de l'obstacle axe par axe). Coin
+  // d'obstacle (les deux axes bloqués) : contournement perpendiculaire
+  // persistant (s.detour = ±1), comme les fouisseurs le long des murs.
   // Renvoie true dès que la tour est collée au mur cible.
   function moveSiege(s, dt) {
     var target = findWallTarget(s);
@@ -194,20 +244,85 @@
     var step = G.SIEGE_SPEED * G.zombieRamp() * dt;
     var sub = Math.max(1, Math.ceil(step / 4));
     var inc = step / sub;
+    var blocked = false;
     for (var k = 0; k < sub; k++) {
       var nx = s.x + (dx / len) * inc;
       var ny = s.y + (dy / len) * inc;
       var fp = G.siegeFootprint(s);
-      // Axes séparés pour glisser le long du mur.
+      // Axes séparés pour glisser le long de l'obstacle.
       var nfp = { x: nx - s.w / 2, y: fp.y, w: s.w, h: fp.h };
-      var canX = !G.aabbHitsWalls(nfp.x, nfp.y, nfp.w, nfp.h);
+      var canX = !G.aabbHitsWalls(nfp.x, nfp.y, nfp.w, nfp.h) &&
+        !hitsBuildingBox(nfp.x, nfp.y, nfp.w, nfp.h) &&
+        !hitsOtherSiege(nfp.x, nfp.y, nfp.w, nfp.h, s);
       var yfp = { x: s.x - s.w / 2, y: ny - fp.h, w: s.w, h: fp.h };
-      var canY = !G.aabbHitsWalls(yfp.x, yfp.y, yfp.w, yfp.h);
+      var canY = !G.aabbHitsWalls(yfp.x, yfp.y, yfp.w, yfp.h) &&
+        !hitsBuildingBox(yfp.x, yfp.y, yfp.w, yfp.h) &&
+        !hitsOtherSiege(yfp.x, yfp.y, yfp.w, yfp.h, s);
       if (canX) s.x = nx;
       if (canY) s.y = ny;
+      if (!canX && !canY) {
+        // Coin : contournement perpendiculaire persistant (le sens est
+        // mémorisé pour longer l'obstacle au lieu d'osciller sur place).
+        blocked = true;
+        if (!s.detour) s.detour = (Math.random() < 0.5 ? 1 : -1);
+        var pdx = -dy / len, pdy = dx / len; // perpendiculaire unitaire
+        var bx = s.x + pdx * s.detour * inc;
+        var by = s.y + pdy * s.detour * inc;
+        var bfpX = { x: bx - s.w / 2, y: fp.y, w: s.w, h: fp.h };
+        var bCanX = !G.aabbHitsWalls(bfpX.x, bfpX.y, bfpX.w, bfpX.h) &&
+          !hitsBuildingBox(bfpX.x, bfpX.y, bfpX.w, bfpX.h) &&
+          !hitsOtherSiege(bfpX.x, bfpX.y, bfpX.w, bfpX.h, s);
+        var bfpY = { x: s.x - s.w / 2, y: by - fp.h, w: s.w, h: fp.h };
+        var bCanY = !G.aabbHitsWalls(bfpY.x, bfpY.y, bfpY.w, bfpY.h) &&
+          !hitsBuildingBox(bfpY.x, bfpY.y, bfpY.w, bfpY.h) &&
+          !hitsOtherSiege(bfpY.x, bfpY.y, bfpY.w, bfpY.h, s);
+        if (bCanX) s.x = bx;
+        if (bCanY) s.y = by;
+        // Cul-de-sac des deux côtés : inverse le sens du contournement.
+        // L'écrasement des forêts bloquantes est géré au niveau du tick
+        // (cf. updateSieges) : une tour de siège n'est définitivement
+        // stoppée que par un mur.
+        if (!bCanX && !bCanY) {
+          s.detour = -s.detour;
+          s.stuck = (s.stuck || 0) + inc;
+        }
+      } else {
+        blocked = false;
+        s.detour = s.detour || 0;
+      }
       if (siegeTouchingWall(s, target)) return true;
     }
     return false;
+  }
+
+  // Écrase la forêt qui bloque la tour : celle qui chevauche l'emprise de
+  // la tour, sinon juste devant elle dans la direction du mur cible. La
+  // forêt avance d'un état de coupe (rétrécit, puis devient traversable).
+  function crushForetAhead(s) {
+    if (!G.foretAt) return;
+    var target = findWallTarget(s);
+    if (!target) return;
+    var dx = target.x - s.x, dy = target.y - s.y;
+    var len = Math.sqrt(dx * dx + dy * dy) || 1;
+    var fp = G.siegeFootprint(s);
+    var foret = null;
+    var buildings = G.state.buildings || [];
+    for (var fb = 0; fb < buildings.length && !foret; fb++) {
+      var b = buildings[fb];
+      if (!b.isForet || G.foretDepleted(b)) continue;
+      if (fp.x < b.x + b.w + 2 && fp.x + fp.w > b.x - 2 &&
+          fp.y < b.y + b.h + 2 && fp.y + fp.h > b.y - 2) foret = b;
+    }
+    if (!foret) {
+      foret = G.foretAt(s.x + (dx / len) * (s.w / 2 + 20),
+                        fp.y + fp.h / 2 + (dy / len) * (s.w / 2 + 20));
+    }
+    if (foret && !G.foretDepleted(foret)) {
+      foret.foretStage = (foret.foretStage || 0) + 1;
+      if (G.refitForet) G.refitForet(foret);
+      if (G.foretDepleted(foret) && G.rebuildBuildingGrid) G.rebuildBuildingGrid();
+      if (G.playSfx) G.playSfx("chop");
+    }
   }
 
   // Mur le plus proche du point le plus proche de la tour (le sens de
@@ -263,7 +378,20 @@
       if (s.hp <= 0) continue;
       if (s.state === "open") continue;
       if (!night) continue;
+      var sxBefore = s.x, syBefore = s.y;
       var touched = moveSiege(s, dt);
+      // Bloquée par une forêt (elle n'a quasiment pas avancé ce tick) : la
+      // tour l'écrase — la forêt avance d'un état de coupe (elle rétrécit
+      // puis devient traversable, cf. hache). Une tour de siège n'est
+      // définitivement stoppée que par un mur.
+      var advanced = Math.abs(s.x - sxBefore) + Math.abs(s.y - syBefore);
+      if (!touched && advanced < G.SIEGE_SPEED * G.zombieRamp() * dt * 0.25) {
+        s.crushTimer = (s.crushTimer || 0) + dt;
+        if (s.crushTimer >= 0.5) {
+          s.crushTimer = 0;
+          crushForetAhead(s);
+        }
+      } else s.crushTimer = 0;
       if (touched) {
         // Point de libération : de l'autre côté du mur, côté ville.
         var target = findWallTarget(s);

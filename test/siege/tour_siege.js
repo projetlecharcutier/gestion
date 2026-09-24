@@ -57,7 +57,10 @@ console.log("spawn nuit 2 OK : 1 tour, dir=" + tw.dir);
 
 // --- Vitesse : moitie d'un zombie ---
 // Sans murs la cible est le centre-ville : trajectoire droite mesurable.
+// On vide AUSSI les batiments (les maisons/forets bloquent maintenant la
+// tour comme un joueur) pour obtenir une trajectoire degagee.
 s.walls = [];
+s.buildings = [];
 s.sieges = [];
 var st = G.makeSiegeTower(5000, 5300, G.SIEGE_DIRS[0]);
 s.sieges.push(st);
@@ -72,7 +75,8 @@ if (st.state === "open" || st.open) { console.log("FAIL: tour ouverte sans mur (
 console.log("vitesse OK : " + moved.toFixed(1) + " px en 5 s (zombie " + zomDist + " px, ~moitie)");
 
 // --- Contact mur : arret + ouverture + liberation de 100 zombies ---
-G.buildPerimeterWall();
+// Restaure le monde (batiments + muraille) pour le contact et la suite.
+G.buildWorld();
 s.sieges = [];
 var st2 = G.makeSiegeTower(G.TOWN_MIN - 300, 5000, G.SIEGE_DIRS[0]);
 s.sieges.push(st2);
@@ -96,11 +100,71 @@ for (var zi = 0; zi < s.zombies.length; zi++) {
   if (rz.releasedBySiege && rz.x < G.TOWN_MIN - 20) allInside = false;
 }
 if (!allInside) { console.log("FAIL: des zombies liberes sont hors de la ville"); process.exit(1); }
+// Zombies liberes = vrais zombies de vague : groupes standard avec slots,
+// roles (raider/wallBreaker tirés), pour que l'IA les anime et les fasse
+// attaquer comme n'importe quel zombie.
+var releasedZ = s.zombies.filter(function (z) { return z.releasedBySiege; });
+if (releasedZ.length !== 100) { console.log("FAIL: 100 liberes attendus, got " + releasedZ.length); process.exit(1); }
+var allGrouped = releasedZ.every(function (z) { return z.group && z.group.members.indexOf(z) >= 0; });
+if (!allGrouped) { console.log("FAIL: des zombies liberes n'ont pas de groupe (IA inactive)"); process.exit(1); }
+var allSlotted = releasedZ.every(function (z) { return typeof z.slotAng === "number" && typeof z.slotDist === "number" && typeof z.slotAngT === "number" && typeof z.slotDistT === "number"; });
+if (!allSlotted) { console.log("FAIL: des zombies liberes n'ont pas de slots de formation"); process.exit(1); }
+var groupsFor = releasedZ.filter(function (z) { return z.group.releasedBySiege; }).length;
+if (groupsFor !== 100) { console.log("FAIL: groupes de liberation attendus pour tous, got " + groupsFor); process.exit(1); }
+// L'IA updateZombies doit les faire bouger et attaquer.
+var posBefore = releasedZ.map(function (z) { return z.x + "," + z.y; });
+s.clock = 23;
+for (var ia = 0; ia < 100; ia++) G.updateZombies(0.1);
+var movedCount = 0;
+for (var im = 0; im < releasedZ.length; im++) {
+  if (releasedZ[im].x + "," + releasedZ[im].y !== posBefore[im]) movedCount++;
+}
+if (movedCount === 0) { console.log("FAIL: l'IA ne deplace pas les zombies liberes"); process.exit(1); }
+console.log("liberes OK : 100 zombies en groupes standard, IA active (" + movedCount + " bougent)");
 // Collee = elle ne bouge plus.
 var sxOpen = st2.x, syOpen = st2.y;
 for (var r = 0; r < 10; r++) step(0.1);
 if (st2.x !== sxOpen || st2.y !== syOpen) { console.log("FAIL: la tour ouverte bouge encore"); process.exit(1); }
 console.log("contact mur OK : ouverte + " + released + " zombies liberes cote ville, immobile");
+
+// --- Collisions tour <-> tour : jamais de superposition ---
+s.sieges = [];
+s.walls = [];
+s.zombies = [];
+s.zombieGroups = [];
+var tw1 = G.makeSiegeTower(3000, 3000, G.SIEGE_DIRS[3]);
+var tw2 = G.makeSiegeTower(3100, 3100, G.SIEGE_DIRS[0]);
+s.sieges.push(tw1); s.sieges.push(tw2);
+s.clock = 23;
+var minSep = Infinity;
+for (var tc = 0; tc < 200; tc++) {
+  G.updateSieges(0.1);
+  var fA = G.siegeFootprint(tw1), fB = G.siegeFootprint(tw2);
+  var ovX = Math.min(fA.x + fA.w, fB.x + fB.w) - Math.max(fA.x, fB.x);
+  var ovY = Math.min(fA.y + fA.h, fB.y + fB.h) - Math.max(fA.y, fB.y);
+  var sep = Math.max(-ovX, -ovY);
+  if (sep < minSep) minSep = sep;
+}
+if (minSep <= 0) { console.log("FAIL: tours de siege superposees (sep=" + minSep.toFixed(1) + ")"); process.exit(1); }
+console.log("collisions tour-tour OK : separation minimale " + minSep.toFixed(1) + " px");
+
+// --- Collision tour <-> batiment/foret : la tour ne traverse pas ---
+var foret = null;
+for (var fi = 0; fi < s.buildings.length; fi++) { if (s.buildings[fi].isForet) { foret = s.buildings[fi]; break; } }
+if (foret) {
+  s.sieges = [];
+  var tw3 = G.makeSiegeTower(foret.x - 500, foret.y - 500, G.SIEGE_DIRS[3]);
+  s.sieges.push(tw3);
+  s.clock = 23;
+  for (var tf = 0; tf < 600; tf++) G.updateSieges(0.1);
+  var inside = tw3.x > foret.x && tw3.x < foret.x + foret.w && tw3.y > foret.y && tw3.y < foret.y + foret.h;
+  if (inside) { console.log("FAIL: la tour a traverse la foret"); process.exit(1); }
+  var fpF = G.siegeFootprint(tw3);
+  var touches = fpF.x < foret.x + foret.w && fpF.x + fpF.w > foret.x && fpF.y < foret.y + foret.h && fpF.y + fpF.h > foret.y;
+  console.log("collision foret OK : tour arretee " + (touches ? "collee a la foret" : "avant la foret"));
+} else {
+  console.log("collision foret SKIP : aucune foret dans ce monde");
+}
 
 // --- Resistance : 100 PV (100x un zombie) ---
 if (G.SIEGE_HP !== 100) { console.log("FAIL: SIEGE_HP attendu 100, got " + G.SIEGE_HP); process.exit(1); }
@@ -108,8 +172,11 @@ if (G.SIEGE_HP !== G.ZOMBIE_HP * 100) { console.log("FAIL: SIEGE_HP doit valoir 
 console.log("resistance OK : 100 PV (100x un zombie a " + G.ZOMBIE_HP + " PV)");
 
 // --- Destruction : trace au sol, plus de collision ---
+s.sieges = [];
+var stD = G.makeSiegeTower(5000, 5000, G.SIEGE_DIRS[0]);
+s.sieges.push(stD);
 var tracesBefore = s.siegeTraces.length;
-st2.hp = 0;
+stD.hp = 0;
 G.cleanupSieges();
 if (s.sieges.length !== 0) { console.log("FAIL: tour detruite toujours presente"); process.exit(1); }
 if (s.siegeTraces.length !== tracesBefore + 1) { console.log("FAIL: trace de destruction manquante"); process.exit(1); }
