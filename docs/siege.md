@@ -31,10 +31,12 @@
 - **Résistance** : `SIEGE_HP = 100` PV, soit 100 × un zombie
   (`ZOMBIE_HP = 1`). Dégâts par projectiles et explosions
   (`src/weapons.js`).
-- **Collision** : seuls les **10 % les plus bas** du PNG
-  (`SIEGE_COLLIDE_BOTTOM = 0.10`, `G.siegeFootprint`) collisionnent avec
-  les zombies et les personnages (joueur inclus). Les projectiles
-  testent aussi cette emprise.
+- **Collision** : seule la **base isométrique** de la tour collisionne —
+  un losange inscrit dans les **5 % les plus bas** du PNG
+  (`SIEGE_COLLIDE_BOTTOM = 0.05`, `G.siegeDiamond`) avec les zombies et
+  les personnages (joueur inclus). Les projectiles testent aussi cette
+  emprise. Beaucoup plus étroit qu'un bloc plein : la pointe avant du
+  losange s'insinue entre les forêts et réduit les blocages.
 - **Destruction** : une tour détruite laisse une **trace au sol**
   (`state.siegeTraces`) dessinée avec les PNG de `destruction/`. Cette
   trace ne collisionne plus rien et n'est plus un obstacle.
@@ -78,4 +80,4 @@ Le sens de marche est fixé au spawn et ne change pas en cours de route.
 spawn au passage de 22h (et pas de double spawn), vitesse = moitié d'un
 zombie, contact mur (arrêt + ouverture + 100 zombies côté ville +
 immobilité), résistance 100 PV, destruction → trace non collisionnable,
-emprise de collision = 10 % du bas.
+emprise de collision = losange de base (5 % du bas).

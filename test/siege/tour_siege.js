@@ -184,13 +184,23 @@ if (s.siegeTraces.length !== tracesBefore + 1) { console.log("FAIL: trace de des
 // de collision ne reference siegeTraces).
 console.log("destruction OK : trace au sol, plus aucun obstacle");
 
-// --- Collision : seulement les 10% du bas ---
+// --- Collision : losange de base dans les 5% du bas ---
 var st3 = G.makeSiegeTower(5000, 5000, G.SIEGE_DIRS[0]);
 s.sieges.push(st3);
-// Le point (5000, 5000 - 50% h) est au-dessus de la zone de collision.
-if (G.hitsSiegeFoot(5000, 5000 - st3.h * 0.5, 2, 2)) { console.log("FAIL: collision au milieu du PNG (devrait etre bas 10%)"); process.exit(1); }
-// Le point dans les 10% du bas collisionne.
-if (!G.hitsSiegeFoot(5000 - 1, 5000 - st3.h * 0.05, 2, 2)) { console.log("FAIL: pas de collision dans les 10% du bas"); process.exit(1); }
-console.log("collision OK : emprise = 10% du bas du PNG");
+// Un point au milieu du PNG (50% de hauteur) ne collisionne pas.
+if (G.hitsSiegeFoot(5000, 5000 - st3.h * 0.5, 2, 2)) { console.log("FAIL: collision au milieu du PNG (devrait etre bas 5%)"); process.exit(1); }
+// Un point dans la bande des 5% du bas mais HORS du losange (coin de
+// l'AABB de bruissage) ne collisionne pas : c'est un losange, pas un bloc.
+var d3 = G.siegeDiamond(st3);
+var cornerX = d3.cx - d3.a + 1, cornerY = d3.cy + d3.b - 1;
+if (G.hitsSiegeFoot(cornerX - 1, cornerY - 1, 2, 2)) { console.log("FAIL: collision dans le coin de l'AABB (devrait etre hors losange)"); process.exit(1); }
+// Le centre du losange collisionne.
+if (!G.hitsSiegeFoot(d3.cx - 1, d3.cy - 1, 2, 2)) { console.log("FAIL: pas de collision au centre du losange de base"); process.exit(1); }
+// La pointe avant du losange collisionne, juste au-dessus du sol.
+if (!G.hitsSiegeFoot(d3.cx + d3.a * 0.8 - 1, d3.cy - 1, 2, 2)) { console.log("FAIL: pas de collision sur la pointe avant du losange"); process.exit(1); }
+// diamondHitsBox : geometrie exacte (point sur le bord = contact).
+if (!G.diamondHitsBox(d3, d3.cx + d3.a - 1, d3.cy, 2, 2)) { console.log("FAIL: diamondHitsBox devrait toucher au bord droit"); process.exit(1); }
+if (G.diamondHitsBox(d3, d3.cx + d3.a + 3, d3.cy, 2, 2)) { console.log("FAIL: diamondHitsBox ne devrait pas toucher au-dela du bord droit"); process.exit(1); }
+console.log("collision OK : losange de base (5% du bas, demi-largeur " + d3.a + "px)");
 
 console.log("OK tour de siege");

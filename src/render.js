@@ -975,7 +975,8 @@
 
   // Tour de siège : PNG par direction (déplacement) et état fermé/ouvert.
   // Ancrée bas-centre comme les autres entités : le bas du PNG sur le sol,
-  // emprise de collision = 10 % du bas (cf. siege.js). Repli vectoriel :
+  // emprise de collision = losange de base dans les 5 % du bas (cf.
+  // siege.js). Repli vectoriel :
   // tour de bois iso sombre + roues.
   G.drawSiegeTower = function (s) {
     var ctx = G.ctx;

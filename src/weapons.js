@@ -220,9 +220,10 @@
                 }
             }
 
-            // 1b. Collisions avec les tours de siège (emprise basse 10 % du
-            // PNG, cf. siege.js) : tout projectile les endommage. La tour est
-            // solide pour les projectiles : pas de transpercement.
+            // 1b. Collisions avec les tours de siège (losange de base dans
+            // les 5 % bas du PNG, cf. siege.js) : tout projectile les
+            // endommage. La tour est solide pour les projectiles : pas de
+            // transpercement.
             if (!shouldDestroy && G.hitsSiegeFoot) {
                 var sg = G.hitsSiegeFoot(pr.x - 4, pr.y - 4, 8, 8);
                 if (sg && pr.hitEntities.indexOf(sg) === -1) {

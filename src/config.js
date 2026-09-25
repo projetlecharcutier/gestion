@@ -406,12 +406,13 @@
   // Tour de siège (cf. docs/siege.md) : vitesse (moitié d'un zombie),
   // PV (100 x plus résistante qu'un zombie, qui a ZOMBIE_HP = 1 PV),
   // nombre de zombies libérés au contact d'un mur, emprise de
-  // collision (les 10 % les plus bas du PNG), plafond du nombre de tours,
+  // collision (losange de base inséré dans les 5 % les plus bas du
+  // PNG, cf. siege.js), plafond du nombre de tours,
   // taille de repli sans PNG.
   G.SIEGE_SPEED = G.ZOMBIE_SPEED * 0.5;
   G.SIEGE_HP = 100;
   G.SIEGE_RELEASE_COUNT = 100;
-  G.SIEGE_COLLIDE_BOTTOM = 0.10;
+  G.SIEGE_COLLIDE_BOTTOM = 0.05;
   G.SIEGE_MAX_TOWERS = 10;
   G.SIEGE_SIDE = 100;
   // Distance (px) sous laquelle une tour est consideree collee au mur

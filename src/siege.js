@@ -41,21 +41,68 @@
     return Math.min(Math.round(n), G.SIEGE_MAX_TOWERS);
   };
 
-  // Emprise de collision d'une tour : les 10 % les plus bas du PNG.
-  // Renvoie { x, y, w, h } (AABB monde) de la zone de collision.
-  G.siegeFootprint = function (s) {
-    var fh = s.h * G.SIEGE_COLLIDE_BOTTOM;
-    return { x: s.x - s.w / 2, y: s.y - fh, w: s.w, h: fh };
+  // Losange de collision d'une tour : la base isométrique du PNG, inscrite
+  // dans les SIEGE_COLLIDE_BOTTOM % les plus bas de sa hauteur. Demi-largeur
+  // = celle du sprite rendu (cf. drawSiegeTower : s.w / 2 de large),
+  // demi-hauteur = la moitié de la bande basse. Beaucoup plus étroit qu'un
+  // bloc rectangulaire plein : la pointe avant du losange s'insinue en
+  // diagonale entre les forêts et longe les obstacles sans se coincer.
+  G.siegeDiamond = function (s) {
+    var dh = s.h * G.SIEGE_COLLIDE_BOTTOM;
+    return { cx: s.x, cy: s.y - dh / 2, a: (s.w * 0.5) / 2, b: dh / 2 };
   };
 
-  // Teste si une boîte (cx,cy,cw,ch) chevauche l'emprise de collision
-  // (10 % bas) d'une tour de siège. Utilisé par les zombies ET le joueur.
+  // AABB de bruissage du losange de base (tests de contact, écrasement).
+  G.siegeFootprint = function (s) {
+    var d = G.siegeDiamond(s);
+    return { x: d.cx - d.a, y: d.cy - d.b, w: d.a * 2, h: d.b * 2 };
+  };
+
+  // Test EXACT losange (centre cx,cy, demi-largeur a, demi-hauteur b) contre
+  // une boîte : une boîte est un produit cartésien, la minimisation de
+  // |x-cx|/a + |y-cy|/b se sépare par axe.
+  G.diamondHitsBox = function (d, x, y, w, h) {
+    var gx = Math.max(0, x - d.cx, d.cx - (x + w));
+    var gy = Math.max(0, y - d.cy, d.cy - (y + h));
+    return gx / d.a + gy / d.b <= 1;
+  };
+
+  // Test EXACT losange contre losange (SAT : les deux normales d'arête
+  // distinctes de chaque losange suffisent comme axes de séparation).
+  G.diamondHitsDiamond = function (d1, d2) {
+    function axesOf(d) {
+      var l = Math.sqrt(d.a * d.a + d.b * d.b) || 1;
+      return [[d.b / l, d.a / l], [d.b / l, -d.a / l]];
+    }
+    var axes = axesOf(d1).concat(axesOf(d2));
+    var v1 = [[d1.cx - d1.a, d1.cy], [d1.cx + d1.a, d1.cy],
+              [d1.cx, d1.cy - d1.b], [d1.cx, d1.cy + d1.b]];
+    var v2 = [[d2.cx - d2.a, d2.cy], [d2.cx + d2.a, d2.cy],
+              [d2.cx, d2.cy - d2.b], [d2.cx, d2.cy + d2.b]];
+    for (var i = 0; i < axes.length; i++) {
+      var n = axes[i];
+      var min1 = Infinity, max1 = -Infinity, min2 = Infinity, max2 = -Infinity;
+      for (var j = 0; j < 4; j++) {
+        var p1 = v1[j][0] * n[0] + v1[j][1] * n[1];
+        if (p1 < min1) min1 = p1;
+        if (p1 > max1) max1 = p1;
+        var p2 = v2[j][0] * n[0] + v2[j][1] * n[1];
+        if (p2 < min2) min2 = p2;
+        if (p2 > max2) max2 = p2;
+      }
+      if (max1 < min2 || max2 < min1) return false;
+    }
+    return true;
+  };
+
+  // Teste si une boîte (cx,cy,cw,ch) chevauche le losange de base d'une
+  // tour de siège. Utilisé par les zombies ET le joueur.
   function hitsSiegeFoot(cx, cy, cw, ch) {
     var sieges = G.state.sieges || [];
     for (var i = 0; i < sieges.length; i++) {
       var s = sieges[i];
-      var fp = G.siegeFootprint(s);
-      if (cx < fp.x + fp.w && cx + cw > fp.x && cy < fp.y + fp.h && cy + ch > fp.y) return s;
+      if (s.hp <= 0) continue;
+      if (G.diamondHitsBox(G.siegeDiamond(s), cx, cy, cw, ch)) return s;
     }
     return null;
   }
@@ -67,9 +114,8 @@
     var sieges = G.state.sieges || [];
     for (var i = 0; i < sieges.length; i++) {
       var s = sieges[i];
-      if (s === excl) continue;
-      var fp = G.siegeFootprint(s);
-      if (cx < fp.x + fp.w && cx + cw > fp.x && cy < fp.y + fp.h && cy + ch > fp.y) return s;
+      if (s === excl || s.hp <= 0) continue;
+      if (G.diamondHitsBox(G.siegeDiamond(s), cx, cy, cw, ch)) return s;
     }
     return null;
   };
@@ -188,53 +234,74 @@
     }
   };
 
-  // Vrai si l'emprise de la tour est à SIEGE_CONTACT_GAP du mur cible
-  // (écart AABB sur les deux axes). Un mur est fin : le déplacement
-  // diagonal ne bloque jamais les deux axes à la fois, on mesure donc
-  // l'écart au mur visé plutôt qu'un éventuel blocage des deux axes.
+  // Vrai si le losange de base de la tour est à SIEGE_CONTACT_GAP du mur
+  // cible (écart AABB de bruissage sur les deux axes). Un mur est fin : le
+  // déplacement diagonal ne bloque jamais les deux axes à la fois, on
+  // mesure donc l'écart au mur visé plutôt qu'un éventuel blocage des deux
+  // axes. Le contact est losange-vs-boîte exact au-delà du gap.
   function siegeTouchingWall(s, target) {
     if (!target || !target.wall) return false;
     var m = target.wall;
-    var fp = G.siegeFootprint(s);
+    var d = G.siegeDiamond(s);
+    var fp = { x: d.cx - d.a, y: d.cy - d.b, w: d.a * 2, h: d.b * 2 };
     var gapX = Math.max(m.x - (fp.x + fp.w), fp.x - (m.x + m.w));
     var gapY = Math.max(m.y - (fp.y + fp.h), fp.y - (m.y + m.h));
     return gapX <= G.SIEGE_CONTACT_GAP && gapY <= G.SIEGE_CONTACT_GAP;
   }
 
-  // Teste si la boîte (cx,cy,cw,ch) chevauche un bâtiment solide (forêt
-  // non épuisée ou tout autre bâtiment, comme pour le joueur et les
-  // zombies — cf. aabbHitsBuildings). Utilisé pour le déplacement de la
-  // tour : elle ne traverse ni les forêts ni les bâtiments.
-  function hitsBuildingBox(cx, cy, cw, ch) {
+  // Le losange de base (déplacé en cx,cy) heurte-t-il un bâtiment solide
+  // (forêt non épuisée ou tout autre bâtiment, comme pour le joueur et les
+  // zombies — cf. aabbHitsBuildings) ? La tour ne traverse ni les forêts
+  // ni les bâtiments.
+  function diamondHitsBuildings(d) {
     var buildings = G.state.buildings || [];
     for (var i = 0; i < buildings.length; i++) {
       var b = buildings[i];
       if (b.isForet && G.foretDepleted && G.foretDepleted(b)) continue;
-      if (cx < b.x + b.w && cx + cw > b.x && cy < b.y + b.h && cy + ch > b.y) return true;
+      if (G.diamondHitsBox(d, b.x, b.y, b.w, b.h)) return true;
     }
     return false;
   }
 
-  // Teste si la boîte (cx,cy,cw,ch) chevauche l'emprise d'une AUTRE tour
-  // de siège (les tours ne se traversent pas).
-  function hitsOtherSiege(cx, cy, cw, ch, self) {
+  // Le losange de base (déplacé en cx,cy) heurte-t-il une palissade posée ?
+  function diamondHitsWalls(d) {
+    var walls = G.state.walls || [];
+    for (var i = 0; i < walls.length; i++) {
+      var m = walls[i];
+      if (!m.built) continue;
+      if (G.diamondHitsBox(d, m.x, m.y, m.w, m.h)) return true;
+    }
+    return false;
+  }
+
+  // Le losange de base (déplacé en cx,cy) heurte-t-il le losange d'une
+  // AUTRE tour de siège (les tours ne se traversent pas) ?
+  function diamondHitsSieges(d, self) {
     var sieges = G.state.sieges || [];
     for (var i = 0; i < sieges.length; i++) {
       var o = sieges[i];
       if (o === self || o.hp <= 0) continue;
-      var fp = G.siegeFootprint(o);
-      if (cx < fp.x + fp.w && cx + cw > fp.x && cy < fp.y + fp.h && cy + ch > fp.y) return true;
+      if (G.diamondHitsDiamond(d, G.siegeDiamond(o))) return true;
     }
     return false;
   }
 
+  // Le losange de base déplacé en (cx, cy) est-il libre ? (murs, bâtiments,
+  // autres tours).
+  function diamondFree(cx, cy, self) {
+    var d = G.siegeDiamond(self);
+    d.cx = cx; d.cy = cy;
+    return !diamondHitsWalls(d) && !diamondHitsBuildings(d) &&
+      !diamondHitsSieges(d, self);
+  }
+
   // Avance une tour de siège vers sa cible (le mur le plus proche, sinon le
   // centre-ville) à SIEGE_SPEED (moitié de ZOMBIE_SPEED). Sous-pas axe par
-  // axe : la tour est bloquée par les murs, les bâtiments/forêts et les
-  // autres tours (glissement le long de l'obstacle axe par axe). Coin
-  // d'obstacle (les deux axes bloqués) : contournement perpendiculaire
-  // persistant (s.detour = ±1), comme les fouisseurs le long des murs.
-  // Renvoie true dès que la tour est collée au mur cible.
+  // axe sur le losange de base : la tour est bloquée par les murs, les
+  // bâtiments/forêts et les autres tours (glissement le long de l'obstacle
+  // axe par axe). Coin d'obstacle (les deux axes bloqués) : contournement
+  // perpendiculaire persistant (s.detour = ±1), comme les fouisseurs le
+  // long des murs. Renvoie true dès que la tour est collée au mur cible.
   function moveSiege(s, dt) {
     var target = findWallTarget(s);
     if (!target) return false; // aucune cible : reste immobile
@@ -248,16 +315,9 @@
     for (var k = 0; k < sub; k++) {
       var nx = s.x + (dx / len) * inc;
       var ny = s.y + (dy / len) * inc;
-      var fp = G.siegeFootprint(s);
       // Axes séparés pour glisser le long de l'obstacle.
-      var nfp = { x: nx - s.w / 2, y: fp.y, w: s.w, h: fp.h };
-      var canX = !G.aabbHitsWalls(nfp.x, nfp.y, nfp.w, nfp.h) &&
-        !hitsBuildingBox(nfp.x, nfp.y, nfp.w, nfp.h) &&
-        !hitsOtherSiege(nfp.x, nfp.y, nfp.w, nfp.h, s);
-      var yfp = { x: s.x - s.w / 2, y: ny - fp.h, w: s.w, h: fp.h };
-      var canY = !G.aabbHitsWalls(yfp.x, yfp.y, yfp.w, yfp.h) &&
-        !hitsBuildingBox(yfp.x, yfp.y, yfp.w, yfp.h) &&
-        !hitsOtherSiege(yfp.x, yfp.y, yfp.w, yfp.h, s);
+      var canX = diamondFree(nx, s.y, s);
+      var canY = diamondFree(s.x, ny, s);
       if (canX) s.x = nx;
       if (canY) s.y = ny;
       if (!canX && !canY) {
@@ -268,14 +328,8 @@
         var pdx = -dy / len, pdy = dx / len; // perpendiculaire unitaire
         var bx = s.x + pdx * s.detour * inc;
         var by = s.y + pdy * s.detour * inc;
-        var bfpX = { x: bx - s.w / 2, y: fp.y, w: s.w, h: fp.h };
-        var bCanX = !G.aabbHitsWalls(bfpX.x, bfpX.y, bfpX.w, bfpX.h) &&
-          !hitsBuildingBox(bfpX.x, bfpX.y, bfpX.w, bfpX.h) &&
-          !hitsOtherSiege(bfpX.x, bfpX.y, bfpX.w, bfpX.h, s);
-        var bfpY = { x: s.x - s.w / 2, y: by - fp.h, w: s.w, h: fp.h };
-        var bCanY = !G.aabbHitsWalls(bfpY.x, bfpY.y, bfpY.w, bfpY.h) &&
-          !hitsBuildingBox(bfpY.x, bfpY.y, bfpY.w, bfpY.h) &&
-          !hitsOtherSiege(bfpY.x, bfpY.y, bfpY.w, bfpY.h, s);
+        var bCanX = diamondFree(bx, s.y, s);
+        var bCanY = diamondFree(s.x, by, s);
         if (bCanX) s.x = bx;
         if (bCanY) s.y = by;
         // Cul-de-sac des deux côtés : inverse le sens du contournement.
@@ -295,29 +349,34 @@
     return false;
   }
 
-  // Écrase la forêt qui bloque la tour : celle qui chevauche l'emprise de
-  // la tour, sinon juste devant elle dans la direction du mur cible. La
-  // forêt avance d'un état de coupe (rétrécit, puis devient traversable).
+  // Écrase la forêt qui bloque la tour : celle que le losange de base
+  // projeté vers le mur cible rencontre en premier (la pointe avant du
+  // losange balaye toute la largeur de la base, pas un seul point), sinon
+  // celle qui chevauche déjà l'emprise. Dans un massif regroupé, la plus
+  // proche du centre de la tour est écrasée en premier. La forêt avance
+  // d'un état de coupe (rétrécit, puis devient traversable).
   function crushForetAhead(s) {
-    if (!G.foretAt) return;
+    var buildings = G.state.buildings || [];
+    if (buildings.length === 0) return;
     var target = findWallTarget(s);
     if (!target) return;
     var dx = target.x - s.x, dy = target.y - s.y;
     var len = Math.sqrt(dx * dx + dy * dy) || 1;
-    var fp = G.siegeFootprint(s);
-    var foret = null;
-    var buildings = G.state.buildings || [];
-    for (var fb = 0; fb < buildings.length && !foret; fb++) {
+    var d = G.siegeDiamond(s);
+    var ahead = Math.max(d.a, d.b) + 4;
+    var fwd = { cx: d.cx + (dx / len) * ahead, cy: d.cy + (dy / len) * ahead, a: d.a, b: d.b };
+    var foret = null, bestD = Infinity;
+    for (var fb = 0; fb < buildings.length; fb++) {
       var b = buildings[fb];
       if (!b.isForet || G.foretDepleted(b)) continue;
-      if (fp.x < b.x + b.w + 2 && fp.x + fp.w > b.x - 2 &&
-          fp.y < b.y + b.h + 2 && fp.y + fp.h > b.y - 2) foret = b;
+      var hit = (G.diamondHitsBox(fwd, b.x, b.y, b.w, b.h) ||
+                 G.diamondHitsBox(d, b.x, b.y, b.w, b.h));
+      if (!hit) continue;
+      var bcx = b.x + b.w / 2, bcy = b.y + b.h / 2;
+      var dd = (bcx - s.x) * (bcx - s.x) + (bcy - s.y) * (bcy - s.y);
+      if (dd < bestD) { bestD = dd; foret = b; }
     }
-    if (!foret) {
-      foret = G.foretAt(s.x + (dx / len) * (s.w / 2 + 20),
-                        fp.y + fp.h / 2 + (dy / len) * (s.w / 2 + 20));
-    }
-    if (foret && !G.foretDepleted(foret)) {
+    if (foret) {
       foret.foretStage = (foret.foretStage || 0) + 1;
       if (G.refitForet) G.refitForet(foret);
       if (G.foretDepleted(foret) && G.rebuildBuildingGrid) G.rebuildBuildingGrid();
@@ -385,9 +444,9 @@
       // puis devient traversable, cf. hache). Une tour de siège n'est
       // définitivement stoppée que par un mur.
       var advanced = Math.abs(s.x - sxBefore) + Math.abs(s.y - syBefore);
-      if (!touched && advanced < G.SIEGE_SPEED * G.zombieRamp() * dt * 0.25) {
+      if (!touched && advanced < G.SIEGE_SPEED * G.zombieRamp() * dt * 0.6) {
         s.crushTimer = (s.crushTimer || 0) + dt;
-        if (s.crushTimer >= 0.5) {
+        if (s.crushTimer >= 0.2) {
           s.crushTimer = 0;
           crushForetAhead(s);
         }
