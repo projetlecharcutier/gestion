@@ -190,6 +190,66 @@ canvas#game {
   background: rgba(99, 102, 241, 0.15);
 }
 
+/* ---- Menu d'accueil : guide des mécanismes ---- */
+.panel--menu {
+  width: min(680px, 94vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.guide { margin-top: 18px; }
+
+.guide__section { margin: 0 0 18px; }
+
+.guide__section h3 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  color: var(--accent-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.guide__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.guide__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 10px;
+  background: #0f172a;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.guide__card img,
+.guide__card canvas {
+  height: 52px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  margin-bottom: 4px;
+}
+
+.guide__card b { font-size: 0.92rem; color: var(--text); }
+
+.guide__card p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.guide__card--wide { text-align: center; }
+.guide__card--wide p { text-align: left; }
+
 .chest__vault { margin: 10px 0; padding: 8px 10px; background: #0f172a; border: 1px solid var(--panel-border); border-radius: 6px; font-size: 0.95rem; color: #cbd5e1; min-height: 2.4em; }
 .chest__bag { margin: 8px 0; }
 .chest__list { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; }

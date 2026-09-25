@@ -55,7 +55,7 @@
   <script src="https://w.soundcloud.com/player/api.js"></script>
 
   <div class="overlay" id="startScreen">
-    <div class="panel">
+    <div class="panel panel--menu">
       <h1>Flex</h1>
       <p class="panel__intro">Vous êtes un habitant de la ville de Flex. Tous les jours, quand la nuit tombe, la horde de zombies s'attaque à votre ville. Essayez de survivre tout en gardant votre flex.</p>
       <div class="lobby" id="lobbyInfo" hidden>Connexion au serveur…</div>
@@ -63,16 +63,88 @@
         <input id="nameInput" type="text" maxlength="18" placeholder="Votre nom (facultatif)" autocomplete="off" />
         <div class="mode-choice" id="modeChoice">
           <label class="mode-choice__opt">
-            <input type="radio" name="playMode" value="local" checked />
-            <span>Jouer en local</span>
+            <input type="radio" name="playMode" value="server" checked />
+            <span>Multijoueur (serveur)</span>
           </label>
           <label class="mode-choice__opt">
-            <input type="radio" name="playMode" value="server" />
-            <span>Jouer sur le serveur</span>
+            <input type="radio" name="playMode" value="local" />
+            <span>Solo (local)</span>
           </label>
         </div>
         <button class="btn btn--primary" type="submit">Lancer une partie</button>
       </form>
+      <div class="guide" id="menuGuide">
+        <div class="guide__section">
+          <h3>Les bâtiments de la ville</h3>
+          <div class="guide__grid">
+            <div class="guide__card">
+              <img src="assets/sprites/building/mairie.png" alt="Mairie" />
+              <b>Mairie</b>
+              <p>Le cœur de la ville. Cliquez pour lancer un vote et débloquer de nouveaux bâtiments. Son coffre commun partage l'or et les objets entre joueurs. Si elle tombe, la partie est perdue.</p>
+            </div>
+            <div class="guide__card">
+              <img src="assets/sprites/church/church.png" alt="Église" />
+              <b>Église</b>
+              <p>Déposez-y les reliques trouvées hors ville : chacune rapporte 100 pièces d'or au coffre commun.</p>
+            </div>
+            <div class="guide__card">
+              <img src="assets/sprites/scierie/idle.png" alt="Scierie" />
+              <b>Scierie</b>
+              <p>À débloquer à la mairie. Une fois construite, elle ouvre le menu de construction des tours d'attaque.</p>
+            </div>
+            <div class="guide__card">
+              <img src="assets/sprites/marche/idle.png" alt="Marché" />
+              <b>Marché</b>
+              <p>À débloquer à la mairie. Vend armes et objets contre l'or du coffre commun.</p>
+            </div>
+            <div class="guide__card">
+              <img src="assets/sprites/universite/idle.png" alt="Université" />
+              <b>Université</b>
+              <p>À débloquer à la mairie. Améliorations communes : portée et cadence des tours d'attaque.</p>
+            </div>
+            <div class="guide__card">
+              <img src="assets/sprites/montgolfiere/idle.png" alt="Montgolfière" />
+              <b>Montgolfière</b>
+              <p>À débloquer à la mairie. Au clic, elle annonce le volume et la direction de la prochaine vague.</p>
+            </div>
+            <div class="guide__card">
+              <img src="assets/sprites/tour/idle.png" alt="Tour d'attaque" />
+              <b>Tour d'attaque</b>
+              <p>Deux archers tirent automatiquement sur les zombies. Posable partout, payée avec l'or du coffre et vos planches.</p>
+            </div>
+            <div class="guide__card">
+              <img src="assets/sprites/wall/palissageNESO.png" alt="Palissade" />
+              <b>Palissade</b>
+              <p>Bloque les zombies et protège la ville. Construisez-la avec vos planches (touche Z). Les zombies les plus obstinés la frappent.</p>
+            </div>
+          </div>
+        </div>
+        <div class="guide__section">
+          <h3>La forêt</h3>
+          <div class="guide__grid">
+            <div class="guide__card guide__card--wide">
+              <img src="assets/sprites/tree/foret1s0.png" alt="Forêt" />
+              <b>Forêts</b>
+              <p>Massifs infranchissables : ils bloquent zombies et joueurs. Avec une hache équipée, restez à côté pour récolter des planches. Chaque forêt a 5 états de coupe, repousse d'un état par jour. Une forêt entièrement coupée devient traversable.</p>
+            </div>
+          </div>
+        </div>
+        <div class="guide__section">
+          <h3>Les vagues de zombies</h3>
+          <div class="guide__grid">
+            <div class="guide__card guide__card--wide">
+              <canvas class="guide__zombie" id="guideZombie" width="6" height="15"></canvas>
+              <b>La horde</b>
+              <p>Chaque nuit à 22h, une vague arrive d'un bord de la carte : 50 zombies le premier jour, deux fois plus chaque nuit suivante. Ils contournent les forêts, attaquent les palissades sur leur passage et visent la mairie. Tuez le chef (le zombie rougi, plus gros) pour désorganiser le groupe. Certains zombies traquent les joueurs, d'autres ciblent vos constructions.</p>
+            </div>
+            <div class="guide__card guide__card--wide">
+              <img src="assets/sprites/siege/nord-ouest-vers-sud-est/ferme.png" alt="Tour de siège" />
+              <b>Tour de siège</b>
+              <p>À partir de la 2ᵉ nuit, ces tours avancent lentement sur la ville. Elles écrasent les forêts sur leur passage, se collent à votre palissade et s'ouvrent pour libérer 100 zombies à l'intérieur. Détruisez-les à distance avant le contact (100 PV).</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

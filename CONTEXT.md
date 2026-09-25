@@ -157,6 +157,8 @@ Voir `docs/` : une spec courte par système (contrats, entrées/sorties, contrai
 
 Le jeu fonctionne en mode **client-serveur** : un serveur Node.js héberge une **partie unique** (max 20 joueurs), les clients se connectent en WebSocket et ne font que le rendu + envoi des inputs. Le serveur est **autorité** sur la simulation (déplacement, collisions, zombies, projectiles, mairie, récolte, vagues, game over).
 
+**Écran d'accueil** (`index.html` #startScreen, logique dans `src/input.js`) : le mode **multijoueur (serveur) est sélectionné par défaut** — connexion + lobby dès l'ouverture du menu, le joueur peut basculer sur Solo. La page intègre un **guide visuel** (`#menuGuide`) : cartes sprite + fonction pour chaque bâtiment (mairie, église, scierie, marché, université, montgolfière, tour d'attaque, palissade), les forêts (récolte/états de coupe), la vague nocturne (zombie dessiné depuis `G.TEXTURES.zombie` sur le canvas `#guideZombie`) et la tour de siège. Les images pointent directement vers `assets/sprites/…` — mêmes visuels que dans le jeu.
+
 ### Serveur (`server/`)
 
 | Fichier | Rôle |

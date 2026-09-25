@@ -263,25 +263,52 @@
     if (e.code === "Space") G.state.keys.space = false;
   });
 
-  // État du mode de jeu choisi dans le menu : "local" (défaut) ou "server".
-  // En local, aucun serveur n'est contacté et la simulation tourne côté client.
-  // En serveur, on déclenche la connexion WebSocket et on affiche le lobby.
-  G.playMode = "local";
+  // État du mode de jeu choisi dans le menu : "server" (défaut, multijoueur)
+  // ou "local" (solo). En local, aucun serveur n'est contacté et la
+  // simulation tourne côté client. En serveur, on déclenche la connexion
+  // WebSocket et on affiche le lobby.
+  G.playMode = "server";
   var modeChoice = document.getElementById("modeChoice");
   var lobbyInfo = document.getElementById("lobbyInfo");
+  function selectMode(chosen) {
+    G.playMode = chosen;
+    if (chosen === "server") {
+      // Lance la connexion au serveur (idempotente) et montre le lobby.
+      if (G.netConnect) G.netConnect();
+      if (lobbyInfo) lobbyInfo.hidden = false;
+      if (!G.lobbyInfo && lobbyInfo) lobbyInfo.textContent = "Connexion au serveur…";
+    } else {
+      if (lobbyInfo) lobbyInfo.hidden = true;
+    }
+  }
   if (modeChoice) {
     modeChoice.addEventListener("change", function (e) {
-      var chosen = e.target.value;
-      G.playMode = chosen;
-      if (chosen === "server") {
-        // Lance la connexion au serveur (idempotente) et montre le lobby.
-        if (G.netConnect) G.netConnect();
-        if (lobbyInfo) lobbyInfo.hidden = false;
-        if (!G.lobbyInfo && lobbyInfo) lobbyInfo.textContent = "Connexion au serveur…";
-      } else {
-        if (lobbyInfo) lobbyInfo.hidden = true;
-      }
+      selectMode(e.target.value);
     });
+  }
+  // Multijoueur par défaut : connecte (et affiche le lobby) dès l'ouverture du
+  // menu, sans attendre que le joueur touche au sélecteur de mode.
+  if (G.netConnect) G.netConnect();
+  if (lobbyInfo && !G.lobbyInfo) lobbyInfo.hidden = false;
+  // Mini-sprite zombie du guide d'accueil : dessine la texture pixel art du
+  // jeu (G.TEXTURES.zombie) sur le petit canvas de la carte "La horde".
+  var guideZombie = document.getElementById("guideZombie");
+  if (guideZombie && G.TEXTURES && G.TEXTURES.zombie) {
+    try {
+      var gz = guideZombie.getContext("2d");
+      if (gz) {
+        var t = G.TEXTURES.zombie;
+        var sprite = t.sprite, palette = t.palette;
+        for (var r = 0; r < sprite.length; r++) {
+          for (var c = 0; c < sprite[r].length; c++) {
+            var ch = sprite[r].charAt(c);
+            if (ch === ".") continue;
+            gz.fillStyle = palette[ch] || "#888";
+            gz.fillRect(c, r, 1, 1);
+          }
+        }
+      }
+    } catch (e) { /* canvas indisponible : la carte reste sans visuel */ }
   }
 
   // Retour au menu depuis l'ecran de chargement (serveur injoignable,

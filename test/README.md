@@ -73,9 +73,12 @@ emplacement de clone.
 - `cout_tour_reliques.js` : tour a 1 or, 5 reliques hors ville, spots valides.
 - `scierie_config.js` : scierie -20% (64 px), message mairie, reliques.
 
-### `menu/` — menu de construction (Z) et HUD
+### `menu/` — menu de construction (Z), HUD et ecran d'accueil
 - `menu_build.js` : contenu du menu selon deblocages (palissade / scierie / tours).
 - `menu_hud.js` : rendu du panneau, explications mairie.
+- `menu_boot_serveur.js` : ecran d'accueil — multijoueur par defaut (connexion au
+  boot, lobby visible), zombie du guide dessine depuis G.TEXTURES.zombie, submit
+  -> netJoin en mode serveur, bascule local masque le lobby.
 
 ### `world/` — monde et rendu
 - `brouillard.js` : brouillard multi-sources (joueur + tours), union des trous,
