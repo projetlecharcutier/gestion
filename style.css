@@ -117,6 +117,7 @@ canvas#game {
   text-align: left;
 }
 
+.loading {  text-align: center;}.loading__logo {  width: 54px;  height: 54px;  margin: 0 auto 18px;  border-radius: 50%;  border: 5px solid rgba(129, 140, 248, 0.18);  border-top-color: var(--accent-soft);  animation: loading-spin 0.9s linear infinite;}.loading__label {  margin: 0;  color: var(--text-muted);  font-size: 0.95rem;}@keyframes loading-spin {  to { transform: rotate(360deg); } }
 .lobby {
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid var(--panel-border);

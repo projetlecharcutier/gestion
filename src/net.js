@@ -134,16 +134,23 @@
         G.rebuildBuildingGrid();
       }
       if (msg.clock !== undefined) G.state.clock = msg.clock;
-      // La carte est arrivee : on peut enfin masquer le menu et demarrer le
-      // rendu. Avant, le menu etait masque des le submit (monde vide affiche
-      // tant que la connexion etait en cours).
-      if (G.startScreen) G.startScreen.hidden = true;
-      if (G.hud) G.hud.hidden = false;
-      var lobbyEl = document.getElementById("lobbyInfo");
-      if (lobbyEl) lobbyEl.hidden = true;
-      // Démarre le rendu du jeu (le serveur pilote la simulation).
-      G.state.started = true;
-      G.state.gameOver = false;
+      // La carte recue au "joined" est DEFINITIVE seulement si la partie
+      // tournait deja (rejoindre une partie en cours). Sinon (premier joueur
+      // d'une nouvelle partie) le serveur envoie la carte provisoire
+      // generee a son boot et cree le vrai monde au lancement 3 s plus
+      // tard (message "restart") : on garde alors l'ecran de chargement
+      // pour ne pas afficher une carte qui va etre remplacee.
+      var definitive = !!msg.started;
+      if (definitive) {
+        if (G.startScreen) G.startScreen.hidden = true;
+        if (G.loadingScreen) G.loadingScreen.hidden = true;
+        if (G.hud) G.hud.hidden = false;
+        var lobbyEl = document.getElementById("lobbyInfo");
+        if (lobbyEl) lobbyEl.hidden = true;
+        // Démarre le rendu du jeu (le serveur pilote la simulation).
+        G.state.started = true;
+        G.state.gameOver = false;
+      }
     } else if (msg.type === "state") {
       G.remoteState = msg;
       G.applyRemoteState(msg);
@@ -171,8 +178,19 @@
       if (msg.clock !== undefined) G.state.clock = msg.clock;
       G.state.gameOver = false;
       G.state.started = true;
+      // La carte definitive vient d'arriver : on masque l'ecran de
+      // chargement (affiche des le submit en mode serveur) et on demarre
+      // l'affichage du jeu.
+      if (G.startScreen) G.startScreen.hidden = true;
+      if (G.loadingScreen) G.loadingScreen.hidden = true;
+      if (G.hud) G.hud.hidden = false;
+      var lobbyEl2 = document.getElementById("lobbyInfo");
+      if (lobbyEl2) lobbyEl2.hidden = true;
     } else if (msg.type === "full") {
       alert("Partie complète (20/20 joueurs). Réessayez plus tard.");
+      // Retour au menu : l'ecran de chargement ne doit pas rester bloque.
+      if (G.loadingScreen) G.loadingScreen.hidden = true;
+      if (G.startScreen) G.startScreen.hidden = false;
     }
   };
 

@@ -22,6 +22,7 @@
   G.hudMairie = document.getElementById("hudMairie");
   G.hudGold = document.getElementById("hudGold");
   G.startScreen = document.getElementById("startScreen");
+  G.loadingScreen = document.getElementById("loadingScreen");
   G.startForm = document.getElementById("startForm");
   G.nameInput = document.getElementById("nameInput");
   G.pauseScreen = document.getElementById("pauseScreen");

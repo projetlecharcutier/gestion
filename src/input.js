@@ -284,6 +284,17 @@
     });
   }
 
+  // Retour au menu depuis l'ecran de chargement (serveur injoignable,
+  // partie pleine...) : masque le chargement et remontre le menu.
+  var loadingBackBtn = document.getElementById("loadingBackBtn");
+  if (loadingBackBtn) {
+    loadingBackBtn.addEventListener("click", function () {
+      if (G.loadingScreen) G.loadingScreen.hidden = true;
+      if (G.startScreen) G.startScreen.hidden = false;
+      var lobby = document.getElementById("lobbyInfo");
+      if (lobby) { lobby.hidden = false; lobby.textContent = "Connexion au serveur…"; }
+    });
+  }
   G.startForm.addEventListener("submit", function (e) {
     e.preventDefault();
     var v = G.nameInput.value.trim();
@@ -297,8 +308,14 @@
     // sur un ecran vide sans carte. netHandle("joined") masque le menu.
     if (G.playMode === "server") {
       G.netJoin(v);
-      var lobby = document.getElementById("lobbyInfo");
-      if (lobby) { lobby.hidden = false; lobby.textContent = "Connexion au serveur…"; }
+      // Ecran de chargement : le menu est masque des le submit et un logo
+      // anime reste affiche jusqu'a ce que la carte DEFINITIVE du serveur
+      // arrive. La carte recue au "joined" est celle generee au boot du
+      // serveur (provisoire) : le vrai monde est cree 3 s plus tard au
+      // lancement de la partie (message "restart"), et l'ancien affichage
+      // montrait cette carte provisoire avant de la remplacer brutalement.
+      if (G.startScreen) G.startScreen.hidden = true;
+      if (G.loadingScreen) G.loadingScreen.hidden = false;
       G.nameInput.blur();
       return;
     }

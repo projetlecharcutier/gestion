@@ -195,8 +195,12 @@
           ws.send(JSON.stringify({ type: "full" }));
           return;
         }
-        // Envoie la carte + l'ID du joueur.
-        ws.send(JSON.stringify({ type: "joined", playerId: id, map: game.mapSnapshot(), clock: game.getState().clock }));
+        // Envoie la carte + l'ID du joueur. `started` distingue la carte
+        // DEFINITIVE (partie deja en cours : le client affiche le jeu des
+        // ce message) de la carte provisoire generee au boot du serveur
+        // (remplacee par un "restart" au lancement : le client garde son
+        // ecran de chargement jusqu'a ce "restart").
+        ws.send(JSON.stringify({ type: "joined", playerId: id, started: game.getState().started, map: game.mapSnapshot(), clock: game.getState().clock }));
         console.log("Joueur " + name + " (" + id + ") a rejoint. " + game.getState().players.length + "/" + game.MAX_PLAYERS);
       }
 
