@@ -518,6 +518,11 @@
           }
           // Sac / inventaire / planches gérés côté serveur (autorité).
           if (p.bag) { state.bag.contents = p.bag; state.inventory = p.inventory; }
+          // Ecran du marché ouvert : l'or du coffre commun (affiché en haut de
+          // la liste) et l'état du chantier changent avec les snapshots ; sans
+          // ce rafraîchissement, l'or affiché restait figé à la valeur de
+          // l'ouverture et un achat d'un autre joueur n'y apparaissait pas.
+          if (G.marcheScreen && !G.marcheScreen.hidden && G.drawMarche) G.drawMarche();
           // Floater de récolte : le serveur crédite les planches (bois coupé à
           // la hache), le client n'a pas d'événement dédié. On détecte
           // l'incrément STRICT entre deux snapshots via lastPlanksSeen (une

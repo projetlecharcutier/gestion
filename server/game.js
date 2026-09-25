@@ -425,23 +425,28 @@
       }
     }
     // Achat au marche : l'or vient du coffre commun de la mairie, l'objet est
-    // livre dans le sac du joueur qui achete. Proximite obligatoire.
+    // livre dans le sac du joueur qui achete. Proximite obligatoire. Chaque
+    // cause d'echec a son message : avant, un achat hors portee ou sur un
+    // marche pas fini etait rejete SILENCIEUSEMENT (le joueur croyait avoir
+    // achete et l'objet n'arrivait jamais dans son sac).
     if (input.marketBuy !== undefined) {
-      if (state.marche && state.marche.chantierDone && nearBuilding(p, state.marche)) {
-        var mitem = null;
-        for (var mi = 0; mi < G.MARCHE_ITEMS.length; mi++) {
-          if (G.MARCHE_ITEMS[mi].name === input.marketBuy) { mitem = G.MARCHE_ITEMS[mi]; break; }
-        }
-        if (mitem && (state.mairieGold || 0) >= mitem.price) {
-          state.mairieGold -= mitem.price;
-          p.bag.contents.push({ name: mitem.name, kind: mitem.kind, color: mitem.color });
-          p.inventory = p.bag.contents.length;
-          pushEvent(p.id, { t: "msg", msg: mitem.name + " acheté !" });
-        } else if (mitem) {
-          // Echec d'achat (or du coffre insuffisant) : avant, silencieux en
-          // ligne (le client n'affichait rien dans ce mode).
-          pushEvent(p.id, { t: "msg", msg: "Le coffre de la mairie n'a pas assez d'or" });
-        }
+      var mitem = null;
+      for (var mi = 0; mi < G.MARCHE_ITEMS.length; mi++) {
+        if (G.MARCHE_ITEMS[mi].name === input.marketBuy) { mitem = G.MARCHE_ITEMS[mi]; break; }
+      }
+      if (!mitem) {
+        pushEvent(p.id, { t: "msg", msg: "Objet inconnu au marche" });
+      } else if (!state.marche || !state.marche.chantierDone) {
+        pushEvent(p.id, { t: "msg", msg: "Le marche n'est pas encore construit" });
+      } else if (!nearBuilding(p, state.marche)) {
+        pushEvent(p.id, { t: "msg", msg: "Rapprochez-vous du marche pour acheter" });
+      } else if ((state.mairieGold || 0) < mitem.price) {
+        pushEvent(p.id, { t: "msg", msg: "Le coffre de la mairie n'a pas assez d'or" });
+      } else {
+        state.mairieGold -= mitem.price;
+        p.bag.contents.push({ name: mitem.name, kind: mitem.kind, color: mitem.color });
+        p.inventory = p.bag.contents.length;
+        pushEvent(p.id, { t: "msg", msg: mitem.name + " acheté ! (dans votre sac)" });
       }
     }
     if (input.voteYes !== undefined) G.castVote(p.id, !!input.voteYes);

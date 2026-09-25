@@ -361,6 +361,11 @@
     }
     state.mairieGold -= m.price;
     state.bag.contents.push({ name: m.name, kind: m.kind, color: m.color });
+    // Compteur d'inventaire du HUD : comme le pickup (input.js), l'achat au
+    // marche doit l'incrementer, sinon le HUD n'affiche jamais le nouvel
+    // objet (le sac l'affiche, mais le compteur reste figé et le joueur
+    // croit que l'achat a échoué).
+    state.inventory = state.bag.contents.length;
     if (G.addFloater) G.addFloater(m.name + " acheté !");
     G.drawMarche();
     G.updateHud();
