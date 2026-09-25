@@ -148,22 +148,53 @@ for (var tc = 0; tc < 200; tc++) {
 if (minSep <= 0) { console.log("FAIL: tours de siege superposees (sep=" + minSep.toFixed(1) + ")"); process.exit(1); }
 console.log("collisions tour-tour OK : separation minimale " + minSep.toFixed(1) + " px");
 
-// --- Collision tour <-> batiment/foret : la tour ne traverse pas ---
+// --- Forets : la tour passe dessus sans collision et les aplatit ---
+// Toute foret traversee par le losange de base passe DIRECTEMENT a l'etat
+// coupe final (stage 4, sprite s4), puis repousse comme une foret coupee
+// par un joueur. Seuls les vrais batiments l'arretent.
 var foret = null;
 for (var fi = 0; fi < s.buildings.length; fi++) { if (s.buildings[fi].isForet) { foret = s.buildings[fi]; break; } }
 if (foret) {
   s.sieges = [];
-  var tw3 = G.makeSiegeTower(foret.x - 500, foret.y - 500, G.SIEGE_DIRS[3]);
+  // Tour posee DANS la foret : le losange de base chevauche la foret des
+  // le premier tick, l'aplatissement est garanti (pas de dependance a la
+  // trajectoire vers le mur).
+  var fcx = foret.x + foret.w / 2, fcy = foret.y + foret.h / 2;
+  var tw3 = G.makeSiegeTower(fcx, fcy, G.SIEGE_DIRS[1]);
   s.sieges.push(tw3);
   s.clock = 23;
-  for (var tf = 0; tf < 600; tf++) G.updateSieges(0.1);
-  var inside = tw3.x > foret.x && tw3.x < foret.x + foret.w && tw3.y > foret.y && tw3.y < foret.y + foret.h;
-  if (inside) { console.log("FAIL: la tour a traverse la foret"); process.exit(1); }
-  var fpF = G.siegeFootprint(tw3);
-  var touches = fpF.x < foret.x + foret.w && fpF.x + fpF.w > foret.x && fpF.y < foret.y + foret.h && fpF.y + fpF.h > foret.y;
-  console.log("collision foret OK : tour arretee " + (touches ? "collee a la foret" : "avant la foret"));
+  var stage0 = foret.foretStage || 0;
+  var depleted = false;
+  for (var tf = 0; tf < 60 && !depleted; tf++) {
+    G.updateSieges(0.1);
+    depleted = G.foretDepleted(foret);
+  }
+  if (!depleted) { console.log("FAIL: la foret n'a pas ete aplatie a l'etat coupe final (stage " + (foret.foretStage || 0) + ")"); process.exit(1); }
+  if ((foret.foretStage || 0) !== G.FORET_STAGES - 1) { console.log("FAIL: stage attendu " + (G.FORET_STAGES - 1) + ", got " + (foret.foretStage || 0)); process.exit(1); }
+  if (stage0 === 0 && (foret.foretStage || 0) === 0) { console.log("FAIL: la foret n'a pas change d'etat"); process.exit(1); }
+  console.log("forets OK : foret aplatie directement a l'etat coupe final (stage " + foret.foretStage + "), pas de collision");
+  // Repousse comme une foret coupee par le joueur : regenForets fait
+  // remonter d'un stage par jour.
+  G.regenForets();
+  if ((foret.foretStage || 0) !== (G.FORET_STAGES - 1) - 1) { console.log("FAIL: la foret ecrasee ne repousse pas (stage " + (foret.foretStage || 0) + ")"); process.exit(1); }
+  console.log("forets OK : repousse apres regen (stage " + foret.foretStage + ")");
 } else {
-  console.log("collision foret SKIP : aucune foret dans ce monde");
+  console.log("FAIL: aucune foret dans ce monde (test non deterministe)"); process.exit(1);
+}
+
+// --- Batiment : la tour ne le traverse pas (seul obstacle avec les murs) ---
+s.sieges = [];
+var maison = null;
+for (var mb = 0; mb < s.buildings.length; mb++) { if (s.buildings[mb].isDecor && !s.buildings[mb].isForet) { maison = s.buildings[mb]; break; } }
+if (maison) {
+  var tw4 = G.makeSiegeTower(maison.x + maison.w / 2 - 700, maison.y + maison.h / 2, G.SIEGE_DIRS[1]);
+  s.sieges.push(tw4);
+  for (var tb = 0; tb < 300; tb++) G.updateSieges(0.1);
+  var insideM = tw4.x > maison.x && tw4.x < maison.x + maison.w && tw4.y > maison.y && tw4.y < maison.y + maison.h;
+  if (insideM) { console.log("FAIL: la tour a traverse un batiment"); process.exit(1); }
+  console.log("batiment OK : la tour contourne/arretee avant le batiment");
+} else {
+  console.log("batiment SKIP : aucune maison dans ce monde");
 }
 
 // --- Resistance : 100 PV (100x un zombie) ---

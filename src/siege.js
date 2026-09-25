@@ -249,15 +249,15 @@
     return gapX <= G.SIEGE_CONTACT_GAP && gapY <= G.SIEGE_CONTACT_GAP;
   }
 
-  // Le losange de base (déplacé en cx,cy) heurte-t-il un bâtiment solide
-  // (forêt non épuisée ou tout autre bâtiment, comme pour le joueur et les
-  // zombies — cf. aabbHitsBuildings) ? La tour ne traverse ni les forêts
-  // ni les bâtiments.
+  // Le losange de base (déplacé en cx,cy) heurte-t-il un bâtiment solide ?
+  // Les FORÊTS ne comptent PAS comme obstacle : la tour de siège passe
+  // dessus sans collision et les aplatit à l'état coupé (cf.
+  // flattenForetsUnder). Seuls les vrais bâtiments l'arrêtent.
   function diamondHitsBuildings(d) {
     var buildings = G.state.buildings || [];
     for (var i = 0; i < buildings.length; i++) {
       var b = buildings[i];
-      if (b.isForet && G.foretDepleted && G.foretDepleted(b)) continue;
+      if (b.isForet) continue;
       if (G.diamondHitsBox(d, b.x, b.y, b.w, b.h)) return true;
     }
     return false;
@@ -349,37 +349,27 @@
     return false;
   }
 
-  // Écrase la forêt qui bloque la tour : celle que le losange de base
-  // projeté vers le mur cible rencontre en premier (la pointe avant du
-  // losange balaye toute la largeur de la base, pas un seul point), sinon
-  // celle qui chevauche déjà l'emprise. Dans un massif regroupé, la plus
-  // proche du centre de la tour est écrasée en premier. La forêt avance
-  // d'un état de coupe (rétrécit, puis devient traversable).
-  function crushForetAhead(s) {
+  // Aplatit TOUTES les forêts chevauchées par le losange de base de la
+  // tour : chacune passe DIRECTEMENT à l'état coupé final (foretStage 4,
+  // sprite "<fichier>s4" — souche traversable), comme si un joueur l'avait
+  // coupée à la hache jusqu'au bout. Elle repousse ensuite normalement
+  // (regenForets à chaque nouveau jour). La tour passe dessus SANS
+  // collision : seuls les bâtiments l'arrêtent.
+  function flattenForetsUnder(s) {
     var buildings = G.state.buildings || [];
     if (buildings.length === 0) return;
-    var target = findWallTarget(s);
-    if (!target) return;
-    var dx = target.x - s.x, dy = target.y - s.y;
-    var len = Math.sqrt(dx * dx + dy * dy) || 1;
     var d = G.siegeDiamond(s);
-    var ahead = Math.max(d.a, d.b) + 4;
-    var fwd = { cx: d.cx + (dx / len) * ahead, cy: d.cy + (dy / len) * ahead, a: d.a, b: d.b };
-    var foret = null, bestD = Infinity;
+    var flattened = false;
     for (var fb = 0; fb < buildings.length; fb++) {
       var b = buildings[fb];
       if (!b.isForet || G.foretDepleted(b)) continue;
-      var hit = (G.diamondHitsBox(fwd, b.x, b.y, b.w, b.h) ||
-                 G.diamondHitsBox(d, b.x, b.y, b.w, b.h));
-      if (!hit) continue;
-      var bcx = b.x + b.w / 2, bcy = b.y + b.h / 2;
-      var dd = (bcx - s.x) * (bcx - s.x) + (bcy - s.y) * (bcy - s.y);
-      if (dd < bestD) { bestD = dd; foret = b; }
+      if (!G.diamondHitsBox(d, b.x, b.y, b.w, b.h)) continue;
+      b.foretStage = (G.FORET_STAGES || 5) - 1;
+      if (G.refitForet) G.refitForet(b);
+      flattened = true;
     }
-    if (foret) {
-      foret.foretStage = (foret.foretStage || 0) + 1;
-      if (G.refitForet) G.refitForet(foret);
-      if (G.foretDepleted(foret) && G.rebuildBuildingGrid) G.rebuildBuildingGrid();
+    if (flattened) {
+      if (G.rebuildBuildingGrid) G.rebuildBuildingGrid();
       if (G.playSfx) G.playSfx("chop");
     }
   }
@@ -437,20 +427,12 @@
       if (s.hp <= 0) continue;
       if (s.state === "open") continue;
       if (!night) continue;
-      var sxBefore = s.x, syBefore = s.y;
       var touched = moveSiege(s, dt);
-      // Bloquée par une forêt (elle n'a quasiment pas avancé ce tick) : la
-      // tour l'écrase — la forêt avance d'un état de coupe (elle rétrécit
-      // puis devient traversable, cf. hache). Une tour de siège n'est
-      // définitivement stoppée que par un mur.
-      var advanced = Math.abs(s.x - sxBefore) + Math.abs(s.y - syBefore);
-      if (!touched && advanced < G.SIEGE_SPEED * G.zombieRamp() * dt * 0.6) {
-        s.crushTimer = (s.crushTimer || 0) + dt;
-        if (s.crushTimer >= 0.2) {
-          s.crushTimer = 0;
-          crushForetAhead(s);
-        }
-      } else s.crushTimer = 0;
+      // Aplatit les forêts traversées : la tour ne collisionne PAS avec les
+      // forêts, toute forêt sous son losange de base passe directement à
+      // l'état coupé final (elle repousse ensuite comme une forêt coupée
+      // par un joueur). Seuls les bâtiments l'arrêtent.
+      flattenForetsUnder(s);
       if (touched) {
         // Point de libération : de l'autre côté du mur, côté ville.
         var target = findWallTarget(s);

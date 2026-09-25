@@ -20,8 +20,8 @@
 - **Vitesse** : `SIEGE_SPEED = ZOMBIE_SPEED * 0.5` (deux fois moins vite
   qu'un zombie), modulée par la montée en difficulté `zombieRamp()`.
 - **Objectif** : se coller au mur **le plus proche** (palissade construite
-  la plus proche ; sans mur, le centre-ville). La tour **écrase les forêts** :
-  rien ne doit l'empêcher d'atteindre son mur.
+  la plus proche ; sans mur, le centre-ville). Sauf si elle croise un
+  bâtiment, la tour va tout droit jusqu'à une palissade.
 - **Contact mur** (écart AABB ≤ `SIEGE_CONTACT_GAP`) : la tour s'arrête,
   passe à l'état **ouvert** (sprite `ouvert` au lieu de `ferme`) et libère
   100 zombies (`SIEGE_RELEASE_COUNT`) de l'autre côté du mur, côté ville,
@@ -31,12 +31,18 @@
 - **Résistance** : `SIEGE_HP = 100` PV, soit 100 × un zombie
   (`ZOMBIE_HP = 1`). Dégâts par projectiles et explosions
   (`src/weapons.js`).
+- **Forêts** : la tour passe dessus **sans collision**. Toute forêt
+  chevauchée par son losange de base passe **directement à l'état coupé
+  final** (`foretStage 4`, sprite `<fichier>s4` — `flattenForetsUnder`,
+  appelé à chaque tick), puis **repousse normalement** comme une forêt
+  coupée par un joueur (`regenForets` fait remonter d'un état par jour).
+  Seuls les **bâtiments** (hors forêts) et les **murs** l'arrêtent.
 - **Collision** : seule la **base isométrique** de la tour collisionne —
   un losange inscrit dans les **5 % les plus bas** du PNG
   (`SIEGE_COLLIDE_BOTTOM = 0.05`, `G.siegeDiamond`) avec les zombies et
   les personnages (joueur inclus). Les projectiles testent aussi cette
   emprise. Beaucoup plus étroit qu'un bloc plein : la pointe avant du
-  losange s'insinue entre les forêts et réduit les blocages.
+  losange s'insinue entre les obstacles et réduit les blocages.
 - **Destruction** : une tour détruite laisse une **trace au sol**
   (`state.siegeTraces`) dessinée avec les PNG de `destruction/`. Cette
   trace ne collisionne plus rien et n'est plus un obstacle.
@@ -79,5 +85,7 @@ Le sens de marche est fixé au spawn et ne change pas en cours de route.
 `test/siege/tour_siege.js` : compteur par nuit, annonce montgolfière,
 spawn au passage de 22h (et pas de double spawn), vitesse = moitié d'un
 zombie, contact mur (arrêt + ouverture + 100 zombies côté ville +
-immobilité), résistance 100 PV, destruction → trace non collisionnable,
-emprise de collision = losange de base (5 % du bas).
+immobilité), collisions tour ↔ tour, forêts (aplatissement direct à
+l'état coupé final + repousse via `regenForets`), bâtiment (la tour ne
+le traverse pas), résistance 100 PV, destruction → trace non
+collisionnable, emprise de collision = losange de base (5 % du bas).
