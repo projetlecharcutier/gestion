@@ -367,6 +367,15 @@
       side: 48,
       msg: "Le marché vend des armes et des objets contre l'or du coffre de la mairie.",
       onClick: "marche"
+    },
+    potence: {
+      label: "Potence",
+      stateField: "potence",
+      unlockedField: "potenceUnlocked",
+      cost: { planks: 100, gold: 10 },
+      side: 48,
+      msg: "La potence permet de voter la pendaison d'un autre joueur. En cas d'égalité, la cible est sauvée.",
+      onClick: "potence"
     }
   };
   G.SCIERIE_SIDE = 64;   // emprise sol de la scierie (unites monde)

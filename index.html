@@ -117,6 +117,11 @@
               <b>Palissade</b>
               <p>Bloque les zombies et protège la ville. Construisez-la avec vos planches (touche Z). Les zombies les plus obstinés la frappent.</p>
             </div>
+            <div class="guide__card">
+              <img src="assets/sprites/scierie/chantier-0.png" alt="Potence" />
+              <b>Potence</b>
+              <p>À débloquer à la mairie. Sur la potence, proposez la pendaison d'un autre joueur : la majorité des votants décide. Attention, les joueurs peuvent aussi se tirer dessus.</p>
+            </div>
           </div>
         </div>
         <div class="guide__section">
@@ -220,6 +225,24 @@
     </div>
   </div>
 
+  <div class="votebar" id="voteBar" hidden>
+    <div class="votebar__info">
+      <b id="voteBarText">Vote en cours</b>
+      <span id="voteBarTimer">15</span>
+    </div>
+    <div class="votebar__actions">
+      <button class="btn btn--primary" id="voteBarYes" type="button">Pour</button>
+      <button class="btn" id="voteBarNo" type="button">Contre</button>
+    </div>
+  </div>
+  <div class="overlay" id="potenceScreen" hidden>
+    <div class="panel">
+      <h2>Potence</h2>
+      <p class="panel__sub">Cliquez sur un joueur pour proposer sa pendaison. En cas d'égalité des voix, la cible est sauvée.</p>
+      <div class="chest__vault" id="potenceList"></div>
+      <button class="btn btn--primary" id="closePotenceBtn" type="button">Fermer</button>
+    </div>
+  </div>
   <script src="src/config.js"></script>
   <script src="src/stats.js"></script>
   <script src="src/assets.js"></script>

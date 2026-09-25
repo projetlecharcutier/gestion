@@ -17,6 +17,11 @@
 - **Montgolfière** (centre de décollage) : au clic, annonce le **volume** et
   la **direction** de la prochaine vague (pré-tirage `G.rollWave` chaque
   matin, consommé par `spawnWave` à 22h).
+- **Potence** : au clic, liste les autres joueurs vivants ; un clic propose
+  la **pendaison** de la cible (vote `hang:<playerId>`, même fenêtre de vote
+  en bas d'écran). La majorité des votants décide ; en cas d'égalité, la
+  cible est sauvée (règle spécifique aux pendaisons). La sentence passée,
+  le joueur ciblé meurt — la partie continue pour les survivants.
 - **Menu de construction** : touche **Z** → liste des bâtiments constructibles
   (palissade toujours ; bâtiments de ville débloqués et non posés ; tours si
   la scierie est construite) → clic sur un bâtiment → clic sur la carte pour le
@@ -45,10 +50,15 @@
 - Section **Technologies** dans le coffre de la mairie :
   « Scierie — 100 planches + 10 or ».
 - **Solo** : achat immédiat si le coffre suffit.
-- **Multijoueur** : le joueur lance une proposition → vote **15 s**, majorité
-  **stricte des joueurs connectés**, l'initiateur compte « pour », refus →
-  aucun débit, **cooldown 30 s** avant nouvelle proposition. Le serveur est
-  autoritaire sur le vote et le débit.
+- **Multijoueur** : le joueur lance une proposition → vote **15 s** affiché
+  dans une fenêtre en bas de l'écran de chaque joueur connecté (compte à
+  rebours + boutons Pour/Contre). La **majorité des votants** l'emporte :
+  les non-votes comptent blanc et ne sont pas comptabilisés ; un vote où
+  personne ne vote échoue. En cas d'égalité OUI/NON, le **OUI l'emporte**
+  — sauf pour les pendaisons (potence), où l'égalité sauve la cible.
+  L'initiateur compte « pour », refus → aucun débit, **cooldown 30 s**
+  avant nouvelle proposition. Le serveur est autoritaire sur le vote et le
+  débit.
 - Une fois débloquée : `state.scierieUnlocked = true` (synchronisé). Le
   bâtiment scierie est **unique** : on ne peut en poser qu'une.
 

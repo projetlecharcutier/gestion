@@ -395,7 +395,10 @@
     return true;
   };
 
-  // Résout le vote : majorité stricte des joueurs connectés requise.
+  // Résout le vote : la majorité des VOTANTS l'emporte (les non-votes
+  // comptent blanc et ne sont pas comptabilisés). En cas d'égalité entre
+  // oui et non, le OUI l'emporte — SAUF pour les pendaisons (proposal
+  // "hang:<playerId>") où l'égalité sauve la cible.
   // payerPlanks : callback (cout) => boolean fourni par l'appelant pour
   // debiter les planches du joueur initiateur (multi) ; en solo, null ->
   // on debite state.planks directement.
@@ -403,19 +406,28 @@
   // hasScroll (3e argument, optionnel) : callback () => boolean qui indique
   // si le joueur initiateur porte un Parchemin ; si oui l'amelioration
   // universite est gratuite et le parchemin est consomme par l'appelant.
+  // Un vote sans AUCUN votant (tout blanc) échoue.
   G.resolveVote = function (connectedCount, payerPlanks, hasScroll) {
     if (!hasScroll) hasScroll = function () { return false; };
     var state = G.state;
     if (!state.vote) return null;
     if (state.time < state.vote.endsAt) return null;
-    var yes = 0;
+    var yes = 0, no = 0;
     for (var id in state.vote.votes) {
-      if (state.vote.votes.hasOwnProperty(id) && state.vote.votes[id]) yes++;
+      if (!state.vote.votes.hasOwnProperty(id)) continue;
+      if (state.vote.votes[id]) yes++;
+      else no++;
     }
-    var passed = connectedCount > 0 && yes > Math.floor(connectedCount / 2);
+    var isHang = state.vote.proposal.indexOf && state.vote.proposal.indexOf("hang:") === 0;
+    var passed = (yes + no) > 0 && (yes > no || (yes === no && !isHang));
     var proposal = state.vote.proposal;
     state.vote = null;
     if (passed) {
+      // Pendaison : pas de deboursement, l'appelant (serveur) execute la
+      // sentence sur la cible identifiee dans le proposal.
+      if (proposal.indexOf && proposal.indexOf("hang:") === 0) {
+        return "passed";
+      }
       // Amelioration de l'universite (proposal "up:<id>") : paiement en or du
       // coffre commun, ou gratuit si l'initiateur porte un Parchemin
       // (consomme). En solo, le Parchemin vient du sac du joueur local.

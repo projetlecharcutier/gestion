@@ -6,7 +6,7 @@ Stats de l'arme équipée, tir du joueur, déplacement des projectiles et collis
 ## Exposé sur `G`
 - `equippedStats()` → stats de l'arme équipée (ou "Mains nues" par défaut)
 - `handleShooting()` — tire si `state.keys.space` et `shootCd <= 0`, en respectant bloqueurs (bâtiment/pause/sac/game over/**mode pose de planche**). **Ne décrémente pas `shootCd`** (fait dans `update`).
-- `updateProjectiles(dt)` — déplace les projectiles, gère la traîne, teste collision (rayon 14 px) avec zombies, retire hors-monde/vie-finie.
+- `updateProjectiles(dt)` — déplace les projectiles, gère la traîne, teste collision (rayon 14 px) avec zombies, retire hors-monde/vie-finie.- **Dégâts alliés (friendly fire)** : en multijoueur, les projectiles d'un joueur (`pr.owner` = id joueur, jamais `"tour"`/`"local"`) touchent aussi les **autres** joueurs (rayon 12 px, jamais le propriétaire du tir). Un joueur touché meurt comme face aux zombies (`alive = false`, la partie continue pour les survivants). Les explosions (`blastAt`) blessent aussi les joueurs dans le rayon. En solo (`state.players` absent), aucun effet.
 
 ## Projectile
 `{ x, y, vx, vy, life, dmg, color, trail[] }`. Limite de 120 projectiles simultanés (FIFO).

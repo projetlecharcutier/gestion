@@ -78,6 +78,8 @@
       peacefulNight: false,
       marcheUnlocked: false,
       marche: null,
+      potenceUnlocked: false,
+      potence: null,
       montgolfiereUnlocked: false,
       montgolfiere: null,
       pendingWave: null,
@@ -451,6 +453,22 @@
       }
     }
     if (input.voteYes !== undefined) G.castVote(p.id, !!input.voteYes);
+    // Vote de pendaison lance depuis la potence : le proposal "hang:<id>"
+    // designe la cible. Proximite obligatoire (comme les autres votes de
+    // ville) ; un clic pendant un vote de pendaison en cours = voter pour.
+    if (input.hangVote !== undefined) {
+      var hangTarget = findPlayer(input.hangVote);
+      var potenceReady = state.potence && state.potence.chantierDone;
+      if (hangTarget && potenceReady && hangTarget.alive && hangTarget.id !== p.id) {
+        if (nearBuilding(p, state.potence)) {
+          if (!state.vote) {
+            G.startVote("hang:" + hangTarget.id, p.id);
+          } else if (state.vote.proposal === ("hang:" + hangTarget.id)) {
+            G.castVote(p.id, true);
+          }
+        }
+      }
+    }
     // Ramassage d'objet au sol (le client envoie les coords de l'item cliqué).
     if (input.pickup) {
       var tx = input.pickup.x, ty = input.pickup.y;
@@ -870,12 +888,30 @@
       }
     }
 
+    // Pendaison : le vote "hang:<id>" passe -> la cible meurt (alive = false,
+    // meme voie que la mort par zombie ; la partie continue pour les
+    // survivants).
+    if (voteRes === "passed" && voteProposal.indexOf("hang:") === 0) {
+      var hungP = findPlayer(voteProposal.slice(5));
+      if (hungP && hungP.alive) {
+        hungP.alive = false;
+        hungP.hp = 0;
+        var anyAliveAfterHang = false;
+        for (var hai = 0; hai < state.players.length; hai++) {
+          if (state.players[hai].alive) { anyAliveAfterHang = true; break; }
+        }
+        if (!anyAliveAfterHang) { state.gameOver = true; state.gameOverCause = "player"; }
+      }
+    }
     // Resultat du vote a la resolution (meme retour que le solo) : avant, un
     // vote echoue en ligne n'affichait rien du tout. Label lisible de la
-    // proposition (batiment de ville ou amelioration d'universite).
+    // proposition (batiment de ville, amelioration d'universite ou pendaison).
     if (voteRes === "passed" || voteRes === "failed") {
       var lab = null;
-      if (voteProposal.indexOf("up:") === 0) {
+      if (voteProposal.indexOf("hang:") === 0) {
+        var hungP2 = findPlayer(voteProposal.slice(5));
+        lab = hungP2 ? ("Pendaison de " + hungP2.name) : "Pendaison";
+      } else if (voteProposal.indexOf("up:") === 0) {
         var udef2 = G.UNIVERSITE_UPGRADES[voteProposal.slice(3)];
         lab = udef2 ? udef2.label : voteProposal;
       } else {
@@ -883,9 +919,17 @@
         lab = tdef2 ? tdef2.label : voteProposal;
       }
       if (voteRes === "passed") {
-        pushEvent(null, { t: "msg", msg: lab + " : voté et débloqué ! Z + posez le bâtiment en ville" });
+        if (voteProposal.indexOf("hang:") === 0) {
+          pushEvent(null, { t: "msg", msg: lab + " : la sentence est exécutée" });
+        } else {
+          pushEvent(null, { t: "msg", msg: lab + " : voté et débloqué ! Z + posez le bâtiment en ville" });
+        }
       } else {
-        pushEvent(null, { t: "msg", msg: lab + " : le vote a échoué (majorité non atteinte ou paiement impossible)" });
+        if (voteProposal.indexOf("hang:") === 0) {
+          pushEvent(null, { t: "msg", msg: lab + " : le vote a échoué, la cible est sauvée" });
+        } else {
+          pushEvent(null, { t: "msg", msg: lab + " : le vote a échoué (majorité non atteinte ou paiement impossible)" });
+        }
       }
     }
 
@@ -1066,10 +1110,12 @@
       universiteUnlocked: !!state.universiteUnlocked,
       montgolfiereUnlocked: !!state.montgolfiereUnlocked,
       marcheUnlocked: !!state.marcheUnlocked,
+      potenceUnlocked: !!state.potenceUnlocked,
       scierie: snapshotTownBuilding(state.scierie),
       universite: snapshotTownBuilding(state.universite),
       montgolfiere: snapshotTownBuilding(state.montgolfiere),
       marche: snapshotTownBuilding(state.marche),
+      potence: snapshotTownBuilding(state.potence),
       universiteUpgrades: state.universiteUpgrades || {},
       peacefulNight: !!state.peacefulNight,
       pendingWave: state.pendingWave ? {
@@ -1097,7 +1143,9 @@
       vote: state.vote ? {
         proposal: state.vote.proposal,
         endsAt: +(state.vote.endsAt - state.time).toFixed(1),
-        yes: countYesVotes()
+        yes: countYesVotes(),
+        no: countNoVotes(),
+        voters: countYesVotes() + countNoVotes()
       } : null,
       waveCount: state.waveCount || 0,
       zombieRamp: state.zombieRamp || 1,
@@ -1123,6 +1171,15 @@
       // destines). Consommes a la lecture : jamais livres deux fois.
       events: takeEvents(forPlayerId)
     };
+  }
+
+  function countNoVotes() {
+    if (!state.vote) return 0;
+    var n = 0;
+    for (var id in state.vote.votes) {
+      if (state.vote.votes.hasOwnProperty(id) && !state.vote.votes[id]) n++;
+    }
+    return n;
   }
 
   function countYesVotes() {

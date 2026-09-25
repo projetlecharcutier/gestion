@@ -637,4 +637,133 @@
     G.state.paused = !G.state.paused;
     G.pauseScreen.hidden = !G.state.paused;
   };
+
+  // Libelle lisible d'une proposition de vote (batiment de ville, amelioration
+  // d'universite "up:<id>", pendaison "hang:<playerId>").
+  G.voteProposalLabel = function (proposal) {
+    if (!proposal) return "";
+    if (proposal.indexOf("hang:") === 0) {
+      var target = null;
+      var rp = G.state.remotePlayers || [];
+      for (var i = 0; i < rp.length; i++) {
+        if (rp[i].id === proposal.slice(5)) { target = rp[i]; break; }
+      }
+      var tName = target ? target.name : "un joueur";
+      return "Pendre " + tName + " ?";
+    }
+    if (proposal.indexOf("up:") === 0) {
+      var udef = G.UNIVERSITE_UPGRADES[proposal.slice(3)];
+      var tdef = udef ? udef.label : proposal.slice(3);
+      return tdef + " (université)";
+    }
+    var tb = G.TOWN_BUILDINGS[proposal];
+    return tb ? "Construire : " + tb.label : proposal;
+  };
+
+  // Fenetre de vote en bas de l'ecran : visible chez chaque joueur connecte
+  // tant qu'un vote est en cours, avec compte a rebours. Les boutons envoient
+  // l'input voteYes au serveur (autoritaire) ; le choix du joueur est memorise
+  // localement pour griser son bouton et afficher son vote.
+  G.updateVoteBar = function () {
+    if (!G.voteBar) return;
+    var state = G.state;
+    var online = G.netConnected && G.netConnected();
+    var vote = online ? state.vote : null;
+    if (!vote) {
+      G.voteBar.hidden = true;
+      state._voteBarChoice = undefined;
+      return;
+    }
+    G.voteBar.hidden = false;
+    if (G.voteBarText) {
+      var label = G.voteProposalLabel(vote.proposal);
+      G.voteBarText.textContent = label || "Vote en cours";
+    }
+    if (G.voteBarTimer) {
+      var secLeft = Math.max(0, Math.ceil((vote.endsAt || 0) - (state.time || 0)));
+      var counts = "Pour " + (vote.yes || 0) + " · Contre " + (vote.no || 0);
+      G.voteBarTimer.textContent = counts + " · " + secLeft + " s";
+    }
+    // Le vote du joueur local n'est pas renvoye individuellement par le
+    // snapshot (seuls les compteurs oui/non le sont) : on grise les
+    // boutons d'apres le choix memoire local (castLocalVote), remis a zero
+    // a la fin du vote.
+    var chosen = state._voteBarChoice;
+    if (G.voteBarYes) G.voteBarYes.disabled = chosen !== undefined;
+    if (G.voteBarNo) G.voteBarNo.disabled = chosen !== undefined;
+    if (chosen !== undefined && chosen === vote._lastShownChoice) {
+      G.voteBarYes.textContent = "Pour ✓";
+    } else if (chosen !== undefined) {
+      vote._lastShownChoice = chosen;
+      G.voteBarYes.textContent = chosen ? "Pour ✓" : "Pour";
+      G.voteBarNo.textContent = chosen ? "Contre" : "Contre ✓";
+    }
+  };
+
+  // Envoie le vote du joueur local au serveur (boutons Pour/Contre).
+  G.castLocalVote = function (yes) {
+    var state = G.state;
+    if (!state.vote) return;
+    if (!(G.netConnected && G.netConnected())) return;
+    G.netInput({ voteYes: !!yes });
+    state._voteBarChoice = !!yes;
+  };
+
+  // Potence : liste les autres joueurs vivants, un bouton par joueur propose
+  // la pendaison (vote "hang:<playerId>" au serveur). En cas d'egalite des
+  // voix, la cible est sauvee (regle specifique aux pendaisons).
+  G.openPotence = function () {
+    var state = G.state;
+    state.paused = false;
+    G.pauseScreen.hidden = true;
+    G.drawPotence();
+    if (G.potenceScreen) G.potenceScreen.hidden = false;
+  };
+  G.closePotence = function () {
+    if (G.potenceScreen) G.potenceScreen.hidden = true;
+  };
+  G.drawPotence = function () {
+    var list = G.potenceList;
+    if (!list) return;
+    list.innerHTML = "";
+    var wrap = document.createElement("div");
+    wrap.className = "chest__list";
+    var state = G.state;
+    var rp = state.remotePlayers || [];
+    var candidates = [];
+    for (var i = 0; i < rp.length; i++) {
+      if (rp[i].alive !== false) candidates.push(rp[i]);
+    }
+    if (!candidates.length) {
+      var none = document.createElement("p");
+      none.textContent = "Aucun autre joueur vivant.";
+      wrap.appendChild(none);
+      list.appendChild(wrap);
+      return;
+    }
+    var h = document.createElement("p");
+    h.textContent = "Joueurs vivants";
+    wrap.appendChild(h);
+    for (var c = 0; c < candidates.length; c++) {
+      (function (p) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn chest__item";
+        var label = p.name;
+        var voteActive = state.vote && state.vote.proposal === ("hang:" + p.id);
+        if (voteActive) {
+          label += " — VOTE en cours : " +
+            Math.max(0, Math.ceil((state.vote.endsAt || 0) - (state.time || 0))) + " s";
+        }
+        btn.textContent = label;
+        btn.addEventListener("click", function () {
+          if (!(G.netConnected && G.netConnected())) return;
+          G.netInput({ hangVote: p.id });
+          G.drawPotence();
+        });
+        wrap.appendChild(btn);
+      })(candidates[c]);
+    }
+    list.appendChild(wrap);
+  };
 })();

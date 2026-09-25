@@ -305,6 +305,45 @@ canvas#game {
 .playerlist__names li.is-dead { color: #f87171; }
 .playerlist__names li.is-me { font-weight: 700; }
 .sound-btn:hover { background: var(--accent-soft); }
+/* Fenetre de vote en bas de l'ecran : visible par chaque joueur connecte
+   quand un vote est en cours, avec compte a rebours et boutons Pour/Contre. */
+.votebar {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+.votebar[hidden] { display: none; }
+.votebar__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 420px;
+}
+.votebar__info b {
+  font-size: 0.95rem;
+  color: var(--text);
+}
+.votebar__timer, #voteBarTimer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #fbbf24;
+  font-size: 0.9rem;
+}
+.votebar__actions {
+  display: flex;
+  gap: 8px;
+}
+
 .sc-hidden {
   position: fixed;
   width: 1px;

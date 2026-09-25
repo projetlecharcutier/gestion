@@ -192,6 +192,7 @@
             }
             else if (tdef.onClick === "universite") G.openUniversite();
             else if (tdef.onClick === "marche") G.openMarche();
+            else if (tdef.onClick === "potence") G.openPotence();
             return;
           }
         }
@@ -240,6 +241,7 @@
       if (state.started && state.churchOpen) { G.closeChurch(); return; }
       if (G.universiteScreen && !G.universiteScreen.hidden) { G.closeUniversite(); return; }
       if (G.marcheScreen && !G.marcheScreen.hidden) { G.closeMarche(); return; }
+      if (G.potenceScreen && !G.potenceScreen.hidden) { G.closePotence(); return; }
       if (state.started && state.chestOpen) { G.closeChest(); return; }
       if (state.started && state.bag.open) { state.bag.open = false; return; }
       if (state.started && state.buildMode) { state.buildMode = false; state.buildSel = null; return; }
@@ -409,4 +411,7 @@
   if (G.closeChurchBtn) G.closeChurchBtn.addEventListener("click", G.closeChurch);
   if (G.closeUniversiteBtn) G.closeUniversiteBtn.addEventListener("click", G.closeUniversite);
   if (G.closeMarcheBtn) G.closeMarcheBtn.addEventListener("click", G.closeMarche);
+  if (G.voteBarYes) G.voteBarYes.addEventListener("click", function () { G.castLocalVote(true); });
+  if (G.voteBarNo) G.voteBarNo.addEventListener("click", function () { G.castLocalVote(false); });
+  if (G.closePotenceBtn) G.closePotenceBtn.addEventListener("click", G.closePotence);
 })();

@@ -106,6 +106,20 @@
         if (state.projectiles.length > 120) state.projectiles.shift();
     };
 
+    // Mort d'un joueur par un autre joueur (friendly fire) : même voie que
+    // la mort par zombie (zombies.js), la partie continue tant qu'il reste
+    // un survivant. Le client local en solo n'a pas state.players : le
+    // friendly fire n'existe qu'en multijoueur.
+    function killPlayerFriendly(tgt, state) {
+      tgt.hp = 0;
+      tgt.alive = false;
+      var anyAlive = false;
+      for (var pai = 0; pai < state.players.length; pai++) {
+        if (state.players[pai].alive) { anyAlive = true; break; }
+      }
+      if (!anyAlive) { state.gameOver = true; state.gameOverCause = "player"; }
+    }
+
     // Explosion de zone (grenade, lance-flammes) : applique les degats du
     // projectile a toutes les entites vivantes dans blastRadius autour du
     // point d'impact (zombies, oiseaux). Les flammes ont un petit rayon qui
@@ -141,6 +155,19 @@
                 b.hp -= dmg;
                 if (b.hp <= 0 && G.birdDrop) G.birdDrop(b.x, b.y);
             }
+        }
+        // Dégâts alliés : l'explosion blesse aussi les joueurs dans le
+        // rayon, sauf le propriétaire du tir (grenade, lance-flammes).
+        if (state.players && pr.owner && pr.owner !== "tour" && pr.owner !== "local") {
+          for (var ffbi = 0; ffbi < state.players.length; ffbi++) {
+            var ffb = state.players[ffbi];
+            if (!ffb.alive || ffb.id === pr.owner) continue;
+            var ffdx = ffb.x - x, ffdy = ffb.y - y;
+            if (Math.sqrt(ffdx * ffdx + ffdy * ffdy) <= r) {
+              ffb.hp -= dmg;
+              if (ffb.hp <= 0) killPlayerFriendly(ffb, state);
+            }
+          }
         }
         // Tours de siège : l'explosion les endommage aussi (centre de la
         // tour dans le rayon de blast).
@@ -231,6 +258,32 @@
                     pr.hitEntities.push(sg);
                     shouldDestroy = true;
                 }
+            }
+
+            // 1c. Dégâts alliés (friendly fire) : les projectiles des
+            // joueurs touchent aussi les AUTRES joueurs (jamais leur
+            // propriétaire, jamais les flèches des tours). Le joueur touché
+            // meurt comme face aux zombies : alive = false, la partie
+            // continue pour les survivants.
+            if (!shouldDestroy && state.players && pr.owner && pr.owner !== "tour" && pr.owner !== "local") {
+              for (var ffi = 0; ffi < state.players.length; ffi++) {
+                var fp = state.players[ffi];
+                if (!fp.alive || fp.id === pr.owner) continue;
+                if (pr.hitEntities.indexOf(fp) !== -1) continue;
+                var ffdx2 = pr.x - fp.x, ffdy2 = pr.y - fp.y;
+                if (Math.sqrt(ffdx2 * ffdx2 + ffdy2 * ffdy2) < 12) {
+                  fp.hp -= pr.dmg;
+                  pr.hitEntities.push(fp);
+                  if (fp.hp <= 0) killPlayerFriendly(fp, state);
+                  if (pr.piercing && pr.pierceCount > 0) {
+                    pr.pierceCount--;
+                    if (pr.pierceCount <= 0) shouldDestroy = true;
+                  } else {
+                    shouldDestroy = true;
+                  }
+                  break;
+                }
+              }
             }
 
             // 2. Collisions avec les Oiseaux (si le projectile n'est pas déjà détruit)

@@ -409,6 +409,11 @@
         if (!state.vote) state.vote = { votes: {} };
         state.vote.proposal = s.vote.proposal;
         state.vote.endsAt = (state.time || 0) + s.vote.endsAt;
+        // Compteurs du scrutin (affiches dans la fenetre de vote en bas
+        // d'ecran) : oui/non/votants, syncs par snapshot.
+        state.vote.yes = s.vote.yes || 0;
+        state.vote.no = s.vote.no || 0;
+        state.vote.voters = s.vote.voters || 0;
       }
       if (hadVote && !state.vote && state.chestOpen && G.drawChest) G.drawChest();
     }
@@ -423,6 +428,7 @@
     if (s.universiteUpgrades !== undefined) state.universiteUpgrades = s.universiteUpgrades;
     if (s.peacefulNight !== undefined) state.peacefulNight = !!s.peacefulNight;
     if (s.marcheUnlocked !== undefined) state.marcheUnlocked = !!s.marcheUnlocked;
+    if (s.potenceUnlocked !== undefined) state.potenceUnlocked = !!s.potenceUnlocked;
     if (s.waveCount !== undefined) state.waveCount = s.waveCount;
     if (s.zombieRamp !== undefined) state.zombieRamp = s.zombieRamp;
     if (s.waveActive !== undefined) state.waveActive = s.waveActive;

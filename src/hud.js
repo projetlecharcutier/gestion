@@ -66,14 +66,18 @@
       for (var i = 0; i < state.buildings.length; i++) { if (state.buildings[i].isMairie) { mairie = state.buildings[i]; break; } }
       G.hudMairie.textContent = mairie ? String(Math.round(mairie.hp)) : "—";
     }
-    // Coffre ouvert avec un vote en cours : le decompte affiche dans la
-    // section Technologies doit avancer en temps reel (redessine seulement
-    // quand la seconde affichee change, pas a chaque frame).
-    if (state.chestOpen && state.vote && G.drawChest) {
+    // Fenetre de vote en bas d'ecran : compte a rebours en temps reel,
+    // visible chez tous les joueurs connectes tant que le vote est actif.
+    if (G.updateVoteBar) G.updateVoteBar();
+    // Coffre (ou potence) ouvert avec un vote en cours : le decompte affiche
+    // dans la section Technologies (ou la liste des joueurs) doit avancer en
+    // temps reel (redessine seulement quand la seconde affichee change).
+    if (state.vote && (state.chestOpen || (G.potenceScreen && !G.potenceScreen.hidden))) {
       var secLeft = Math.max(0, Math.ceil((state.vote.endsAt || 0) - state.time));
       if (secLeft !== state._lastVoteSecShown) {
         state._lastVoteSecShown = secLeft;
-        G.drawChest();
+        if (state.chestOpen && G.drawChest) G.drawChest();
+        if (G.potenceScreen && !G.potenceScreen.hidden && G.drawPotence) G.drawPotence();
       }
     }
   };

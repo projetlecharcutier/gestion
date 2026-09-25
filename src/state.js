@@ -53,6 +53,14 @@
   G.marcheList = document.getElementById("marcheList");
   G.marcheGold = document.getElementById("marcheGold");
   G.closeMarcheBtn = document.getElementById("closeMarcheBtn");
+  G.voteBar = document.getElementById("voteBar");
+  G.voteBarText = document.getElementById("voteBarText");
+  G.voteBarTimer = document.getElementById("voteBarTimer");
+  G.voteBarYes = document.getElementById("voteBarYes");
+  G.voteBarNo = document.getElementById("voteBarNo");
+  G.potenceScreen = document.getElementById("potenceScreen");
+  G.potenceList = document.getElementById("potenceList");
+  G.closePotenceBtn = document.getElementById("closePotenceBtn");
 
   G.state = {
     started: false,
@@ -77,6 +85,8 @@
     peacefulNight: false,
     marcheUnlocked: false,
     marche: null,
+    potenceUnlocked: false,
+    potence: null,
     montgolfiereUnlocked: false,
     montgolfiere: null,
     pendingWave: null,
