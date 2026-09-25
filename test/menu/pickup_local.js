@@ -16,7 +16,7 @@ global.document = {
   getElementById: function () { return { width: 800, height: 600, getContext: function () { return null; }, addEventListener: function () {}, style: {} }; }
 };
 function load(f) { (0, eval)(fs.readFileSync(path.join(SRC, f), "utf8")); }
-["config.js", "state.js", "projection.js", "world.js", "player.js", "walls.js", "towers.js", "chop.js", "weapons.js", "birds.js", "siege.js", "zombies.js"].forEach(load);
+["config.js", "state.js", "projection.js", "world.js", "flowfield.js", "player.js", "walls.js", "towers.js", "chop.js", "weapons.js", "birds.js", "siege.js", "zombies.js"].forEach(load);
 var G = global.GAME;
 G.buildWorld();
 var s = G.state;

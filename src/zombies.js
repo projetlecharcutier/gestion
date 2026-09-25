@@ -570,8 +570,8 @@
           // quand il est disponible — il contourne les massifs par le chemin
           // le plus court. Repli sur la ligne droite si la cellule est hors
           // champ (poche fermee : l'evasion locale prend le relais).
-          var navPt = G.navStep ? G.navStep(grp.x, grp.y) : null;
-          var gBaseAng = navPt ? Math.atan2(navPt.y - grp.y, navPt.x - grp.x) : Math.atan2(ldy, ldx);
+          var gNavAng = G.navAngle ? G.navAngle(grp.x, grp.y) : null;
+          var gBaseAng = (gNavAng !== null && gNavAng !== undefined) ? gNavAng : Math.atan2(ldy, ldx);
           var gStep = 16;
           var gMove = grpSpeed * dt;
           var gDone = 0;
@@ -813,6 +813,21 @@
                         z.y += (eDy / eLen) * eStep;
                       }
                     } else {
+                    // Flow field : suit la fleche de la cellule — elle
+                    // contourne le massif par le chemin le plus court vers
+                    // la ville, sans attendre d'être bloqué pour réagir.
+                    // Si le pas de la fleche est praticable, on l'emprunte ;
+                    // sinon on retombe sur l'evasion locale ci-dessous.
+                    var navArrow = G.navStep ? G.navStep(z.x, z.y) : null;
+                    var navMoved = false;
+                    if (navArrow) {
+                      var naStep = grpSpeed * z.speedFactor * dt;
+                      var nasx = z.x + navArrow.arrowX * naStep;
+                      var nasy = z.y + navArrow.arrowY * naStep;
+                      if (!G.aabbHitsForets(nasx, z.y, zs) && !G.aabbHitsWalls(nasx - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = nasx; navMoved = true; }
+                      if (!G.aabbHitsForets(z.x, nasy, zs) && !G.aabbHitsWalls(z.x - zs, nasy - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = nasy; navMoved = true; }
+                    }
+                    if (!navMoved) {
                     // Réoriente vers le mur le plus proche (contournement
                     // dirigé de la forêt) pour rejoindre la palissade.
                     var reWall = null, reD = G.ZOMBIE_FORET_REORIENT, rePt = null;
@@ -876,7 +891,8 @@
                         }
                       }
                     }
-                    }
+                    } // fin repli hors flow field
+                    } // fin branche "au bord d'une foret"
                   } else {
                     // Blocage par mur : glisse le long pour contourner.
                     var slideSpd = zcible.seeking ? G.ZOMBIE_SEEK_SLIDE : G.ZOMBIE_WALL_SLIDE;

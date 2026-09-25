@@ -5,7 +5,7 @@ global.document = { getElementById: function () { return { style: {}, addEventLi
 global.addEventListener = function () {};
 var fs = require("fs"), path = require("path");
 function load(f) { (0, eval)(fs.readFileSync(path.join(__dirname, "..", "..", "src", f), "utf8")); }
-load("config.js"); load("projection.js"); load("world.js"); load("player.js");
+load("config.js"); load("projection.js"); load("world.js"); load("flowfield.js"); load("player.js");
 load("walls.js"); load("towers.js");
 var G = global.GAME;
 G.hasSprite = function () { return false; };

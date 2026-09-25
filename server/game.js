@@ -27,6 +27,7 @@
   load("stats.js");
   load("projection.js");
   load("world.js");
+  load("flowfield.js");
   load("player.js");
   load("walls.js");
   load("towers.js");
