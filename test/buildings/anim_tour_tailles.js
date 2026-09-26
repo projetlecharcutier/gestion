@@ -71,7 +71,7 @@ G.loadAssets(function () {
   // --- Scierie x2
   assert(G.SCIERIE_SIDE === 64, "SCIERIE_SIDE = 80");
   assert(G.TOWN_BUILDINGS.scierie.side === 64, "registre scierie.side = 80");
-  assert(G.TOWN_BUILDINGS.universite.side === 40, "universite reste 40");
+  assert(G.TOWN_BUILDINGS.universite.side === 80, "universite x2 = 80");
 
   // --- animL/animR au tir : tour construite + zombie a portee de chaque cote
   G.hasSprite = function () { return false; };

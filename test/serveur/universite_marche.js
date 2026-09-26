@@ -36,7 +36,7 @@ function findSpot(side) {
   }
   return null;
 }
-var su = findSpot(40);
+var su = findSpot(80);
 pa._buildSel = "universite";
 pa._placeBuild = { x: su[0], y: su[1] };
 srv.tick(0.05);

@@ -42,7 +42,7 @@ pa._buildSel = "universite";
 pa._placeBuild = { x: spot[0], y: spot[1] };
 srv.tick(0.05);
 assert(st.universite, "universite posee cote serveur");
-assert(st.universite.w === 40, "universite emprise 40");
+assert(st.universite.w === 80, "universite emprise 80 (x2)");
 var bInBuildings = st.buildings.some(function (b) { return b.townBuilding === "universite"; });
 assert(bInBuildings, "universite dans buildings");
 

@@ -56,7 +56,10 @@
     else if (b.isChurch && G.hasSprite("church", "church")) sp = G.SPRITES.church.church;
     else if (G.hasSprite("building", "generic")) sp = G.SPRITES.building.generic;
     if (sp) {
-      var side = sp.w * 2;
+      // Mairie 1.4x plus grande que l'emprise brute du PNG ; les autres
+      // batiments (eglise, generic) gardent le facteur standard x2.
+      var scale = b.isMairie ? (G.MAIRIE_SCALE || 1.4) : 1;
+      var side = sp.w * 2 * scale;
       b.w = side; b.h = side;
       b.x = x - side / 2; b.y = y - side / 2;
       b.door = { x: b.x + b.w / 2, y: b.y + b.h };

@@ -44,8 +44,10 @@
   emprise. Beaucoup plus étroit qu'un bloc plein : la pointe avant du
   losange s'insinue entre les obstacles et réduit les blocages.
 - **Destruction** : une tour détruite laisse une **trace au sol**
-  (`state.siegeTraces`) dessinée avec les PNG de `destruction/`. Cette
-  trace ne collisionne plus rien et n'est plus un obstacle.
+  (`state.siegeTraces`) dessinée avec les PNG de `destruction/`, **à la
+  même échelle que la tour vivante** (`SIEGE_SIDE / 2` × zoom, comme
+  `drawSiegeTower`). Cette trace ne collisionne plus rien et n'est plus un
+  obstacle.
 
 ## 2. Directions & sprites
 

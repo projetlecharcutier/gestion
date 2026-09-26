@@ -76,6 +76,10 @@
   1 or + 20 planches), grace period + `pushPlayerOutOfWall` réutilisés.
   - Bâtiments de ville : **dans la ville uniquement** (`G.inTown`).
   - Tour : **partout**.
+- Tailles : emprise sol `side` du registre `TOWN_BUILDINGS` (scierie 64,
+  **université 80** — deux fois plus grande qu'avant —, montgolfière 40,
+  marché 48, potence 48). La **mairie** est rendue **1,4 ×** plus grande que
+  l'emprise brute de son PNG (`G.MAIRIE_SCALE`, `src/world.js`).
 - **Chantier 10 s** (`G.TOWER_BUILD_TIME`) pour les bâtiments de ville ET les tours :
   anim `chantier` en **un seul tour complet** sur la durée (frame =
   progression `builtAt → builtAt + TOWER_BUILD_TIME`, figée sur la dernière

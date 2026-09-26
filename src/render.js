@@ -1040,9 +1040,11 @@
       var sp = list[tr.v % list.length];
       if (!sp || !sp.img) continue;
       var p = G.proj(tr.x, tr.y);
-      var dw = sp.w * z * 0.5;
+      // Meme echelle que la tour vivante (drawSiegeTower : emprise SIEGE_SIDE
+      // dessinee a SIEGE_SIDE/2). Avant : sp.w * z * 0.5 avec un PNG ~20 px
+      // donnait une trace ~5x plus petite que la tour qu'elle remplace.
+      var dw = (G.SIEGE_SIDE || 100) * 0.5 * z;
       var dh = dw * sp.h / sp.w;
-      if (dw < 8) dw = 8;
       ctx.drawImage(sp.img, p[0] - dw / 2, p[1] - dh, dw, dh);
     }
   };

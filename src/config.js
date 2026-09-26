@@ -260,6 +260,9 @@
   // Taille des taches de sang des zombies morts (1 = taille sprite d'origine).
   G.DEAD_TRACES_SCALE = 3;
   G.MAIRIE_MAX_HP = 1000;
+  // Mairie : emprise sol 1.4x plus grande que l'emprise brute du PNG
+  // (makeBuilding, src/world.js). Les autres batiments gardent le facteur x2.
+  G.MAIRIE_SCALE = 1.4;
   G.ZOMBIE_HP = 1;
   G.ZOMBIE_ATTACK_CD = 1.0;
   G.WALL_PLANKS = 4;
@@ -346,7 +349,7 @@
       stateField: "universite",
       unlockedField: "universiteUnlocked",
       cost: { planks: 100, gold: 10 },
-      side: 40,
+      side: 80,
       msg: "L'université accueillera de futures améliorations.",
       onClick: "universite"
     },
