@@ -416,6 +416,10 @@
   // seule fois, sur cette duree (s). A la fin, le message d'annonce de vague
   // s'affiche au-dessus du batiment.
   G.MONTGOLFIERE_ANIM_TIME = 4;
+  // Potence : duree (s) de l'animation d'execution jouee quand un vote de
+  // pendaison aboutit. Pendant ce temps la camera zoome sur la potence pour
+  // tous les joueurs ; l'ecran de fin du pendu attend la fin de l'animation.
+  G.POTENCE_EXEC_TIME = 4;
   G.TOWER_STATS = {
     bois: {
       label: "Tour en bois",

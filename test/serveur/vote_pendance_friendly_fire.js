@@ -110,6 +110,21 @@ assert(!st.gameOver, "la partie continue apres la pendaison (survivants)");
 var snap2 = srv.snapshot();
 assert(snap2.potence && typeof snap2.potence.buildAge === "number", "snapshot potence present");
 assert(snap2.potenceUnlocked === true, "snapshot potenceUnlocked");
+// 2f. Execution scenique : execAt horodate sur la potence, evenement
+//     "execution" diffuse (nom du pendu + position du batiment), execAge
+//     dans le snapshot, message de confirmation pour les autres joueurs.
+assert(st.potence.execAt !== undefined, "potence.execAt horodate apres la sentence");
+var evs = srv.snapshot("a1").events || [];
+var evExec = null;
+for (var ei = 0; ei < evs.length; ei++) if (evs[ei].t === "execution") evExec = evs[ei];
+assert(evExec && evExec.name === "bob", "evenement execution diffuse (bob)");
+assert(evExec && typeof evExec.x === "number" && typeof evExec.y === "number",
+  "evenement execution : position de la potence");
+var snapExec = srv.snapshot("c3");
+var potSnap = snapExec.potence;
+assert(potSnap && potSnap.execAge !== undefined && potSnap.execAge >= 0,
+  "snapshot potence.execAge (obtenu " + (potSnap && potSnap.execAge) + ")");
+assert(potSnap.execAge < 2, "execAge petit (temps reel ecoule depuis la sentence)");
 
 // ---------------------------------------------------------------
 // 3) Degats allies (friendly fire) : les tirs d'un joueur blessent

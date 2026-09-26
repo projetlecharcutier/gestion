@@ -55,13 +55,30 @@
     return (sprite.frames && sprite.frames.length) ? sprite.frames.length : 1;
   };
 
-  // Sonde les frames d'animation <base>-0.png, <base>-1.png, ... dans `dir`.
-  // Stocke le tableau d'images dans sprite.frames si au moins -0 existe.
-  // Tolere les manquants (s'arrete a la premiere frame absente). Appele
-  // onDone(frames) avec le tableau (vide si aucune frame d'animation).
+  // Sonde les frames d'animation dans `dir` en acceptant LES DEUX
+  // conventions de nommage des animations :
+  //   1. Standard du jeu : <base>-0.png, <base>-1.png, ... (derniere frame
+  //      = premier numero manquant).
+  //   2. Bloc padding 4 chiffres : <base>-0101.png, <base>-0102.png, ...
+  //      (les DEUX derniers numeros incrementent pour chaque frame, format
+  //      d'export Aseprite "Sprite-0101").
+  // Les deux modes doivent fonctionner : on tente d'abord le standard, et si
+  // aucune frame n'est trouvee on tente le bloc padding. Une serie peut
+  // melanger les deux (les frames sont concatenees dans l'ordre de sonde,
+  // standard d'abord puis padding a partir de 0101).
   function probeAnimFrames(sprite, dir, base, onDone) {
+    probeAnimFramesStd(sprite, dir, base, 0, function (stdFrames) {
+      probeAnimFramesPadded(sprite, dir, base, function (padFrames) {
+        var all = (stdFrames || []).concat(padFrames || []);
+        sprite.frames = all.length > 0 ? all : null;
+        onDone(all);
+      });
+    });
+  }
+  // Convention standard : <base>-N.png a partir de N = startAt.
+  function probeAnimFramesStd(sprite, dir, base, startAt, onDone) {
     var frames = [];
-    var n = 0;
+    var n = startAt;
     function next() {
       var img = new Image();
       img.onload = function () {
@@ -69,16 +86,33 @@
           frames.push(img);
           n++;
           next();
-        } else {
-          sprite.frames = frames.length > 0 ? frames : null;
-          onDone(frames);
-        }
+        } else onDone(frames);
       };
-      img.onerror = function () {
-        sprite.frames = frames.length > 0 ? frames : null;
-        onDone(frames);
-      };
+      img.onerror = function () { onDone(frames); };
       img.src = bust(dir + base + "-" + n + ".png");
+    }
+    next();
+  }
+  // Convention padding (export Aseprite "Sprite-0101") : <base>-0101.png,
+  // -0102.png... Les DEUX DERNIERS chiffres incrementent pour chaque frame,
+  // les deux premiers ("01") sont un prefixe fixe. S'arrete a la premiere
+  // frame absente.
+  function probeAnimFramesPadded(sprite, dir, base, onDone) {
+    var frames = [];
+    var n = 1;
+    function next() {
+      var img = new Image();
+      img.onload = function () {
+        if (img.naturalWidth > 0) {
+          frames.push(img);
+          n++;
+          next();
+        } else onDone(frames);
+      };
+      img.onerror = function () { onDone(frames); };
+      var last = String(n);
+      while (last.length < 2) last = "0" + last;
+      img.src = bust(dir + base + "-01" + last + ".png");
     }
     next();
   }
@@ -400,13 +434,23 @@
         { ent: "marche", dir: "assets/sprites/marche/", base: "idle" },
         { ent: "marche", dir: "assets/sprites/marche/", base: "chantier" },
         { ent: "montgolfiere", dir: "assets/sprites/montgolfiere/", base: "idle" },
-        { ent: "montgolfiere", dir: "assets/sprites/montgolfiere/", base: "chantier" }
+        { ent: "montgolfiere", dir: "assets/sprites/montgolfiere/", base: "chantier" },
+        { ent: "potence", dir: "assets/sprites/potence/", base: "idle" },
+        { ent: "potence", dir: "assets/sprites/potence/", base: "chantier" },
+        { ent: "potence", dir: "assets/sprites/potence/", base: "exec" },
+        // Dossier DISTINCT pour l'animation d'execution : si aucun PNG exec
+        // n'est trouve a la racine, on sonde assets/sprites/potence/exec/
+        // (exec.png ou frames exec-0.png / exec-0101.png dans ce dossier).
+        { ent: "potence", dir: "assets/sprites/potence/exec/", base: "exec", alt: true }
       ];
       var si = 0;
       function nextSeries() {
         if (si >= series.length) { onDone(); return; }
         var s = series[si++];
         G.SPRITES[s.ent] = G.SPRITES[s.ent] || {};
+        // Serie alternative (dossier distinct) : seulement si la serie
+        // standard n'a rien trouve (pas de PNG, pas de frames).
+        if (s.alt && G.hasSprite(s.ent, s.base)) { nextSeries(); return; }
         if (G.hasSprite(s.ent, s.base) && s.base !== "chantier" && s.base !== "gauche" && s.base !== "droite") {
           // idle tour/scierie : anime les frames du sprite manifeste deja charge.
           nextSeries();

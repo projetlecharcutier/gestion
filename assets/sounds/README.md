@@ -17,6 +17,7 @@ quand un effet est déclenché (tolérant : aucun fichier = pas de son).
 | `church.mp3`     | Clic sur l'église (dépot de relique) |
 | `siegeCasse.mp3` | Une tour de siège est détruite |
 | `siegeOpen.mp3`  | Une tour de siège se colle à un mur |
+| `potence.mp3`    | Une execution a lieu sur la potence (vote de pendaison abouti) |
 
 Pour ajouter un nouvel effet : dépose le fichier `assets/sounds/<nom>.mp3`
 puis appelle `G.playSfx("<nom>")` dans le code au moment voulu.

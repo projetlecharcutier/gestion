@@ -896,6 +896,21 @@
       if (hungP && hungP.alive) {
         hungP.alive = false;
         hungP.hp = 0;
+        // Execution scenique : la potence horodate la sentence (execAt, meme
+        // horloge pour tous les clients) et l'evenement broadcast diffuse le
+        // nom du pendu + la position du batiment. Chaque client joue le son,
+        // zoome sur la potence et affiche l'animation exec ; le pendu, lui,
+        // voit l'execution PUIS son ecran de fin individuel.
+        if (state.potence && state.potence.chantierDone) {
+          state.potence.execAt = state.time;
+          state.potence.execName = hungP.name;
+          pushEvent(null, {
+            t: "execution",
+            name: hungP.name,
+            x: Math.round(state.potence.x + state.potence.w / 2),
+            y: Math.round(state.potence.y + state.potence.h / 2)
+          });
+        }
         var anyAliveAfterHang = false;
         for (var hai = 0; hai < state.players.length; hai++) {
           if (state.players[hai].alive) { anyAliveAfterHang = true; break; }
@@ -1010,7 +1025,10 @@
       x: Math.round(b.x), y: Math.round(b.y),
       w: Math.round(b.w), h: Math.round(b.h),
       chantierDone: !!b.chantierDone,
-      buildAge: +(state.time - b.builtAt).toFixed(1)
+      buildAge: +(state.time - b.builtAt).toFixed(1),
+      // Execution en cours (potence) : age de la sentence, DELTA de temps
+      // (les horloges client/serveur different, cf. palissades/grace).
+      execAge: b.execAt !== undefined ? +(state.time - b.execAt).toFixed(2) : undefined
     };
   }
 

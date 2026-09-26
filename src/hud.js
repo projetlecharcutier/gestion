@@ -282,7 +282,11 @@
     var dead = state.gameOverCause === "mairie";
     ctx.fillStyle = t.title;
     ctx.font = "bold 24px Segoe UI, system-ui, sans-serif";
-    ctx.fillText(dead ? "La Mairie est détruite" : "Vous êtes mort", bx + bw / 2, y);
+    // Pendu par la potence : titre dedie, la mort n'a pas la meme cause qu'un
+    // zombie (vote des autres joueurs).
+    ctx.fillText(dead ? "La Mairie est détruite"
+      : (state.hungByPotence ? "Vous avez été pendu" : "Vous êtes mort"),
+      bx + bw / 2, y);
     y += 24;
     ctx.fillStyle = t.text;
     ctx.font = "14px Segoe UI, system-ui, sans-serif";

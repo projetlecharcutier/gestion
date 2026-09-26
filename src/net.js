@@ -167,6 +167,11 @@
       // Floaters en cours : messages de la partie finie ("... est mort",
       // "vote echoue"...) qui n'ont plus de sens sur la nouvelle carte.
       if (G.state.floaters) G.state.floaters.length = 0;
+      // Pendu : la memoire d'execution (joueur masque, focus camera, cause)
+      // est perimee sur la nouvelle partie, le joueur repart visible.
+      G.state.playerHidden = false;
+      G.state.hungByPotence = false;
+      G.state._execFocus = null;
       if (msg.map) {
         G.state.buildings = msg.map.buildings || [];
         _applyHouseSprites(G.state.buildings);
@@ -218,6 +223,25 @@
       }
       if (ev.t === "eat" && G.addFloater) G.addFloater("Nourriture (Soin)");
       if (ev.t === "msg" && G.addFloater) G.addFloater(ev.msg);
+      if (ev.t === "execution") {
+        // Execution sur la potence (vote de pendaison abouti) : son dedie,
+        // animation de la potence synchronisee (execAt local) et zoom camera
+        // sur le batiment pour que TOUT le monde voie la scene. Le pendu
+        // voit l'execution puis son ecran de fin individuel (differe de la
+        // duree de l'animation) ; les autres joueurs restent en jeu avec la
+        // confirmation par floater.
+        var pot = G.state.potence;
+        if (pot) pot.execAt = (G.state.time || 0);
+        if (G.playSfx) G.playSfx("potence");
+        G.state._execFocus = {
+          x: ev.x, y: ev.y,
+          name: ev.name,
+          until: (G.state.time || 0) + (G.POTENCE_EXEC_TIME || 4),
+          hungMe: !!(G.state.playerName && ev.name === G.state.playerName),
+          prevZoom: G.state.targetZoom || 8
+        };
+        if (G.addFloater) G.addFloater(ev.name + " a \u00e9t\u00e9 pendu");
+      }
       if (ev.t === "montgolfiere") {
         // Decollage declenche cote serveur : on aligne l'animation locale du
         // batiment (meme horloge pour tous les clients).
@@ -316,6 +340,13 @@
           local.chantierDone = snap2.chantierDone;
           if (snap2.buildAge !== undefined) {
             local.builtAt = (state.time || 0) - snap2.buildAge;
+          }
+          // Potence : age serveur de la sentence (execAge) -> horodatage
+          // local, meme mecanique que montgolfiereAnim (horloges client et
+          // serveur differentes, on ne transmet que des deltas de temps).
+          if (tb === "potence" && snap2.execAge !== undefined) {
+            local.execAt = (state.time || 0) - snap2.execAge;
+            if (snap2.execAge < 0) local.execAt = state.time || 0;
           }
           state[tdef.stateField] = local;
         }
@@ -571,10 +602,17 @@
         }
       }
       // Mort du joueur local : game over individuel (le gameOver global du
-      // serveur reste reserve a la destruction de la mairie).
+      // serveur reste reserve a la destruction de la mairie). Pendu : la mort
+      // arrive PENDANT l'animation d'execution (state._execFocus) -> on
+      // marque la mort mais l'ecran de fin ne s'affiche qu'a la fin de la
+      // scene (main.js declenche le gameOver a until).
       if (meDead && !state.gameOver) {
-        state.gameOver = true;
-        state.gameOverCause = "player";
+        if (state._execFocus && state._execFocus.hungMe) {
+          state.playerHidden = true;
+        } else {
+          state.gameOver = true;
+          state.gameOverCause = "player";
+        }
       }
     }
   };

@@ -310,7 +310,17 @@
       // chantier pendant la construction, idle ensuite.
       var tbEnt = b.townBuilding;
       var scKey = b.chantierDone ? "idle" : "chantier";
-      if (G.hasSprite(tbEnt, scKey)) { sprite = G.SPRITES[tbEnt][scKey]; spriteEnt = tbEnt; spriteKey = scKey; }
+      // Potence : vote de pendaison abouti -> la serie exec (animation
+      // d'execution, un seul tour sur POTENCE_EXEC_TIME) remplace idle.
+      var execKey = null;
+      if (tbEnt === "potence" && b.chantierDone && b.execAt !== undefined &&
+          (G.state.time - b.execAt) < (G.POTENCE_EXEC_TIME || 4) + 0.5) {
+        execKey = "exec";
+      }
+      if (execKey && G.hasSprite(tbEnt, execKey)) {
+        sprite = G.SPRITES[tbEnt][execKey]; spriteEnt = tbEnt; spriteKey = execKey;
+      }
+      else if (G.hasSprite(tbEnt, scKey)) { sprite = G.SPRITES[tbEnt][scKey]; spriteEnt = tbEnt; spriteKey = scKey; }
       else if (G.hasSprite(tbEnt, "idle")) { sprite = G.SPRITES[tbEnt].idle; spriteEnt = tbEnt; spriteKey = "idle"; }
     }
     else if (G.hasSprite("building", "generic")) { sprite = G.SPRITES.building.generic; spriteEnt = "building"; spriteKey = "generic"; }
@@ -330,6 +340,17 @@
         if (ob && ob.y1 < 1) opaqueDrop = (1 - ob.y1) * dh;
       }
       var scImg = G.animImg(sprite, G.state.time);
+      // Potence : animation d'execution en un seul tour (figee sur la
+      // derniere frame apres POTENCE_EXEC_TIME), pas de boucle idle.
+      if (b.townBuilding === "potence" && spriteKey === "exec" && sprite.frames && sprite.frames.length > 1) {
+        var ext = G.state.time - (b.execAt || 0);
+        var exn = sprite.frames.length;
+        var exDur = (G.POTENCE_EXEC_TIME || 4) / exn;
+        var exFi = Math.floor(ext / exDur);
+        if (exFi > exn - 1) exFi = exn - 1;
+        if (exFi < 0) exFi = 0;
+        scImg = sprite.frames[exFi];
+      }
       if (b.townBuilding && !b.chantierDone) {
         // Chantier : la boucle de frames ne fait qu'UN tour sur TOWER_BUILD_TIME
         // (frame figée sur la dernière si le temps depasse), pas de cycle libre.
@@ -1281,12 +1302,15 @@
 
     drawables.sort(function (a, b) { return a.depth - b.depth; });
 
+    // Pendu (execution en cours ou mort) : le joueur local disparait de la
+    // scene des que la sentence tombe, comme les zombies et les joueurs
+    // distants morts.
+    var pHidden = !!state.playerHidden || (state.gameOver && state.gameOverCause === "player");
     var drewPlayer = false;
     for (var k = 0; k < drawables.length; k++) {
       var d = drawables[k];
       if (!drewPlayer && pDepth < d.depth) {
-        G.drawPlayer();
-        G.drawPlayerHpBar();
+        if (!pHidden) { G.drawPlayer(); G.drawPlayerHpBar(); }
         drewPlayer = true;
       }
       if (d.type === "building") G.drawBuilding(d.ref);
@@ -1297,7 +1321,7 @@
       else if (d.type === "bird") G.drawBird(d.ref);
       else if (d.type === "player") G.drawRemotePlayer(d.ref);
     }
-    if (!drewPlayer) { G.drawPlayer(); G.drawPlayerHpBar(); }
+    if (!drewPlayer && !pHidden) { G.drawPlayer(); G.drawPlayerHpBar(); }
     // Objets au sol : dessines APRES la passe triee, au-dessus des batiments
     // et des forets — un objet ne doit jamais etre cache par une maison ou un
     // arbre (il reste toujours visible/ramassable).

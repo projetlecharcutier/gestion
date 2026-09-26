@@ -140,6 +140,29 @@
       }
     }
 
+    // Execution sur la potence (vote de pendaison abouti) : la camera glisse
+    // vers le batiment pour que tout le monde voie la scene (zoom inclus).
+    // Le pendu voit l'animation AVANT son ecran de fin : son game over
+    // individuel est differe jusqu'a la fin de l'animation.
+    if (state._execFocus) {
+      var ef = state._execFocus;
+      if (state.time >= ef.until) {
+        if (ef.hungMe && !state.gameOver) {
+          state.gameOver = true;
+          state.gameOverCause = "player";
+          state.hungByPotence = true;
+        }
+        // Le zoom reprend sa valeur d'avant la scene (le joueur reprend la
+        // main, la camera retourne vers son personnage).
+        if (ef.prevZoom) state.targetZoom = ef.prevZoom;
+        state._execFocus = null;
+      } else {
+        var k = Math.min(1, dt * 4);
+        state.camera.x += (ef.x - state.camera.x) * k;
+        state.camera.y += (ef.y - state.camera.y) * k;
+        if (state.targetZoom < 14) state.targetZoom = 14;
+      }
+    }
     state.camera.x += (state.player.x - state.camera.x) * Math.min(1, dt * 6);
     state.camera.y += (state.player.y - state.camera.y) * Math.min(1, dt * 6);
 
