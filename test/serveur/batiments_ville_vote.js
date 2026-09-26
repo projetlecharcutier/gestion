@@ -27,14 +27,16 @@ for (var i = 0; i < 320; i++) srv.tick(0.05);
 assert(st.universiteUnlocked, "universite debloquee apres vote");
 assert(st.mairieGold === 90, "or debite (obtenu " + st.mairieGold + ")");
 
-// 2) Pose universite en ville (flux reel)
+// 2) Pose universite en ville (flux reel) : l'emprise cherchee est celle
+// du registre (side 80 depuis le passage x2 de l'universite).
+var uSide = G.TOWN_BUILDINGS.universite.side;
 var spot = null;
 outer:
 for (var r = 150; r <= 900 && !spot; r += 30) {
   for (var a = 0; a < 24; a++) {
     var px = mairie.x + mairie.w / 2 + Math.cos(a / 24 * Math.PI * 2) * r;
     var py = mairie.y + mairie.h / 2 + Math.sin(a / 24 * Math.PI * 2) * r;
-    if (G.inTown(px, py) && G.towerSpotFree(px - 20, py - 20, 40, 40)) { spot = [px, py]; break outer; }
+    if (G.inTown(px, py) && G.towerSpotFree(px - uSide / 2, py - uSide / 2, uSide, uSide)) { spot = [px, py]; break outer; }
   }
 }
 assert(spot, "spot libre en ville");
@@ -42,7 +44,7 @@ pa._buildSel = "universite";
 pa._placeBuild = { x: spot[0], y: spot[1] };
 srv.tick(0.05);
 assert(st.universite, "universite posee cote serveur");
-assert(st.universite.w === 80, "universite emprise 80 (x2)");
+assert(st.universite.w === uSide, "universite emprise " + uSide + " (x2)");
 var bInBuildings = st.buildings.some(function (b) { return b.townBuilding === "universite"; });
 assert(bInBuildings, "universite dans buildings");
 
