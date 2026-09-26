@@ -61,6 +61,47 @@
     return (typeof r === "number" && r >= 1) ? r : 1;
   };
 
+  // ---- Repartition des zombies sur les 4 murs ----
+  // Le champ BFS descend tous les gradients vers le point de couronne le
+  // plus proche : un groupe qui arrive en diagonale est absorbe par un ANGLE
+  // de la ville au lieu de se repartir sur un mur. Chaque groupe recoit donc
+  // un mur de la palissade (navSide : 0=nord, 1=sud, 2=ouest, 3=est, -1=le
+  // plus proche) et une abscisse curviligne normalisee (navT) tiree au
+  // hasard : les groupes se placent sur TOUT le perimetre au lieu de
+  // s'empiler sur les points les plus proches (les angles restent des
+  // passages possibles, plus des attracteurs).
+  function navTargetOf(grp) {
+    var pad = 20;
+    var side = grp.navSide;
+    if (side === 0) return { x: G.TOWN_MIN + (G.TOWN + pad * 2) * (grp.navT - 0.5), y: G.TOWN_MIN - pad, side: 0 };
+    if (side === 1) return { x: G.TOWN_MIN + (G.TOWN + pad * 2) * (grp.navT - 0.5), y: G.TOWN_MAX + pad, side: 1 };
+    if (side === 2) return { x: G.TOWN_MIN - pad, y: G.TOWN_MIN + (G.TOWN + pad * 2) * (grp.navT - 0.5), side: 2 };
+    if (side === 3) return { x: G.TOWN_MAX + pad, y: G.TOWN_MIN + (G.TOWN + pad * 2) * (grp.navT - 0.5), side: 3 };
+    // side -1 (indefini, siege...) : mur le plus proche du chef.
+    var best = null, bestD = Infinity;
+    var cand = [
+      { x: G.clamp(grp.x, G.TOWN_MIN, G.TOWN_MAX), y: G.TOWN_MIN - pad, side: 0 },
+      { x: G.clamp(grp.x, G.TOWN_MIN, G.TOWN_MAX), y: G.TOWN_MAX + pad, side: 1 },
+      { x: G.TOWN_MIN - pad, y: G.clamp(grp.y, G.TOWN_MIN, G.TOWN_MAX), side: 2 },
+      { x: G.TOWN_MAX + pad, y: G.clamp(grp.y, G.TOWN_MIN, G.TOWN_MAX), side: 3 }
+    ];
+    for (var ci = 0; ci < cand.length; ci++) {
+      var cd = (cand[ci].x - grp.x) * (cand[ci].x - grp.x) + (cand[ci].y - grp.y) * (cand[ci].y - grp.y);
+      if (cd < bestD) { bestD = cd; best = cand[ci]; }
+    }
+    return best;
+  }
+  // Un zombie est-il "a proximite de la ville" (anneau de palissade elargi) ?
+  // Sert a desactiver la manoeuvre anti-blocage pres des murs : colle a la
+  // palissade, un zombie bloque doit PRESSER le mur (les fouisseurs cherchent
+  // une faille), pas reculer.
+  function nearTown(x, y) {
+    var m = G.ZOMBIE_UNSTICK_TOWN || 250;
+    var cx = G.clamp(x, G.TOWN_MIN - m, G.TOWN_MAX + m);
+    var cy = G.clamp(y, G.TOWN_MIN - m, G.TOWN_MAX + m);
+    return (x - cx) * (x - cx) + (y - cy) * (y - cy) < m * m;
+  }
+
   G.rollWave = function (day) {
     var state = G.state;
     var count = G.ZOMBIE_PER_WAVE_BASE * Math.pow(G.ZOMBIE_WAVE_GROWTH, day);
@@ -132,7 +173,9 @@
       var grp = { x: lx, y: ly, members: [], hasRaider: false, spawnSide: side,
                   formation: Math.floor(Math.random() * 4),
                   formPhase: Math.random() * Math.PI * 2,
-                  isHorde: false, retreat: false, hordeMsgShown: false };
+                  isHorde: false, retreat: false, hordeMsgShown: false,
+                  navSide: (sides.length > 1 ? g % 4 : Math.floor(Math.random() * 4)),
+                  navT: Math.random() };
       state.zombieGroups.push(grp);
       var n = Math.min(G.GROUP_SIZE, count - g * G.GROUP_SIZE);
       for (var k = 0; k < n; k++) {
@@ -499,7 +542,21 @@
                 raiderCible = { x: rbPt.x, y: rbPt.y, isPlayer: false, wall: rb };
               }
             }
+            // Objectif de marche : le point du mur assigne au groupe (repartition
+          // sur tout le perimetre). La mairie reste la cible FINALE (jeu
+          // perdu si elle tombe) et reste visee quand le chef est deja dans
+          // la ville ou quand le mur assigne n'existe plus.
+          var navPt = (grp.navSide === undefined) ? null : navTargetOf(grp);
+          var navOk = false;
+          if (navPt) {
+            var npd = Math.sqrt((navPt.x - grp.x) * (navPt.x - grp.x) + (navPt.y - grp.y) * (navPt.y - grp.y));
+            navOk = npd > 30;
+          }
+          if (navOk) {
+            cible = raiderCible || { x: navPt.x, y: navPt.y, isPlayer: false, town: true };
+          } else {
             cible = raiderCible || { x: mairie.x + mairie.w / 2, y: mairie.y + mairie.h / 2, isPlayer: false, mairie: mairie };
+          }
           }
         } else {
           cible = { x: G.WORLD / 2, y: G.WORLD / 2, isPlayer: false };
@@ -570,12 +627,53 @@
           // quand il est disponible — il contourne les massifs par le chemin
           // le plus court. Repli sur la ligne droite si la cellule est hors
           // champ (poche fermee : l'evasion locale prend le relais).
-          var gNavAng = G.navAngle ? G.navAngle(grp.x, grp.y) : null;
+          // La fleche du champ ne guide que si l'objectif est encore LOIN :
+          // elle descend le gradient vers le point de couronne le plus proche
+          // (un angle pour un groupe diagonal) ; sous NAV_DIRECT_DIST, cap
+          // direct sur l'objectif (mur assigne, joueur, bruit) pour que le
+          // groupe se repande sur le mur au lieu d'etre aspire par le coin.
+          var gNavAng = null;
+          var ld2 = Math.sqrt((cible.x - grp.x) * (cible.x - grp.x) + (cible.y - grp.y) * (cible.y - grp.y));
+          if (G.navAngle && ld2 > (G.ZOMBIE_NAV_DIRECT_DIST || 700)) {
+            gNavAng = G.navAngle(grp.x, grp.y);
+          }
           var gBaseAng = (gNavAng !== null && gNavAng !== undefined) ? gNavAng : Math.atan2(ldy, ldx);
           var gStep = 16;
           var gMove = grpSpeed * dt;
           var gDone = 0;
           var gHalf = 6;
+          var gStartD = Math.sqrt((cible.x - grp.x) * (cible.x - grp.x) + (cible.y - grp.y) * (cible.y - grp.y));
+          if (grp.unstick) {
+            // Manoeuvre de degagement en cours : cap impose (oppose au
+            // blocage, puis a 90 degres), mouvement direct en sous-pas avec
+            // collision foret/bords. Le whisker est suspendu le temps de la
+            // manoeuvre : il reprend apres (grp.foretCurAng nettoye).
+            var uAng = grp.unstick.ang;
+            var uDone = 0;
+            while (uDone < gMove - 0.001) {
+              var uInc = Math.min(gStep, gMove - uDone);
+              var uX = grp.x + Math.cos(uAng) * uInc;
+              var uY = grp.y + Math.sin(uAng) * uInc;
+              var uMoved = false;
+              if (uX > 12 && uX < G.WORLD - 12 && !G.aabbHitsForets(uX, grp.y, gHalf)) { grp.x = uX; uMoved = true; }
+              if (uY > 12 && uY < G.WORLD - 12 && !G.aabbHitsForets(grp.x, uY, gHalf)) { grp.y = uY; uMoved = true; }
+              if (!uMoved) break;
+              uDone += uInc;
+            }
+            grp.unstick.t -= dt;
+            if (grp.unstick.t <= 0) {
+              if (grp.unstick.phase === "back") {
+                // 2e temps : 90 degres par rapport a la direction opposee
+                // (= perpendiculaire au blocage) pour decrocher le long de
+                // l'obstacle avant de rendre la main au pathfinding.
+                grp.unstick = { phase: "side", ang: grp.unstick.base + grp.unstick.side * Math.PI / 2,
+                                t: G.ZOMBIE_UNSTICK_SIDE, base: grp.unstick.base, side: grp.unstick.side };
+              } else {
+                grp.unstick = null;
+                grp.unstickCd = G.ZOMBIE_UNSTICK_CD;
+              }
+            }
+          } else {
           while (gDone < gMove - 0.001) {
             var gInc = Math.min(gStep, gMove - gDone);
             var gMoved = false;
@@ -613,6 +711,29 @@
               grp.foretCurAng = undefined;
             }
             gDone += gInc;
+          }
+          }
+          // Anti-blocage : apres ZOMBIE_UNSTICK_TIME secondes sans progresser
+          // (la distance a l'objectif n'a pas baisse) et LOIN de la ville,
+          // le chef declenche la manoeuvre de degagement. Le glissement le
+          // long d'un obstacle produit du deplacement mais aucun progres :
+          // la mesure est la REDUCTION de distance a la cible, pas le
+          // deplacement brut. Pres de la palissade, un chef bloque doit
+          // presser le mur, pas reculer.
+          if (!grp.unstick) {
+            var gEndD = Math.sqrt((cible.x - grp.x) * (cible.x - grp.x) + (cible.y - grp.y) * (cible.y - grp.y));
+            if (!nearTown(grp.x, grp.y) && gEndD > gStartD - gMove * 0.25) {
+              grp.stuckT = (grp.stuckT || 0) + dt;
+              if (grp.stuckT >= G.ZOMBIE_UNSTICK_TIME && !(grp.unstickCd > 0)) {
+                grp.unstick = { phase: "back", ang: gBaseAng + Math.PI, t: G.ZOMBIE_UNSTICK_BACK,
+                                base: gBaseAng, side: grp.foretSeekDir || 1 };
+                grp.foretCurAng = undefined;
+                grp.stuckT = 0;
+              }
+            } else {
+              grp.stuckT = 0;
+            }
+            if (grp.unstickCd > 0) grp.unstickCd -= dt;
           }
         }
         for (var mi = 0; mi < grp.members.length; mi++) {
@@ -764,6 +885,41 @@
               sd = Math.sqrt(sx * sx + sy * sy) || 1;
             }
             if (sd > 4) {
+                // Anti-blocage membre : maneuvre de degagement en cours (cap
+                // impose : oppose au blocage puis 90 degres), le zombie
+                // ignore slots/wander/flow field jusqu'a la fin de la
+                // maneuvre. Pres de la ville, jamais de maneuvre : un zombie
+                // bloque contre la palissade doit la presser.
+                if (z.unstick) {
+                  var zsU = G.ZOMBIE_HALF;
+                  var zMoveU = grpSpeed * z.speedFactor * dt;
+                  var zDoneU = 0;
+                  while (zDoneU < zMoveU - 0.001) {
+                    var incU = Math.min(8, zMoveU - zDoneU);
+                    var uX = z.x + Math.cos(z.unstick.ang) * incU;
+                    var uY = z.y + Math.sin(z.unstick.ang) * incU;
+                    var uMoved = false;
+                    if (!G.aabbHitsWalls(uX - zsU, z.y - zsU, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(uX, z.y, zsU) && !G.hitsSiegeFoot(uX - zsU, z.y - zsU, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = uX; uMoved = true; }
+                    if (!G.aabbHitsWalls(z.x - zsU, uY - zsU, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(z.x, uY, zsU) && !G.hitsSiegeFoot(z.x - zsU, uY - zsU, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = uY; uMoved = true; }
+                    if (!uMoved) break;
+                    zDoneU += incU;
+                  }
+                  z.unstick.t -= dt;
+                  if (z.unstick.t <= 0) {
+                    if (z.unstick.phase === "back") {
+                      z.unstick = { phase: "side", ang: z.unstick.base + z.unstick.side * Math.PI / 2,
+                                    t: G.ZOMBIE_UNSTICK_SIDE, base: z.unstick.base, side: z.unstick.side };
+                    } else {
+                      z.unstick = null;
+                      z.unstickCd = G.ZOMBIE_UNSTICK_CD;
+                    }
+                  }
+                } else {
+                // Distance au point de marche AVANT le mouvement : la
+                // progression se mesure en reduction de cette distance (le
+                // glissement le long d'un obstacle deplace le zombie sans
+                // le rapprocher de son objectif).
+                var zStartD = Math.sqrt(sx * sx + sy * sy);
                 // Cap de marche perturbé par une oscillation lente propre au
                 // zombie ("drunken walk") : on dérive le cap de ±ZOMBIE_WANDER_AMP
                 // autour de la direction cible.
@@ -920,6 +1076,29 @@
                 } else {
                   z.blockedSides = 0;
                 }
+                // Anti-blocage membre : apres ZOMBIE_UNSTICK_TIME secondes
+                // sans progresser (moins de 25% de la distance voulue) et
+                // LOIN de la ville, declenche la maneuvre oppose puis 90
+                // degres. La direction opposee est calculee par rapport au
+                // cap reellement tente (mvAng), pas par rapport a la cible :
+                // c'est le blocage qu'il faut fuir, pas l'objectif.
+                if (!z.unstick) {
+                  var zEx = (zcible.isPlayer ? zcible.x : (arrive ? zcible.x : tx)) - z.x;
+                  var zEy = (zcible.isPlayer ? zcible.y : (arrive ? zcible.y : ty)) - z.y;
+                  var zEndD = Math.sqrt(zEx * zEx + zEy * zEy);
+                  if (!nearTown(z.x, z.y) && zEndD > zStartD - zMove * 0.25) {
+                    z.stuckT = (z.stuckT || 0) + dt;
+                    if (z.stuckT >= G.ZOMBIE_UNSTICK_TIME && !(z.unstickCd > 0)) {
+                      z.unstick = { phase: "back", ang: mvAng + Math.PI, t: G.ZOMBIE_UNSTICK_BACK,
+                                    base: mvAng, side: z.foretSeekDir || z.seekDir || 1 };
+                      z.stuckT = 0;
+                    }
+                  } else {
+                    z.stuckT = 0;
+                  }
+                  if (z.unstickCd > 0) z.unstickCd -= dt;
+                }
+                } // fin mouvement normal (hors maneuvre anti-blocage)
             }
           }
           // Séparation : repousse le zombie hors de ses voisins trop proches

@@ -234,6 +234,25 @@
   G.ZOMBIE_FORET_REORIENT = 360;
   // Vitesse de glissement le long d'un mur pour les fouisseurs (px/s).
   G.ZOMBIE_SEEK_SLIDE = 90;
+  // --- Anti-blocage (manoeuvre de degagement) ---
+  // Apres ZOMBIE_UNSTICK_TIME secondes sans progresser, un zombie qui n'est
+  // pas a proximite de la ville (ZOMBIE_UNSTICK_TOWN = marge hors palissade)
+  // prend la direction opposee au blocage pendant ZOMBIE_UNSTICK_BACK
+  // secondes, puis ZOMBIE_UNSTICK_SIDE secondes a 90 degres, avant de
+  // reprendre la navigation normale. ZOMBIE_UNSTICK_CD = repos minimal
+  // entre deux manoeuvres. Pris dans ou contre l'anneau de palissade, un
+  // zombie bloque continue de presser le mur : pas de manoeuvre.
+  G.ZOMBIE_UNSTICK_TIME = 5;
+  G.ZOMBIE_UNSTICK_BACK = 1;
+  G.ZOMBIE_UNSTICK_SIDE = 1;
+  G.ZOMBIE_UNSTICK_CD = 3;
+  G.ZOMBIE_UNSTICK_TOWN = 250;
+  // Cap du chef : la fleche du champ de navigation ne sert que pour un
+  // objectif VILLE encore lointain ; sous ZOMBIE_NAV_DIRECT_DIST px (ou hors
+  // champ, ou poursuite/retraite), cap direct. La fleche descend vers le
+  // point de couronne le plus proche — un angle pour un groupe diagonal —
+  // et concentrerait les hordes sur les coins de la ville.
+  G.ZOMBIE_NAV_DIRECT_DIST = 700;
   // --- Comportement de rassemblement ---
   // Mode horde : seuil de membres pour qu'un groupe devienne une horde, bonus
   // de vitesse en mode horde, et distance de formation dense en horde.

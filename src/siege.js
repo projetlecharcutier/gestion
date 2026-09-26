@@ -187,6 +187,7 @@
                   formation: Math.floor(Math.random() * 4),
                   formPhase: Math.random() * Math.PI * 2,
                   isHorde: false, retreat: false, hordeMsgShown: false,
+                  navSide: -1, navT: 0.5,
                   releasedBySiege: true };
       state.zombieGroups.push(grp);
       var n = Math.min(G.GROUP_SIZE, total - gi * G.GROUP_SIZE);
