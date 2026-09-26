@@ -430,6 +430,7 @@
     if (s.marcheUnlocked !== undefined) state.marcheUnlocked = !!s.marcheUnlocked;
     if (s.potenceUnlocked !== undefined) state.potenceUnlocked = !!s.potenceUnlocked;
     if (s.waveCount !== undefined) state.waveCount = s.waveCount;
+    if (s.zombiesAlive !== undefined) state.zombiesAlive = s.zombiesAlive;
     if (s.zombieRamp !== undefined) state.zombieRamp = s.zombieRamp;
     if (s.waveActive !== undefined) state.waveActive = s.waveActive;
     if (s.waveMsgTimer !== undefined) state.waveMsgTimer = s.waveMsgTimer;

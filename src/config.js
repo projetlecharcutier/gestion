@@ -284,7 +284,7 @@
   G.MAIRIE_SCALE = 1.4;
   G.ZOMBIE_HP = 1;
   G.ZOMBIE_ATTACK_CD = 1.0;
-  G.WALL_PLANKS = 4;
+  G.WALL_PLANKS = 2;
   G.WALL_BUILD_RANGE = 180;
   G.TREE_CHOP_TIME = 1;
   G.AXE_RANGE = 120;
@@ -386,7 +386,7 @@
       stateField: "marche",
       unlockedField: "marcheUnlocked",
       cost: { planks: 100, gold: 10 },
-      side: 48,
+      side: 67,
       msg: "Le marché vend des armes et des objets contre l'or du coffre de la mairie.",
       onClick: "marche"
     },

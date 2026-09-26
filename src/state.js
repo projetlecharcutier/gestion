@@ -130,6 +130,7 @@
     nextWaveAt: G.WAVE_EVERY,
     waveActive: false,
     waveCount: 0,
+    zombiesAlive: 0,
     zombieRamp: 1,
     waveLeaveAt: 0,
     waveSpawnedForDay: false,

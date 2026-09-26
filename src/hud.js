@@ -116,7 +116,12 @@
     ctx.fillStyle = t.dayColor;
     ctx.font = "bold 16px Segoe UI, system-ui, sans-serif";
     ctx.fillText("Jour " + G.state.day, W - 14, 52);
-    var live = G.state.zombies.length;
+    // Compteur de zombies : EN LIGNE, state.zombies ne contient que les
+    // zombies dans le rayon de culling du joueur (SNAP_ZOMBIE_RANGE) — le
+    // compteur paraissait faux. Le serveur diffuse le total vivant de toute
+    // la carte (zombiesAlive) ; en solo, state.zombies EST la carte entiere.
+    var live = (G.state.zombiesAlive !== undefined && (G.netConnected && G.netConnected()))
+      ? G.state.zombiesAlive : G.state.zombies.length;
     if (G.state.waveActive) {
       ctx.fillStyle = t.waveColor;
       ctx.font = "bold 14px Segoe UI, system-ui, sans-serif";

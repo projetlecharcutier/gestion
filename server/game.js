@@ -1148,6 +1148,10 @@
         voters: countYesVotes() + countNoVotes()
       } : null,
       waveCount: state.waveCount || 0,
+      // Total des zombies VIVANTS sur toute la carte (pas seulement dans le
+      // rayon de vue du joueur) : le HUD affiche ce nombre, sinon le compteur
+      // tombait a 0 des qu'un zombie sortait du rayon de culling.
+      zombiesAlive: state.zombies.length,
       zombieRamp: state.zombieRamp || 1,
       waveActive: state.waveActive || false,
       waveMsgTimer: state.waveMsgTimer || 0,

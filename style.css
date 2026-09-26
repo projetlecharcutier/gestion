@@ -251,6 +251,41 @@ canvas#game {
 .guide__card--wide p { text-align: left; }
 
 .chest__vault { margin: 10px 0; padding: 8px 10px; background: #0f172a; border: 1px solid var(--panel-border); border-radius: 6px; font-size: 0.95rem; color: #cbd5e1; min-height: 2.4em; }
+
+/* Mairie : fenetre a deux colonnes — technologies a gauche, coffre a droite. */
+.panel--mairie { max-width: 720px; }
+.mairie__cols { display: flex; gap: 14px; align-items: flex-start; }
+.mairie__col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+.mairie__col--tech { border-right: 1px solid var(--panel-border); padding-right: 14px; }
+.mairie__title { margin: 0 0 6px; font-size: 1.05rem; color: var(--accent-soft); }
+@media (max-width: 640px) {
+  .mairie__cols { flex-direction: column; }
+  .mairie__col--tech { border-right: none; padding-right: 0; border-bottom: 1px solid var(--panel-border); padding-bottom: 10px; }
+}
+
+/* Marche : petite animation d'achat — le bouton pulse et passe au vert,
+   l'objet arrive dans le sac. */
+@keyframes marche-buy-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.btn.marche__bought {
+  animation: marche-buy-pop 0.45s ease-out;
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+/* Ligne de livraison : "→ Fusil livré dans votre sac" apres un achat. */
+.marche__delivery {
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  background: #22c55e1f;
+  border: 1px solid #22c55e;
+  border-radius: 6px;
+  color: #4ade80;
+  font-size: 0.95rem;
+}
 .chest__bag { margin: 8px 0; }
 .chest__list { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; }
 .chest__list p { color: #64748b; text-align: center; }

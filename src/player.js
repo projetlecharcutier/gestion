@@ -335,11 +335,30 @@
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "btn chest__item";
-      btn.textContent = m.name + " — " + m.price + " pièces d'or" + (m.kind === "arme" ? " (arme)" : " (objet)");
+      // Animation d'achat : le bouton du dernier objet achete pulse au vert
+      // (classe marche__bought, cf. style.css) pour confirmer visuellement
+      // que l'achat a bien ete pris en compte et livre dans le sac.
+      var bought = state._marcheBought;
+      if (bought && bought.name === m.name && (state.time - bought.t) < 1.5) {
+        btn.className += " marche__bought";
+        btn.textContent = "✓ " + m.name + " acheté ! — " + m.price + " pièces d'or" + (m.kind === "arme" ? " (arme)" : " (objet)");
+      } else {
+        btn.textContent = m.name + " — " + m.price + " pièces d'or" + (m.kind === "arme" ? " (arme)" : " (objet)");
+      }
       (function (name) {
         btn.addEventListener("click", function () { G.buyMarcheItem(name); });
       })(m.name);
       wrap.appendChild(btn);
+    }
+    // Livraison : l'objet achete arrive dans le sac — ligne de confirmation
+    // visible dans le panneau (le bouton pulse, cette ligne precise OU est
+    // l'objet : dans votre sac).
+    var del = state._marcheBought;
+    if (del && (state.time - del.t) < 1.5) {
+      var dlv = document.createElement("p");
+      dlv.className = "marche__delivery";
+      dlv.textContent = "\u2192 " + del.name + " livr\u00e9 dans votre sac (inventaire : " + state.bag.contents.length + ")";
+      wrap.appendChild(dlv);
     }
     list.appendChild(wrap);
   };
@@ -352,6 +371,9 @@
     if (!m) return;
     if (G.netConnected && G.netConnected()) {
       G.netInput({ marketBuy: name });
+      // Animation d'achat en ligne aussi : le serveur confirme par evenement,
+      // mais le bouton pulse immediatement (retour optimiste, cf. ci-dessous).
+      state._marcheBought = { name: name, t: state.time || 0 };
       G.drawMarche();
       return;
     }
@@ -361,6 +383,10 @@
     }
     state.mairieGold -= m.price;
     state.bag.contents.push({ name: m.name, kind: m.kind, color: m.color });
+    // Animation d'achat : marque le bouton pour le rendu pulse au vert
+    // (drawMarche) ; la livraison est confirmee par une ligne dans le panneau
+    // (le sac est dessine sur le canvas, invisible sous l'overlay DOM).
+    state._marcheBought = { name: name, t: state.time || 0 };
     // Compteur d'inventaire du HUD : comme le pickup (input.js), l'achat au
     // marche doit l'incrementer, sinon le HUD n'affiche jamais le nouvel
     // objet (le sac l'affiche, mais le compteur reste figé et le joueur

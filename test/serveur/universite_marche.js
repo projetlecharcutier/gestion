@@ -41,7 +41,7 @@ pa._buildSel = "universite";
 pa._placeBuild = { x: su[0], y: su[1] };
 srv.tick(0.05);
 assert(st.universite, "universite posee");
-var sm = findSpot(48);
+var sm = findSpot(67);
 pa._buildSel = "marche";
 pa._placeBuild = { x: sm[0], y: sm[1] };
 srv.tick(0.05);

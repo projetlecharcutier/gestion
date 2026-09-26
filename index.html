@@ -177,13 +177,22 @@
   </div>
 
   <div class="overlay" id="chestScreen" hidden>
-    <div class="panel">
-      <h2>🏛️ Coffre de la Mairie</h2>
-      <p class="panel__sub">Déposez vos objets ici. Cliquez sur un objet du sac pour le déposer, ou sur un objet du coffre pour le récupérer.</p>
+    <div class="panel panel--mairie">
+      <h2>🏛️ Mairie</h2>
       <p class="panel__sub">Or du coffre : <b id="chestGold">0</b></p>
-      <div class="chest__vault" id="chestTech"></div>
-      <div class="chest__vault" id="chestVault">Coffre vide</div>
-      <div class="chest__bag" id="chestBag"></div>
+      <div class="mairie__cols">
+        <div class="mairie__col mairie__col--tech">
+          <h3 class="mairie__title">🔧 Technologies</h3>
+          <p class="panel__sub">Débloquez de nouveaux bâtiments pour la ville (vote en multijoueur).</p>
+          <div class="chest__vault" id="chestTech"></div>
+        </div>
+        <div class="mairie__col mairie__col--coffre">
+          <h3 class="mairie__title">🧩 Coffre commun</h3>
+          <p class="panel__sub">Cliquez sur un objet du sac pour le déposer, ou sur un objet du coffre pour le récupérer.</p>
+          <div class="chest__vault" id="chestVault">Coffre vide</div>
+          <div class="chest__bag" id="chestBag"></div>
+        </div>
+      </div>
       <button class="btn btn--primary" id="closeChestBtn" type="button">Fermer</button>
     </div>
   </div>

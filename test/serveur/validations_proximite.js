@@ -98,13 +98,18 @@ srv.applyInput("a1", { techVote: "universite" });
 srv.applyInput("b2", { techVote: "universite" });
 for (var t2 = 0; t2 < 400 && st.vote; t2++) srv.tick(0.05);
 assert(st.universiteUnlocked, "universite debloquee");
+// Le spot doit etre cherche avec la VRAIE emprise du batiment
+// (G.TOWN_BUILDINGS.<id>.side) : l'universite fait 80x80 depuis le passage
+// x2, un spot 40x40 libre pouvait chevaucher un batiment pour 80x80 et la
+// pose etait refusee.
+var uSide = G.TOWN_BUILDINGS.universite.side;
 var su = null;
 outer:
 for (var r = 150; r <= 900 && !su; r += 30) {
   for (var a = 0; a < 24; a++) {
     var px = mairie.x + mairie.w / 2 + Math.cos(a / 24 * Math.PI * 2) * r;
     var py = mairie.y + mairie.h / 2 + Math.sin(a / 24 * Math.PI * 2) * r;
-    if (G.inTown(px, py) && G.towerSpotFree(px - 20, py - 20, 40, 40)) { su = [px, py]; break outer; }
+    if (G.inTown(px, py) && G.towerSpotFree(px - uSide / 2, py - uSide / 2, uSide, uSide)) { su = [px, py]; break outer; }
   }
 }
 assert(su, "spot universite trouve");
