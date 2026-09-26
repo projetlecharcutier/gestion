@@ -306,26 +306,45 @@
     var state = G.state;
     state.paused = false;
     G.pauseScreen.hidden = true;
-    G.drawMarche();
+    // Rendu force : reinitialise la signature (_marcheSig) pour que la liste
+    // soit reconstruite meme si le contenu semble identique (reouverture).
+    state._marcheSig = null;
+    G.drawMarche(true);
     if (G.marcheScreen) G.marcheScreen.hidden = false;
   };
   G.closeMarche = function () {
     if (G.marcheScreen) G.marcheScreen.hidden = true;
   };
-  G.drawMarche = function () {
+  G.drawMarche = function (force) {
     var list = G.marcheList;
     if (!list) return;
-    if (G.marcheGold) G.marcheGold.textContent = String(G.state.mairieGold || 0);
+    var state = G.state;
+    if (G.marcheGold) G.marcheGold.textContent = String(state.mairieGold || 0);
+    // Anti-destruction du DOM pendant un clic : en ligne, le rafraichissement
+    // du marche etait appele a CHAQUE snapshot (10 Hz, net.js). Les boutons
+    // etaient detruits et recrees toutes les 100 ms — le navigateur ne
+    // completait jamais le clic (mousedown sur un bouton remplace avant le
+    // mouseup = aucun evenement "click") : "quand je clique sur un item rien
+    // ne se passe". On reconstruit la liste SEULEMENT si la signature de
+    // contenu a change (or, etat du chantier, dernier achat affiche, taille
+    // du sac) ; l'or reste mis a jour a chaque appel (simple textContent,
+    // sans toucher aux boutons).
+    var bought = state._marcheBought;
+    var sig = (state.mairieGold || 0) + "|" + (!!state.marche && !!state.marche.chantierDone)
+      + "|" + (bought ? bought.name + ":" + bought.t : "-")
+      + "|" + (state.bag ? state.bag.contents.length : 0)
+      + "|" + G.MARCHE_ITEMS.length;
+    if (!force && state._marcheSig === sig) return;
+    state._marcheSig = sig;
     list.innerHTML = "";
     var wrap = document.createElement("div");
     wrap.className = "chest__list";
     var h2 = document.createElement("p");
-    h2.textContent = "À vendre";
+    h2.textContent = "\u00c0 vendre";
     wrap.appendChild(h2);
-    var state = G.state;
     if (!state.marche || !state.marche.chantierDone) {
       var note = document.createElement("p");
-      note.textContent = "Terminez la construction du marché pour pouvoir acheter.";
+      note.textContent = "Terminez la construction du march\u00e9 pour pouvoir acheter.";
       wrap.appendChild(note);
       list.appendChild(wrap);
       return;
@@ -338,12 +357,11 @@
       // Animation d'achat : le bouton du dernier objet achete pulse au vert
       // (classe marche__bought, cf. style.css) pour confirmer visuellement
       // que l'achat a bien ete pris en compte et livre dans le sac.
-      var bought = state._marcheBought;
       if (bought && bought.name === m.name && (state.time - bought.t) < 1.5) {
         btn.className += " marche__bought";
-        btn.textContent = "✓ " + m.name + " acheté ! — " + m.price + " pièces d'or" + (m.kind === "arme" ? " (arme)" : " (objet)");
+        btn.textContent = "\u2713 " + m.name + " achet\u00e9 ! \u2014 " + m.price + " pi\u00e8ces d'or" + (m.kind === "arme" ? " (arme)" : " (objet)");
       } else {
-        btn.textContent = m.name + " — " + m.price + " pièces d'or" + (m.kind === "arme" ? " (arme)" : " (objet)");
+        btn.textContent = m.name + " \u2014 " + m.price + " pi\u00e8ces d'or" + (m.kind === "arme" ? " (arme)" : " (objet)");
       }
       (function (name) {
         btn.addEventListener("click", function () { G.buyMarcheItem(name); });
@@ -371,8 +389,9 @@
     if (!m) return;
     if (G.netConnected && G.netConnected()) {
       G.netInput({ marketBuy: name });
-      // Animation d'achat en ligne aussi : le serveur confirme par evenement,
-      // mais le bouton pulse immediatement (retour optimiste, cf. ci-dessous).
+      // Animation d'achat en ligne aussi : le serveur confirme par evenement
+      // (msg) et livre l'objet, mais le bouton pulse immediatement (retour
+      // optimiste). Signature changee par _marcheBought -> re-rendu.
       state._marcheBought = { name: name, t: state.time || 0 };
       G.drawMarche();
       return;
