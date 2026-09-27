@@ -1294,16 +1294,22 @@
     // ecran verticale de la bande entiere du PNG est trop large pour servir
     // de rejet : on teste la bbox ecran approximee de la bande).
     if (state.villes && G.villeBands) {
+      // Occlusion par le masque : calculee AVANT la boucle des bandes (le
+      // biais est utilise pour chaque bande ; le calcul etait auparavant
+      // place apres la boucle -> var hoisting -> toujours undefined -> le
+      // biais ne s'appliquait jamais).
+      var villeMode = (G.villeCellInfo && state.started) ? G.villeCellInfo(state.player.x, state.player.y) : null;
+      var villeBias = villeMode ? (villeMode.mode === 1 ? 1e6 : (villeMode.mode === 2 ? -1e6 : 0)) : 0;
+      var villeSprite = villeMode ? villeMode.sprite : null;
       for (var vi = 0; vi < state.villes.length; vi++) {
         var vv = state.villes[vi];
         if (vv.x + vv.w < bnds.minX || vv.x > bnds.maxX || vv.y + vv.h < bnds.minY || vv.y > bnds.maxY) continue;
         var vEntry = G.villeBands(vv);
         if (!vEntry) continue;
         for (var vb = 0; vb < vEntry.bands.length; vb++) {
-          // Occlusion par le masque : les bandes de la ville ou se tient
-          // le joueur sont redecallees selon le mode (vert -> devant lui,
-          // transparent -> derriere lui) ; les autres villes gardent le
-          // tri naturel (le biais n'est applique qu'a SA ville).
+          // Les bandes de la ville ou se tient le joueur sont redecallees
+          // selon le mode (vert -> devant lui, transparent -> derriere
+          // lui) ; les autres villes gardent le tri naturel.
           var vbDepth = vEntry.bands[vb].depth + ((villeSprite === vv.sprite) ? villeBias : 0);
           drawables.push({ depth: vbDepth, type: "ville", ref: { v: vv, band: vEntry.bands[vb], entry: vEntry } });
         }
@@ -1321,21 +1327,6 @@
       }
     }
     var pDepth = state.player.x + state.player.y;
-
-    // Villes PNG : occlusion du joueur pilotee par le MASQUE (le tri par
-    // profondeur seul ne suffit pas, il cachait le joueur meme sur les
-    // zones transparentes). villeCellInfo donne la cellule du masque sous
-    // les pieds du joueur :
-    //   mode 1 (vert au sol) : le joueur est DERRIERE le PNG -> les bandes
-    //     de SA ville passent devant lui (biais +) ;
-    //   mode 2 (transparent au sol, dans le losange) : le joueur est DEVANT
-    //     le PNG -> les bandes de SA ville passent derriere lui (biais -) ;
-    //   mode 0 : hors emprise ou contenu en elevation -> tri naturel.
-    // Le biais ne touche QUE les bandes de la ville ou se tient le joueur
-    // (les autres villes et les zombies gardent leur tri naturel).
-    var villeMode = (G.villeCellInfo && state.started) ? G.villeCellInfo(state.player.x, state.player.y) : null;
-    var villeBias = villeMode ? (villeMode.mode === 1 ? 1e6 : (villeMode.mode === 2 ? -1e6 : 0)) : 0;
-    var villeSprite = villeMode ? villeMode.sprite : null;
 
     drawables.sort(function (a, b) { return a.depth - b.depth; });
 
