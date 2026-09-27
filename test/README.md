@@ -13,6 +13,14 @@ Les tests sont autonomes (stubs DOM embarques, aucun navigateur requis) et
 utilisent des chemins relatifs au repo : ils tournent depuis n'importe quel
 emplacement de clone.
 
+## Variables d'environnement de test (spawn serveur)
+
+- `TEST_START_PLANKS` : planches de depart du joueur (equivaut a du bois deja coupe).
+- `TEST_SEED` : PRNG detruit remplace `Math.random` cote serveur -> monde
+  REPRODUCTIBLE (forets, maisons, reliques aux memes endroits a chaque run).
+  Utilise par `loopback/integration_complete.js` (seed 3) pour eliminer
+  l'instabilite du monde aleatoire. En production : absent, monde aleatoire.
+
 ## Categories
 
 ### `zombies/` — IA et vagues

@@ -2,7 +2,7 @@
 // scierie->menu (buildSel)->pose scierie->chantier->pose tour hors ville.
 var WebSocket = require("../../server/node_modules/ws");
 var PORT = 45742;
-var srv = require("child_process").spawn("node", ["index.js"], { cwd: require("path").join(__dirname, "..", "..", "server"), env: { PATH: process.env.PATH, PORT: String(PORT), TEST_START_PLANKS: "150" }, stdio: ["ignore", "pipe", "pipe"] });
+var srv = require("child_process").spawn("node", ["index.js"], { cwd: require("path").join(__dirname, "..", "..", "server"), env: { PATH: process.env.PATH, PORT: String(PORT), TEST_START_PLANKS: "150", TEST_SEED: "3" }, stdio: ["ignore", "pipe", "pipe"] });
 var logs = []; srv.stdout.on("data", function (d) { logs.push(d.toString()); }); srv.stderr.on("data", function (d) { logs.push("ERR:" + d.toString()); });
 setTimeout(function () {
   var ws = new WebSocket("ws://127.0.0.1:" + PORT);

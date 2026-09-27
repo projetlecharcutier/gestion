@@ -14,8 +14,15 @@ else
 fi
 
 for f in $FILES; do
-  ps aux | grep "[i]ndex.js" | grep -v grep | awk '{print $2}' | while read pid; do kill -9 "$pid" 2>/dev/null; done
-  sleep 0.3
+  # Nettoyage des serveurs residuels : les tests loopback spawent des
+  # serveurs sur des ports fixes ; un kill -9 laisse le socket en
+  # TIME_WAIT et le test suivant sur le meme port echoue (ECONNREFUSED /
+  # connexion refusee). On tue les processus node restants (index.js du
+  # dossier server/) et on laisse le temps au port de se liberer.
+  ps aux | grep "[n]ode" | grep "index.js" | grep -v "$$" | awk '{print $2}' | while read pid; do
+    kill -9 "$pid" 2>/dev/null
+  done
+  sleep 1
   timeout 180 node "$f" >/tmp/test_out.txt 2>&1
   rc=$?
   if [ $rc -eq 0 ]; then

@@ -407,7 +407,7 @@
     // Utilisee partout ou les zombies testent aabbHitsForets, pour qu'ils
     // contournent les bâtiments de la ville de l'Est au lieu de s'y enliser.
     function hitsObstacle(x, y, half) {
-      if (hitsObstacle(x, y, half)) return true;
+      if (G.aabbHitsForets && G.aabbHitsForets(x, y, half)) return true;
       if (G.aabbHitsVillesCenter && G.aabbHitsVillesCenter(x, y, half)) return true;
       return false;
     }

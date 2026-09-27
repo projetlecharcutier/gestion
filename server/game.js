@@ -43,6 +43,23 @@
                        // ne doit pas attendre (avant : 30 s sans simulation ni
                        // snapshot -> ville "vide", chop/pickup impossibles).
 
+  // Aide aux tests d'integration (loopback) : TEST_SEED fixe un PRNG detruit
+  // pour Math.random -> la generation du monde est REPRODUCTIBLE (forets,
+  // maisons, reliques aux memes endroits a chaque run). Variable definie par
+  // le test au lancement du serveur ; en production elle est absente et
+  // Math.random reste aleatoire.
+  if (process.env.TEST_SEED) {
+    (function () {
+      var s = (parseInt(process.env.TEST_SEED, 10) >>> 0) || 1;
+      Math.random = function () {
+        s ^= s << 13; s >>>= 0;
+        s ^= s >> 17;
+        s ^= s << 5; s >>>= 0;
+        return s / 4294967296;
+      };
+    })();
+  }
+
   function createInitialState() {
     return {
       started: false,
