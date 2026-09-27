@@ -20,6 +20,9 @@ emplacement de clone.
   REPRODUCTIBLE (forets, maisons, reliques aux memes endroits a chaque run).
   Utilise par `loopback/integration_complete.js` (seed 3) pour eliminer
   l'instabilite du monde aleatoire. En production : absent, monde aleatoire.
+- `test/seed.js` : le meme PRNG pour les tests LOCAUX (pas de serveur spawn) :
+  `require("../seed")(42)` avant `buildWorld()`. Utilise par
+  `zombies/zombies_actifs.js` (seed 42, 3/3 stable).
 
 ## Categories
 
@@ -33,9 +36,9 @@ emplacement de clone.
 - `flowfield_contournement.js` : le flow field (`src/flowfield.js`) bloque bien les
   cellules de foret, ses fleches descendent le gradient BFS, et un groupe bloque
   derriere un massif le contourne et atteint la palissade.
-  N.B. `zombies_actifs.js` genere un monde aleatoire non seede : selon le tirage,
-  des couloirs etroits entre massifs figent des groupes au-dessus du seuil de 1%
-  meme sur `main` (pre-existant, sans lien avec le flow field).
+  N.B. `zombies_actifs.js` est SEDE (test/seed.js) : sans seed, des couloirs
+  etroits entre massifs figeaient des groupes au-dessus du seuil de 1% selon
+  le tirage (instabilite pre-existante, sans lien avec le flow field).
 - `ramp_mairie.js` : plafond 5000 zombies/nuit, ramp degats/PV/vitesse (cap +50%),
   la mairie reste l'objectif principal apres la destruction d'un mur.
 - `vagues_directions.js` / `vagues_directions_srv.js` : directions des vagues tirees

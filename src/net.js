@@ -112,6 +112,31 @@
   G.lobbyInfo = null; // {clock, players, started, ...}
   G.remoteState = null; // état de jeu reçu (10 Hz)
 
+  // Manifeste des villes recu du SERVEUR (msg.map.villes, calcule par
+  // ville-sync au demarrage). PRIORITE sur le villes.js statique charge en
+  // script : sur un depot en lecture seule, le fichier statique ne peut pas
+  // etre regenere, mais la reseau transporte toujours la version fraiche.
+  // Remplace completement les villes du manifeste statique (meme nom de
+  // sprite = position serveur fait foi, le serveur est la source de verite
+  // des collisions).
+  function _applyVilleManifest(manifest) {
+    if (!manifest || !manifest.length) return;
+    var defs = G.VILLE_DEFS;
+    for (var mi = 0; mi < manifest.length; mi++) {
+      var m = manifest[mi];
+      if (!m || !m.sprite) continue;
+      var found = false;
+      for (var di = 0; di < defs.length; di++) {
+        if ((defs[di].sprite || defs[di].name) === m.sprite) {
+          defs[di] = m;
+          found = true;
+          break;
+        }
+      }
+      if (!found) defs.push(m);
+    }
+  }
+
   G.netHandle = function (msg) {
     if (msg.type === "lobby") {
       G.lobbyInfo = msg;
@@ -127,8 +152,10 @@
         state.buildings = msg.map.buildings || [];
         _applyHouseSprites(state.buildings);
         _applyForetsCollision(state.buildings);
-        // Villes PNG decoratives : posees localement (VILLE_DEFS partage,
-        // grilles identiques cote serveur -> memes collisions previsibles).
+        // Villes PNG : manifeste serveur prioritaire (positions fraiches
+        // de ville-sync), puis pose locale (VILLE_DEFS, grilles identiques
+        // cote serveur -> memes collisions previsibles).
+        _applyVilleManifest(msg.map.villes);
         if (G.villeSetup) G.villeSetup(state);
         // Murs et objets : la carte complete arrive des le join (plus besoin
         // d'attendre le premier snapshot 10 Hz apres START_DELAY).
@@ -179,6 +206,7 @@
         G.state.buildings = msg.map.buildings || [];
         _applyHouseSprites(G.state.buildings);
         _applyForetsCollision(G.state.buildings);
+        _applyVilleManifest(msg.map.villes);
         if (G.villeSetup) G.villeSetup(G.state);
         G.state.walls = msg.map.walls || [];
         G.state.items = msg.map.items || [];

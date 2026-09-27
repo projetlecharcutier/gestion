@@ -36,6 +36,23 @@
     try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch (e) { return {}; }
   }
 
+  // Ecriture tolerante : sur un deploiement en lecture seule (production
+  // /opt/flex sans droit d'ecriture pour l'utilisateur du service), les
+  // writeFileSync echouent avec EACCES. La donnee calculee reste VALABLE
+  // pour ce demarrage : on log, on continue, et l'appelant conserve tout
+  // en memoire (cf. sync -> G._villeGridsRaw / G.VILLE_MANIFEST recupere
+  // par dom-stub). Retourne false si l'ecriture a echoue.
+  function safeWrite(p, data) {
+    try {
+      fs.writeFileSync(p, data);
+      return true;
+    } catch (e) {
+      console.warn("[ville-sync] ecriture impossible (depot en lecture seule ?) : " + p +
+                   " -- donnees conservees en memoire pour ce demarrage (" + e.code + ")");
+      return false;
+    }
+  }
+
   // Decode RGBA complet d'un PNG non entrelace 8-bit couleur+alpha.
   function pngRGBA(p) {
     var d = fs.readFileSync(p);
@@ -106,15 +123,24 @@
   }
 
   // Deplace un depot racine (ville/ville.png) vers un sous-dossier
-  // ville/<name>/ pour revenir a la convention documentee.
+  // ville/<name>/ pour revenir a la convention documentee. Tolere un depot
+  // en lecture seule : si le deplacement echoue, la ville reste servie
+  // depuis la racine (meme PNG, meme masque) -- seule la persistance de la
+  // convention echoue, pas la ville.
   function normalizeRootDeposit(name) {
-    var dir = path.join(ASSETS, name);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-    ["ville.png", "ville_mask.png"].forEach(function (f) {
-      var src = path.join(ASSETS, f);
-      if (fs.existsSync(src)) fs.renameSync(src, path.join(dir, f));
-    });
-    return dir;
+    try {
+      var dir = path.join(ASSETS, name);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+      ["ville.png", "ville_mask.png"].forEach(function (f) {
+        var src = path.join(ASSETS, f);
+        if (fs.existsSync(src)) fs.renameSync(src, path.join(dir, f));
+      });
+      return path.join(ASSETS, name);
+    } catch (e) {
+      console.warn("[ville-sync] normalisation impossible (depot en lecture seule ?) -- " +
+                   "la ville racine reste servie telle quelle (" + e.code + ")");
+      return ASSETS;
+    }
   }
 
   // Charge le module client (config + ville) par eval pour reutiliser
@@ -219,15 +245,12 @@
   }
 
   // Manifeste JS partage client/serveur : declare chaque ville detectee au
-  // navigateur (script statique, pas de fetch). Le client fusionne ce
-  // tableau dans VILLE_DEFS (src/ville.js) ; les defs manuelles restent
-  // prioritaires.
-  function writeManifest(found, defs, positions) {
-    var lines = ["// Fichier genere par server/ville-sync.js au demarrage du serveur.",
-                 "// Toutes les villes detectees dans assets/sprites/ville/ : le",
-                 "// client les fusionne dans VILLE_DEFS (src/ville.js) et charge",
-                 "// <sprite>/ville.png + <sprite>/ville_mask.png.",
-                 "window.VILLE_MANIFEST = ["];
+  // navigateur. Le client fusionne ce tableau dans VILLE_DEFS
+  // (src/ville.js, via villes.js en script statique OU via la reponse
+  // "joined" du serveur) ; les defs manuelles restent prioritaires.
+  // Retourne le tableau du manifeste (ecrit sur disque si possible).
+  function buildManifest(found, defs, positions) {
+    var manifest = [];
     for (var i = 0; i < found.length; i++) {
       var v = found[i];
       var def = findDef(defs, v.name);
@@ -241,10 +264,22 @@
       } else if (pos) {
         o.x = pos.x; o.y = pos.y;
       }
-      lines.push("  " + JSON.stringify(o) + ",");
+      manifest.push(o);
+    }
+    return manifest;
+  }
+
+  function writeManifest(manifest) {
+    var lines = ["// Fichier genere par server/ville-sync.js au demarrage du serveur.",
+                 "// Toutes les villes detectees dans assets/sprites/ville/ : le",
+                 "// client les fusionne dans VILLE_DEFS (src/ville.js) et charge",
+                 "// <sprite>/ville.png + <sprite>/ville_mask.png.",
+                 "window.VILLE_MANIFEST = ["];
+    for (var i = 0; i < manifest.length; i++) {
+      lines.push("  " + JSON.stringify(manifest[i]) + ",");
     }
     lines.push("];");
-    fs.writeFileSync(MANIFEST_PATH, lines.join("\n") + "\n");
+    safeWrite(MANIFEST_PATH, lines.join("\n") + "\n");
   }
 
   // Point d'entree : verifie les villes, normalise, regenere les grilles,
@@ -281,7 +316,7 @@
     var placed = 0, nGrids = 0;
     var names = [];
     var meta = readJson(META_PATH);
-    if (ensureSpriteMeta(found, meta)) fs.writeFileSync(META_PATH, JSON.stringify(meta));
+    if (ensureSpriteMeta(found, meta)) safeWrite(META_PATH, JSON.stringify(meta));
     for (var i = 0; i < found.length; i++) {
       var v = found[i];
       names.push(v.name);
@@ -344,12 +379,22 @@
       if (positions.hasOwnProperty(ppk) && !nameSet[ppk]) delete positions[ppk];
     }
     // 7. Ecrit les fichiers generes : grilles, positions, signatures,
-    //    manifeste client.
-    fs.writeFileSync(GRIDS_PATH, JSON.stringify(grids));
-    fs.writeFileSync(POSITIONS_PATH, JSON.stringify(positions));
-    fs.writeFileSync(SIGS_PATH, JSON.stringify(sigs));
-    writeManifest(found, defs, positions);
-    return { found: found.length, grids: nGrids, placed: placed, names: names, positions: positions };
+    //    manifeste client. Chaque ecriture est tolerante (depot en lecture
+    //    seule) : les donnees restent valables pour CE demarrage via le
+    //    stash memoire ci-dessous.
+    var wroteAll = true;
+    wroteAll = safeWrite(GRIDS_PATH, JSON.stringify(grids)) && wroteAll;
+    wroteAll = safeWrite(POSITIONS_PATH, JSON.stringify(positions)) && wroteAll;
+    wroteAll = safeWrite(SIGS_PATH, JSON.stringify(sigs)) && wroteAll;
+    var manifest = buildManifest(found, defs, positions);
+    writeManifest(manifest);
+    // 8. Stash MEMOIRE pour ce demarrage : dom-stub (charge ensuite par
+    //    server/game.js) lit ces donnees EN PRIORITE sur les fichiers du
+    //    disque. Sur un depot en lecture seule, les fichiers generes ne
+    //    peuvent pas etre mis a jour, mais le serveur doit quand meme
+    //    poser les villes detectees (grilles fraiches + manifeste).
+    global.__VILLE_SYNC = { grids: grids, manifest: manifest, wroteAll: wroteAll };
+    return { found: found.length, grids: nGrids, placed: placed, names: names, positions: positions, wroteAll: wroteAll };
   }
 
   module.exports = { sync: sync, scanVilles: scanVilles };

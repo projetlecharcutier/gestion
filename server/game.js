@@ -1287,7 +1287,12 @@
       }),
       items: state.items.filter(function (it) { return !it.taken; }).map(function (it) {
         return { x: Math.round(it.x), y: Math.round(it.y), name: it.name, kind: it.kind, color: it.color };
-      })
+      }),
+      // Manifeste des villes PNG (positions detectees par ville-sync au
+      // demarrage). Le client l'applique en PRIORITE sur le villes.js
+      // statique : sur un depot en lecture seule, le fichier statique ne
+      // peut pas etre regenere, mais la reseau transporte la version fraiche.
+      villes: (G.VILLE_MANIFEST && G.VILLE_MANIFEST.length) ? G.VILLE_MANIFEST : undefined
     };
   }
 

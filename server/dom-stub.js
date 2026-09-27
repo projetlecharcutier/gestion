@@ -34,28 +34,31 @@ function setupStub() {
   } catch (e) {
     meta = {};
   }
-  // --- Villes PNG : grilles de collision (cf. ville-grids.json, genere par
-  // gen-sprite-meta.js). Stashees brutes ici : src/ville.js (charge apres le
-  // stub) les decode (RLE) et les enregistre via setVilleGrid. Les villes
-  // dont le PNG/masque n'existe pas encore sont absentes -> ignorees.
-  try {
-    G._villeGridsRaw = require("./ville-grids.json");
-  } catch (e) {
-    G._villeGridsRaw = null;
-  }
-
-  // --- Manifeste des villes (assets/sprites/ville/villes.js, genere par
-  // server/ville-sync.js au demarrage) : liste des villes DETECTEES sur le
-  // disque, avec leur position. src/ville.js le fusionne dans VILLE_DEFS.
-  // On extrait window.VILLE_MANIFEST par expression reguliere (fichier JS,
-  // pas JSON) ; absent -> aucune ville supplementaire.
-  try {
-    var vmCode = fs.readFileSync(
-      path.join(__dirname, "..", "assets", "sprites", "ville", "villes.js"), "utf8");
-    var vmMatch = vmCode.match(/VILLE_MANIFEST\s*=\s*(\[[\s\S]*?\]);/);
-    if (vmMatch) G.VILLE_MANIFEST = JSON.parse(vmMatch[1].replace(/,(\s*[\]}])/g, "$1"));
-  } catch (e) {
-    G.VILLE_MANIFEST = null;
+  // --- Villes PNG : grilles de collision. PRIORITE au stash MEMOIRE pose
+  // par server/ville-sync.js (global.__VILLE_SYNC) juste avant le chargement
+  // de ce module : sur un depot en lecture seule (EACCES sur les
+  // writeFileSync), les fichiers generes du disque ne peuvent pas etre mis
+  // a jour, mais le sync vient de calculer les grilles fraiches en memoire.
+  // Repli : fichiers du disque (ville-grids.json / villes.js committes ou
+  // generes lors d'un demarrage precedent inscriptible).
+  var sync = global.__VILLE_SYNC || null;
+  if (sync && sync.grids) {
+    G._villeGridsRaw = sync.grids;
+    G.VILLE_MANIFEST = sync.manifest || [];
+  } else {
+    try {
+      G._villeGridsRaw = require("./ville-grids.json");
+    } catch (e) {
+      G._villeGridsRaw = null;
+    }
+    try {
+      var vmCode = fs.readFileSync(
+        path.join(__dirname, "..", "assets", "sprites", "ville", "villes.js"), "utf8");
+      var vmMatch = vmCode.match(/VILLE_MANIFEST\s*=\s*(\[[\s\S]*?\]);/);
+      if (vmMatch) G.VILLE_MANIFEST = JSON.parse(vmMatch[1].replace(/,(\s*[\]}])/g, "$1"));
+    } catch (e) {
+      G.VILLE_MANIFEST = null;
+    }
   }
 
   // Remplit G.SPRITES[ent][frame] = { w, h, bounds } pour chaque entrée du
