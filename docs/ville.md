@@ -69,7 +69,9 @@ G.VILLE_DEFS = [
   `server/ville-positions.json` (stables entre redemarrages) et publiees
   au client via le manifeste genere `assets/sprites/ville/villes.js`.
 - **Resultat** : collisions strictement identiques des deux cotes (meme
-  fonction, meme cellule de 8 px).
+  fonction, meme cellule de 1 px — plus petite que le joueur, la precision
+  du masque est preservee et les bascules devant/derriere suivent le
+  masque peint).
 
 ## Contraintes
 

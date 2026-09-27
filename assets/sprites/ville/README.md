@@ -58,7 +58,8 @@ demarre normalement, sans la ville.
 ## Collision / rendu
 
 - **Client** : le masque est decode une fois au chargement en une grille
-  de collision (cellules de 8 px monde) par `src/ville.js`. Les cellules
+  de collision (cellules de 1 px monde, plus petites que le joueur) par
+  `src/ville.js`. Les cellules
   rouges bloquent le joueur (`_stepMove`), les zombies (collisions locales
   + flow field) et la pose de planches/tours.
 - **Serveur** : les memes grilles sont lues depuis `server/ville-grids.json`

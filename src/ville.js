@@ -27,7 +27,11 @@
   var G = window.GAME = window.GAME || {};
 
   // Taille d'une cellule de la grille de collision d'une ville (px monde).
-  G.VILLE_GRID_CELL = 8;
+  // Doit rester PETITE devant le joueur (PLAYER_W = 6) : le mode
+  // d'occlusion (villeCellInfo) est echantillonne a la position du joueur,
+  // une cellule plus grosse que lui decalait les bascules devant/derriere
+  // par rapport au masque peint. 1 px = precision du masque lui-meme.
+  G.VILLE_GRID_CELL = 1;
 
   // Hauteur d'une bande de rendu (px image). Les bandes doivent rester
   // fines pour une occlusion precise du joueur par les façades.

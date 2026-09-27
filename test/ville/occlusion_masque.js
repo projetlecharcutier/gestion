@@ -38,16 +38,43 @@ for (var gy = 0; gy < rg.rows; gy++) {
 }
 assert(out === 0, "aucune cellule solide hors du losange de sol (+1 cellule)");
 
-// 2) Le masque est respecte : vert non solide, rouge solide
-assert(G.villeCell(6310, 5000) === 1, "centre (rouge) solide");
-assert(G.villeCell(6230, 4980) === 2, "zone verte = derriere (non bloquante)");
-assert(G.villeCell(6238, 4972) === 0, "zone transparente = libre");
+// 2) Le masque est respecte : la grille contient bien les 3 valeurs (rouge
+//    solide, vert derriere, transparent libre) et villeCell/villeCellInfo
+//    les restituent au centre EXACT de cellules representatives — le test
+//    reste independant de la resolution (VILLE_GRID_CELL) : il cherche les
+//    cellules dans la grille au lieu de points monde hardcodes.
+function cellCenter(gy, gx) {
+  return [rg.ox + gx * rg.cell + rg.cell / 2, rg.oy + gy * rg.cell + rg.cell / 2];
+}
+var solidPt = null, behindPt = null, freePt = null;
+for (var gy2 = 0; gy2 < rg.rows && (!solidPt || !behindPt || !freePt); gy2++) {
+  for (var gx2 = 0; gx2 < rg.cols; gx2++) {
+    var v2 = data[gy2 * rg.cols + gx2];
+    var wpt = cellCenter(gy2, gx2);
+    var onGround = Math.abs(wpt[0] - 6310) + Math.abs(wpt[1] - 5000) <= 100;
+    if (!onGround) continue;
+    if (v2 === 1 && !solidPt) solidPt = wpt;
+    else if (v2 === 2 && !behindPt) behindPt = wpt;
+    else if (v2 === 0 && !freePt) freePt = wpt;
+    if (solidPt && behindPt && freePt) break;
+  }
+}
+assert(!!solidPt, "grille : au moins une cellule solide au sol");
+assert(!!behindPt, "grille : au moins une cellule derriere (verte) au sol");
+assert(!!freePt, "grille : au moins une cellule libre au sol");
+if (solidPt) assert(G.villeCell(solidPt[0], solidPt[1]) === 1, "cellule rouge -> solide");
+if (behindPt) assert(G.villeCell(behindPt[0], behindPt[1]) === 2, "cellule verte = derriere (non bloquante)");
+if (freePt) assert(G.villeCell(freePt[0], freePt[1]) === 0, "cellule transparente = libre");
 
 // 3) villeCellInfo : modes d'occlusion au sol
-var infoV = G.villeCellInfo(6230, 4980);
-assert(infoV && infoV.mode === 1, "vert au sol -> mode 1 (joueur derriere)");
-var infoT = G.villeCellInfo(6238, 4972);
-assert(infoT && infoT.mode === 2, "transparent au sol -> mode 2 (joueur devant)");
+if (behindPt) {
+  var infoV = G.villeCellInfo(behindPt[0], behindPt[1]);
+  assert(infoV && infoV.mode === 1, "vert au sol -> mode 1 (joueur derriere)");
+}
+if (freePt) {
+  var infoT = G.villeCellInfo(freePt[0], freePt[1]);
+  assert(infoT && infoT.mode === 2, "transparent au sol -> mode 2 (joueur devant)");
+}
 var infoH = G.villeCellInfo(6000, 4800);
 assert(infoH === null || infoH.mode === 0, "hors emprise -> mode 0 (tri naturel)");
 

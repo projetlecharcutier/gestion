@@ -332,7 +332,8 @@
         posKey = positions[v.name].x + "," + positions[v.name].y + "," + (positions[v.name].side || 0);
       }
       var needGrid = !grids[v.name] || sigs[v.name] !== sig ||
-                     (grids[v.name] && grids[v.name].pos !== posKey);
+                     (grids[v.name] && grids[v.name].pos !== posKey) ||
+                     (grids[v.name] && grids[v.name].cell !== G.VILLE_GRID_CELL);
       if (v.mask && needGrid) {
         var dec = pngRGBA(path.join(v.dir, v.mask));
         if (dec) {
