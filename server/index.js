@@ -32,14 +32,20 @@
   // Date de la derniere mise a jour deployee : date du dernier commit git
   // (le serveur est un clone mis a jour par update.sh). Repli : date de
   // modification de index.html si git n'est pas disponible.
+  // "dubious ownership" : git >= 2.35.2 refuse un depot appartenant a un
+  // autre utilisateur (deployment /opt/flex possede par root, service
+  // execute par flex). -c safe.directory=... leve le blocage SANS exposer
+  // de config globale -- limite a cet appel, le depot reste trusted ici.
   var updatedAt = null;
   var version = null; // code de commit court (ex. 3b12130)
   var commitName = null; // titre du dernier commit (affiche dans le menu)
   try {
     var execSync = require("child_process").execSync;
-    updatedAt = execSync("git log -1 --format=%cI", { cwd: __dirname, encoding: "utf8" }).trim();
-    version = execSync("git log -1 --format=%h", { cwd: __dirname, encoding: "utf8" }).trim();
-    commitName = execSync("git log -1 --format=%s", { cwd: __dirname, encoding: "utf8" }).trim();
+    var REPO = path.join(__dirname, "..");
+    var GIT = "git -c safe.directory=" + JSON.stringify(REPO) + " ";
+    updatedAt = execSync(GIT + "log -1 --format=%cI", { cwd: __dirname, encoding: "utf8" }).trim();
+    version = execSync(GIT + "log -1 --format=%h", { cwd: __dirname, encoding: "utf8" }).trim();
+    commitName = execSync(GIT + "log -1 --format=%s", { cwd: __dirname, encoding: "utf8" }).trim();
   } catch (e) {}
   if (!updatedAt) {
     try {
