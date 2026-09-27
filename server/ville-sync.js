@@ -139,6 +139,16 @@
     }
   }
 
+  // Signature d'une ville COMPLETE (PNG visible + masque) : la grille de
+  // collision est derivee du masque mais son emprise depend aussi du PNG
+  // visible (taille -> cote du losange). Un changement de l'un ou l'autre
+  // doit declencher la regeneration de la grille serveur.
+  function villeSignature(dir, png, mask) {
+    var a = pngSignature(path.join(dir, png));
+    var b = mask ? pngSignature(path.join(dir, mask)) : "";
+    return a + "|" + b;
+  }
+
   // Placement automatique d'une nouvelle ville : ancree sur un cercle
   // autour de la ville principale (centre TOWN), ordre anti-horaire en
   // partant de l'est, distance VILLE_AUTO_DIST. boxes = emprises deja
@@ -277,8 +287,7 @@
       names.push(v.name);
       // Def manuelle (config.js) prioritaire ; sinon placement auto.
       var def = findDef(defs, v.name);
-      var pngPath = path.join(v.dir, v.png);
-      var sig = pngSignature(pngPath);
+      var sig = villeSignature(v.dir, v.png, v.mask);
       // Grille : regeneree si nouvelle, masque change ou POSITION changee
       // (la grille encode l'origine monde ox/oy calculee depuis x/y).
       var posKey = null;

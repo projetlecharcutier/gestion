@@ -75,9 +75,11 @@ G.VILLE_DEFS = [
 
 - Le masque doit etre exporte en PNG **8-bit RGBA non entrelace**
   (standard Aseprite/GIMP) pour le decodeur serveur.
-- Le canal vert (derriere) ne bloque pas : il est disponible pour de
-  futures regles d'occlusion dediees ; le tri des bandes couvre deja
-  l'essentiel des cas "personnage derriere le PNG".
+- Le canal vert (derriere) ne bloque pas : au sol, il place le joueur
+  DERRIERE le PNG au rendu (les bandes de la ville passent devant lui) ;
+  le transparent au sol le laisse DEVANT. L'ELEVATION (moitie haute du
+  PNG, au-dessus de l'horizon) ne produit AUCUNE collision : seuls les
+  pixels du masque projetes dans le losange de sol comptent.
 - Les villes ne remplacent pas la ville principale : mairie, eglise,
   bâtiments interactifs restent des objets reels. Les villes PNG sont du
   decor + collisions (comme les maisons `isDecor`).
