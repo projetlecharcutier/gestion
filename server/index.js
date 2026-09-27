@@ -246,21 +246,38 @@
   }
 
   // Si la partie est terminée (mairie détruite), redémarre après 10 s.
+  // TOLÉRANT : une exception dans startGame/mapSnapshot ne doit ni tuer le
+  // serveur ni spammer la console (l'intervalle relance toutes les 500 ms :
+  // sans catch, la même stack trace s'imprimait en boucle avec les tildes
+  // des code frames Node et le service finissait par tomber). L'erreur est
+  // loggée UNE fois par partie, puis réessayée toutes les 2 s.
   var restartTimer = 0;
   var prevGameOver = false;
+  var restartErrLogged = false;
   setInterval(function () {
     if (game.getState().gameOver && !prevGameOver) {
       console.log("Partie terminée (mairie détruite). Redémarrage dans 10 s...");
       prevGameOver = true;
       restartTimer = 10;
+      restartErrLogged = false;
     }
     if (prevGameOver) {
       restartTimer -= 0.5;
       if (restartTimer <= 0 && game.getState().players.length > 0) {
-        game.startGame();
-        prevGameOver = false;
-        broadcast({ type: "restart", clock: game.getState().clock, map: game.mapSnapshot() });
-        console.log("Nouvelle partie lancée.");
+        try {
+          game.startGame();
+          var msg = { type: "restart", clock: game.getState().clock, map: game.mapSnapshot() };
+          prevGameOver = false;
+          restartErrLogged = false;
+          broadcast(msg);
+          console.log("Nouvelle partie lancée.");
+        } catch (e) {
+          if (!restartErrLogged) {
+            restartErrLogged = true;
+            console.error("[restart] échec du redémarrage (nouvel essai toutes les 2 s) :", e.stack || e.message);
+          }
+          restartTimer = 2;
+        }
       }
     }
   }, 500);

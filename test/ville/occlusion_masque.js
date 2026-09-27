@@ -26,17 +26,36 @@ for (var i = 0; i + 1 < rg.rle.length; i += 2) {
 G.villeGrids = { est: { cell: rg.cell, cols: rg.cols, rows: rg.rows, ox: rg.ox, oy: rg.oy, data: data } };
 G.state = { villes: [{ name: "Ville de l'Est", sprite: "est", x: 6210, y: 4900, w: 200, h: 200, x2: 6410, y2: 5100, cx: 6310, cy: 5000 }] };
 
-// 1) Cellules solides confinees au losange de sol (+1 cellule de marge)
+// 1) Cellules solides confinees a l'emprise CARREE de sol (+1 cellule de
+//    marge). L'emprise monde d'une ville est un carre (le losange n'existe
+//    qu'a l'ecran) : l'ancien test losange L1 rejetait le triangle SUD,
+//    precisement la ou projette le bas du PNG -> masque ignore la-bas.
 var out = 0;
 for (var gy = 0; gy < rg.rows; gy++) {
   for (var gx = 0; gx < rg.cols; gx++) {
     if (data[gy * rg.cols + gx] !== 1) continue;
     var wx = rg.ox + gx * rg.cell + rg.cell / 2;
     var wy = rg.oy + gy * rg.cell + rg.cell / 2;
-    if (Math.abs(wx - 6310) + Math.abs(wy - 5000) > 100 + rg.cell) out++;
+    if (wx < 6210 - rg.cell || wx > 6410 + rg.cell ||
+        wy < 4900 - rg.cell || wy > 5100 + rg.cell) out++;
   }
 }
-assert(out === 0, "aucune cellule solide hors du losange de sol (+1 cellule)");
+assert(out === 0, "aucune cellule solide hors du carre d'emprise (+1 cellule)");
+
+// 1b) Le triangle SUD de l'emprise est bien couvert (regression du filtre
+//     losange) : la bande y proche du bord sud doit contenir des cellules
+//     marquees d'apres le masque (le bas du PNG y projette).
+var southSolid = 0, southAny = 0;
+for (var gy2 = 0; gy2 < rg.rows; gy2++) {
+  var wy2 = rg.oy + gy2 * rg.cell + rg.cell / 2;
+  if (wy2 < 5000 || wy2 > 5100) continue;
+  for (var gx2 = 0; gx2 < rg.cols; gx2++) {
+    var v3 = data[gy2 * rg.cols + gx2];
+    if (v3 !== 0) southAny++;
+    if (v3 === 1) southSolid++;
+  }
+}
+assert(southAny > 0, "moitie sud de l'emprise couverte par le masque (obtenu " + southAny + " cellules marquees)");
 
 // 2) Le masque est respecte : la grille contient bien les 3 valeurs (rouge
 //    solide, vert derriere, transparent libre) et villeCell/villeCellInfo

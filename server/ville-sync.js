@@ -333,7 +333,8 @@
       }
       var needGrid = !grids[v.name] || sigs[v.name] !== sig ||
                      (grids[v.name] && grids[v.name].pos !== posKey) ||
-                     (grids[v.name] && grids[v.name].cell !== G.VILLE_GRID_CELL);
+                     (grids[v.name] && grids[v.name].cell !== G.VILLE_GRID_CELL) ||
+                     (grids[v.name] && grids[v.name].ver !== (G.VILLE_GRID_VERSION || 1));
       if (v.mask && needGrid) {
         var dec = pngRGBA(path.join(v.dir, v.mask));
         if (dec) {
@@ -354,7 +355,8 @@
               cell: grid.cell, cols: grid.cols, rows: grid.rows,
               ox: grid.ox, oy: grid.oy,
               rle: Array.prototype.slice.call(G.villeRLEEncode(grid.data)),
-              pos: posKey
+              pos: posKey,
+              ver: G.VILLE_GRID_VERSION || 1
             };
             nGrids++;
           }

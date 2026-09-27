@@ -32,6 +32,11 @@
   // une cellule plus grosse que lui decalait les bascules devant/derriere
   // par rapport au masque peint. 1 px = precision du masque lui-meme.
   G.VILLE_GRID_CELL = 1;
+  // Version de l'algorithme d'extraction de la grille : incrementee quand
+  // la geometrie du filtre de sol change (le losange L1 -> carre d'emprise
+  // a fixe le bas du PNG ignore). ville-sync regenere les grilles stockees
+  // quand cette version differe de celle encodee dans ville-grids.json.
+  G.VILLE_GRID_VERSION = 2;
 
   // Hauteur d'une bande de rendu (px image). Les bandes doivent rester
   // fines pour une occlusion precise du joueur par les façades.
@@ -183,11 +188,17 @@
     // libre. Les bords anti-aliases du masque (255,128,128...) ne passent
     // pas les seuils -> restent libres (tolerance du cote traversable).
     // Seule la BANDE DE SOL compte : un pixel du masque correspond au sol
-    // uniquement si sa projection tombe dans le losange d'emprise. Le
-    // contenu en ELEVATION (moitie haute du PNG : tours, facades au-dessus
-    // de l'horizon) se projette DERRIERE l'emprise : sans ce filtre, il
-    // creait des murs de collision invisibles derriere la ville.
-    var fcx = x + side / 2, fcy = y + side / 2, fr = side / 2;
+    // uniquement si sa projection tombe dans l'emprise monde (CARRE
+    // [x..x+side] x [y..y+side] -- le losange n'existe qu'a l'ECRAN, en
+    // coordonnees monde l'emprise est un carre, comme villeAt/villeEscape/
+    // aabbHitsVilles). Le contenu en ELEVATION (moitie haute du PNG : tours,
+    // facades au-dessus de l'horizon) se projette au NORD de l'emprise :
+    // hors du carre -> filtre. L'ancien test losange (distance L1 depuis le
+    // centre) rejetait en plus le triangle SUD de l'emprise -- precisement
+    // la ou projette le bas du PNG : le masque y etait ignore (mode 0,
+    // tri naturel) et le joueur passait derriere le bas de la ville meme
+    // sur les zones transparentes.
+    var bx0 = x, bx1 = x + side, by0 = y, by1 = y + side;
     for (var py = 0; py < ih; py++) {
       var sy = groundY0 - drawnH0 + ((py + 0.5) / ih) * drawnH0;
       var row = py * iw * 4;
@@ -202,7 +213,7 @@
         if (!val) continue;
         var sx = cx0 - losangeW0 / 2 + ((px + 0.5) / iw) * losangeW0;
         var wx = sx + 2 * sy, wy = 2 * sy - sx;
-        if (Math.abs(wx - fcx) + Math.abs(wy - fcy) > fr) continue;
+        if (wx < bx0 || wx > bx1 || wy < by0 || wy > by1) continue;
         var gx = Math.floor((wx - ox) / cell);
         var gy = Math.floor((wy - oy) / cell);
         if (gx < 0 || gy < 0 || gx >= cols || gy >= rows) continue;
@@ -335,7 +346,7 @@
       var gy = Math.floor((y - g.oy) / g.cell);
       if (gx < 0 || gy < 0 || gx >= g.cols || gy >= g.rows) continue;
       var cell = g.data[gy * g.cols + gx];
-      var ground = Math.abs(x - v.cx) + Math.abs(y - v.cy) <= (v.w || 0) / 2;
+      var ground = x >= v.x && x <= v.x2 && y >= v.y && y <= v.y2;
       var mode = 0;
       if (ground && cell === 2) mode = 1;
       else if (ground && cell === 0) mode = 2;
