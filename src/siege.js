@@ -204,6 +204,7 @@
         ok = zx > 12 && zx < G.WORLD - 12 && zy > 12 && zy < G.WORLD - 12 &&
           !G.aabbHitsWalls(zx - zs, zy - zs, G.ZOMBIE_W, G.ZOMBIE_W) &&
           !(G.aabbHitsForets && G.aabbHitsForets(zx, zy, zs)) &&
+          !(G.aabbHitsVillesCenter && G.aabbHitsVillesCenter(zx, zy, zs)) &&
           !(G.foretAt && G.foretAt(zx, zy));
       }
       if (!ok) { zx = cx; zy = cy; }

@@ -171,7 +171,7 @@
       do {
         rx = Math.random() < 0.5 ? G.rand(60, G.TOWN_MIN - 80) : G.rand(G.TOWN_MAX + 80, G.WORLD - 60);
         ry = Math.random() < 0.5 ? G.rand(60, G.TOWN_MIN - 80) : G.rand(G.TOWN_MAX + 80, G.WORLD - 60);
-      } while (G.nearBuilding(rx, ry, 40) && ++tries < 20);
+      } while ((G.nearBuilding(rx, ry, 40) || (G.villeAt && G.villeAt(rx, ry, 0))) && ++tries < 20);
       state.items.push({ x: rx, y: ry, taken: false, name: "Relique", color: "#a855f7", kind: "objet" });
     }
   };
@@ -339,6 +339,8 @@
         if (tx < half || tx > G.WORLD - half || ty < half || ty > G.WORLD - half) continue;
         if (!inTown && G.inTown(tx, ty)) continue;
         if (nearTownWall(tx, ty, half)) continue;
+        // Villes PNG : aucune foret dans l'emprise d'une ville decorative.
+        if (G.villeAt && G.villeAt(tx, ty, half)) continue;
         if (nearForet(tx, ty, half)) continue;
         addForet(tx, ty, frame);
         placed++;
@@ -376,6 +378,10 @@
   G.buildWorld = function () {
     var state = G.state;
     var c = G.WORLD / 2;
+    // Villes decoratives PNG : posees en premier pour que la generation
+    // (maisons, forets, objets) les evite (villeAt) et que les grilles de
+    // collision soient pretes avant tout placement.
+    if (G.villeSetup) G.villeSetup(state);
     state.buildings = [
       G.makeBuilding(c - 60, c - 60, 120, 120, "Mairie", "Vous êtes à la mairie. Tout semble calme.", 76),
       G.makeBuilding(c - 150, c + 320, 90, 90, "Eglise", "L'église est silencieuse et fraîche.", 88),
@@ -415,6 +421,8 @@
         if (hx < 20 || hx > G.WORLD - 20 || hy < 20 || hy > G.WORLD - 20) return false;
         // Empêche les bâtiments de bloquer l'ouverture de la muraille.
         if (nearGate(hx, hy, side)) return false;
+        // Villes PNG : aucune maison dans l'emprise d'une ville decorative.
+        if (G.villeAt && G.villeAt(hx, hy, side / 2)) return false;
         // Distance minimale entre les bâtiments et la muraille de la ville.
         if (inTown) {
           if (hx - side / 2 < G.TOWN_MIN + WALL_MARGIN) return false;
@@ -556,7 +564,7 @@
       do {
         gx = Math.random() < 0.5 ? G.rand(60, G.TOWN_MIN - 80) : G.rand(G.TOWN_MAX + 80, G.WORLD - 60);
         gy = Math.random() < 0.5 ? G.rand(60, G.TOWN_MIN - 80) : G.rand(G.TOWN_MAX + 80, G.WORLD - 60);
-      } while (G.nearBuilding(gx, gy, 40) && ++tries < 20);
+      } while ((G.nearBuilding(gx, gy, 40) || (G.villeAt && G.villeAt(gx, gy, 0))) && ++tries < 20);
       state.items.push({ x: gx, y: gy, taken: false, name: "Pièce", color: "#fbbf24", kind: "or" });
     }
 
@@ -577,7 +585,7 @@
       var fFrame = names[G.randi(0, names.length - 1)];
       var fSp = G.SPRITES.foret && G.SPRITES.foret[fFrame];
       var fSide = (fSp ? fSp.w : 64) * 2;
-      if (!G.nearBuilding(ftx, fty, 10) &&
+      if (!G.nearBuilding(ftx, fty, 10) && !(G.villeAt && G.villeAt(ftx, fty, fSide / 2)) &&
           !G.foretNearTownWall(ftx - fSide / 2, fty - fSide / 2, fSide, fSide)) {
         state.buildings.push(G.makeForet(ftx, fty, fFrame));
       }

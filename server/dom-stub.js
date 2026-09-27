@@ -31,12 +31,33 @@ function setupStub() {
   } catch (e) {
     meta = {};
   }
+  // --- Villes PNG : grilles de collision (cf. ville-grids.json, genere par
+  // gen-sprite-meta.js). Stashees brutes ici : src/ville.js (charge apres le
+  // stub) les decode (RLE) et les enregistre via setVilleGrid. Les villes
+  // dont le PNG/masque n'existe pas encore sont absentes -> ignorees.
+  try {
+    G._villeGridsRaw = require("./ville-grids.json");
+  } catch (e) {
+    G._villeGridsRaw = null;
+  }
 
   // Remplit G.SPRITES[ent][frame] = { w, h, bounds } pour chaque entrée du
   // méta. `bounds` (bounding box opaque en pixels) est exposé via
   // G.spriteBounds pour que shrinkToOpaque (monde) produise côté serveur les
   // MÊMES AABB que le client.
   G.SPRITES = {};
+  // Dimensions des PNG de villes (entite "ville", cles "ville/<sprite>/ville"
+  // et "ville/<sprite>/ville_mask" dans sprite-meta.json) : villeSetup en a
+  // besoin pour calculer l'emprise sol (PNG * 2), exactement comme le client.
+  if (G._villeGridsRaw) {
+    G.SPRITES.ville = {};
+    for (var vn in G._villeGridsRaw) {
+      if (!G._villeGridsRaw.hasOwnProperty(vn)) continue;
+      var vmeta = meta["ville/" + vn + "/ville"] || meta["ville/" + vn + "/ville_mask"];
+      if (!vmeta) continue;
+      G.SPRITES.ville[vn] = { w: vmeta.w, h: vmeta.h, img: null, frames: null };
+    }
+  }
   for (var key in meta) {
     if (!meta.hasOwnProperty(key)) continue;
     var slash = key.lastIndexOf("/");

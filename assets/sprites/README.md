@@ -20,6 +20,7 @@ assets/sprites/
     dead/   deadzomb1.png deadzomb2.png ...    # traces de zombies morts (au sol)
   tour/      idle.png  chantier.png  gauche.png  droite.png   # tour d'attaque
   scierie/   idle.png  chantier.png                # scierie
+  ville/     <nom>/ville.png  <nom>/ville_mask.png  # villes decoratives (voir ville/README.md)
 ```
 
 ## Tour d'attaque (`tour/`)

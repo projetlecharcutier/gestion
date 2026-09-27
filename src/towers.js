@@ -103,6 +103,9 @@
       if (!m.built) continue;
       if (mx < m.x + m.w && mx + w > m.x && my < m.y + m.h && my + h > m.y) return false;
     }
+    // Villes PNG : pas de tour/chantier sur une cellule solide d'une ville
+    // decorative (le batiment ne doit pas flotter sur une facade du PNG).
+    if (G.aabbHitsVilles && G.aabbHitsVilles(mx, my, w, h)) return false;
     return true;
   };
 

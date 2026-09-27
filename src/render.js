@@ -1287,6 +1287,23 @@
       if (zb.x < bnds.minX || zb.x > bnds.maxX || zb.y < bnds.minY || zb.y > bnds.maxY) continue;
       drawables.push({ depth: zb.x + zb.y, type: "zombie", ref: zb });
     }
+    // Villes PNG decoratives : chaque bande horizontale du PNG entre dans
+    // le tri comme un drawable autonome (une ligne ecran iso = une ligne de
+    // profondeur constante) -> le joueur passe devant/derriere chaque facade
+    // selon sa position, sans logique dediee. Culling par bande (emprise
+    // ecran verticale de la bande entiere du PNG est trop large pour servir
+    // de rejet : on teste la bbox ecran approximee de la bande).
+    if (state.villes && G.villeBands) {
+      for (var vi = 0; vi < state.villes.length; vi++) {
+        var vv = state.villes[vi];
+        if (vv.x + vv.w < bnds.minX || vv.x > bnds.maxX || vv.y + vv.h < bnds.minY || vv.y > bnds.maxY) continue;
+        var vEntry = G.villeBands(vv);
+        if (!vEntry) continue;
+        for (var vb = 0; vb < vEntry.bands.length; vb++) {
+          drawables.push({ depth: vEntry.bands[vb].depth, type: "ville", ref: { v: vv, band: vEntry.bands[vb], entry: vEntry } });
+        }
+      }
+    }
     for (var bi2 = 0; bi2 < state.birds.length; bi2++) {
       var bd = state.birds[bi2];
       drawables.push({ depth: bd.x + bd.y + 100000, type: "bird", ref: bd });
@@ -1320,6 +1337,7 @@
       else if (d.type === "zombie") G.drawZombie(d.ref);
       else if (d.type === "bird") G.drawBird(d.ref);
       else if (d.type === "player") G.drawRemotePlayer(d.ref);
+      else if (d.type === "ville") G.drawVilleBand(d.ref.v, d.ref.band, d.ref.entry);
     }
     if (!drewPlayer && !pHidden) { G.drawPlayer(); G.drawPlayerHpBar(); }
     // Objets au sol : dessines APRES la passe triee, au-dessus des batiments

@@ -412,8 +412,8 @@
         entries.push({ ent: ent, frame: frame, def: manifest[ent][frame] });
       }
     }
-    function finish() { _ready = true; if (onReady) onReady(); }
-    function afterSiege() { probeSiege(finish); }
+    function finish() { if (G.buildVilleGrids) G.buildVilleGrids(); _ready = true; if (onReady) onReady(); }
+    function afterSiege() { probeVilles(finish); }
     function afterTraces() { probeDeadTraces(afterSiege); }
     function afterHouses() { probeForets(afterTraces); }
     function afterTours() { probeHouses(afterHouses); }
@@ -508,6 +508,38 @@
       })(entries[i]);
     }
   }
+  // Villes decoratives PNG : assets/sprites/ville/<nom>/ville.png +
+  // ville_mask.png (memes dimensions au pixel pres). Charge chaque ville
+  // listee dans G.VILLE_DEFS (config.js), tolerants aux dossiers absents
+  // (repli : ville ignoree). Stocke dans G.SPRITES.ville sous les cles
+  // "<nom>" (PNG visible) et "<nom>_mask" (masque de collision).
+  function probeVilles(onDone) {
+    G.SPRITES.ville = {};
+    var defs = G.VILLE_DEFS || [];
+    var toLoad = [];
+    for (var i = 0; i < defs.length; i++) {
+      var name = (defs[i].sprite || defs[i].name || "").replace(/[^a-z0-9_-]/gi, "_");
+      if (!name) continue;
+      toLoad.push({ key: name, dir: "assets/sprites/ville/" + name + "/", base: "ville" });
+      toLoad.push({ key: name + "_mask", dir: "assets/sprites/ville/" + name + "/", base: "ville_mask" });
+    }
+    var loaded = 0;
+    function done() { loaded++; if (loaded >= toLoad.length) onDone(); }
+    function loadOne(job) {
+      var img = new Image();
+      img.onload = function () {
+        if (img.naturalWidth > 0) {
+          G.SPRITES.ville[job.key] = { img: img, w: img.naturalWidth, h: img.naturalHeight };
+        }
+        done();
+      };
+      img.onerror = function () { done(); };
+      img.src = bust(job.dir + job.base + ".png");
+    }
+    if (toLoad.length === 0) { onDone(); return; }
+    for (var j = 0; j < toLoad.length; j++) loadOne(toLoad[j]);
+  }
+
   // Sonde les traces de zombies morts : assets/sprites/zomb/dead/deadzomb1.png,
   // deadzomb2.png, ... jusqu'a 3 numeros consecutifs manquants. Charge tous les
   // PNG trouves dans G.SPRITES.zombDead (tableau de sprites {img,w,h}). Un PNG

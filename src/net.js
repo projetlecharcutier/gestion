@@ -127,6 +127,9 @@
         state.buildings = msg.map.buildings || [];
         _applyHouseSprites(state.buildings);
         _applyForetsCollision(state.buildings);
+        // Villes PNG decoratives : posees localement (VILLE_DEFS partage,
+        // grilles identiques cote serveur -> memes collisions previsibles).
+        if (G.villeSetup) G.villeSetup(state);
         // Murs et objets : la carte complete arrive des le join (plus besoin
         // d'attendre le premier snapshot 10 Hz apres START_DELAY).
         state.walls = msg.map.walls || [];
@@ -176,6 +179,7 @@
         G.state.buildings = msg.map.buildings || [];
         _applyHouseSprites(G.state.buildings);
         _applyForetsCollision(G.state.buildings);
+        if (G.villeSetup) G.villeSetup(G.state);
         G.state.walls = msg.map.walls || [];
         G.state.items = msg.map.items || [];
         G.rebuildBuildingGrid();

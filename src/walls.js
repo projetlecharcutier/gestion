@@ -50,6 +50,8 @@
       var b = state.buildings[i];
       if (mx < b.x + b.w && mx + w > b.x && my < b.y + b.h && my + h > b.y) return;
     }
+    // Villes PNG : pas de planche sur une cellule solide d'une ville decorative.
+    if (G.aabbHitsVilles && G.aabbHitsVilles(mx, my, w, h)) return;
     state.planks -= G.WALL_PLANKS;
     // Grace period : la planche ne bloque pas le joueur pendant un court delai
     // apres sa pose, pour eviter qu'il se retrouve coince dessus.

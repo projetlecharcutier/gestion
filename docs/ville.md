@@ -1,0 +1,82 @@
+# Villes decoratives PNG (`src/ville.js`)
+
+Grandes villes pre-dessinees (PNG) posees sur la carte, avec collisions par
+zones et occlusion correcte du personnage. Spec : contrat, entrees/sorties,
+contraintes.
+
+## Assets
+
+Chaque ville = un dossier `assets/sprites/ville/<sprite>/` :
+
+| Fichier | Role |
+|---|---|
+| `ville.png` | ville visible (pixel art), meme convention d'ancrage que les bâtiments (bas-centre sur le bord sud du losange, emprise = largeur PNG * 2) |
+| `ville_mask.png` | masque de collision, MEME taille au pixel pres |
+
+Masque (couleurs PLEINES, sans anti-aliasing) :
+
+- transparent/blanc : libre
+- rouge `rgb(255,0,0)` : collision (bloque joueur ET zombies)
+- vert `rgb(0,255,0)` : libre, personnage passe DERRIERE le PNG
+
+Un pixel du masque correspond au point de sol situe sous lui a l'ecran
+(projection iso). Le masque se dessine par-dessus le PNG visible (calque).
+
+## Contrats principaux
+
+| Fonction | Role |
+|---|---|
+| `villeSetup(state)` | pose les villes de `VILLE_DEFS` dans `state.villes` + construit les grilles. Appele par `buildWorld` (world.js) et net.js (mode serveur, apres reception de la carte) |
+| `villeGridFromPixels(iw, ih, rgba, x, y, side, cell)` | PURE : masque RGBA -> grille monde `Uint8Array` (0 libre, 1 solide, 2 derriere). Utilisee par le client (canvas) ET gen-sprite-meta.js (Node) -> parite exacte |
+| `aabbHitsVilles(bx, by, bw, bh)` / `aabbHitsVillesCenter(x, y, half)` | test AABB contre les cellules solides (1). Branches dans `_stepMove` (player.js), les collisions zombies (zombies.js `hitsObstacle`), la pose de planches (walls.js) et de tours (towers.js `towerSpotFree`) |
+| `villeBlockNav(blocked, cols, rows, cell)` | marque les cellules solides dans la grille nav 32 px (appele par `rebuildNavGrid`, flowfield.js) |
+| `villeAt(x, y, pad)` | position dans l'emprise d'une ville -> la generation (forets, maisons, items) evite les villes |
+| `villeEscape(x, y)` | direction du bord le plus proche (zombie pie dans une cellule solide) |
+| `villeBands(v)` / `drawVilleBand(v, band, entry)` | decoupe le PNG en bandes horizontales (~`VILLE_BAND_H` px) chacune inseree dans le tri `depth = x + y` de render() -> le joueur passe devant/derriere chaque facade selon sa position, sans logique dediee |
+
+## Multi-villes
+
+Tout est parametre par `G.VILLE_DEFS` (`src/config.js`) :
+
+```js
+G.VILLE_DEFS = [
+  { name: "Ville de l'Est", sprite: "est", x: 6800, y: 4200 }
+];
+```
+
+- `x, y` : coin nord-ouest de l'emprise sol (losange iso).
+- Emprise par defaut : `largeur du PNG * 2` (overridable via `w`).
+- Ajouter une ville = dossier PNG + entree VILLE_DEFS + `node
+  server/gen-sprite-meta.js` (regenere `server/ville-grids.json`).
+- Une ville sans dossier PNG est ignoree (tolerant) : le jeu demarre
+  normalement. Plusieurs villes peuvent coexister, y compris avec des
+  sprites partages (cache de bandes clee par sprite + position).
+
+## Parite client/serveur
+
+- **Client** : masque charge par `probeVilles` (src/assets.js), grille
+  extraite au `finish` du chargement via `buildVilleGrids` (canvas
+  `getImageData`, une seule fois).
+- **Serveur** : `server/gen-sprite-meta.js` decode le masque PNG (decodeur
+  RGBA manuel, 8-bit non entrelace) et genere `server/ville-grids.json`
+  (RLE) en appelant la MEME fonction pure `villeGridFromPixels` chargee par
+  `eval` depuis src/. `dom-stub.js` expose les grilles brutes
+  (`G._villeGridsRaw`) que src/ville.js decode au chargement.
+- **Resultat** : collisions strictement identiques des deux cotes (meme
+  fonction, meme cellule de 8 px).
+
+## Contraintes
+
+- Le masque doit etre exporte en PNG **8-bit RGBA non entrelace**
+  (standard Aseprite/GIMP) pour le decodeur serveur.
+- Le canal vert (derriere) ne bloque pas : il est disponible pour de
+  futures regles d'occlusion dediees ; le tri des bandes couvre deja
+  l'essentiel des cas "personnage derriere le PNG".
+- Les villes ne remplacent pas la ville principale : mairie, eglise,
+  bâtiments interactifs restent des objets reels. Les villes PNG sont du
+  decor + collisions (comme les maisons `isDecor`).
+- `inTown` (brouillard, HUD, zone de construction) ne tient PAS compte des
+  villes PNG : elles sont purement decoratives.
+- Apres tout ajout/modification de PNG : relancer `node
+  server/gen-sprite-meta.js` et committer `server/sprite-meta.json` +
+  `server/ville-grids.json` avec les PNG (le deploy ne les regenere pas).

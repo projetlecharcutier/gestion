@@ -19,19 +19,20 @@ Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fo
 | 1 | `src/config.js` | Constantes globales, armes, cycle jour/nuit, helpers (`rand`, `clamp`, `isNight`) | `WORLD`, `TOWN`, `WEAPON_STATS`, `ZOMBIE_*`, `WALL_*`, … |
 | 2 | `src/state.js` | État global + références DOM (canvas, HUD, écrans) | `state`, `canvas`, `ctx`, `hud*`, `startScreen`… |
 | 3 | `src/projection.js` | Projection iso monde↔écran, limites visibles, `inTown` | `proj`, `unproj`, `viewW/H`, `visibleWorldBounds`, `inTown` |
-| 4 | `src/world.js` | Génération : bâtiments, mur de périmètre, objets, arbres | `buildWorld`, `makeBuilding`, `nearBuilding`, `buildPerimeterWall` |
-| 5 | `src/flowfield.js` | Flow field zombies : BFS vers la ville + flèche précalculée par cellule, connectivité des forêts | `rebuildNavGrid`, `navStep`, `navAngle`, `ensureForetConnectivity` |
-| 6 | `src/player.js` | Déplacement, collisions (bâtiments + planches posées), entrée bâtiment, soin hôpital, pause | `tryMove`, `aabbHitsBuildings`, `clampPlayer`, `enterBuilding`, `leaveBuilding`, `togglePause`, `tryHealAtHospital`, `hasGoldPiece` |
-| 7 | `src/walls.js` | Construction de planches/murs (Z + clic) + rotation + collisions + nettoyage murs détruits | `tryBuildWall`, `cleanupWalls`, `plankDims`, `rotatePlank`, `aabbHitsWalls` |
-| 8 | `src/towers.js` | Bâtiments de ville (scierie, université, montgolfière) + tours d'attaque : tech à la mairie (vote), menu de construction, chantiers, tir automatique flèches | `makeTownBuilding`, `makeScierie`, `makeTower`, `updateBuildSites`, `updateTowers`, `cleanupTowers`, `buildMenu`, `placeFromBuildMenu`, `canPayTownTech`, `unlockTownTech`, `startVote`, `castVote`, `resolveVote` |
-| 9 | `src/chop.js` | Récolte de planches à la hache (décompte près d'un arbre) | `updateChop`, `chopProgress` |
-| 10 | `src/weapons.js` | Stats arme équipée, tir, déplacement projectiles | `equippedStats`, `handleShooting`, `updateProjectiles` |
-| 11 | `src/zombies.js` | Vagues, groupes qui fusionnent, IA zombies (priorité : palissade > tour > mairie/joueur) | `spawnWave`, `mergeGroups`, `updateZombies`, `cleanupZombies` |
-| 12 | `src/bag.js` | Sac : disposition, rendu, clic équiper (armes & hache) | `bagLayout`, `handleBagClick`, `drawBag` |
-| 13 | `src/hud.js` | HUD DOM + overlays canvas (dont cercle de décompte hache) | `updateHud`, `drawClock`, `drawPlayerHpBar`, `drawBuildHint`, `drawChopProgress`, `drawGameOver` |
-| 14 | `src/render.js` | Tout le dessin + `render()` (dont `drawTower`, flèche orientée, brouillard multi-sources) | `drawGround/Item/Tree/Building/Player/Wall/Zombie/Projectiles/Fog/Crosshair/DeadTraces`, `drawTower`, `fillPoly`, `roundRect`, `render` |
-| 15 | `src/input.js` | Entrées (souris, molette, clavier) + formulaire démarrage | resize interne, listeners |
-| 16 | `src/main.js` | Logique par frame `update(dt)` + `loop()` | `update`, `loop` |
+| 4 | `src/ville.js` | Villes décoratives PNG (collisions par masque, rendu en bandes) | `villeSetup`, `aabbHitsVilles`, `villeAt`, `villeBlockNav`, `villeBands`, `drawVilleBand` |
+| 5 | `src/world.js` | Génération : bâtiments, mur de périmètre, objets, arbres | `buildWorld`, `makeBuilding`, `nearBuilding`, `buildPerimeterWall` |
+| 6 | `src/flowfield.js` | Flow field zombies : BFS vers la ville + flèche précalculée par cellule, connectivité des forêts | `rebuildNavGrid`, `navStep`, `navAngle`, `ensureForetConnectivity` |
+| 7 | `src/player.js` | Déplacement, collisions (bâtiments + planches posées), entrée bâtiment, soin hôpital, pause | `tryMove`, `aabbHitsBuildings`, `clampPlayer`, `enterBuilding`, `leaveBuilding`, `togglePause`, `tryHealAtHospital`, `hasGoldPiece` |
+| 8 | `src/walls.js` | Construction de planches/murs (Z + clic) + rotation + collisions + nettoyage murs détruits | `tryBuildWall`, `cleanupWalls`, `plankDims`, `rotatePlank`, `aabbHitsWalls` |
+| 9 | `src/towers.js` | Bâtiments de ville (scierie, université, montgolfière) + tours d'attaque : tech à la mairie (vote), menu de construction, chantiers, tir automatique flèches | `makeTownBuilding`, `makeScierie`, `makeTower`, `updateBuildSites`, `updateTowers`, `cleanupTowers`, `buildMenu`, `placeFromBuildMenu`, `canPayTownTech`, `unlockTownTech`, `startVote`, `castVote`, `resolveVote` |
+| 10 | `src/chop.js` | Récolte de planches à la hache (décompte près d'un arbre) | `updateChop`, `chopProgress` |
+| 11 | `src/weapons.js` | Stats arme équipée, tir, déplacement projectiles | `equippedStats`, `handleShooting`, `updateProjectiles` |
+| 12 | `src/zombies.js` | Vagues, groupes qui fusionnent, IA zombies (priorité : palissade > tour > mairie/joueur) | `spawnWave`, `mergeGroups`, `updateZombies`, `cleanupZombies` |
+| 13 | `src/bag.js` | Sac : disposition, rendu, clic équiper (armes & hache) | `bagLayout`, `handleBagClick`, `drawBag` |
+| 14 | `src/hud.js` | HUD DOM + overlays canvas (dont cercle de décompte hache) | `updateHud`, `drawClock`, `drawPlayerHpBar`, `drawBuildHint`, `drawChopProgress`, `drawGameOver` |
+| 15 | `src/render.js` | Tout le dessin + `render()` (dont `drawTower`, flèche orientée, brouillard multi-sources) | `drawGround/Item/Tree/Building/Player/Wall/Zombie/Projectiles/Fog/Crosshair/DeadTraces`, `drawTower`, `fillPoly`, `roundRect`, `render` |
+| 16 | `src/input.js` | Entrées (souris, molette, clavier) + formulaire démarrage | resize interne, listeners |
+| 17 | `src/main.js` | Logique par frame `update(dt)` + `loop()` | `update`, `loop` |
 
 ## État global : `G.state`
 
@@ -131,6 +132,16 @@ Voir `docs/textures.md` pour la spec.
 - **Changer un sprite / une couleur** → `src/textures/<type>.js` uniquement (le rendu les consomme).
 - **Nouveau système complet** → créer `src/<nom>.js`, l'ajouter à `index.html` avant `main.js`, exposer sur `G`, documenter ici.
 - **Nouveau niveau de tour** (pierre, métal...) → ajouter une entrée dans `G.TOWER_STATS` (`src/config.js`) : menu de construction, chantier, combat, brouillard et rendu s'adaptent automatiquement. Fournir les PNG `assets/sprites/tour/{idle,chantier,gauche,droite}-N.png`.
+
+## Villes décoratives PNG (`src/ville.js`)
+
+Spec complète : `docs/ville.md`. En résumé :
+
+1. **Assets** : chaque ville = `assets/sprites/ville/<nom>/ville.png` (ville visible) + `ville_mask.png` (même taille ; rouge = collision, vert = passage derrière, transparent = libre). Dessiné dans n'importe quel éditeur (Aseprite, GIMP, Photopea…), masque par calque par-dessus le PNG visible.
+2. **Pose** : `G.VILLE_DEFS` (`src/config.js`) liste les villes `{ name, sprite, x, y }` — x/y = coin nord-ouest de l'emprise sol (losange iso, côté = largeur PNG × 2, même ancrage que les bâtiments). Première ville : **Ville de l'Est**, posée à l'est de la ville principale (6800, 4200).
+3. **Collisions** : le masque est décodé une seule fois en grille de cellules 8 px (client : canvas ; serveur : `server/ville-grids.json` généré par `gen-sprite-meta.js` avec la **même fonction pure** → parité exacte). Cellules rouges : bloquent le joueur (`_stepMove`), les zombies (collisions locales + flow field `villeBlockNav`), la pose de planches/tours, et sont évitées par la génération (forêts, maisons, items via `villeAt`).
+4. **Rendu/occlusion** : le PNG est découpé en bandes horizontales (~96 px) insérées dans le tri de profondeur `x+y` → le personnage passe devant/derrière chaque façade selon sa position, sans logique dédiée.
+5. **Multi-villes** : ajouter un dossier PNG + une entrée `VILLE_DEFS` + relancer `node server/gen-sprite-meta.js` (commiter `server/sprite-meta.json` + `server/ville-grids.json`). Sans dossier PNG, la ville est ignorée (tolérant).
 
 ## Bâtiments de ville & tours d'attaque (`src/towers.js`)
 

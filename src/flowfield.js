@@ -47,6 +47,9 @@
     }
     // BFS multi-sources depuis le perimetre de la ville (juste au-dela des
     // murs) : toute cellule libre atteignable porte sa distance au but.
+    // Villes PNG : les cellules solides de leurs grilles bloquent aussi le
+    // champ (les zombies contournent les bâtiments de la ville de l'Est).
+    if (G.villeBlockNav) G.villeBlockNav(blocked, cols, rows, cell);
     var dist = new Int32Array(n);
     for (var d = 0; d < n; d++) dist[d] = -1;
     var queue = new Int32Array(n);

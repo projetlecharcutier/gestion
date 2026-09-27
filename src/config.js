@@ -298,6 +298,21 @@
   // Ecart minimal (px) entre les forets et la palissade de perimetre a
   // l'initialisation du monde : les forets ne collent plus aux murs.
   G.FORET_WALL_GAP = 40;
+  // Villes decoratives PNG : grandes villes pre-dessinees (voir src/ville.js
+  // et assets/sprites/ville/). Chaque entree : { name, sprite, x, y [, w] }.
+  //   name   : nom affichable ; sprite : nom du dossier assets/sprites/ville/<sprite>/
+  //   x, y   : coin nord-ouest de l'emprise sol (unites monde) ;
+  //   w      : cote du losange d'emprise (defaut : largeur du PNG * 2).
+  // Une ville sans dossier PNG charge est ignoree (tolerant). Les grilles de
+  // collision viennent du masque <sprite>/ville_mask.png (rouge = solide,
+  // vert = derriere, transparent = libre) ; cote serveur elles sont lues
+  // dans server/ville-grids.json (regenere par gen-sprite-meta.js).
+  // Premiere ville : a l'EST de la ville principale (TOWN_MAX = 5500),
+  // posee sur la moitie est de la carte, hors de la ville de depart et loin
+  // des bords. La taille exacte sera celle du PNG * 2 quand il sera fourni.
+  G.VILLE_DEFS = [
+    { name: "Ville de l'Est", sprite: "est", x: 6800, y: 4200 }
+  ];
   // Reliques : 5 nouvelles reliques apparaissent hors ville a chaque nouveau
   // jour (repop nocturne).
   G.RELIQUES_PER_NIGHT = 5;

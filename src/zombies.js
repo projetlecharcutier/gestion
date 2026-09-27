@@ -191,6 +191,19 @@
         // Ne spawne pas a l'interieur d'une foret : la collision la traite
         // comme un bloc plein, le zombie y serait prisonnier. On pousse le
         // point de spawn hors du massif en s'ecartant du centre du groupe.
+        if (G.villeCell && G.villeCell(zx, zy) === 1) {
+          // Spawn dans une cellule solide d'une ville PNG : pousse le point
+          // hors de la ville (bord le plus proche) comme pour une foret.
+          var vEsc2 = G.villeEscape ? G.villeEscape(zx, zy) : null;
+          if (vEsc2) {
+            var vLen2 = Math.sqrt(vEsc2.dx * vEsc2.dx + vEsc2.dy * vEsc2.dy) || 1;
+            for (var vf = 1; vf <= 32; vf++) {
+              var vfx = zx + vEsc2.dx / vLen2 * vf * 20;
+              var vfy = zy + vEsc2.dy / vLen2 * vf * 20;
+              if (G.villeCell(vfx, vfy) !== 1) { zx = vfx; zy = vfy; break; }
+            }
+          }
+        }
         if (G.foretAt && G.foretAt(zx, zy)) {
           for (var pf = 1; pf <= 16; pf++) {
             var pfd = dist + pf * 20;
@@ -390,6 +403,14 @@
       }
     }
     // Répousse un zombie hors de ses voisins trop proches (séparation 1 px).
+    // Villes PNG : collision locale combinee foret + ville solide.
+    // Utilisee partout ou les zombies testent aabbHitsForets, pour qu'ils
+    // contournent les bâtiments de la ville de l'Est au lieu de s'y enliser.
+    function hitsObstacle(x, y, half) {
+      if (hitsObstacle(x, y, half)) return true;
+      if (G.aabbHitsVillesCenter && G.aabbHitsVillesCenter(x, y, half)) return true;
+      return false;
+    }
     function separate(z) {
       if (!zGrid) return;
       var zs = G.ZOMBIE_HALF;
@@ -410,14 +431,14 @@
               var ny = z.y + (dy / d) * push;
               // Ne pousse pas a l'interieur d'une foret : la collision la
               // traite comme un bloc plein, le zombie y resterait piege.
-              if (!G.aabbHitsForets(nx, z.y, zs) || G.aabbHitsForets(z.x, z.y, zs)) z.x = nx;
-              if (!G.aabbHitsForets(z.x, ny, zs) || G.aabbHitsForets(z.x, z.y, zs)) z.y = ny;
+              if (!hitsObstacle(nx, z.y, zs) || hitsObstacle(z.x, z.y, zs)) z.x = nx;
+              if (!hitsObstacle(z.x, ny, zs) || hitsObstacle(z.x, z.y, zs)) z.y = ny;
             } else if (d <= 0.01) {
               // Superposition exacte : pousse dans une direction aléatoire
               // (sans entrer dans une foret).
               var rx = z.x + G.rand(-1, 1), ry = z.y + G.rand(-1, 1);
-              if (!G.aabbHitsForets(rx, z.y, zs) || G.aabbHitsForets(z.x, z.y, zs)) z.x = rx;
-              if (!G.aabbHitsForets(z.x, ry, zs) || G.aabbHitsForets(z.x, z.y, zs)) z.y = ry;
+              if (!hitsObstacle(rx, z.y, zs) || hitsObstacle(z.x, z.y, zs)) z.x = rx;
+              if (!hitsObstacle(z.x, ry, zs) || hitsObstacle(z.x, z.y, zs)) z.y = ry;
             }
           }
         }
@@ -655,8 +676,8 @@
               var uX = grp.x + Math.cos(uAng) * uInc;
               var uY = grp.y + Math.sin(uAng) * uInc;
               var uMoved = false;
-              if (uX > 12 && uX < G.WORLD - 12 && !G.aabbHitsForets(uX, grp.y, gHalf)) { grp.x = uX; uMoved = true; }
-              if (uY > 12 && uY < G.WORLD - 12 && !G.aabbHitsForets(grp.x, uY, gHalf)) { grp.y = uY; uMoved = true; }
+              if (uX > 12 && uX < G.WORLD - 12 && !hitsObstacle(uX, grp.y, gHalf)) { grp.x = uX; uMoved = true; }
+              if (uY > 12 && uY < G.WORLD - 12 && !hitsObstacle(grp.x, uY, gHalf)) { grp.y = uY; uMoved = true; }
               if (!uMoved) break;
               uDone += uInc;
             }
@@ -682,8 +703,8 @@
             if (grp.foretCurAng !== undefined) {
               var rvx = Math.cos(gBaseAng), rvy = Math.sin(gBaseAng);
               var rsx = grp.x + rvx * gInc, rsy = grp.y + rvy * gInc;
-              var rBx = rsx > 12 && rsx < G.WORLD - 12 && !G.aabbHitsForets(rsx, grp.y, gHalf);
-              var rBy = rsy > 12 && rsy < G.WORLD - 12 && !G.aabbHitsForets(grp.x, rsy, gHalf);
+              var rBx = rsx > 12 && rsx < G.WORLD - 12 && !hitsObstacle(rsx, grp.y, gHalf);
+              var rBy = rsy > 12 && rsy < G.WORLD - 12 && !hitsObstacle(grp.x, rsy, gHalf);
               if (rBx || rBy) {
                 if (rBx) grp.x = rsx;
                 if (rBy) grp.y = rsy;
@@ -698,8 +719,8 @@
               var wsx = grp.x + wvx * gInc;
               var wsy = grp.y + wvy * gInc;
               var wBx = false, wBy = false;
-              if (wsx > 12 && wsx < G.WORLD - 12 && !G.aabbHitsForets(wsx, grp.y, gHalf)) { grp.x = wsx; wBx = true; }
-              if (wsy > 12 && wsy < G.WORLD - 12 && !G.aabbHitsForets(grp.x, wsy, gHalf)) { grp.y = wsy; wBy = true; }
+              if (wsx > 12 && wsx < G.WORLD - 12 && !hitsObstacle(wsx, grp.y, gHalf)) { grp.x = wsx; wBx = true; }
+              if (wsy > 12 && wsy < G.WORLD - 12 && !hitsObstacle(grp.x, wsy, gHalf)) { grp.y = wsy; wBy = true; }
               if (wBx || wBy) {
                 gMoved = true;
                 if (grp.foretCurAng === undefined) grp.foretCurAng = wAng;
@@ -899,8 +920,8 @@
                     var uX = z.x + Math.cos(z.unstick.ang) * incU;
                     var uY = z.y + Math.sin(z.unstick.ang) * incU;
                     var uMoved = false;
-                    if (!G.aabbHitsWalls(uX - zsU, z.y - zsU, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(uX, z.y, zsU) && !G.hitsSiegeFoot(uX - zsU, z.y - zsU, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = uX; uMoved = true; }
-                    if (!G.aabbHitsWalls(z.x - zsU, uY - zsU, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(z.x, uY, zsU) && !G.hitsSiegeFoot(z.x - zsU, uY - zsU, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = uY; uMoved = true; }
+                    if (!G.aabbHitsWalls(uX - zsU, z.y - zsU, G.ZOMBIE_W, G.ZOMBIE_W) && !hitsObstacle(uX, z.y, zsU) && !G.hitsSiegeFoot(uX - zsU, z.y - zsU, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = uX; uMoved = true; }
+                    if (!G.aabbHitsWalls(z.x - zsU, uY - zsU, G.ZOMBIE_W, G.ZOMBIE_W) && !hitsObstacle(z.x, uY, zsU) && !G.hitsSiegeFoot(z.x - zsU, uY - zsU, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = uY; uMoved = true; }
                     if (!uMoved) break;
                     zDoneU += incU;
                   }
@@ -938,8 +959,8 @@
                   var stepX = z.x + mvx * inc;
                   var stepY = z.y + mvy * inc;
                   var blocked = true;
-                  if (!G.aabbHitsWalls(stepX - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(stepX, z.y, zs) && !G.hitsSiegeFoot(stepX - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = stepX; blocked = false; }
-                  if (!G.aabbHitsWalls(z.x - zs, stepY - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(z.x, stepY, zs) && !G.hitsSiegeFoot(z.x - zs, stepY - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = stepY; blocked = false; }
+                  if (!G.aabbHitsWalls(stepX - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !hitsObstacle(stepX, z.y, zs) && !G.hitsSiegeFoot(stepX - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = stepX; blocked = false; }
+                  if (!G.aabbHitsWalls(z.x - zs, stepY - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !hitsObstacle(z.x, stepY, zs) && !G.hitsSiegeFoot(z.x - zs, stepY - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = stepY; blocked = false; }
                   if (blocked) { hitWall = true; break; }
                   done += inc;
                 }
@@ -950,16 +971,29 @@
                   z.blockedSides = (z.blockedSides || 0) + 1;
                   // Distingue le blocage par forêt (contourner pour atteindre
                   // le mur) du blocage par mur (glisser le long).
-                  var blockedByForet = G.aabbHitsForets(z.x, z.y, zs) ||
-                    G.aabbHitsForets(z.x + mvx * zStep, z.y + mvy * zStep, zs);
+                  var blockedByForet = hitsObstacle(z.x, z.y, zs) ||
+                    hitsObstacle(z.x + mvx * zStep, z.y + mvy * zStep, zs);
                   if (blockedByForet) {
-                    if (G.aabbHitsForets(z.x, z.y, zs)) {
+                    if (hitsObstacle(z.x, z.y, zs)) {
                       // Zombie a l'interieur d'une foret (spawn bord de carte,
                       // repoussement de separation) : la collision traite le
                       // massif comme un bloc plein, aucune position interieure
                       // n'est valide. Il marche droit vers le bord le plus
                       // proche pour en sortir avant tout autre chose.
                       var zF = G.foretAt ? G.foretAt(z.x, z.y) : null;
+                      if (!zF && G.aabbHitsVillesCenter && G.aabbHitsVillesCenter(z.x, z.y, zs)) {
+                        // Pris dans une cellule solide d'une ville PNG (pas
+                        // une foret) : marche vers le bord le plus proche de
+                        // l'emprise de la ville pour en sortir.
+                        var vEsc = G.villeEscape ? G.villeEscape(z.x, z.y) : null;
+                        if (vEsc) {
+                          var vLen = Math.sqrt(vEsc.dx * vEsc.dx + vEsc.dy * vEsc.dy) || 1;
+                          var vStep = grpSpeed * z.speedFactor * dt;
+                          z.x += (vEsc.dx / vLen) * vStep;
+                          z.y += (vEsc.dy / vLen) * vStep;
+                        }
+                        zF = null;
+                      }
                       if (zF) {
                         var fCx = zF.x + zF.w / 2, fCy = zF.y + zF.h / 2;
                         var eDx = z.x - fCx, eDy = z.y - fCy;
@@ -980,8 +1014,8 @@
                       var naStep = grpSpeed * z.speedFactor * dt;
                       var nasx = z.x + navArrow.arrowX * naStep;
                       var nasy = z.y + navArrow.arrowY * naStep;
-                      if (!G.aabbHitsForets(nasx, z.y, zs) && !G.aabbHitsWalls(nasx - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = nasx; navMoved = true; }
-                      if (!G.aabbHitsForets(z.x, nasy, zs) && !G.aabbHitsWalls(z.x - zs, nasy - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = nasy; navMoved = true; }
+                      if (!hitsObstacle(nasx, z.y, zs) && !G.aabbHitsWalls(nasx - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = nasx; navMoved = true; }
+                      if (!hitsObstacle(z.x, nasy, zs) && !G.aabbHitsWalls(z.x - zs, nasy - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = nasy; navMoved = true; }
                     }
                     if (!navMoved) {
                     // Réoriente vers le mur le plus proche (contournement
@@ -1001,8 +1035,8 @@
                       var fsx = z.x + (rdx2 / rlen2) * fStep;
                       var fsy = z.y + (rdy2 / rlen2) * fStep;
                       var fsMoved = false;
-                      if (!G.aabbHitsForets(fsx, z.y, zs) && !G.aabbHitsWalls(fsx - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = fsx; fsMoved = true; }
-                      if (!G.aabbHitsForets(z.x, fsy, zs) && !G.aabbHitsWalls(z.x - zs, fsy - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = fsy; fsMoved = true; }
+                      if (!hitsObstacle(fsx, z.y, zs) && !G.aabbHitsWalls(fsx - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = fsx; fsMoved = true; }
+                      if (!hitsObstacle(z.x, fsy, zs) && !G.aabbHitsWalls(z.x - zs, fsy - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = fsy; fsMoved = true; }
                       if (!fsMoved) reWall = null;
                     }
                     if (!reWall) {
@@ -1015,8 +1049,8 @@
                       var fsl = G.ZOMBIE_WALL_SLIDE * dt;
                       var fxs = z.x + fperpX * fsl, fys = z.y + fperpY * fsl;
                       var fMoved = false;
-                      if (!G.aabbHitsForets(fxs, z.y, zs) && !G.aabbHitsWalls(fxs - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = fxs; fMoved = true; }
-                      if (!G.aabbHitsForets(z.x, fys, zs) && !G.aabbHitsWalls(z.x - zs, fys - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = fys; fMoved = true; }
+                      if (!hitsObstacle(fxs, z.y, zs) && !G.aabbHitsWalls(fxs - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.x = fxs; fMoved = true; }
+                      if (!hitsObstacle(z.x, fys, zs) && !G.aabbHitsWalls(z.x - zs, fys - zs, G.ZOMBIE_W, G.ZOMBIE_W)) { z.y = fys; fMoved = true; }
                       if (!fMoved && z.blockedSides > 8) {
                         z.foretSeekDir = -z.foretSeekDir;
                         z.blockedSides = 0;
@@ -1042,8 +1076,8 @@
                           var cel = Math.sqrt(cex * cex + cey * cey) || 1;
                           var esc = G.ZOMBIE_WALL_SLIDE * dt * 2;
                           var esx = z.x + (cex / cel) * esc, esy = z.y + (cey / cel) * esc;
-                          if (!G.aabbHitsForets(esx, z.y, zs) && esx > 12 && esx < G.WORLD - 12) z.x = esx;
-                          if (!G.aabbHitsForets(z.x, esy, zs) && esy > 12 && esy < G.WORLD - 12) z.y = esy;
+                          if (!hitsObstacle(esx, z.y, zs) && esx > 12 && esx < G.WORLD - 12) z.x = esx;
+                          if (!hitsObstacle(z.x, esy, zs) && esy > 12 && esy < G.WORLD - 12) z.y = esy;
                         }
                       }
                     }
@@ -1057,8 +1091,8 @@
                     var perpX = -mvy, perpY = mvx;
                     var slide = slideSpd * dt * slideDir;
                     var sxs = z.x + perpX * slide, sys = z.y + perpY * slide;
-                    if (!G.aabbHitsWalls(sxs - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(sxs, z.y, zs)) z.x = sxs;
-                    if (!G.aabbHitsWalls(z.x - zs, sys - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !G.aabbHitsForets(z.x, sys, zs)) z.y = sys;
+                    if (!G.aabbHitsWalls(sxs - zs, z.y - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !hitsObstacle(sxs, z.y, zs)) z.x = sxs;
+                    if (!G.aabbHitsWalls(z.x - zs, sys - zs, G.ZOMBIE_W, G.ZOMBIE_W) && !hitsObstacle(z.x, sys, zs)) z.y = sys;
                     // Fouisseur patient épuisé : le contournement ne trouve
                     // pas de faille (palissade fermée), il ne reste pas
                     // inactif — il attaque le mur qu'il longe.

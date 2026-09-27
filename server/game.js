@@ -26,6 +26,7 @@
   load("config.js");
   load("stats.js");
   load("projection.js");
+  load("ville.js");
   load("world.js");
   load("flowfield.js");
   load("player.js");

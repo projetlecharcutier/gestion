@@ -45,7 +45,8 @@
     var advanced = false;
     var testX = p.x;
     var testY = ny;
-    if (!G.aabbHitsBuildings(testX, testY) && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true) && !G.aabbHitsSieges(testX, testY) &&
+    var hitVilleY = G.aabbHitsVilles && G.aabbHitsVilles(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W);
+    if (!G.aabbHitsBuildings(testX, testY) && !hitVilleY && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true) && !G.aabbHitsSieges(testX, testY) &&
         testX >= G.PLAYER_HALF && testX <= G.WORLD - G.PLAYER_HALF &&
         testY >= G.PLAYER_HALF && testY <= G.WORLD - G.PLAYER_HALF) {
       p.y = testY;
@@ -53,7 +54,8 @@
     }
     testY = p.y;
     testX = nx;
-    if (!G.aabbHitsBuildings(testX, testY) && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true) && !G.aabbHitsSieges(testX, testY) &&
+    var hitVilleX = G.aabbHitsVilles && G.aabbHitsVilles(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W);
+    if (!G.aabbHitsBuildings(testX, testY) && !hitVilleX && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true) && !G.aabbHitsSieges(testX, testY) &&
         testX >= G.PLAYER_HALF && testX <= G.WORLD - G.PLAYER_HALF &&
         testY >= G.PLAYER_HALF && testY <= G.WORLD - G.PLAYER_HALF) {
       p.x = testX;
@@ -89,6 +91,7 @@
         if (cy < G.PLAYER_HALF || cy > G.WORLD - G.PLAYER_HALF) continue;
         if (inTown && !G.inTown(cx, cy)) continue;
         if (G.aabbHitsBuildings(cx, cy)) continue;
+        if (G.aabbHitsVilles && G.aabbHitsVilles(cx - G.PLAYER_HALF, cy - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W)) continue;
         if (G.aabbHitsWalls(cx - G.PLAYER_HALF, cy - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true)) continue;
         return { x: cx, y: cy };
       }
