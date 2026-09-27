@@ -38,6 +38,26 @@
   // (defaut : largeur du PNG * 2, convention bâtiments).
   G.VILLE_DEFS = G.VILLE_DEFS || [];
 
+  // Manifeste genere par le serveur (assets/sprites/ville/villes.js) :
+  // toutes les villes DETECTEES sur le disque, y compris celles poseees
+  // automatiquement (server/ville-positions.json). Fusionnees ici pour que
+  // client et serveur posent exactement les memes villes. Les defs de
+  // config.js restent prioritaires (position manuelle conservee).
+  (function mergeManifest() {
+    var manifest = (typeof window !== "undefined" && window.VILLE_MANIFEST) ||
+                   G.VILLE_MANIFEST;
+    if (!manifest || !manifest.length) return;
+    for (var i = 0; i < manifest.length; i++) {
+      var m = manifest[i];
+      if (!m || !m.sprite) continue;
+      var dup = false;
+      for (var d = 0; d < G.VILLE_DEFS.length; d++) {
+        if ((G.VILLE_DEFS[d].sprite || G.VILLE_DEFS[d].name) === m.sprite) { dup = true; break; }
+      }
+      if (!dup) G.VILLE_DEFS.push(m);
+    }
+  })();
+
   // ------------------------------------------------------------------
   // Helpers de definition
   // ------------------------------------------------------------------

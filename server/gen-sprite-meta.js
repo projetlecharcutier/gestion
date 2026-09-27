@@ -122,34 +122,8 @@ fs.writeFileSync(path.join(__dirname, "sprite-meta.json"), JSON.stringify(out));
 console.log("sprite-meta.json : " + Object.keys(out).length + " sprites");
 
 // --- Grilles de collision des villes PNG (server/ville-grids.json) ---
-// Pour chaque ville de VILLE_DEFS (src/config.js) dont le masque
-// assets/sprites/ville/<sprite>/ville_mask.png existe, decode le masque et
-// construit la grille MONDE avec la MEME fonction pure que le client
-// (src/ville.js villeGridFromPixels charge par eval) -> parite exacte des
-// collisions client/serveur. Encodage RLE pour rester compact.
-global.window = global;
-var Gv = global.GAME = global.GAME || {};
-(0, eval)(fs.readFileSync(path.join(__dirname, "..", "src", "config.js"), "utf8"));
-(0, eval)(fs.readFileSync(path.join(__dirname, "..", "src", "ville.js"), "utf8"));
-var grids = {};
-var defs = Gv.VILLE_DEFS || [];
-var nGrids = 0;
-for (var di = 0; di < defs.length; di++) {
-  var dname = (defs[di].sprite || defs[di].name || "").replace(/[^a-z0-9_-]/gi, "_");
-  if (!dname) continue;
-  var maskPath = path.join(__dirname, "..", "assets", "sprites", "ville", dname, "ville_mask.png");
-  if (!fs.existsSync(maskPath)) continue;
-  var dec = pngRGBA(fs.readFileSync(maskPath));
-  if (!dec) { console.error("ville " + dname + " : masque PNG non supporte (8-bit RGBA non entrelasse requis)"); continue; }
-  var side = Gv.villeSideFor(dec.w, defs[di]);
-  if (side <= 0) continue;
-  var grid = Gv.villeGridFromPixels(dec.w, dec.h, dec.rgba, defs[di].x || 0, defs[di].y || 0, side, Gv.VILLE_GRID_CELL);
-  if (!grid) { console.error("ville " + dname + " : grille invalide"); continue; }
-  grids[dname] = {
-    cell: grid.cell, cols: grid.cols, rows: grid.rows, ox: grid.ox, oy: grid.oy,
-    rle: Array.prototype.slice.call(Gv.villeRLEEncode(grid.data))
-  };
-  nGrids++;
-}
-fs.writeFileSync(path.join(__dirname, "ville-grids.json"), JSON.stringify(grids));
-console.log("ville-grids.json : " + nGrids + " grille(s)");
+// DEPLACEES vers server/ville-sync.js : celui-ci scanne TOUTES les villes
+// du dossier assets/sprites/ville/ (pas seulement VILLE_DEFS), detecte les
+// nouvelles villes, regenere les grilles quand un masque change et ecrit le
+// manifeste client assets/sprites/ville/villes.js. ville-sync.sync() est
+// appele automatiquement au demarrage du serveur (server/index.js).

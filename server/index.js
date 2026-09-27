@@ -8,6 +8,20 @@
   var http = require("http");
   var fs = require("fs");
   var path = require("path");
+  // Villes PNG : verification automatique au demarrage (nouvelles villes,
+  // masques modifies, depots a la racine). Genere ville-grids.json + les
+  // positions persistees AVANT que game.js ne charge les grilles.
+  try {
+    var villeSync = require("./ville-sync");
+    var res = villeSync.sync();
+    if (res.found > 0) {
+      console.log("[ville-sync] " + res.found + " ville(s) : " + res.names.join(", ") +
+        " | grilles generees : " + res.grids +
+        " | placements auto : " + res.placed);
+    }
+  } catch (e) {
+    console.error("[ville-sync] erreur (le serveur demarre sans villes) :", e.message);
+  }
   var game = require("./game");
 
   var PORT = process.env.PORT || 8080;

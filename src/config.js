@@ -308,11 +308,17 @@
   // vert = derriere, transparent = libre) ; cote serveur elles sont lues
   // dans server/ville-grids.json (regenere par gen-sprite-meta.js).
   // Premiere ville : a l'EST de la ville principale (TOWN_MAX = 5500),
-  // posee sur la moitie est de la carte, hors de la ville de depart et loin
-  // des bords. La taille exacte sera celle du PNG * 2 quand il sera fourni.
+  // a ~700 px du mur est (proche, visible en sortant de la ville) et hors
+  // des zones de generation. La taille exacte vient du PNG (largeur * 2).
   G.VILLE_DEFS = [
-    { name: "Ville de l'Est", sprite: "est", x: 6800, y: 4200 }
+    { name: "Ville de l'Est", sprite: "est", x: 6210, y: 4900 }
   ];
+  // Placement automatique des nouvelles villes DETECTEES par le serveur
+  // (ville-sync.js) : distance au centre de la ville principale. Les
+  // villes de VILLE_DEFS gardent leur position manuelle ; une ville
+  // uploadee sans entree recoit une position sur le cercle (est, puis
+  // nord, ouest, sud...) persistee dans server/ville-positions.json.
+  G.VILLE_AUTO_DIST = 1500;
   // Reliques : 5 nouvelles reliques apparaissent hors ville a chaque nouveau
   // jour (repop nocturne).
   G.RELIQUES_PER_NIGHT = 5;

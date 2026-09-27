@@ -39,13 +39,18 @@ position (coin nord-ouest du losange) est definie dans `G.VILLE_DEFS`
 ## Ajouter une ville
 
 1. Creer le dossier `assets/sprites/ville/<nom>/` avec `ville.png` et
-   `ville_mask.png`.
-2. Ajouter une entree dans `G.VILLE_DEFS` (`src/config.js`) :
+   `ville_mask.png`. Le serveur le DETECTE au demarrage.
+2. (Optionnel) Placer la ville manuellement : ajouter une entree dans
+   `G.VILLE_DEFS` (`src/config.js`) :
    `{ name: "...", sprite: "<nom>", x: ..., y: ... }` — x/y = coin
-   nord-ouest de l'emprise sol.
-3. Relancer `node server/gen-sprite-meta.js` (regenere
-   `server/sprite-meta.json` ET `server/ville-grids.json` pour le serveur),
-   puis committer ces fichiers generes avec les PNG.
+   nord-ouest de l'emprise sol. Sans entree, la ville est posee
+   AUTOMATIQUEMENT sur un cercle autour de la ville principale
+   (est, puis nord, ouest, sud... ; distance VILLE_AUTO_DIST), position
+   persistee dans `server/ville-positions.json`.
+3. (Optionnel) Relancer `node server/gen-sprite-meta.js` pour rafraichir
+   `server/sprite-meta.json` (bornes opaques) ; les grilles de collision
+   et le manifeste client (`villes.js`) sont regeneres automatiquement au
+   demarrage du serveur par `server/ville-sync.js`.
 
 Sans dossier PNG, la ville est simplement ignoree (tolerant) : le jeu
 demarre normalement, sans la ville.
@@ -57,8 +62,8 @@ demarre normalement, sans la ville.
   rouges bloquent le joueur (`_stepMove`), les zombies (collisions locales
   + flow field) et la pose de planches/tours.
 - **Serveur** : les memes grilles sont lues depuis `server/ville-grids.json`
-  (genere par `gen-sprite-meta.js` avec la meme fonction pure que le client
-  -> parite exacte des collisions).
+  (genere par `server/ville-sync.js`, lance au demarrage, avec la meme
+  fonction pure que le client -> parite exacte des collisions).
 - **Rendu** : le PNG est decoupe en bandes horizontales (~96 px) inserees
   dans le tri de profondeur `x+y` -> le personnage passe devant/derriere
   chaque facade selon sa position. Le canal vert du masque est reserve aux

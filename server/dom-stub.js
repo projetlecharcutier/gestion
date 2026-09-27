@@ -11,6 +11,9 @@
 // houseNames()/foretNames() les vraies listes : buildWorld() produit ainsi
 // la même carte que le client (mairie, église, maisons décoratives, forêts,
 // périmètre de palissades), sans écart de collision.
+var fs = require("fs");
+var path = require("path");
+
 function setupStub() {
   // window === global : les modules écrivent window.GAME (=== global.GAME)
   // et lisent window.devicePixelRatio. En Node, on expose global via `window`.
@@ -39,6 +42,20 @@ function setupStub() {
     G._villeGridsRaw = require("./ville-grids.json");
   } catch (e) {
     G._villeGridsRaw = null;
+  }
+
+  // --- Manifeste des villes (assets/sprites/ville/villes.js, genere par
+  // server/ville-sync.js au demarrage) : liste des villes DETECTEES sur le
+  // disque, avec leur position. src/ville.js le fusionne dans VILLE_DEFS.
+  // On extrait window.VILLE_MANIFEST par expression reguliere (fichier JS,
+  // pas JSON) ; absent -> aucune ville supplementaire.
+  try {
+    var vmCode = fs.readFileSync(
+      path.join(__dirname, "..", "assets", "sprites", "ville", "villes.js"), "utf8");
+    var vmMatch = vmCode.match(/VILLE_MANIFEST\s*=\s*(\[[\s\S]*?\]);/);
+    if (vmMatch) G.VILLE_MANIFEST = JSON.parse(vmMatch[1].replace(/,(\s*[\]}])/g, "$1"));
+  } catch (e) {
+    G.VILLE_MANIFEST = null;
   }
 
   // Remplit G.SPRITES[ent][frame] = { w, h, bounds } pour chaque entrée du

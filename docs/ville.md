@@ -46,8 +46,10 @@ G.VILLE_DEFS = [
 
 - `x, y` : coin nord-ouest de l'emprise sol (losange iso).
 - Emprise par defaut : `largeur du PNG * 2` (overridable via `w`).
-- Ajouter une ville = dossier PNG + entree VILLE_DEFS + `node
-  server/gen-sprite-meta.js` (regenere `server/ville-grids.json`).
+- Ajouter une ville = deposer le dossier PNG dans
+  `assets/sprites/ville/<nom>/` : le serveur la DETECTE au demarrage
+  (server/ville-sync.js) et la place automatiquement si elle n'a pas
+  d'entree VILLE_DEFS.
 - Une ville sans dossier PNG est ignoree (tolerant) : le jeu demarre
   normalement. Plusieurs villes peuvent coexister, y compris avec des
   sprites partages (cache de bandes clee par sprite + position).
@@ -57,11 +59,15 @@ G.VILLE_DEFS = [
 - **Client** : masque charge par `probeVilles` (src/assets.js), grille
   extraite au `finish` du chargement via `buildVilleGrids` (canvas
   `getImageData`, une seule fois).
-- **Serveur** : `server/gen-sprite-meta.js` decode le masque PNG (decodeur
-  RGBA manuel, 8-bit non entrelace) et genere `server/ville-grids.json`
-  (RLE) en appelant la MEME fonction pure `villeGridFromPixels` chargee par
-  `eval` depuis src/. `dom-stub.js` expose les grilles brutes
-  (`G._villeGridsRaw`) que src/ville.js decode au chargement.
+- **Serveur** : `server/ville-sync.js` (lance automatiquement par
+  server/index.js au demarrage) scanne `assets/sprites/ville/`, decode le
+  masque PNG (decodeur RGBA manuel, 8-bit non entrelace) et genere
+  `server/ville-grids.json` (RLE) en appelant la MEME fonction pure
+  `villeGridFromPixels` chargee par `eval` depuis src/. `dom-stub.js`
+  expose les grilles brutes (`G._villeGridsRaw`) que src/ville.js decode
+  au chargement. Les positions automatiques sont persistees dans
+  `server/ville-positions.json` (stables entre redemarrages) et publiees
+  au client via le manifeste genere `assets/sprites/ville/villes.js`.
 - **Resultat** : collisions strictement identiques des deux cotes (meme
   fonction, meme cellule de 8 px).
 
@@ -78,5 +84,10 @@ G.VILLE_DEFS = [
 - `inTown` (brouillard, HUD, zone de construction) ne tient PAS compte des
   villes PNG : elles sont purement decoratives.
 - Apres tout ajout/modification de PNG : relancer `node
-  server/gen-sprite-meta.js` et committer `server/sprite-meta.json` +
-  `server/ville-grids.json` avec les PNG (le deploy ne les regenere pas).
+  server/gen-sprite-meta.js` (bornes opaques des sprites) et committer les
+  fichiers generes (`server/sprite-meta.json`,
+  `server/ville-grids.json`, `server/ville-positions.json`,
+  `server/ville-grids-sigs.json`, `assets/sprites/ville/villes.js`) avec
+  les PNG. En production, le serveur regenere lui-meme les grilles et le
+  manifeste au demarrage (ville-sync.js), mais les committer garantit un
+  premier demarrage correct meme sans sync.
