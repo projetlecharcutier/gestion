@@ -40,7 +40,7 @@
 
   // Hauteur d'une bande de rendu (px image). Les bandes doivent rester
   // fines pour une occlusion precise du joueur par les façades.
-  G.VILLE_BAND_H = 4;
+  G.VILLE_BAND_H = 1;
 
   // Definitions des villes posees (config.js) : { name, sprite, x, y [, w] }.
   // (x, y) = coin nord-ouest de l'emprise sol ; w/h = cote du losange

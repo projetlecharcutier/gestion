@@ -1303,59 +1303,23 @@
     // ecran verticale de la bande entiere du PNG est trop large pour servir
     // de rejet : on teste la bbox ecran approximee de la bande).
     if (state.villes && G.villeBands) {
-      // Occlusion de la ville ou se tient le joueur : departage par la
-      // position ECRAN. La ville est dessinee en bandes horizontales fines
-      // (VILLE_BAND_H px image) : chaque bande couvre un petit intervalle de
-      // profondeur. Les bandes qui chevauchent le CORPS du joueur a l'ecran
-      // sont tirees a part avec un depth selon la position de ses PIEDS par
-      // rapport au bas de la bande -- le tri naturel des autres bandes fait
-      // le reste (une bande au nord du joueur est toujours derriere, une
-      // bande au sud toujours devant). L'ancien mecanisme appliquait un
-      // biais +/-1e6 a TOUTES les bandes selon la cellule du masque sous les
-      // pieds : la ville entiere sautait d'un bloc devant/derriere le joueur
-      // (le bas du personnage etait avale par les grandes bandes de 96 px,
-      // et le rendu changeait brutalement des que les pieds changeaient de
-      // cellule en se deplacant).
-      var villePinfo = (G.villeCellInfo && state.started) ? G.villeCellInfo(state.player.x, state.player.y) : null;
-      var villeV = null, villePlayerMode = 0;
-      if (villePinfo && villePinfo.mode !== 0) {
-        for (var vmi = 0; vmi < state.villes.length; vmi++) {
-          if (state.villes[vmi].sprite === villePinfo.sprite) { villeV = state.villes[vmi]; break; }
-        }
-        villePlayerMode = villePinfo.mode; // 1 = pieds sur zone DERRIERE (verte), 2 = pieds sur zone transparente
-      }
+      // Occlusion : tri naturel UNIQUEMENT. Chaque bande de 1 px image
+      // (VILLE_BAND_H) couvre ~8 px monde de profondeur (la taille du
+      // joueur) et entre dans le tri x+y comme tout drawable : une facade
+      // au sud du joueur (bande de depth superieur) est dessinee apres lui
+      // et le couvre, une facade au nord avant lui, un passage transparent
+      // du PNG ne le couvre pas (pixels transparents). Aucun mecanisme
+      // dedie : les anciens biais (cellule du masque sous les pieds,
+      // departage par corps) etaient des approximations de ce tri, utiles
+      // seulement quand les bandes etaient si grossieres (96 px) qu'une
+      // seule bande melangeait des facades au nord ET au sud du joueur.
       for (var vi = 0; vi < state.villes.length; vi++) {
         var vv = state.villes[vi];
         if (vv.x + vv.w < bnds.minX || vv.x > bnds.maxX || vv.y + vv.h < bnds.minY || vv.y > bnds.maxY) continue;
         var vEntry = G.villeBands(vv);
         if (!vEntry) continue;
-        // Intervalles ecran des bandes (recalculs identiques a drawVilleBand).
-        var vA = G.proj(vv.x, vv.y), vC = G.proj(vv.x + vv.w, vv.y + vv.h), vD = G.proj(vv.x, vv.y + vv.h);
-        var vCx = (vA[0] + vC[0]) / 2;
-        var vGroundY = Math.max(vC[1], vD[1]);
-        var vLosangeW = (vv.w + vv.h) * 0.5 * G.state.zoom;
-        var vFullDh = vLosangeW * vEntry.ih / vEntry.iw;
-        // Corps du joueur a l'ecran : le sprite est ancre bas-centre sur sa
-        // position projetee (pieds), hauteur approx 26 px * zoom.
-        var pBase = G.proj(state.player.x, state.player.y);
-        var pTopY = pBase[1] - 26 * G.state.zoom;
         for (var vb = 0; vb < vEntry.bands.length; vb++) {
-          var vBand = vEntry.bands[vb];
-          var vbDepth = vBand.depth;
-          if (vv === villeV) {
-            var vBandY0 = vGroundY - vFullDh + (vBand.sy / vEntry.ih) * vFullDh;
-            var vBandY1 = vBandY0 + vFullDh * vBand.sh / vEntry.ih;
-            // La bande chevauche le corps du joueur -> elle represente la
-            // facon de la ville a la hauteur de son torse : les PIEDS
-            // decident. Mode 1 (masque vert : le sol est DERRIERE le PNG)
-            // -> bande devant lui ; mode 2 (sol transparent : le joueur
-            // est DEVANT la ville) -> bande derriere lui.
-            if (pTopY < vBandY1 && pBase[1] > vBandY0) {
-              if (villePlayerMode === 1) vbDepth = state.player.x + state.player.y + 1;
-              else if (villePlayerMode === 2) vbDepth = state.player.x + state.player.y - 1;
-            }
-          }
-          drawables.push({ depth: vbDepth, type: "ville", ref: { v: vv, band: vBand, entry: vEntry } });
+          drawables.push({ depth: vEntry.bands[vb].depth, type: "ville", ref: { v: vv, band: vEntry.bands[vb], entry: vEntry } });
         }
       }
     }

@@ -1,11 +1,10 @@
-// Test: villes PNG - occlusion du joueur par la ville, mecanisme v2.
-// L'ancien mecanisme appliquait un biais +/-1e6 a TOUTES les bandes de la
-// ville selon la cellule du masque sous les pieds : la ville entiere sautait
-// d'un bloc devant/derriere le joueur (bas du personnage ave par des bandes
-// de 96 px, rendu different a l'arret vs en deplacement). Le nouveau
-// mecanisme : bandes fines (VILLE_BAND_H) + departage UNIQUEMENT des bandes
-// qui chevauchent le corps du joueur a l'ecran, selon la position de ses
-// pieds ; les autres bandes gardent le tri naturel.
+// Test: villes PNG - occlusion du joueur par la ville, mecanisme v3.
+// Historique : v1 = biais +/-1e6 sur toutes les bandes (ville entiere qui
+// saute), v2 = departage des bandes chevauchant le corps, v3 = tri naturel
+// UNIQUEMENT. Une bande de 1 px image couvre ~8 px monde (la taille du
+// joueur) : le tri par profondeur x+y est exact a cette resolution, tout
+// mecanisme dedie ne fait que degrader le resultat (approximations, sauts
+// visuels quand les pieds changent de cellule).
 var fs = require("fs");
 var path = require("path");
 var REPO = path.join(__dirname, "..", "..");
@@ -14,36 +13,30 @@ function assert(c, m) { if (!c) { console.log("FAIL: " + m); fails++; } else con
 
 var rsrc = fs.readFileSync(path.join(REPO, "src", "render.js"), "utf8");
 var vsrc = fs.readFileSync(path.join(REPO, "src", "ville.js"), "utf8");
-
-// 1) Plus de biais global : le +/-1e6 doit avoir disparu (hors commentaires)
 var codeNoComments = rsrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+// 1) Tri naturel uniquement : ni biais, ni departage dedie dans le code
 assert(codeNoComments.indexOf("1e6") === -1, "plus de biais +/-1e6 sur toute la ville");
+assert(codeNoComments.indexOf("villePlayerMode") === -1, "plus de departage dedie par corps");
 
-// 2) Le departage ne s'applique qu'aux bandes qui chevauchent le CORPS du
-//    joueur a l'ecran (test de chevauchement present avant la reaffectation)
-var overlapIdx = rsrc.indexOf("pTopY < vBandY1 && pBase[1] > vBandY0");
-assert(overlapIdx !== -1, "test de chevauchement bande/corps present");
-var reassignIdx = rsrc.indexOf("villePlayerMode === 1");
-assert(reassignIdx !== -1 && overlapIdx < reassignIdx,
-  "le departage selon la position des pieds se fait APRES le test de chevauchement");
-
-// 3) villeCellInfo echantillonne toujours le joueur local
-assert(rsrc.indexOf("G.villeCellInfo(state.player.x, state.player.y)") !== -1,
-  "villeCellInfo appelee sur la position du joueur local");
-
-// 4) Bandes fines : VILLE_BAND_H <= 8 px image (le PNG de ville fait 100 px
-//    -> au moins 12 bandes ; l'ancienne valeur 96 n'en faisait que 2)
+// 2) Bandes a la resolution du masque : VILLE_BAND_H = 1 px image
+//    (100 bandes pour un PNG de 100 px ; ~8 px monde par bande)
 var m2 = vsrc.match(/G\.VILLE_BAND_H\s*=\s*(\d+)/);
 assert(!!m2, "VILLE_BAND_H defini");
 if (m2) {
   var bh = parseInt(m2[1], 10);
-  assert(bh >= 1 && bh <= 8, "VILLE_BAND_H fin (<= 8 px image, obtenu " + bh + ")");
+  assert(bh === 1, "VILLE_BAND_H = 1 px image (obtenu " + bh + ")");
 }
 
-// 5) Le joueur est ancre sur sa zone OPAQUE (spriteBoundsOf) : les pieds ne
+// 3) Le joueur est ancre sur sa zone OPAQUE (spriteBoundsOf) : les pieds ne
 //    flottent plus au-dessus de la marge transparente du PNG
 assert(rsrc.indexOf("G.spriteBoundsOf(sprite)") !== -1,
   "ancrage du sprite joueur via spriteBoundsOf (bas opaque sur le sol)");
+
+// 4) Alignement grille/rendu : les formules d'ancrage du PNG doivent etre
+//    strictement identiques des deux cotes (cf. regression du bug hoisting).
+assert(vsrc.indexOf("(x - y) / 2") !== -1 && vsrc.indexOf("(x + y + 2 * side) / 4") !== -1,
+  "villeGridFromPixels utilise le meme repere que le rendu (cx/groundY)");
 
 console.log(fails ? "FAIL ville/ordre_biais (" + fails + ")" : "PASS ville/ordre_biais");
 process.exit(fails ? 1 : 0);
