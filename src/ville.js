@@ -36,7 +36,7 @@
   // la geometrie du filtre de sol change (le losange L1 -> carre d'emprise
   // a fixe le bas du PNG ignore). ville-sync regenere les grilles stockees
   // quand cette version differe de celle encodee dans ville-grids.json.
-  G.VILLE_GRID_VERSION = 2;
+  G.VILLE_GRID_VERSION = 4;
 
   // Hauteur d'une bande de rendu (px image). Les bandes doivent rester
   // fines pour une occlusion precise du joueur par les façades.
@@ -115,23 +115,59 @@
       var side = G.villeSideFor(sp.w, d);
       if (side <= 0) continue;
       var v = G.villeNorm({ name: d.name, sprite: d.sprite, x: d.x, y: d.y, w: side, h: side });
-      if (v) out.push(v);
+      if (!v) continue;
+      // Bbox VISUELLE du PNG (projete en monde) : le PNG est ancre bas-centre
+      // sur le bord sud de l'emprise et dessine sur toute sa hauteur -- son
+      // contenu en elevation deborde largement au nord/ouest/est de l'emprise
+      // sol. La generation (villeAt/villeBoxHits) doit ecarter cette zone,
+      // sinon les forets/maisons apparaissent DEVANT le decor du PNG.
+      // Projection des 4 coins du PNG (zoom 1, cf. villeGridFromPixels).
+      var iw = sp.w, ih = sp.h;
+      var cx0 = (v.x - v.y) / 2;
+      var groundY0 = (v.x + v.y + v.w + v.h) / 2 / 2;
+      var losW = (v.w + v.h) / 2;
+      var drawnH = losW * ih / iw;
+      var pW = [], pH = [];
+      for (var ci = 0; ci < 4; ci++) {
+        var px = (ci % 2) * iw, py = (ci < 2 ? 0 : ih);
+        var sx = cx0 - losW / 2 + (px / iw) * losW;
+        var sy = groundY0 - drawnH + (py / ih) * drawnH;
+        pW.push(sx + 2 * sy);
+        pH.push(2 * sy - sx);
+      }
+      v.vx0 = Math.min.apply(null, pW); v.vx1 = Math.max.apply(null, pW);
+      v.vy0 = Math.min.apply(null, pH); v.vy1 = Math.max.apply(null, pH);
+      out.push(v);
     }
     st.villes = out;
     G.buildVilleGrids();
     return out;
   };
 
-  // Une position est-elle dans l'emprise d'une ville (marge pad) ?
-  // Sert a ecarter la generation (forets, maisons, objets) des villes.
-  G.villeAt = function (x, y, pad) {
+  // Une BOITE monde (bx, by, bw, bh) chevauche-t-elle une ville ? Test
+  // boite-contre-boite (pas juste le centre) sur la bbox VISUELLE du PNG
+  // (emprise sol + debord d'elevation vers le nord/ouest/est), plus pad.
+  // Sert a ecarter la generation (forets, maisons, objets) des villes : une
+  // foret centree juste hors de l'emprise avait auparavant la moitie de son
+  // AABB DANS la ville, et le haut du PNG ville deborde loin au nord sans
+  // qu'aucune emprise sol ne le couvre.
+  G.villeBoxHits = function (bx, by, bw, bh, pad) {
     var villes = (G.state && G.state.villes) || [];
     var m = pad || 0;
     for (var i = 0; i < villes.length; i++) {
       var v = villes[i];
-      if (x > v.x - m && x < v.x2 + m && y > v.y - m && y < v.y2 + m) return true;
+      var vx0 = (v.vx0 != null) ? v.vx0 : v.x;
+      var vx1 = (v.vx1 != null) ? v.vx1 : v.x2;
+      var vy0 = (v.vy0 != null) ? v.vy0 : v.y;
+      var vy1 = (v.vy1 != null) ? v.vy1 : v.y2;
+      if (bx < vx1 + m && bx + bw > vx0 - m && by < vy1 + m && by + bh > vy0 - m) return true;
     }
     return false;
+  };
+  // Une position est-elle dans l'emprise VISUELLE d'une ville (marge pad) ?
+  // Sert a ecarter la generation (forets, maisons, objets) des villes.
+  G.villeAt = function (x, y, pad) {
+    return G.villeBoxHits(x, y, 0, 0, pad);
   };
 
   // ------------------------------------------------------------------
@@ -200,7 +236,6 @@
     // sur les zones transparentes.
     var bx0 = x, bx1 = x + side, by0 = y, by1 = y + side;
     for (var py = 0; py < ih; py++) {
-      var sy = groundY0 - drawnH0 + ((py + 0.5) / ih) * drawnH0;
       var row = py * iw * 4;
       for (var px = 0; px < iw; px++) {
         var k = row + px * 4;
@@ -211,15 +246,41 @@
         if (r > 180 && gch < 90 && b < 90) val = 1;
         else if (gch > 180 && r < 90 && b < 90) val = 2;
         if (!val) continue;
-        var sx = cx0 - losangeW0 / 2 + ((px + 0.5) / iw) * losangeW0;
-        var wx = sx + 2 * sy, wy = 2 * sy - sx;
-        if (wx < bx0 || wx > bx1 || wy < by0 || wy > by1) continue;
-        var gx = Math.floor((wx - ox) / cell);
-        var gy = Math.floor((wy - oy) / cell);
-        if (gx < 0 || gy < 0 || gx >= cols || gy >= rows) continue;
-        var idx = gy * cols + gx;
-        if (val === 1) data[idx] = 1;
-        else if (data[idx] === 0) data[idx] = 2;
+        // Filtre d'ELEVATION inchange : seul le CENTRE du pixel decide si
+        // c'est de la bande de sol (centre dans le carre d'emprise) ou du
+        // contenu en elevation (centre projete au nord du carre). Les
+        // pixels d'elevation ne marquent AUCUNE cellule.
+        var syC = groundY0 - drawnH0 + ((py + 0.5) / ih) * drawnH0;
+        var sxC = cx0 - losangeW0 / 2 + ((px + 0.5) / iw) * losangeW0;
+        var wxC = sxC + 2 * syC, wyC = 2 * syC - sxC;
+        if (wxC < bx0 || wxC > bx1 || wyC < by0 || wyC > by1) continue;
+        // Empreinte MONDE COMPLETE du pixel de sol : le carre ecran
+        // [px..px+1] x [py..py+1] du masque se projette en un
+        // parallelogramme monde d'environ (losangeW0/iw) * 2 px de cote --
+        // avec une grille 1 px, ne marquer que la projection du CENTRE
+        // laissait des TROUS de 1 px entre cellules marquees : le test
+        // AABB du joueur (6 px) les couvrait, mais villeCellInfo
+        // echantillonne UN point (les pieds) qui tombait dedans -> mode
+        // d'occlusion faux par endroits. On remplit la bbox du
+        // parallelogramme (approximation sure de ~1 px).
+        var sxLo = cx0 - losangeW0 / 2 + (px / iw) * losangeW0;
+        var sxHi = cx0 - losangeW0 / 2 + ((px + 1) / iw) * losangeW0;
+        var syLo = groundY0 - drawnH0 + (py / ih) * drawnH0;
+        var syHi = groundY0 - drawnH0 + ((py + 1) / ih) * drawnH0;
+        var wxLo = sxLo + 2 * syLo, wxHi = sxHi + 2 * syHi;
+        var wyLo = 2 * syLo - sxHi, wyHi = 2 * syHi - sxLo;
+        var gx0 = Math.max(0, Math.floor((Math.max(wxLo, bx0) - ox) / cell));
+        var gx1 = Math.min(cols - 1, Math.floor((Math.min(wxHi, bx1) - ox) / cell));
+        var gy0 = Math.max(0, Math.floor((Math.max(wyLo, by0) - oy) / cell));
+        var gy1 = Math.min(rows - 1, Math.floor((Math.min(wyHi, by1) - oy) / cell));
+        for (var gy = gy0; gy <= gy1; gy++) {
+          var base = gy * cols;
+          for (var gx = gx0; gx <= gx1; gx++) {
+            var idx = base + gx;
+            if (val === 1) data[idx] = 1;
+            else if (data[idx] === 0) data[idx] = 2;
+          }
+        }
       }
     }
     return { cell: cell, cols: cols, rows: rows, ox: ox, oy: oy, data: data };

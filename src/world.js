@@ -339,8 +339,11 @@
         if (tx < half || tx > G.WORLD - half || ty < half || ty > G.WORLD - half) continue;
         if (!inTown && G.inTown(tx, ty)) continue;
         if (nearTownWall(tx, ty, half)) continue;
-        // Villes PNG : aucune foret dans l'emprise d'une ville decorative.
-        if (G.villeAt && G.villeAt(tx, ty, half)) continue;
+        // Villes PNG : aucune foret dans la bbox VISUELLE d'une ville
+        // decorative (boite-contre-boite, pas juste le centre : une foret
+        // centree juste hors emprise avait la moitie de son AABB dedans).
+        if (G.villeBoxHits && G.villeBoxHits(tx - half, ty - half, half * 2, half * 2)) continue;
+        if (!G.villeBoxHits && G.villeAt && G.villeAt(tx, ty, half)) continue;
         if (nearForet(tx, ty, half)) continue;
         addForet(tx, ty, frame);
         placed++;
@@ -421,8 +424,10 @@
         if (hx < 20 || hx > G.WORLD - 20 || hy < 20 || hy > G.WORLD - 20) return false;
         // Empêche les bâtiments de bloquer l'ouverture de la muraille.
         if (nearGate(hx, hy, side)) return false;
-        // Villes PNG : aucune maison dans l'emprise d'une ville decorative.
-        if (G.villeAt && G.villeAt(hx, hy, side / 2)) return false;
+        // Villes PNG : aucune maison dans la bbox VISUELLE d'une ville
+        // decorative (boite-contre-boite, pas juste le centre).
+        if (G.villeBoxHits && G.villeBoxHits(hx - side / 2, hy - side / 2, side, side)) return false;
+        if (!G.villeBoxHits && G.villeAt && G.villeAt(hx, hy, side / 2)) return false;
         // Distance minimale entre les bâtiments et la muraille de la ville.
         if (inTown) {
           if (hx - side / 2 < G.TOWN_MIN + WALL_MARGIN) return false;
@@ -585,7 +590,9 @@
       var fFrame = names[G.randi(0, names.length - 1)];
       var fSp = G.SPRITES.foret && G.SPRITES.foret[fFrame];
       var fSide = (fSp ? fSp.w : 64) * 2;
-      if (!G.nearBuilding(ftx, fty, 10) && !(G.villeAt && G.villeAt(ftx, fty, fSide / 2)) &&
+      if (!G.nearBuilding(ftx, fty, 10) &&
+          !(G.villeBoxHits && G.villeBoxHits(ftx - fSide / 2, fty - fSide / 2, fSide, fSide)) &&
+          !(G.villeAt && G.villeAt(ftx, fty, fSide / 2)) &&
           !G.foretNearTownWall(ftx - fSide / 2, fty - fSide / 2, fSide, fSide)) {
         state.buildings.push(G.makeForet(ftx, fty, fFrame));
       }
