@@ -452,6 +452,9 @@
       // Sprite PNG : ancré en bas-centre sur la position projetée, mis à l'échelle du zoom.
       // Les frames d'animation peuvent avoir une taille différente du sprite de
       // base : on utilise la taille réelle de l'image courante (frame ou base).
+      // Comme les bâtiments (opaqueDrop) : le bas de la zone OPAQUE du PNG est
+      // aligné sur le sol, pas le bas du PNG (marge transparente en bas des
+      // sprites joueur -> les pieds flottaient au-dessus du sol).
       var scale = z * 1.0;
       var img;
       if (action && action.anim) {
@@ -474,7 +477,10 @@
       var iw = (img && img.naturalWidth) || sprite.w;
       var ih = (img && img.naturalHeight) || sprite.h;
       var dw = iw * scale, dh = ih * scale;
-      ctx.drawImage(img, base[0] - dw / 2, base[1] - dh, dw, dh);
+      var playerDrop = 0;
+      var pb = G.spriteBoundsOf(sprite);
+      if (pb && pb.y1 < 1) playerDrop = (1 - pb.y1) * dh;
+      ctx.drawImage(img, base[0] - dw / 2, base[1] - dh + playerDrop, dw, dh);
       _drawPlayerName(base, G.state.playerName);
       return;
     }
@@ -553,14 +559,17 @@
       var iw = (img && img.naturalWidth) || sprite.w;
       var ih = (img && img.naturalHeight) || sprite.h;
       var dw = iw * scale, dh = ih * scale;
+      var rpDrop = 0;
+      var rpb = G.spriteBoundsOf(sprite);
+      if (rpb && rpb.y1 < 1) rpDrop = (1 - rpb.y1) * dh;
       if (rp.face < 0) {
         ctx.save();
         ctx.translate(base[0], base[1]);
         ctx.scale(-1, 1);
-        ctx.drawImage(img, -dw / 2, -dh, dw, dh);
+        ctx.drawImage(img, -dw / 2, -dh + rpDrop, dw, dh);
         ctx.restore();
       } else {
-        ctx.drawImage(img, base[0] - dw / 2, base[1] - dh, dw, dh);
+        ctx.drawImage(img, base[0] - dw / 2, base[1] - dh + rpDrop, dw, dh);
       }
     }
     // Nom (SOUS le sprite) + barre de vie (au-dessus).
@@ -1294,24 +1303,59 @@
     // ecran verticale de la bande entiere du PNG est trop large pour servir
     // de rejet : on teste la bbox ecran approximee de la bande).
     if (state.villes && G.villeBands) {
-      // Occlusion par le masque : calculee AVANT la boucle des bandes (le
-      // biais est utilise pour chaque bande ; le calcul etait auparavant
-      // place apres la boucle -> var hoisting -> toujours undefined -> le
-      // biais ne s'appliquait jamais).
-      var villeMode = (G.villeCellInfo && state.started) ? G.villeCellInfo(state.player.x, state.player.y) : null;
-      var villeBias = villeMode ? (villeMode.mode === 1 ? 1e6 : (villeMode.mode === 2 ? -1e6 : 0)) : 0;
-      var villeSprite = villeMode ? villeMode.sprite : null;
+      // Occlusion de la ville ou se tient le joueur : departage par la
+      // position ECRAN. La ville est dessinee en bandes horizontales fines
+      // (VILLE_BAND_H px image) : chaque bande couvre un petit intervalle de
+      // profondeur. Les bandes qui chevauchent le CORPS du joueur a l'ecran
+      // sont tirees a part avec un depth selon la position de ses PIEDS par
+      // rapport au bas de la bande -- le tri naturel des autres bandes fait
+      // le reste (une bande au nord du joueur est toujours derriere, une
+      // bande au sud toujours devant). L'ancien mecanisme appliquait un
+      // biais +/-1e6 a TOUTES les bandes selon la cellule du masque sous les
+      // pieds : la ville entiere sautait d'un bloc devant/derriere le joueur
+      // (le bas du personnage etait avale par les grandes bandes de 96 px,
+      // et le rendu changeait brutalement des que les pieds changeaient de
+      // cellule en se deplacant).
+      var villePinfo = (G.villeCellInfo && state.started) ? G.villeCellInfo(state.player.x, state.player.y) : null;
+      var villeV = null, villePlayerMode = 0;
+      if (villePinfo && villePinfo.mode !== 0) {
+        for (var vmi = 0; vmi < state.villes.length; vmi++) {
+          if (state.villes[vmi].sprite === villePinfo.sprite) { villeV = state.villes[vmi]; break; }
+        }
+        villePlayerMode = villePinfo.mode; // 1 = pieds sur zone DERRIERE (verte), 2 = pieds sur zone transparente
+      }
       for (var vi = 0; vi < state.villes.length; vi++) {
         var vv = state.villes[vi];
         if (vv.x + vv.w < bnds.minX || vv.x > bnds.maxX || vv.y + vv.h < bnds.minY || vv.y > bnds.maxY) continue;
         var vEntry = G.villeBands(vv);
         if (!vEntry) continue;
+        // Intervalles ecran des bandes (recalculs identiques a drawVilleBand).
+        var vA = G.proj(vv.x, vv.y), vC = G.proj(vv.x + vv.w, vv.y + vv.h), vD = G.proj(vv.x, vv.y + vv.h);
+        var vCx = (vA[0] + vC[0]) / 2;
+        var vGroundY = Math.max(vC[1], vD[1]);
+        var vLosangeW = (vv.w + vv.h) * 0.5 * G.state.zoom;
+        var vFullDh = vLosangeW * vEntry.ih / vEntry.iw;
+        // Corps du joueur a l'ecran : le sprite est ancre bas-centre sur sa
+        // position projetee (pieds), hauteur approx 26 px * zoom.
+        var pBase = G.proj(state.player.x, state.player.y);
+        var pTopY = pBase[1] - 26 * G.state.zoom;
         for (var vb = 0; vb < vEntry.bands.length; vb++) {
-          // Les bandes de la ville ou se tient le joueur sont redecallees
-          // selon le mode (vert -> devant lui, transparent -> derriere
-          // lui) ; les autres villes gardent le tri naturel.
-          var vbDepth = vEntry.bands[vb].depth + ((villeSprite === vv.sprite) ? villeBias : 0);
-          drawables.push({ depth: vbDepth, type: "ville", ref: { v: vv, band: vEntry.bands[vb], entry: vEntry } });
+          var vBand = vEntry.bands[vb];
+          var vbDepth = vBand.depth;
+          if (vv === villeV) {
+            var vBandY0 = vGroundY - vFullDh + (vBand.sy / vEntry.ih) * vFullDh;
+            var vBandY1 = vBandY0 + vFullDh * vBand.sh / vEntry.ih;
+            // La bande chevauche le corps du joueur -> elle represente la
+            // facon de la ville a la hauteur de son torse : les PIEDS
+            // decident. Mode 1 (masque vert : le sol est DERRIERE le PNG)
+            // -> bande devant lui ; mode 2 (sol transparent : le joueur
+            // est DEVANT la ville) -> bande derriere lui.
+            if (pTopY < vBandY1 && pBase[1] > vBandY0) {
+              if (villePlayerMode === 1) vbDepth = state.player.x + state.player.y + 1;
+              else if (villePlayerMode === 2) vbDepth = state.player.x + state.player.y - 1;
+            }
+          }
+          drawables.push({ depth: vbDepth, type: "ville", ref: { v: vv, band: vBand, entry: vEntry } });
         }
       }
     }

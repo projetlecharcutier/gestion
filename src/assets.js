@@ -388,9 +388,11 @@
   }
   // Renvoie la bounding box opaque (en fraction 0..1 du PNG) d'un sprite,
   // ou {x0:0,y0:0,x1:1,y1:1} si indisponible (repli sur boîte totale).
-  G.spriteBounds = function (ent, frame) {
-    if (!G.hasSprite(ent, frame)) return null;
-    var sp = G.SPRITES[ent][frame];
+  // Bounding box opaque d'un objet sprite DIRECT (pas d'une cle de manifeste) :
+  // memoisee sur l'objet (sp.bounds), comme spriteBounds. Sert aux entites
+  // dont le sprite est choisi dynamiquement (joueur : frame d'animation).
+  G.spriteBoundsOf = function (sp) {
+    if (!sp || !sp.img) return null;
     if (!sp.bounds) {
       var b = opaqueBounds(sp.img);
       sp.bounds = b ?
@@ -398,6 +400,10 @@
         { x0: 0, y0: 0, x1: 1, y1: 1 };
     }
     return sp.bounds;
+  };
+  G.spriteBounds = function (ent, frame) {
+    if (!G.hasSprite(ent, frame)) return null;
+    return G.spriteBoundsOf(G.SPRITES[ent][frame]);
   };
 
   function loadManifest(manifest, onReady) {
