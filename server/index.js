@@ -5,6 +5,13 @@
 (function () {
   "use strict";
   var WebSocket = require("ws");
+  // Log horodate : chaque evenement (connexion, coupure, charge) est
+  // retracable par rapport a l'horloge de jeu (nuit/vague) et aux autres
+  // evenements. console.log brut garde la ligne "au boot" uniquement.
+  function log() {
+    var args = Array.prototype.slice.call(arguments);
+    console.log(new Date().toISOString() + " " + args.join(" "));
+  }
   var http = require("http");
   var fs = require("fs");
   var path = require("path");
@@ -111,6 +118,31 @@
   });
 
   var wss = new WebSocket.Server({ server: server });
+  // Heartbeat ping/pong : une connexion TCP morte a moitie (WiFi drop, NAT
+  // timeout) n'est detectee que quand un send echoue. Un ping periodique
+  // force la detection en ~30 s et coupe proprement (close 1001) au lieu
+  // de laisser un zombie socket qui sature le broadcast.
+  var HEARTBEAT_MS = 15000;
+  var HEARTBEAT_TIMEOUT_MS = 10000;
+  var heartbeatTimer = null;
+  function startHeartbeat() {
+    if (heartbeatTimer) return;
+    heartbeatTimer = setInterval(function () {
+      var now = Date.now();
+      wss.clients.forEach(function (ws) {
+        if (ws.isAlive === false) {
+          var cid = ws._clientId || "?";
+          var cname = (clients[cid] && clients[cid].name) || "?";
+          log("[heartbeat] coupure " + cid + " (" + cname + ") : aucun pong depuis " + HEARTBEAT_TIMEOUT_MS + " ms, fermeture forcé");
+          try { ws.terminate(); } catch (e) {}
+          return;
+        }
+        ws.isAlive = false;
+        try { ws.ping(); } catch (e) {}
+      });
+    }, HEARTBEAT_MS);
+  }
+  startHeartbeat();
   server.listen(PORT, function () {
     console.log("Serveur Flex Survival en écoute sur le port " + PORT);
   });
@@ -147,7 +179,13 @@
 
     // Simulation à chaque frame (20 Hz effectif via setInterval).
     var wasStarted = game.getState().started;
-    game.tick(dt);
+    // Une exception dans la simulation (crash de tick) tuerait le serveur
+    // sans diagnostic : logge la stack avec contexte, la boucle continue.
+    try {
+      game.tick(dt);
+    } catch (e) {
+      log("[tick] ERREUR crash de simulation :", e.stack || e.message);
+    }
     // La partie vient de démarrer (START_DELAY écoulé) : le monde a été
     // RÉGÉNÉRÉ aléatoirement par startGame(). Les clients ont reçu l'ancienne
     // carte au join — sans la nouvelle, leurs collisions locales divergeaient
@@ -158,7 +196,7 @@
         clock: game.getState().clock,
         map: game.mapSnapshot()
       });
-      console.log("Partie démarrée : nouvelle carte diffusée à tous les joueurs.");
+      log("Partie démarrée : nouvelle carte diffusée à tous les joueurs.");
     }
 
     // Broadcast lobby.
@@ -185,11 +223,48 @@
           try {
             var snap = game.snapshot(c.id);
             snap.type = "state";
-            c.ws.send(JSON.stringify(snap));
-          } catch (e) {}
+            var data = JSON.stringify(snap);
+            c.ws.send(data);
+            c.lastSnapBytes = data.length;
+            c.bytesOut = (c.bytesOut || 0) + data.length;
+          } catch (e) {
+            // Erreur d'envoi (connexion morte) : log avec contexte joueur,
+            // le close/error suivra et nettoiera la place.
+            log("[send] ERREUR snapshot vers " + id + " (" + (clients[id] && clients[id].name || "?") + ") :", e.message);
+          }
         }
       }
     }
+
+    // Charge nocturne : une ligne par changement de vague et une par 30 s la
+    // nuit (zombies, taille moyenne des snapshots, memoire). Permet de
+    // corréler une déconnexion client avec un pic de charge serveur.
+    var st = game.getState();
+    var night = st.started && (st.clock >= 23 || st.clock < 7);
+    if (night) {
+      loadAcc += dt;
+      var waveKey = st.day + ":" + (st.waveCount || 0);
+      if (waveKey !== lastWaveKey || loadAcc >= 30) {
+        lastWaveKey = waveKey;
+        loadAcc = 0;
+        var mem = process.memoryUsage();
+        log("[charge] jour " + st.day + " heure " + st.clock.toFixed(1) +
+          " | joueurs=" + st.players.length + "/" + game.MAX_PLAYERS +
+          " zombies=" + st.zombies.length +
+          " vague=" + (st.waveCount || 0) + " nuit=" + (night ? "oui" : "non") +
+          " | moyenne snapshot=" + avgSnapshotKB().toFixed(1) + " Ko" +
+          " mem=" + Math.round(mem.heapUsed / 1048576) + "Mo");
+      }
+    }
+  }
+  var loadAcc = 0;
+  var lastWaveKey = "";
+  function avgSnapshotKB() {
+    var total = 0, n = 0;
+    for (var id in clients) {
+      if (clients[id].joined && clients[id].lastSnapBytes) { total += clients[id].lastSnapBytes; n++; }
+    }
+    return n ? total / n / 1024 : 0;
   }
   setInterval(loop, 1000 / TICK_HZ);
 
@@ -197,6 +272,9 @@
   wss.on("connection", function connection(ws) {
     var id = newId();
     clients[id] = { ws: ws, id: id, name: null, joined: false };
+    ws._clientId = id;
+    ws.isAlive = true;
+    ws.on("pong", function () { ws.isAlive = true; });
 
     ws.on("message", function incoming(message) {
       var msg;
@@ -221,7 +299,7 @@
         // (remplacee par un "restart" au lancement : le client garde son
         // ecran de chargement jusqu'a ce "restart").
         ws.send(JSON.stringify({ type: "joined", playerId: id, started: game.getState().started, map: game.mapSnapshot(), clock: game.getState().clock }));
-        console.log("Joueur " + name + " (" + id + ") a rejoint. " + game.getState().players.length + "/" + game.MAX_PLAYERS);
+        log("[ws] connexion " + id + " (" + name + ") a rejoint. " + game.getState().players.length + "/" + game.MAX_PLAYERS);
       }
 
       if (msg.type === "input") {
@@ -233,14 +311,23 @@
       }
     });
 
-    ws.on("close", function () { cleanup(id); });
-    ws.on("error", function () { cleanup(id); });
+    ws.on("close", function (code, reason) {
+      var r = "";
+      try { r = reason ? reason.toString() : ""; } catch (e) {}
+      log("[ws] close " + id + " (" + (clients[id] && clients[id].name || "?") + ") code=" + code + (r ? " raison=" + r : ""));
+      cleanup(id);
+    });
+    ws.on("error", function (err) {
+      log("[ws] error " + id + " (" + (clients[id] && clients[id].name || "?") + ") :", err && err.message || err);
+      cleanup(id);
+    });
   });
 
   function cleanup(id) {
     if (clients[id] && clients[id].joined) {
       game.removePlayer(id);
-      console.log("Joueur " + (clients[id].name || id) + " s'est déconnecté. " + game.getState().players.length + "/" + game.MAX_PLAYERS);
+      log("[ws] déconnexion " + (clients[id].name || id) + " (" + id + ") | joueurs restants=" + game.getState().players.length + "/" + game.MAX_PLAYERS +
+        " | données envoyées=" + Math.round((clients[id].bytesOut || 0) / 1024) + " Ko");
     }
     delete clients[id];
   }
@@ -256,7 +343,7 @@
   var restartErrLogged = false;
   setInterval(function () {
     if (game.getState().gameOver && !prevGameOver) {
-      console.log("Partie terminée (mairie détruite). Redémarrage dans 10 s...");
+      log("Partie terminée (mairie détruite). Redémarrage dans 10 s...");
       prevGameOver = true;
       restartTimer = 10;
       restartErrLogged = false;
@@ -270,7 +357,7 @@
           prevGameOver = false;
           restartErrLogged = false;
           broadcast(msg);
-          console.log("Nouvelle partie lancée.");
+          log("Nouvelle partie lancée.");
         } catch (e) {
           if (!restartErrLogged) {
             restartErrLogged = true;
