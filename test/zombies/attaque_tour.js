@@ -6,7 +6,7 @@ game.startGame();
 G.state.mairieGold = 500; G.state.scierieUnlocked = true; G.state.planks = 500;
 G.state.buildSel = "scierie";
 var placed = false;
-outer: for (var x = 4550; x <= 5450; x += 20) for (var y = 4550; y <= 5450; y += 20) {
+outer: for (var x = 9550; x <= 10450; x += 20) for (var y = 9550; y <= 10450; y += 20) {
   if (G.placeFromBuildMenu(x, y)) { placed = true; break outer; }
 }
 if (!placed) { console.log("FAIL: pas de spot scierie"); process.exit(1); }

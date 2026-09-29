@@ -1,5 +1,9 @@
 // Test loopback cible : relique->eglise(+100 or) -> vote -> buildSel=scierie + placeBuild pose la scierie.
 var WebSocket = require("../../server/node_modules/ws");
+// Centre de la carte : lu dans la config partagee (WORLD / 2).
+global.window = global;
+(0, eval)(require("fs").readFileSync(require("path").join(__dirname, "..", "..", "src", "config.js"), "utf8"));
+var WORLD = global.GAME.WORLD;
 var PORT = 45743;
 var srv = require("child_process").spawn("node", ["index.js"], { cwd: require("path").join(__dirname, "..", "..", "server"), env: { PATH: process.env.PATH, PORT: String(PORT), TEST_START_PLANKS: "200" }, stdio: ["ignore", "pipe", "pipe"] });
 var logs = []; srv.stdout.on("data", function (d) { logs.push(d.toString()); }); srv.stderr.on("data", function (d) { logs.push("ERR:" + d.toString()); });
@@ -19,7 +23,7 @@ setTimeout(function () {
     setTimeout(function () { waitUntil(cond, cb, tries - 1); }, 50);
   }
   waitUntil(function () { return snap && snap.started === true; }, function () {
-    var c = 5000;
+    var c = WORLD / 2;
     // Planches de depart : TEST_START_PLANKS au spawn du serveur (le protocole
     // input.planks a ete supprime : faille de triche).
     var relicList = [[c - 100, c + 330], [c + 1800, c + 3300], [c - 800, c + 2600]];
@@ -85,7 +89,7 @@ setTimeout(function () {
                 console.log("[3] scierieUnlocked:", snap.scierieUnlocked);
                 var spots = [];
                 var b = mapBuildings;
-                for (var x = 4550; x <= 5450; x += 20) for (var y = 4550; y <= 5450; y += 20) {
+                for (var x = 9550; x <= 10450; x += 20) for (var y = 9550; y <= 10450; y += 20) {
                   var ok = true;
                   for (var i = 0; i < b.length; i++) {
                     var bx = b[i];

@@ -24,11 +24,14 @@ function assert(c, m) { if (!c) { console.log("FAIL: " + m); fails++; } }
 
 // Bord d'origine d'un chef selon sa position
 function sideOf(grp) {
+  // Frontieres de la ZONE d apparition (WORLD_SPAWN, centree sur WORLD/2).
   var e = 200;
-  if (grp.y <= e) return 0;            // nord
-  if (grp.y >= G.WORLD - e) return 1;  // sud
-  if (grp.x <= e) return 2;            // ouest
-  if (grp.x >= G.WORLD - e) return 3;  // est
+  var sp = G.WORLD_SPAWN || G.WORLD;
+  var c = G.WORLD / 2, s0 = c - sp / 2, s1 = c + sp / 2;
+  if (grp.y <= s0 + e) return 0;        // nord
+  if (grp.y >= s1 - e) return 1;        // sud
+  if (grp.x <= s0 + e) return 2;        // ouest
+  if (grp.x >= s1 - e) return 3;        // est
   return -1;
 }
 

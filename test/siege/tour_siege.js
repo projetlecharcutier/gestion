@@ -62,10 +62,10 @@ console.log("spawn nuit 2 OK : 1 tour, dir=" + tw.dir);
 s.walls = [];
 s.buildings = [];
 s.sieges = [];
-var st = G.makeSiegeTower(5000, 5300, G.SIEGE_DIRS[0]);
+var st = G.makeSiegeTower(10000, 10300, G.SIEGE_DIRS[0]);
 s.sieges.push(st);
 for (var v = 0; v < 50; v++) step(0.1); // 5 s de jeu
-var moved = Math.abs(st.y - 5300) + Math.abs(st.x - 5000);
+var moved = Math.abs(st.y - 10300) + Math.abs(st.x - 10000);
 var zomDist = G.ZOMBIE_SPEED * 5; // distance d'un zombie en 5 s
 if (moved < 0.4 * zomDist || moved > 0.6 * zomDist) {
   console.log("FAIL: distance parcourue " + moved.toFixed(1) + " px en 5 s (zombie: " + zomDist + ", attendu ~moitie)");
@@ -78,7 +78,7 @@ console.log("vitesse OK : " + moved.toFixed(1) + " px en 5 s (zombie " + zomDist
 // Restaure le monde (batiments + muraille) pour le contact et la suite.
 G.buildWorld();
 s.sieges = [];
-var st2 = G.makeSiegeTower(G.TOWN_MIN - 300, 5000, G.SIEGE_DIRS[0]);
+var st2 = G.makeSiegeTower(G.TOWN_MIN - 300, 10000, G.SIEGE_DIRS[0]);
 s.sieges.push(st2);
 var zBefore = s.zombies.length;
 // Simule jusqu'au contact (la tour avance vers le mur ouest de la ville).
@@ -204,7 +204,7 @@ console.log("resistance OK : 100 PV (100x un zombie a " + G.ZOMBIE_HP + " PV)");
 
 // --- Destruction : trace au sol, plus de collision ---
 s.sieges = [];
-var stD = G.makeSiegeTower(5000, 5000, G.SIEGE_DIRS[0]);
+var stD = G.makeSiegeTower(10000, 10000, G.SIEGE_DIRS[0]);
 s.sieges.push(stD);
 var tracesBefore = s.siegeTraces.length;
 stD.hp = 0;
@@ -216,10 +216,10 @@ if (s.siegeTraces.length !== tracesBefore + 1) { console.log("FAIL: trace de des
 console.log("destruction OK : trace au sol, plus aucun obstacle");
 
 // --- Collision : losange de base dans les 5% du bas ---
-var st3 = G.makeSiegeTower(5000, 5000, G.SIEGE_DIRS[0]);
+var st3 = G.makeSiegeTower(10000, 10000, G.SIEGE_DIRS[0]);
 s.sieges.push(st3);
 // Un point au milieu du PNG (50% de hauteur) ne collisionne pas.
-if (G.hitsSiegeFoot(5000, 5000 - st3.h * 0.5, 2, 2)) { console.log("FAIL: collision au milieu du PNG (devrait etre bas 5%)"); process.exit(1); }
+if (G.hitsSiegeFoot(10000, 10000 - st3.h * 0.5, 2, 2)) { console.log("FAIL: collision au milieu du PNG (devrait etre bas 5%)"); process.exit(1); }
 // Un point dans la bande des 5% du bas mais HORS du losange (coin de
 // l'AABB de bruissage) ne collisionne pas : c'est un losange, pas un bloc.
 var d3 = G.siegeDiamond(st3);

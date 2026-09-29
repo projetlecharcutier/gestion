@@ -149,17 +149,23 @@
   G.spawnSieges = function () {
     var state = G.state;
     var n = G.siegeCountForDay(state.day);
+    // Tours de siege sur les frontieres de la ZONE d apparition
+    // (WORLD_SPAWN, l ancienne carte) : meme distance de marche que les
+    // vagues de zombies, pas 2x chemin dans le monde elargi.
+    var sp = G.WORLD_SPAWN || G.WORLD;
+    var spcx = G.WORLD / 2, spcy = G.WORLD / 2;
+    var sp0 = spcx - sp / 2, sp1 = spcx + sp / 2;
     for (var i = 0; i < n; i++) {
       var d = G.SIEGE_DIRS[Math.floor(Math.random() * G.SIEGE_DIRS.length)];
       var edge = G.rand(40, 200);
       var x, y;
-      if (d.dx < 0) x = G.WORLD - edge; else x = edge;
-      if (d.dy < 0) y = G.WORLD - edge; else y = edge;
+      if (d.dx < 0) x = sp1 - edge; else x = sp0 + edge;
+      if (d.dy < 0) y = sp1 - edge; else y = sp0 + edge;
       // Décale chaque tour pour éviter les empilements au même point.
       var off = (i - (n - 1) / 2) * 160;
       if (d.dx === d.dy) x += off; else y += off;
-      x = G.clamp(x, 60, G.WORLD - 60);
-      y = G.clamp(y, 60, G.WORLD - 60);
+      x = G.clamp(x, sp0 + 60, sp1 - 60);
+      y = G.clamp(y, sp0 + 60, sp1 - 60);
       var s = G.makeSiegeTower(x, y, d);
       state.sieges.push(s);
     }

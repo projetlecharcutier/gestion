@@ -60,15 +60,47 @@
     ctx.closePath();
   };
 
-  G.drawGround = function () {
+  // Fond hors-carte : noir profond constelle d etoiles. Dessine TOUT
+  // l ecran en noir, puis des etoiles dont la position est derivee d un
+  // hash de leur index -> totalement deterministe, aucune dependance a la
+  // camera : le champ d etoiles ne bouge pas quand la camera bouge.
+  G.drawStarfield = function () {
+    var ctx = G.ctx;
+    var W = G.canvas.width / (window.devicePixelRatio || 1);
+    var H = G.canvas.height / (window.devicePixelRatio || 1);
+    ctx.fillStyle = "#050510";
+    ctx.fillRect(0, 0, W, H);
+    // Garde perf : un maximum raisonnable d etoiles, independant de la
+    // taille de la fenetre (une grande resolution n en montre pas plus).
+    var n = 240;
+    for (var i = 0; i < n; i++) {
+      var h1 = (i * 2654435761) % 4294967296;
+      var h2 = (i * 40503 + 12345) % 4294967296;
+      var sx = (h1 % 10000) / 10000 * W;
+      var sy = (h2 % 10000) / 10000 * H;
+      // Taille et luminosite varient par index : champ non uniforme.
+      var sz = (i % 3 === 0) ? 2 : 1;
+      var a = 0.4 + (i % 7) / 10;
+      ctx.fillStyle = "rgba(255,255,255," + a + ")";
+      ctx.fillRect(sx, sy, sz, sz);
+    }
+  };
+G.drawGround = function () {
     var ctx = G.ctx;
     var tx_ = G.TEXTURES.ground;
     var b = G.visibleWorldBounds();
+    // Hors carte (le monde elargi depasse la zone jouable au bord de
+    // l ecran quand la camera vise un bord) : fond noir ETOILE, position
+    // des etoiles fixe a l ecran (deterministe, aucun scintillement).
+    G.drawStarfield();
     var startTX = Math.floor(b.minX / G.TS), endTX = Math.ceil(b.maxX / G.TS);
     var startTY = Math.floor(b.minY / G.TS), endTY = Math.ceil(b.maxY / G.TS);
     for (var tx = startTX; tx <= endTX; tx++) {
       for (var ty = startTY; ty <= endTY; ty++) {
         var wx = tx * G.TS, wy = ty * G.TS;
+        // Ne dessine que les tuiles DANS le monde : hors de [0, WORLD],
+        // il n y a pas de sol, le fond etoile reste visible.
+        if (wx + G.TS <= 0 || wy + G.TS <= 0 || wx >= G.WORLD || wy >= G.WORLD) continue;
         var cx = wx + G.TS / 2, cy = wy + G.TS / 2;
         var town = G.inTown(cx, cy);
         var tile = town ? tx_.town : tx_.wild;

@@ -59,6 +59,7 @@ assert(JSON.stringify(first) !== JSON.stringify(third), "points differents selon
 
 // 6) drawGround appelle drawGroundSpecks sans erreur
 calls.length = 0;
+G.drawStarfield = function () {}; // fond etoile hors-carte : hors du perimetre de ce test
 G.visibleWorldBounds = function () { return { minX: 3000, maxX: 6000, minY: 3000, maxY: 6000 }; };
 G.inTown = function () { return true; };
 G.drawPaths = function () {};

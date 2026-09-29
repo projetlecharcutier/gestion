@@ -166,10 +166,16 @@
       var side = sides[g % sides.length];
       var lx, ly;
       var edge = G.rand(40, 200);
-      if (side === 0) { lx = G.rand(0, G.WORLD); ly = edge; }
-      else if (side === 1) { lx = G.rand(0, G.WORLD); ly = G.WORLD - edge; }
-      else if (side === 2) { lx = edge; ly = G.rand(0, G.WORLD); }
-      else { lx = G.WORLD - edge; ly = G.rand(0, G.WORLD); }
+      // Spawn sur les frontieres de la ZONE d'apparition (WORLD_SPAWN,
+      // l'ancienne carte) : plus proche de la ville que les bords du
+      // nouveau monde elargi, pour que les vagues n'aient pas 2x chemin.
+      var sp = G.WORLD_SPAWN || G.WORLD;
+      var cx = G.WORLD / 2, cy = G.WORLD / 2;
+      var sp0 = cx - sp / 2, sp1 = cx + sp / 2;
+      if (side === 0) { lx = G.rand(sp0, sp1); ly = sp0 + edge; }
+      else if (side === 1) { lx = G.rand(sp0, sp1); ly = sp1 - edge; }
+      else if (side === 2) { lx = sp0 + edge; ly = G.rand(sp0, sp1); }
+      else { lx = sp1 - edge; ly = G.rand(sp0, sp1); }
       var grp = { x: lx, y: ly, members: [], hasRaider: false, spawnSide: side,
                   formation: Math.floor(Math.random() * 4),
                   formPhase: Math.random() * Math.PI * 2,

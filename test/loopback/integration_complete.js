@@ -1,6 +1,10 @@
 // Test d'integration loopback complet : marche->relique->eglise(+100 or)->vote
 // scierie->menu (buildSel)->pose scierie->chantier->pose tour hors ville.
 var WebSocket = require("../../server/node_modules/ws");
+// Centre de la carte : lu dans la config partagee (WORLD / 2).
+global.window = global;
+(0, eval)(require("fs").readFileSync(require("path").join(__dirname, "..", "..", "src", "config.js"), "utf8"));
+var WORLD = global.GAME.WORLD;
 var PORT = 45742;
 var srv = require("child_process").spawn("node", ["index.js"], { cwd: require("path").join(__dirname, "..", "..", "server"), env: { PATH: process.env.PATH, PORT: String(PORT), TEST_START_PLANKS: "150", TEST_SEED: "3" }, stdio: ["ignore", "pipe", "pipe"] });
 var logs = []; srv.stdout.on("data", function (d) { logs.push(d.toString()); }); srv.stderr.on("data", function (d) { logs.push("ERR:" + d.toString()); });
@@ -32,7 +36,7 @@ setTimeout(function () {
     // Planches de depart : TEST_START_PLANKS au spawn du serveur (le protocole
     // input.planks a ete supprime : faille de triche).
     // Marche vers la relique en ville, sinon reliques hors ville proches.
-    var c = 5000;
+    var c = WORLD / 2;
     var relicList = [[c - 100, c + 330], [c + 1800, c + 3300], [c - 800, c + 2600]];
     var ri = 0, tx = relicList[0][0], ty = relicList[0][1];
     var phase = "walk"; // walk -> pickup -> done : bloque les re-declenchements
@@ -109,7 +113,7 @@ setTimeout(function () {
                   console.log("[3] scierie debloquee");
                   // Collecte TOUS les spots ville candidats, essaie chacun jusqu'a pose.
                   var spots = [];
-                  for (var x = 4550; x <= 5450; x += 25) for (var y = 4550; y <= 5450; y += 25) {
+                  for (var x = 9550; x <= 10450; x += 25) for (var y = 9550; y <= 10450; y += 25) {
                     var ok = !overlap(mapBuildings, x, y, 90);
                     if (ok) for (var wj = 0; wj < (snap.walls || []).length; wj++) {
                       var mw = snap.walls[wj];
@@ -134,8 +138,8 @@ setTimeout(function () {
                       var obs = mapBuildings.slice();
                       if (snap.scierie) obs.push({ x: snap.scierie.x - 20, y: snap.scierie.y - 20, w: snap.scierie.w + 40, h: snap.scierie.h + 40 });
                       var tSpots = [];
-                      for (var tx2 = 300; tx2 <= 4700; tx2 += 100) {
-                        for (var ty2 = 300; ty2 <= 4700; ty2 += 100) {
+                      for (var tx2 = 5300; tx2 <= 9200; tx2 += 100) {
+                        for (var ty2 = 10800; ty2 <= 14700; ty2 += 100) {
                           if (overlap(obs, tx2, ty2, 90)) continue;
                           var bad = false;
                           for (var wj2 = 0; !bad && wj2 < (snap.walls || []).length; wj2++) {

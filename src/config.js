@@ -4,7 +4,12 @@
   "use strict";
   var G = window.GAME = window.GAME || {};
 
-  G.WORLD = 10000;
+  G.WORLD = 20000;
+  // Zone d'apparition des vagues de zombies et des tours de siege : les
+  // frontieres de l'ANCIENNE carte (10000 px, centree). Le monde fait deux
+  // fois plus, mais les zombies continuent d'arriver par ces frontieres-la
+  // pour ne pas mettre trop de temps a rejoindre la ville.
+  G.WORLD_SPAWN = 10000;
   G.TOWN = 1000;
   G.TOWN_MIN = (G.WORLD - G.TOWN) / 2;
   G.TOWN_MAX = G.TOWN_MIN + G.TOWN;
@@ -307,11 +312,13 @@
   // collision viennent du masque <sprite>/ville_mask.png (rouge = solide,
   // vert = derriere, transparent = libre) ; cote serveur elles sont lues
   // dans server/ville-grids.json (regenere par gen-sprite-meta.js).
-  // Premiere ville : a l'EST de la ville principale (TOWN_MAX = 5500),
-  // a ~700 px du mur est (proche, visible en sortant de la ville) et hors
-  // des zones de generation. La taille exacte vient du PNG (largeur * 2).
+  // Premiere ville : a l'EST de la ville principale (~700 px du mur est,
+  // proche, visible en sortant de la ville) et hors des zones de
+  // generation. La taille exacte vient du PNG (largeur * 2). Position
+  // relative a la ville conservee apres le passage de WORLD 10000 ->
+  // 20000 (centre +1210/-100).
   G.VILLE_DEFS = [
-    { name: "Ville de l'Est", sprite: "est", x: 6210, y: 4900 }
+    { name: "Ville de l'Est", sprite: "est", x: 11210, y: 9900 }
   ];
   // Placement automatique des nouvelles villes DETECTEES par le serveur
   // (ville-sync.js) : distance au centre de la ville principale. Les

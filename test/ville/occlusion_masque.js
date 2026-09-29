@@ -28,10 +28,14 @@ for (var i = 0; i + 1 < rg.rle.length; i += 2) {
   for (var k = 0; k < rg.rle[i + 1] && p < data.length; k++) data[p++] = rg.rle[i];
 }
 G.villeGrids = { est: { cell: rg.cell, cols: rg.cols, rows: rg.rows, ox: rg.ox, oy: rg.oy, data: data } };
-G.state = { villes: [{ name: "Ville de l'Est", sprite: "est", x: 6210, y: 4900, w: 200, h: 200, x2: 6410, y2: 5100, cx: 6310, cy: 5000 }] };
+// Position de la ville est : lue dans la def de config (config.js), plus
+// de coordonnees en dur (la carte a ete elargie, la ville a bouge).
+(0, eval)(fs.readFileSync(path.join(REPO, "src", "config.js"), "utf8"));
+var estDef = global.GAME.VILLE_DEFS.filter(function (d) { return d.sprite === "est"; })[0];
+var X = estDef.x, Y = estDef.y, S = 200;
+G.villeGrids = { est: { cell: rg.cell, cols: rg.cols, rows: rg.rows, ox: rg.ox, oy: rg.oy, data: data } };
+G.state = { villes: [{ name: estDef.name, sprite: "est", x: X, y: Y, w: S, h: S, x2: X + S, y2: Y + S, cx: X + S / 2, cy: Y + S / 2 }] };
 
-// Geometrie de la ville (meme repere que villeGridFromPixels/drawVilleBand)
-var X = 6210, Y = 4900, S = 200;
 // Dimensions du masque lues dans sprite-meta.json (ville/est/ville_mask)
 var meta = require(path.join(REPO, "server", "sprite-meta.json"));
 var mm = meta["ville/est/ville_mask"];
