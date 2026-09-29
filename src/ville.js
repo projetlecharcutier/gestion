@@ -36,7 +36,7 @@
   // la geometrie du filtre de sol change (le losange L1 -> carre d'emprise
   // a fixe le bas du PNG ignore). ville-sync regenere les grilles stockees
   // quand cette version differe de celle encodee dans ville-grids.json.
-  G.VILLE_GRID_VERSION = 4;
+  G.VILLE_GRID_VERSION = 6;
 
   // Hauteur d'une bande de rendu (px image). Les bandes doivent rester
   // fines pour une occlusion precise du joueur par les façades.
@@ -219,68 +219,60 @@
     var rows = Math.ceil((maxWy - oy) / cell) + 1;
     if (cols <= 0 || rows <= 0 || cols * rows > 4 * 1024 * 1024) return null;
     var data = new Uint8Array(cols * rows);
-    // Un pixel strictement rouge marque sa cellule solide ; un pixel vert
-    // marque la cellule "derriere" (non bloquante) seulement si encore
-    // libre. Les bords anti-aliases du masque (255,128,128...) ne passent
-    // pas les seuils -> restent libres (tolerance du cote traversable).
-    // Seule la BANDE DE SOL compte : un pixel du masque correspond au sol
-    // uniquement si sa projection tombe dans l'emprise monde (CARRE
-    // [x..x+side] x [y..y+side] -- le losange n'existe qu'a l'ECRAN, en
-    // coordonnees monde l'emprise est un carre, comme villeAt/villeEscape/
-    // aabbHitsVilles). Le contenu en ELEVATION (moitie haute du PNG : tours,
-    // facades au-dessus de l'horizon) se projette au NORD de l'emprise :
-    // hors du carre -> filtre. L'ancien test losange (distance L1 depuis le
-    // centre) rejetait en plus le triangle SUD de l'emprise -- precisement
-    // la ou projette le bas du PNG : le masque y etait ignore (mode 0,
-    // tri naturel) et le joueur passait derriere le bas de la ville meme
-    // sur les zones transparentes.
+    // ECHANTILLONNAGE INVERSE : pour chaque cellule monde du CARRE d'emprise
+    // [x..x+side] x [y..y+side], on projette son centre en position ECRAN
+    // (zoom 1) puis on relit le pixel du masque a cet endroit. C'est la
+    // reciproque EXACTE du rendu (drawVilleBand/drawBuilding projettent le
+    // masque avec les memes formules) : la grille represente donc ce que le
+    // joueur voit, sans transposition approximative.
+    //   - Couverture INTEGRALE : chaque cellule du carre est echantillonnee,
+    //     aucune trou dans un mur rouge (les marquages centre-seulement
+    //     laissaient des trous de 1-2 px, les remplissages bbox soudaient
+    //     les portes de 2-3 px image et rendaient les zones vertes
+    //     inaccessibles alors qu'elles sont reliees sur le masque).
+    //   - Une porte etroite du masque reste une porte : plusieurs cellules
+    //     ne peuvent pas se projeter sur le meme pixel s'il est vert --
+    //     mais un pixel rouge marque toutes les cellules qui y tombent.
+    //   - Les bords anti-aliases (255,128,128...) ne passent pas les seuils
+    //     -> libres (tolerance du cote traversable).
+    //   - Le contenu en ELEVATION (moitie haute du PNG) est naturellement
+    //     exclu : les cellules du carre d'emprise ne se projettent que sur
+    //     la bande de sol du PNG (le reste de l'ecran couvert par le PNG
+    //     correspond a des coordonnees hors du carre).
     var bx0 = x, bx1 = x + side, by0 = y, by1 = y + side;
-    for (var py = 0; py < ih; py++) {
-      var row = py * iw * 4;
-      for (var px = 0; px < iw; px++) {
-        var k = row + px * 4;
-        var a = rgba[k + 3];
-        if (a < 128) continue;
-        var r = rgba[k], gch = rgba[k + 1], b = rgba[k + 2];
-        var val = 0;
-        if (r > 180 && gch < 90 && b < 90) val = 1;
-        else if (gch > 180 && r < 90 && b < 90) val = 2;
+    // Le carre monde [x..x+side]x[y..y+side] se projette en un losange
+    // ecran : son centre et son coin sud.
+    // proj(wx, wy) a zoom 1, camera origine : sx = (wx-wy)/2, sy = (wx+wy)/4
+    // Reciproque : wx = sx + 2*sy, wy = 2*sy - sx.
+    // Une cellule monde (wx, wy) -> ecran (sx, sy) -> pixel masque :
+    //   sxF = (sx - (cx0 - losangeW0/2)) / losangeW0 * iw
+    //   pyF = (sy - (groundY0 - drawnH0)) / drawnH0 * ih
+    function sampleMask(wx, wy) {
+      var sx = (wx - wy) * 0.5;
+      var sy = (wx + wy) * 0.25;
+      var fx = (sx - (cx0 - losangeW0 / 2)) / losangeW0 * iw;
+      var fy = (sy - (groundY0 - drawnH0)) / drawnH0 * ih;
+      var px = Math.floor(fx), py = Math.floor(fy);
+      if (px < 0 || py < 0 || px >= iw || py >= ih) return 0;
+      var k = (py * iw + px) * 4;
+      if (rgba[k + 3] < 128) return 0;
+      var r = rgba[k], gch = rgba[k + 1], b = rgba[k + 2];
+      if (r > 180 && gch < 90 && b < 90) return 1;
+      if (gch > 180 && r < 90 && b < 90) return 2;
+      return 0;
+    }
+    var gx0 = Math.floor((bx0 - ox) / cell), gx1 = Math.floor((bx1 - ox) / cell);
+    var gy0 = Math.floor((by0 - oy) / cell), gy1 = Math.floor((by1 - oy) / cell);
+    for (var gy = gy0; gy <= gy1; gy++) {
+      var wyC = oy + (gy + 0.5) * cell;
+      var rowOff = gy * cols;
+      for (var gx = gx0; gx <= gx1; gx++) {
+        if (gx < 0 || gx >= cols) continue;
+        var wxC = ox + (gx + 0.5) * cell;
+        var val = sampleMask(wxC, wyC);
         if (!val) continue;
-        // Filtre d'ELEVATION inchange : seul le CENTRE du pixel decide si
-        // c'est de la bande de sol (centre dans le carre d'emprise) ou du
-        // contenu en elevation (centre projete au nord du carre). Les
-        // pixels d'elevation ne marquent AUCUNE cellule.
-        var syC = groundY0 - drawnH0 + ((py + 0.5) / ih) * drawnH0;
-        var sxC = cx0 - losangeW0 / 2 + ((px + 0.5) / iw) * losangeW0;
-        var wxC = sxC + 2 * syC, wyC = 2 * syC - sxC;
-        if (wxC < bx0 || wxC > bx1 || wyC < by0 || wyC > by1) continue;
-        // Empreinte MONDE COMPLETE du pixel de sol : le carre ecran
-        // [px..px+1] x [py..py+1] du masque se projette en un
-        // parallelogramme monde d'environ (losangeW0/iw) * 2 px de cote --
-        // avec une grille 1 px, ne marquer que la projection du CENTRE
-        // laissait des TROUS de 1 px entre cellules marquees : le test
-        // AABB du joueur (6 px) les couvrait, mais villeCellInfo
-        // echantillonne UN point (les pieds) qui tombait dedans -> mode
-        // d'occlusion faux par endroits. On remplit la bbox du
-        // parallelogramme (approximation sure de ~1 px).
-        var sxLo = cx0 - losangeW0 / 2 + (px / iw) * losangeW0;
-        var sxHi = cx0 - losangeW0 / 2 + ((px + 1) / iw) * losangeW0;
-        var syLo = groundY0 - drawnH0 + (py / ih) * drawnH0;
-        var syHi = groundY0 - drawnH0 + ((py + 1) / ih) * drawnH0;
-        var wxLo = sxLo + 2 * syLo, wxHi = sxHi + 2 * syHi;
-        var wyLo = 2 * syLo - sxHi, wyHi = 2 * syHi - sxLo;
-        var gx0 = Math.max(0, Math.floor((Math.max(wxLo, bx0) - ox) / cell));
-        var gx1 = Math.min(cols - 1, Math.floor((Math.min(wxHi, bx1) - ox) / cell));
-        var gy0 = Math.max(0, Math.floor((Math.max(wyLo, by0) - oy) / cell));
-        var gy1 = Math.min(rows - 1, Math.floor((Math.min(wyHi, by1) - oy) / cell));
-        for (var gy = gy0; gy <= gy1; gy++) {
-          var base = gy * cols;
-          for (var gx = gx0; gx <= gx1; gx++) {
-            var idx = base + gx;
-            if (val === 1) data[idx] = 1;
-            else if (data[idx] === 0) data[idx] = 2;
-          }
-        }
+        if (val === 1) data[rowOff + gx] = 1;
+        else if (data[rowOff + gx] === 0) data[rowOff + gx] = 2;
       }
     }
     return { cell: cell, cols: cols, rows: rows, ox: ox, oy: oy, data: data };
