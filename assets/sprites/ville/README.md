@@ -36,21 +36,32 @@ le bord sud de son losange d'emprise sol, et l'emprise vaut
 position (coin nord-ouest du losange) est definie dans `G.VILLE_DEFS`
 (`src/config.js`).
 
-## Ajouter une ville
+## Deposer des villes
 
-1. Creer le dossier `assets/sprites/ville/<nom>/` avec `ville.png` et
-   `ville_mask.png`. Le serveur le DETECTE au demarrage.
-2. (Optionnel) Placer la ville manuellement : ajouter une entree dans
-   `G.VILLE_DEFS` (`src/config.js`) :
-   `{ name: "...", sprite: "<nom>", x: ..., y: ... }` — x/y = coin
-   nord-ouest de l'emprise sol. Sans entree, la ville est posee
-   AUTOMATIQUEMENT sur un cercle autour de la ville principale
-   (est, puis nord, ouest, sud... ; distance VILLE_AUTO_DIST), position
-   persistee dans `server/ville-positions.json`.
-3. (Optionnel) Relancer `node server/gen-sprite-meta.js` pour rafraichir
-   `server/sprite-meta.json` (bornes opaques) ; les grilles de collision
-   et le manifeste client (`villes.js`) sont regeneres automatiquement au
-   demarrage du serveur par `server/ville-sync.js`.
+Vous pouvez deposer **autant de villes que vous voulez** : chacune est un
+dossier assets/sprites/ville/<nom>/ avec ville.png et ville_mask.png.
+Le serveur DETECTE tout dossier valide au demarrage.
+
+Regles de depot :
+
+- **Jamais deux fois la meme ville** : deux dossiers dont le contenu PNG
+  (ville + masque) est IDENTIQUE sont des doublons — seul le premier est
+  garde, les copies sont ignorees (log [ville-sync] doublon ignore).
+  Les villes configurees manuellement dans G.VILLE_DEFS gagnent toujours.
+- **Placement automatique** : toute ville sans entree manuelle est posee
+  autour de la ville principale, 2 par direction diagonale : sud-est,
+  nord-est, sud-ouest, nord-ouest — la 1re paire sur l anneau proche
+  (VILLE_AUTO_DIST), la 2e sur l anneau lointain (VILLE_AUTO_DIST*1.8),
+  puis expansion par pas si besoin. Les emprises ne se superposent
+  JAMAIS (test AABB + marge, hors ville de depart). Position persistee
+  dans server/ville-positions.json (stable entre redemarrages).
+- (Optionnel) Placement manuel : entree dans G.VILLE_DEFS (src/config.js)
+  { name: "...", sprite: "<nom>", x: ..., y: ... } — x/y = coin nord-ouest
+  de l emprise sol.
+- (Optionnel) Relancer node server/gen-sprite-meta.js pour rafraichir
+  server/sprite-meta.json (bornes opaques) ; les grilles de collision et
+  le manifeste client (villes.js) sont regeneres automatiquement au
+  demarrage du serveur par server/ville-sync.js.
 
 Sans dossier PNG, la ville est simplement ignoree (tolerant) : le jeu
 demarre normalement, sans la ville.

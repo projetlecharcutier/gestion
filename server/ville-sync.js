@@ -23,6 +23,7 @@
   var fs = require("fs");
   var path = require("path");
   var zlib = require("zlib");
+  var crypto = require("crypto");
 
   var ROOT = path.join(__dirname, "..");
   var ASSETS = path.join(ROOT, "assets", "sprites", "ville");
@@ -107,19 +108,69 @@
       out.push({ name: "default", dir: ASSETS, png: "ville.png", mask: "ville_mask.png" });
     }
     // 2. Sous-dossiers : chaque dossier avec ville.png (+ mask tolerate).
-    fs.readdirSync(ASSETS).forEach(function (f) {
+    var dirs = fs.readdirSync(ASSETS).sort();
+    for (var i = 0; i < dirs.length; i++) {
+      var f = dirs[i];
       var p = path.join(ASSETS, f);
-      if (!fs.statSync(p).isDirectory()) return;
-      if (f === "est" || f === "default") { /* deja la convention */ }
-      if (!fs.existsSync(path.join(p, "ville.png"))) return;
+      if (!fs.statSync(p).isDirectory()) continue;
+      if (!fs.existsSync(path.join(p, "ville.png"))) continue;
       out.push({
         name: f,
         dir: p,
         png: "ville.png",
         mask: fs.existsSync(path.join(p, "ville_mask.png")) ? "ville_mask.png" : null
       });
-    });
-    return out;
+    }
+    // 3. DEDOUBLONNAGE par CONTENU : le meme depot (meme PNG, copie ou
+    // renomme) ne doit jamais poser deux fois la meme ville sur la carte.
+    // On hash ville.png + ville_mask.png. Les defs MANUELLES de config.js
+    // (ex. "est") gagnent toujours (position explicite) ; sinon la premiere
+    // occurrence par ordre alphabetique gagne, les doublons sont IGNORES
+    // avec un log clair.
+    var defs = (global.GAME && global.GAME.VILLE_DEFS) || [];
+    function isManual(name) {
+      for (var k = 0; k < defs.length; k++) {
+        if (defs[k].sprite === name || defs[k].name === name) return true;
+      }
+      return false;
+    }
+    function hashVille(v) {
+      try {
+        return crypto.createHash("sha256")
+          .update(fs.readFileSync(path.join(v.dir, v.png)))
+          .update(v.mask ? fs.readFileSync(path.join(v.dir, v.mask)) : Buffer.alloc(0))
+          .digest("hex");
+      } catch (e) { return null; }
+    }
+    var seen = {};
+    var unique = [];
+    for (var j = 0; j < out.length; j++) {
+      var v = out[j];
+      var h = hashVille(v);
+      if (!h) { unique.push(v); continue; }
+      if (seen[h]) {
+        var winner = seen[h];
+        var vManual = isManual(v.name), wManual = isManual(winner.name);
+        if (vManual && !wManual) {
+          // La def manuelle arrive apres une copie detectee avant elle :
+          // la def REMPLACE la copie (la copie est retree plus bas).
+        } else {
+          console.warn("[ville-sync] doublon ignore : " + v.name + " (meme PNG que " +
+                       winner.name + ") -- une ville identique ne peut pas etre posee deux fois");
+          continue;
+        }
+        // Retire la copie precedemment acceptee au profit de la def.
+        for (var u = 0; u < unique.length; u++) {
+          if (unique[u].name === winner.name) { unique.splice(u, 1); break; }
+        }
+        seen[h] = v;
+        unique.push(v);
+        continue;
+      }
+      seen[h] = v;
+      unique.push(v);
+    }
+    return unique;
   }
 
   // Deplace un depot racine (ville/ville.png) vers un sous-dossier
@@ -175,44 +226,75 @@
     return a + "|" + b;
   }
 
-  // Placement automatique d'une nouvelle ville : ancree sur un cercle
-  // autour de la ville principale (centre TOWN), ordre anti-horaire en
-  // partant de l'est, distance VILLE_AUTO_DIST. boxes = emprises deja
-  // posees [{x, y, side}] : defs MANUELLES de config.js + positions
-  // persistees -> evite aussi le recouvrement avec la ville de depart.
+  // Placement automatique d'une nouvelle ville : 8 creneaux, soit DEUX
+  // par direction diagonale (SE, SO, NE, NO), sur deux anneaux autour de
+  // la ville principale (centre TOWN). L'anneau 1 (proche) prend SE puis
+  // NE puis SO puis NO ; l'anneau 2 (loin, VILLE_AUTO_DIST * 1.8) reprend
+  // SE puis NE... dans le meme ordre -> les villes arrivent en paires par
+  // direction, sans jamais se superposer entre elles ni avec la ville de
+  // depart. boxes = emprises deja posees [{x, y, side}] : defs MANUELLES de
+  // config.js + positions persistees ; le creneau occupe est ecarte de la
+  // liste des candidats.
+  // Ordre des directions (x+y SIGNES de l'offset, echelle isometrique) :
+  // 0 = sud-est, 1 = nord-est, 2 = sud-ouest, 3 = nord-ouest.
+  var AUTO_DIRS = [
+    { dx: Math.SQRT1_2, dy: Math.SQRT1_2 },  // sud-est (x+, y+)
+    { dx: Math.SQRT1_2, dy: -Math.SQRT1_2 }, // nord-est (x+, y-)
+    { dx: -Math.SQRT1_2, dy: Math.SQRT1_2 }, // sud-ouest (x-, y+)
+    { dx: -Math.SQRT1_2, dy: -Math.SQRT1_2 }  // nord-ouest (x-, y-)
+  ];
+  // Un creneau est-il LIBRE (dans la carte, hors ville de depart, sans
+  // recouvrement avec une emprise existante) ? Comme l'emprise est un
+  // carre monde, le test AABB est exact cote collision ; le debord
+  // visuel d'elevation (vers le nord de l'emprise) est couvert par le
+  // MARGE (pad) qui agrandit la boite testee de MARGE px de chaque cote.
+  var AUTO_MARGE = 300;
+  function slotLibre(x, y, side, boxes) {
+    var G = global.GAME;
+    var ox = x - side / 2, oy = y - side / 2;
+    if (ox < 60 || oy < 60 || ox + side > G.WORLD - 60 || oy + side > G.WORLD - 60) return false;
+    if (x + side / 2 + AUTO_MARGE > G.TOWN_MIN && x - side / 2 - AUTO_MARGE < G.TOWN_MAX &&
+        y + side / 2 + AUTO_MARGE > G.TOWN_MIN && y - side / 2 - AUTO_MARGE < G.TOWN_MAX) return false;
+    for (var bi = 0; bi < boxes.length; bi++) {
+      var b = boxes[bi];
+      if (x + side / 2 + AUTO_MARGE > b.x && x - side / 2 - AUTO_MARGE < b.x + b.side + AUTO_MARGE &&
+          y + side / 2 + AUTO_MARGE > b.y && y - side / 2 - AUTO_MARGE < b.y + b.side + AUTO_MARGE) return false;
+    }
+    return true;
+  }
   function autoPosition(side, boxes) {
     var G = global.GAME;
     var cx = G.WORLD / 2, cy = G.WORLD / 2;
-    var dist = G.VILLE_AUTO_DIST || 1500;
-    // Demarre a l'est (angle 0) et tourne anti-horaire : 1re ville ~est,
-    // 2e ~nord, 3e ~ouest, 4e ~sud...
-    var angle = -(boxes.length || 0) * (Math.PI / 2);
-    var x, y;
-    // Essaie jusqu'a 16 positions sur le cercle, s'eloigne si recouvrement.
-    for (var attempt = 0; attempt < 16; attempt++) {
-      var ang = angle - attempt * (Math.PI / 4);
-      x = cx + Math.cos(ang) * dist;
-      y = cy + Math.sin(ang) * dist;
-      var ok = true;
-      // Coin nord-ouest de l'emprise : la ville tient-elle dans la carte ?
-      var ox = x - side / 2, oy = y - side / 2;
-      if (ox < 60 || oy < 60 || ox + side > G.WORLD - 60 || oy + side > G.WORLD - 60) ok = false;
-      // Pas de recouvrement avec la ville de depart (TOWN).
-      if (ok && x + side / 2 > G.TOWN_MIN && x - side / 2 < G.TOWN_MAX &&
-          y + side / 2 > G.TOWN_MIN && y - side / 2 < G.TOWN_MAX) ok = false;
-      // Pas de recouvrement avec une autre ville PNG (defs + positions).
-      if (ok) {
-        for (var bi = 0; bi < boxes.length; bi++) {
-          var b = boxes[bi];
-          if (x + side / 2 > b.x && x - side / 2 < b.x + b.side &&
-              y + side / 2 > b.y && y - side / 2 < b.y + b.side) { ok = false; break; }
+    var d1 = G.VILLE_AUTO_DIST || 1500;
+    var d2 = d1 * 1.8;
+    // Deux anneaux x quatre directions diagonales, dans l'ordre SE, NE,
+    // SO, NO (anneau proche d'abord, puis loin).
+    for (var ring = 0; ring < 2; ring++) {
+      var dist = ring === 0 ? d1 : d2;
+      for (var di = 0; di < 4; di++) {
+        var dir = AUTO_DIRS[di];
+        var x = cx + dir.dx * dist, y = cy + dir.dy * dist;
+        if (slotLibre(x, y, side, boxes)) {
+          return { x: Math.round(x - side / 2), y: Math.round(y - side / 2) };
         }
       }
-      if (ok) return { x: Math.round(x - side / 2), y: Math.round(y - side / 2) };
+    }
+    // Tous les creneaux pris : on s'eloigne par pas de 25% de d1 en gardant
+    // les memes directions, jusqu'a trouver de la place (limite 12 pas).
+    for (var step = 1; step <= 12; step++) {
+      var dd = d2 * (1 + 0.25 * step);
+      for (var di2 = 0; di2 < 4; di2++) {
+        var dir2 = AUTO_DIRS[di2];
+        var x2 = cx + dir2.dx * dd, y2 = cy + dir2.dy * dd;
+        if (x2 > side && y2 > side && x2 < G.WORLD - side && y2 < G.WORLD - side &&
+            slotLibre(x2, y2, side, boxes)) {
+          return { x: Math.round(x2 - side / 2), y: Math.round(y2 - side / 2) };
+        }
+      }
     }
     // Repli : ancrage est simple, cadre dans la carte.
     return {
-      x: Math.round(Math.min(G.WORLD - side - 60, Math.max(60, cx + dist - side / 2))),
+      x: Math.round(Math.min(G.WORLD - side - 60, Math.max(60, cx + d1 - side / 2))),
       y: Math.round(Math.min(G.WORLD - side - 60, Math.max(60, cy - side / 2)))
     };
   }
