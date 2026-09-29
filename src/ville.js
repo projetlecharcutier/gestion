@@ -36,7 +36,7 @@
   // la geometrie du filtre de sol change (le losange L1 -> carre d'emprise
   // a fixe le bas du PNG ignore). ville-sync regenere les grilles stockees
   // quand cette version differe de celle encodee dans ville-grids.json.
-  G.VILLE_GRID_VERSION = 6;
+  G.VILLE_GRID_VERSION = 7;
 
   // Hauteur d'une bande de rendu (px image). Les bandes doivent rester
   // fines pour une occlusion precise du joueur par les façades.
@@ -219,27 +219,27 @@
     var rows = Math.ceil((maxWy - oy) / cell) + 1;
     if (cols <= 0 || rows <= 0 || cols * rows > 4 * 1024 * 1024) return null;
     var data = new Uint8Array(cols * rows);
-    // ECHANTILLONNAGE INVERSE : pour chaque cellule monde du CARRE d'emprise
-    // [x..x+side] x [y..y+side], on projette son centre en position ECRAN
-    // (zoom 1) puis on relit le pixel du masque a cet endroit. C'est la
-    // reciproque EXACTE du rendu (drawVilleBand/drawBuilding projettent le
-    // masque avec les memes formules) : la grille represente donc ce que le
-    // joueur voit, sans transposition approximative.
-    //   - Couverture INTEGRALE : chaque cellule du carre est echantillonnee,
-    //     aucune trou dans un mur rouge (les marquages centre-seulement
-    //     laissaient des trous de 1-2 px, les remplissages bbox soudaient
-    //     les portes de 2-3 px image et rendaient les zones vertes
-    //     inaccessibles alors qu'elles sont reliees sur le masque).
-    //   - Une porte etroite du masque reste une porte : plusieurs cellules
-    //     ne peuvent pas se projeter sur le meme pixel s'il est vert --
-    //     mais un pixel rouge marque toutes les cellules qui y tombent.
+    // ECHANTILLONNAGE INVERSE : pour chaque cellule monde de la BBOX de la
+    // grille (projection ecran du PNG ENTIER, y compris l'elevation), on
+    // projette son centre en position ECRAN (zoom 1) puis on relit le pixel
+    // du masque a cet endroit. C'est la reciproque EXACTE du rendu
+    // (drawVilleBand/drawBuilding projettent le masque avec les memes
+    // formules) : la grille represente donc ce que le joueur voit.
+    //   - Couverture INTEGRALE : aucune trou dans un mur rouge (les
+    //     marquages centre-seulement laissaient des trous de 1-2 px, les
+    //     remplissages bbox soudaient les portes de 2-3 px image et
+    //     rendaient les zones vertes inaccessibles alors qu'elles sont
+    //     reliees sur le masque).
+    //   - Une porte etroite du masque reste une porte.
     //   - Les bords anti-aliases (255,128,128...) ne passent pas les seuils
     //     -> libres (tolerance du cote traversable).
-    //   - Le contenu en ELEVATION (moitie haute du PNG) est naturellement
-    //     exclu : les cellules du carre d'emprise ne se projettent que sur
-    //     la bande de sol du PNG (le reste de l'ecran couvert par le PNG
-    //     correspond a des coordonnees hors du carre).
-    var bx0 = x, bx1 = x + side, by0 = y, by1 = y + side;
+    //   - TOUTE la surface peinte du masque compte : la moitie haute du PNG
+    //     (tours, hautes facades) se projette au NORD du carre d'emprise --
+    //     les y exclure (ancien filtre "elevation") laissait le joueur
+    //     marcher SUR ces facades sans collision et devant leur rendu.
+    //     Un joueur au pied d'une tour peinte rouge est bloque ; une zone
+    //     peinte verte le cache (mode derriere) ; transparente, libre.
+    var bx0 = ox, bx1 = ox + cols * cell, by0 = oy, by1 = oy + rows * cell;
     // Le carre monde [x..x+side]x[y..y+side] se projette en un losange
     // ecran : son centre et son coin sud.
     // proj(wx, wy) a zoom 1, camera origine : sx = (wx-wy)/2, sy = (wx+wy)/4
@@ -261,8 +261,7 @@
       if (gch > 180 && r < 90 && b < 90) return 2;
       return 0;
     }
-    var gx0 = Math.floor((bx0 - ox) / cell), gx1 = Math.floor((bx1 - ox) / cell);
-    var gy0 = Math.floor((by0 - oy) / cell), gy1 = Math.floor((by1 - oy) / cell);
+    var gx0 = 0, gx1 = cols - 1, gy0 = 0, gy1 = rows - 1;
     for (var gy = gy0; gy <= gy1; gy++) {
       var wyC = oy + (gy + 0.5) * cell;
       var rowOff = gy * cols;
@@ -400,9 +399,16 @@
       if (gx < 0 || gy < 0 || gx >= g.cols || gy >= g.rows) continue;
       var cell = g.data[gy * g.cols + gx];
       var ground = x >= v.x && x <= v.x2 && y >= v.y && y <= v.y2;
+      // Le mode s'applique a TOUTE la bbox de la grille (emprise sol +
+      // elevation au nord) : la grille couvre la projection ecran du PNG
+      // entier, une cellule verte y signifie "le sol ici est DERRIERE le
+      // PNG" et une cellule transparente "le joueur est DEVANT la ville".
+      // L'ancien test ground (carre d'emprise seul) ignorait la moitie
+      // haute : le joueur au pied d'une facade haute etait en mode 0
+      // (tri naturel) et apparaissait SUR le PNG.
       var mode = 0;
-      if (ground && cell === 2) mode = 1;
-      else if (ground && cell === 0) mode = 2;
+      if (cell === 2) mode = 1;
+      else if (cell === 0) mode = 2;
       return { sprite: v.sprite, cell: cell, ground: ground, mode: mode };
     }
     return null;

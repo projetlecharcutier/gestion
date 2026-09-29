@@ -1303,23 +1303,53 @@
     // ecran verticale de la bande entiere du PNG est trop large pour servir
     // de rejet : on teste la bbox ecran approximee de la bande).
     if (state.villes && G.villeBands) {
-      // Occlusion : tri naturel UNIQUEMENT. Chaque bande de 1 px image
-      // (VILLE_BAND_H) couvre ~8 px monde de profondeur (la taille du
-      // joueur) et entre dans le tri x+y comme tout drawable : une facade
-      // au sud du joueur (bande de depth superieur) est dessinee apres lui
-      // et le couvre, une facade au nord avant lui, un passage transparent
-      // du PNG ne le couvre pas (pixels transparents). Aucun mecanisme
-      // dedie : les anciens biais (cellule du masque sous les pieds,
-      // departage par corps) etaient des approximations de ce tri, utiles
-      // seulement quand les bandes etaient si grossieres (96 px) qu'une
-      // seule bande melangeait des facades au nord ET au sud du joueur.
+      // Occlusion : tri naturel pour toutes les bandes, PLUS un departage
+      // pour les bandes qui chevauchent le CORPS du joueur a l'ecran.
+      // Le tri naturel seul est insuffisant pour l'ELEVATION : une facade
+      // haute (tour) couvre a l'ecran des cellules au NORD de son emprise
+      // sol -- un joueur debout la est DEVANT la facade a l'ecran mais
+      // derriere au tri (profondeur de sol de la bande plus petite).
+      // Le masque tranchait : cellule VERTE sous les pieds = le sol y est
+      // DERRIERE le PNG -> les bandes couvrantes passent devant lui ;
+      // cellule TRANSPARENTE = il est devant la ville -> derriere lui.
+      var villePinfo = (G.villeCellInfo && state.started) ? G.villeCellInfo(state.player.x, state.player.y) : null;
+      var villeV = null, villePlayerMode = 0;
+      if (villePinfo && villePinfo.mode !== 0) {
+        for (var vmi = 0; vmi < state.villes.length; vmi++) {
+          if (state.villes[vmi].sprite === villePinfo.sprite) { villeV = state.villes[vmi]; break; }
+        }
+        villePlayerMode = villePinfo.mode; // 1 = pieds sur zone verte (DERRIERE le PNG), 2 = pieds sur zone transparente (DEVANT)
+      }
       for (var vi = 0; vi < state.villes.length; vi++) {
         var vv = state.villes[vi];
         if (vv.x + vv.w < bnds.minX || vv.x > bnds.maxX || vv.y + vv.h < bnds.minY || vv.y > bnds.maxY) continue;
         var vEntry = G.villeBands(vv);
         if (!vEntry) continue;
+        // Corps du joueur a l'ecran (pour le departage) et geographie de la
+        // ville courante : intervalles ecran de chaque bande (les memes
+        // formules que drawVilleBand).
+        var vBase = G.proj(state.player.x, state.player.y);
+        var vTopY = vBase[1] - 26 * G.state.zoom;
+        var isVilleV = (vv === villeV);
+        if (isVilleV) {
+          var vA = G.proj(vv.x, vv.y), vC = G.proj(vv.x + vv.w, vv.y + vv.h), vD = G.proj(vv.x, vv.y + vv.h);
+          var vGroundY = Math.max(vC[1], vD[1]);
+          var vFullDh = (vv.w + vv.h) * 0.5 * G.state.zoom * vEntry.ih / vEntry.iw;
+        }
         for (var vb = 0; vb < vEntry.bands.length; vb++) {
-          drawables.push({ depth: vEntry.bands[vb].depth, type: "ville", ref: { v: vv, band: vEntry.bands[vb], entry: vEntry } });
+          var vBand = vEntry.bands[vb];
+          var vbDepth = vBand.depth;
+          if (isVilleV && villePlayerMode !== 0) {
+            var vBandY0 = vGroundY - vFullDh + (vBand.sy / vEntry.ih) * vFullDh;
+            var vBandY1 = vBandY0 + vFullDh * vBand.sh / vEntry.ih;
+            // La bande couvre une partie du corps du joueur : le masque
+            // (vert sous les pieds) decide si elle le cache ou non.
+            if (vTopY < vBandY1 && vBase[1] > vBandY0) {
+              if (villePlayerMode === 1) vbDepth = state.player.x + state.player.y + 1;
+              else if (villePlayerMode === 2) vbDepth = state.player.x + state.player.y - 1;
+            }
+          }
+          drawables.push({ depth: vbDepth, type: "ville", ref: { v: vv, band: vBand, entry: vEntry } });
         }
       }
     }
