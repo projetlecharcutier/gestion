@@ -4,7 +4,11 @@
 
 ## Lancer le jeu
 
-Ouvrir `index.html` dans un navigateur récent. Aucune dépendance, aucun build : JS vanilla, modules chargés en ordre via balises `<script>` (pas de bundler, pas d'ES modules — partage via l'objet global `window.GAME`).
+Mode **multijoueur (serveur) par défaut** : `cd server && npm install && npm start` puis ouvrir `http://<hote>:8080` (le serveur sert aussi les fichiers statiques). Solo via le menu d'accueil. Aucun build : JS vanilla, modules chargés en ordre via balises `<script>` (pas de bundler, pas d'ES modules — partage via l'objet global `window.GAME`).
+
+### Tests
+
+Tests Node sans framework : `./test/run.sh` (tout), `./test/run.sh zombies` (une catégorie), `node test/<categorie>/<fichier>.js` (0 = OK). Stubs DOM embarqués, aucun navigateur requis. Catégories : `zombies`, `world`, `buildings`, `walls`, `chop`, `bag`, `ville`, `towers`, `siege`, `birds`, `menu`, `loopback` (intégration complète avec serveur spawné), `potence`, `serveur`. `TEST_SEED` rend le monde reproductible (PRNG remplaçant `Math.random` côté serveur) ; `TEST_START_PLANKS` donne des planches de départ.
 
 ## Architecture
 
@@ -17,22 +21,28 @@ Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fo
 | # | Fichier | Rôle | Exposé sur `G` |
 |---|---------|------|---------------|
 | 1 | `src/config.js` | Constantes globales, armes, cycle jour/nuit, helpers (`rand`, `clamp`, `isNight`) | `WORLD`, `TOWN`, `WEAPON_STATS`, `ZOMBIE_*`, `WALL_*`, … |
-| 2 | `src/state.js` | État global + références DOM (canvas, HUD, écrans) | `state`, `canvas`, `ctx`, `hud*`, `startScreen`… |
-| 3 | `src/projection.js` | Projection iso monde↔écran, limites visibles, `inTown` | `proj`, `unproj`, `viewW/H`, `visibleWorldBounds`, `inTown` |
-| 4 | `src/ville.js` | Villes décoratives PNG (collisions par masque, rendu en bandes) | `villeSetup`, `aabbHitsVilles`, `villeAt`, `villeBlockNav`, `villeBands`, `drawVilleBand` |
-| 5 | `src/world.js` | Génération : bâtiments, mur de périmètre, objets, arbres | `buildWorld`, `makeBuilding`, `nearBuilding`, `buildPerimeterWall` |
-| 6 | `src/flowfield.js` | Flow field zombies : BFS vers la ville + flèche précalculée par cellule, connectivité des forêts | `rebuildNavGrid`, `navStep`, `navAngle`, `ensureForetConnectivity` |
-| 7 | `src/player.js` | Déplacement, collisions (bâtiments + planches posées), entrée bâtiment, soin hôpital, pause | `tryMove`, `aabbHitsBuildings`, `clampPlayer`, `enterBuilding`, `leaveBuilding`, `togglePause`, `tryHealAtHospital`, `hasGoldPiece` |
-| 8 | `src/walls.js` | Construction de planches/murs (Z + clic) + rotation + collisions + nettoyage murs détruits | `tryBuildWall`, `cleanupWalls`, `plankDims`, `rotatePlank`, `aabbHitsWalls` |
-| 9 | `src/towers.js` | Bâtiments de ville (scierie, université, montgolfière) + tours d'attaque : tech à la mairie (vote), menu de construction, chantiers, tir automatique flèches | `makeTownBuilding`, `makeScierie`, `makeTower`, `updateBuildSites`, `updateTowers`, `cleanupTowers`, `buildMenu`, `placeFromBuildMenu`, `canPayTownTech`, `unlockTownTech`, `startVote`, `castVote`, `resolveVote` |
-| 10 | `src/chop.js` | Récolte de planches à la hache (décompte près d'un arbre) | `updateChop`, `chopProgress` |
-| 11 | `src/weapons.js` | Stats arme équipée, tir, déplacement projectiles | `equippedStats`, `handleShooting`, `updateProjectiles` |
-| 12 | `src/zombies.js` | Vagues, groupes qui fusionnent, IA zombies (priorité : palissade > tour > mairie/joueur) | `spawnWave`, `mergeGroups`, `updateZombies`, `cleanupZombies` |
-| 13 | `src/bag.js` | Sac : disposition, rendu, clic équiper (armes & hache) | `bagLayout`, `handleBagClick`, `drawBag` |
-| 14 | `src/hud.js` | HUD DOM + overlays canvas (dont cercle de décompte hache) | `updateHud`, `drawClock`, `drawPlayerHpBar`, `drawBuildHint`, `drawChopProgress`, `drawGameOver` |
-| 15 | `src/render.js` | Tout le dessin + `render()` (dont `drawTower`, flèche orientée, brouillard multi-sources) | `drawGround/Item/Tree/Building/Player/Wall/Zombie/Projectiles/Fog/Crosshair/DeadTraces`, `drawTower`, `fillPoly`, `roundRect`, `render` |
-| 16 | `src/input.js` | Entrées (souris, molette, clavier) + formulaire démarrage | resize interne, listeners |
-| 17 | `src/main.js` | Logique par frame `update(dt)` + `loop()` | `update`, `loop` |
+| 2 | `src/stats.js` | Compteurs de partie (kills, etc.) | `stats`, helpers stats |
+| 3 | `src/assets.js` | Chargement des PNG/sons, dictionnaire d'assets | `assets`, `getSprite`, `hasSprite` |
+| 4 | `src/state.js` | État global + références DOM (canvas, HUD, écrans) | `state`, `canvas`, `ctx`, `hud*`, `startScreen`… |
+| 5 | `src/projection.js` | Projection iso monde↔écran, limites visibles, `inTown` | `proj`, `unproj`, `viewW/H`, `visibleWorldBounds`, `inTown` |
+| 6 | `src/ville.js` | Villes décoratives PNG (collisions par masque, rendu en bandes) | `villeSetup`, `aabbHitsVilles`, `villeAt`, `villeBlockNav`, `villeBands`, `drawVilleBand` |
+| 7 | `src/world.js` | Génération : bâtiments, mur de périmètre, objets, arbres | `buildWorld`, `makeBuilding`, `nearBuilding`, `buildPerimeterWall` |
+| 8 | `src/flowfield.js` | Flow field zombies : BFS vers la ville + flèche précalculée par cellule, connectivité des forêts | `rebuildNavGrid`, `navStep`, `navAngle`, `ensureForetConnectivity` |
+| 9 | `src/player.js` | Déplacement, collisions (bâtiments + planches posées), entrée bâtiment, soin hôpital, pause | `tryMove`, `aabbHitsBuildings`, `clampPlayer`, `enterBuilding`, `leaveBuilding`, `togglePause`, `tryHealAtHospital`, `hasGoldPiece` |
+| 10 | `src/walls.js` | Construction de planches/murs (Z + clic) + rotation + collisions + nettoyage murs détruits | `tryBuildWall`, `cleanupWalls`, `plankDims`, `rotatePlank`, `aabbHitsWalls` |
+| 11 | `src/towers.js` | Bâtiments de ville (scierie, université, montgolfière) + tours d'attaque : tech à la mairie (vote), menu de construction, chantiers, tir automatique flèches | `makeTownBuilding`, `makeScierie`, `makeTower`, `updateBuildSites`, `updateTowers`, `cleanupTowers`, `buildMenu`, `placeFromBuildMenu`, `canPayTownTech`, `unlockTownTech`, `startVote`, `castVote`, `resolveVote` |
+| 12 | `src/chop.js` | Récolte de planches à la hache (décompte près d'un arbre) | `updateChop`, `chopProgress` |
+| 13 | `src/weapons.js` | Stats arme équipée, tir, déplacement projectiles | `equippedStats`, `handleShooting`, `updateProjectiles` |
+| 14 | `src/birds.js` | Oiseaux volants (drop or/planches) | `updateBirds`, `drawBirds` |
+| 15 | `src/siege.js` | Tour de siège zombie (lente, 100 PV, attaque murs/ville) | `updateSiege`, `drawSiege` |
+| 16 | `src/zombies.js` | Vagues, groupes qui fusionnent, IA zombies (priorité : palissade > tour > mairie/joueur) | `spawnWave`, `mergeGroups`, `updateZombies`, `cleanupZombies` |
+| 17 | `src/bag.js` | Sac : disposition, rendu, clic équiper (armes & hache) | `bagLayout`, `handleBagClick`, `drawBag` |
+| 18 | `src/hud.js` | HUD DOM + overlays canvas (dont cercle de décompte hache) | `updateHud`, `drawClock`, `drawPlayerHpBar`, `drawBuildHint`, `drawChopProgress`, `drawGameOver` |
+| 19 | `src/net.js` | Client WebSocket (connexion, inputs, application état serveur) | `netConnect`, `netJoin`, `netInput`, `netHandle`, `applyRemoteState` |
+| 20 | `src/render.js` | Tout le dessin + `render()` (dont `drawTower`, flèche orientée, brouillard multi-sources) | `drawGround/Item/Tree/Building/Player/Wall/Zombie/Projectiles/Fog/Crosshair/DeadTraces`, `drawTower`, `fillPoly`, `roundRect`, `render` |
+| 21 | `src/input.js` | Entrées (souris, molette, clavier) + formulaire démarrage | resize interne, listeners |
+| 22 | `src/sound.js` | Sons (mp3 dans `assets/sounds/`, repli silencieux) | `playSound` |
+| 23 | `src/main.js` | Logique par frame `update(dt)` + `loop()` | `update`, `loop` |
 
 ## État global : `G.state`
 
@@ -52,12 +62,13 @@ Schéma complet dans `src/state.js`. Champs clés :
 
 | Constante | Valeur | Sens |
 |-----------|--------|------|
-| `WORLD` | 10000 | Taille carte (px) |
+| `WORLD` | 20000 | Taille carte (px) — passée de 10000 à 20000, zombies aux frontières de l'ancienne carte (`WORLD_SPAWN`) |
+| `WORLD_SPAWN` | 10000 | Rayon de spawn des zombies (frontières de l'ancienne carte) |
 | `TOWN` | 1000 | Taille ville (px) |
 | `PLAYER_W/H` | 6 / 15 | Sprite joueur (bâtiments ≤ `PLAYER_W*20` = 120 px) |
 | `SPEED` | 260 | Vitesse joueur (px/s) |
 | `FOG_RADIUS` | 200 | Visibilité hors ville (px) |
-| `ZOMBIE_SPEED` | 130 | Moitié du joueur |
+| `ZOMBIE_SPEED` | 90 | Vitesse de base, ± `ZOMBIE_SPEED_VAR` (0.35) par zombie ; bonus horde `ZOMBIE_HORDE_SPEED_BONUS` (0.18) |
 | `ZOMBIE_PLAYER_DMG` | 20 | 5 coups = mort (100 PV) |
 | `WALL_MAX_HP` | 100 | PV d'un mur |
 | `PLAYER_MAX_HP` | 100 | PV joueur |
@@ -106,6 +117,7 @@ Sprites pixel art et palettes de couleurs, isolés du rendu. Exposés sur `G.TEX
 | `src/textures/index.js` | — | initialise `G.TEXTURES` |
 | `src/textures/player.js` | joueur | sprite 6×15 + palette + ombre |
 | `src/textures/zombie.js` | zombie | sprite 6×15 + palette + ombre |
+| `src/textures/bird.js` | oiseau | sprite + palette |
 | `src/textures/building.js` | bâtiment | faces, toit, porte |
 | `src/textures/wall.js` | mur | faces, dessus, seuils barre de vie |
 | `src/textures/tree.js` | arbre | tronc, ombre, feuillage par `kind` |
@@ -163,6 +175,15 @@ Assets attendus (repli sans eux) : `assets/sprites/tour/{idle,chantier,gauche,dr
 ## Specs détaillées par système
 
 Voir `docs/` : une spec courte par système (contrats, entrées/sorties, contraintes).
+
+## Leçons de bugs récents (à ne pas reproduire)
+
+- **Occlusion villes** : le PNG visible est découpé en **bandes horizontales** insérées dans le tri `x+y` ; seule la partie **verte** du masque occlut le joueur (le transparent reste derrière). L'occlusion se teste **par bande à la résolution du masque**, avec le biais calculé **avant** la boucle des bandes (bug de hoisting déjà corrigé).
+- **Collisions villes** : c'est le **masque entier qui compte** (élévation incluse), pas seulement l'emprise au sol — sinon le joueur traverse les façades hautes. Le filtre de sol doit être **carré**, pas losange (L1) — le losange ignorait le bas du PNG.
+- **`hitsObstacle` récursif** : toujours itératif ou borné (stack overflow en prod avec les forêts denses).
+- **Prod (`/opt/flex` possédé par root)** : `git` exige `safe.directory` passé **par appel** ; `ville-sync` doit tolérer les dépôts en **lecture seule** (EACCES) et le redémarrage doit tolérer les erreurs.
+- **Villes déposées** : détection par dossier, **dédoublonnage par contenu**, placement auto sur cercle (`VILLE_AUTO_DIST` 1500) — positions persistées dans `server/ville-positions.json`, signatures de grilles dans `server/ville-grids-sigs.json` (ne pas committer un changement de date seul).
+- **Parité client/serveur** : les grilles de collision sont générées par la **même fonction pure** (`gen-sprite-meta.js`) des deux côtés — toute divergence casse le multi.
 
 ## Mode multijoueur (client-serveur)
 
