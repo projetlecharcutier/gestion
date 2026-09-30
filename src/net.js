@@ -160,6 +160,7 @@
         // Murs et objets : la carte complete arrive des le join (plus besoin
         // d'attendre le premier snapshot 10 Hz apres START_DELAY).
         state.walls = msg.map.walls || [];
+        G.rebuildWallGrid();
         state.items = msg.map.items || [];
         G.rebuildBuildingGrid();
       }
@@ -209,6 +210,7 @@
         _applyVilleManifest(msg.map.villes);
         if (G.villeSetup) G.villeSetup(G.state);
         G.state.walls = msg.map.walls || [];
+        G.rebuildWallGrid();
         G.state.items = msg.map.items || [];
         G.rebuildBuildingGrid();
       }
@@ -307,31 +309,61 @@
     // (bande passante ~3x moindre la nuit). Decompression en objets pour le
     // rendu. vx/vy : velocite serveur pour l'extrapolation entre snapshots.
     if (s.zombies) {
-      var zout = [];
-      for (var zi = 0; zi < s.zombies.length; zi++) {
-        var za = s.zombies[zi];
-        if (za.length) {
-          zout.push({ x: za[0], y: za[1], hp: za[2], lunge: za[3], lungeDx: za[4], lungeDy: za[5], leader: !!za[6], vx: za[7] || 0, vy: za[8] || 0 });
+      // Reconciliation : on REUTILISE les objets zombies existants quand le
+      // snapshot en contient autant (cas courant : la horde ne change pas
+      // de taille a chaque snapshot). Recreer ~3000 objets a 10 Hz causait
+      // une pression GC majeure (micro-freezes). Les objets en exces sont
+      // tronques, les nouveaux sont crees.
+      var zs = s.zombies;
+      var cur = state.zombies;
+      if (cur.length > zs.length) cur.length = zs.length;
+      for (var zi = 0; zi < zs.length; zi++) {
+        var za = zs[zi];
+        var z;
+        if (zi < cur.length) {
+          z = cur[zi];
         } else {
-          zout.push(za);
+          z = {};
+          cur.push(z);
+        }
+        if (za.length) {
+          z.x = za[0]; z.y = za[1]; z.hp = za[2]; z.lunge = za[3];
+          z.lungeDx = za[4]; z.lungeDy = za[5]; z.leader = !!za[6];
+          z.vx = za[7] || 0; z.vy = za[8] || 0;
+        } else {
+          z.x = za.x; z.y = za.y; z.hp = za.hp; z.lunge = za.lunge || 0;
+          z.lungeDx = za.lungeDx || 0; z.lungeDy = za.lungeDy || 0;
+          z.leader = !!za.leader;
+          z.vx = za.vx || 0; z.vy = za.vy || 0;
         }
       }
-      state.zombies = zout;
     } else state.zombies = [];
     // Murs : la grace anti-blocage arrive en delta de temps (temps restant).
     // On la traduit en horodatage local pour aabbHitsWalls (forPlayer).
     if (s.walls) {
-      var nwalls = [];
+      // Reconciliation : le tableau local est REUTILISE (pas de nouveau
+      // tableau ni de nouveaux objets a 10 Hz) ; la grille murale est
+      // reconstruite uniquement si le contenu change vraiment (pose,
+      // destruction) -- comparer les longueurs suffit : les positions ne
+      // bougent JAMAIS apres pose, seule la duree de vie varie.
+      var wChanged = state.walls.length !== s.walls.length;
       for (var wi = 0; wi < s.walls.length; wi++) {
         var wm = s.walls[wi];
         if (wm.grace !== undefined && wm.grace > 0) {
           wm.noBlockUntil = state.time + wm.grace;
         }
-        nwalls.push(wm);
       }
-      state.walls = nwalls;
-    } else state.walls = [];
-    state.items = s.items || [];
+      state.walls.length = s.walls.length;
+      for (var wi2 = 0; wi2 < s.walls.length; wi2++) state.walls[wi2] = s.walls[wi2];
+      if (wChanged) G.rebuildWallGrid();
+    }
+    // Cle ABSENTE (undefined) : le serveur n'a pas renvoye les murs car leur
+    // contenu n'a pas change depuis le dernier snapshot (cf. snapshot serveur,
+    // versions wallsRev). On conserve l'etat local tel quel. Un tableau VIDE
+    // ([], tous les murs detruits) est bien envoye et traite ci-dessus.
+    // Items : idem murs -- absents du snapshot = inchanges, on garde l'etat
+    // local (le serveur ne les renvoie que sur mutation reelle).
+    if (s.items !== undefined) state.items = s.items;
     state.projectiles = s.projectiles || [];
     state.birds = s.birds || [];
     // Traces de zombies morts : gerees cote serveur (autorite). Le client ne

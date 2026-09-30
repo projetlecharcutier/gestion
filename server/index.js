@@ -169,13 +169,35 @@
   // Broadcast de l'état de jeu à 10 Hz (clients en jeu).
   var stateAcc = 0;
 
-  // Boucle serveur principale.
+  // Boucle serveur principale : TICK FIXE avec accumulateur. Un dt mesure
+  // entre deux setInterval est variable (jitter de l'event loop, charge) ;
+  // le tick fixe rend la simulation deterministe et reproductible (memes
+  // trajectoires quel que soit le rythme reel), en bornant le rattrapage
+  // pour ne jamais spiraler apres un blocage (GC, hibernation).
+  var TICK_DT = 1 / TICK_HZ;
+  var MAX_CATCHUP = 5; // max 5 ticks rattrapes par tour de boucle
+  var acc = 0;
   var last = Date.now();
   function loop() {
     var now = Date.now();
-    var dt = (now - last) / 1000;
+    var real = (now - last) / 1000;
     last = now;
-    if (dt > 0.25) dt = 0.25; // clamp pour éviter les sauts.
+    if (real > 0.25) real = 0.25; // clamp (onglet gele, pause debug)
+    acc += real;
+    var ticks = 0;
+    while (acc >= TICK_DT && ticks < MAX_CATCHUP) {
+      acc -= TICK_DT;
+      ticks++;
+      fixedTick(TICK_DT);
+    }
+    // Debordement : trop de retard (ralenti > 25%), on jette l'excedent au
+    // lieu de le cumuler -- sinon la "dette" de simulation grandit sans fin.
+    if (acc > TICK_DT) acc = TICK_DT;
+    // Broadcasts horaires (lobby 2 Hz / etat 10 Hz) : en TEMPS REEL, sur le
+    // dt mesure, independamment du tick fixe de simulation.
+    pumpBroadcasts(real);
+  }
+  function fixedTick(dt) {
 
     // Simulation à chaque frame (20 Hz effectif via setInterval).
     var wasStarted = game.getState().started;
@@ -199,7 +221,11 @@
       log("Partie démarrée : nouvelle carte diffusée à tous les joueurs.");
     }
 
-    // Broadcast lobby.
+  }
+  // Broadcasts horaires (lobby 2 Hz, etat 10 Hz, logs de charge) : appeles
+  // depuis loop() en TEMPS REEL, pas depuis fixedTick -- sinon N ticks
+  // rattrapes en un tour de boucle envoyaient N snapshots d'un coup.
+  function pumpBroadcasts(dt) {
     lobbyAcc += dt;
     if (lobbyAcc >= 1 / LOBBY_HZ) {
       lobbyAcc = 0;

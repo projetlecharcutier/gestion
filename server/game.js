@@ -148,6 +148,32 @@
 
   var state = createInitialState();
   G.state = state;
+  // Versions du contenu murs/objets : incrementees a chaque mutation reelle
+  // (pose, destruction, degats, prise, spawn). Le snapshot n'embarque walls/
+  // items QUE si la version a change depuis le dernier snapshot envoye au
+  // joueur -- ces donnees sont quasi statiques, les renvoyer a 10 Hz etait
+  // de la bande passante et du CPU JSON gaspilles (cf. snapshot()).
+  // Detection automatique des mutations : un checksum (longueur + somme des
+  // hp / nombre d'objets non pris) compare a chaque tick couvre TOUS les
+  // points de mutation (pose, degats zombies/siege, destruction, ramassage,
+  // spawn d'or/reliques) sans instrumenter chaque module -- un appel
+  // oublie aurait fait diverger le client. O(n_murs) par tick, negligeable.
+  var wallsRev = 0;
+  var itemsRev = 0;
+  var lastWallsRevSent = {}; // playerId -> version walls deja envoyee
+  var lastItemsRevSent = {}; // playerId -> version items deja envoyee
+  function bumpWalls() { wallsRev++; }
+  function bumpItems() { itemsRev++; }
+  var wallsSum = -1;
+  var itemsSum = -1;
+  function trackMutations() {
+    var wSum = state.walls.length;
+    for (var i = 0; i < state.walls.length; i++) wSum += state.walls[i].hp | 0;
+    if (wSum !== wallsSum) { wallsSum = wSum; bumpWalls(); }
+    var iSum = 0;
+    for (var j = 0; j < state.items.length; j++) if (!state.items[j].taken) iSum++;
+    if (iSum !== itemsSum) { itemsSum = iSum; bumpItems(); }
+  }
 
   // Empile un evenement pour un joueur (to === null : diffuse a tous les
   // joueurs connectes). Garde-fou memoire : un evenement adresse a un joueur
@@ -313,6 +339,8 @@
     state = createInitialState();
     G.state = state;
     state.players = existingPlayers;
+    wallsSum = -1; itemsSum = -1;
+    lastWallsRevSent = {}; lastItemsRevSent = {};
     G.buildWorld();
     G.spawnBirds();
     state.started = true;
@@ -691,6 +719,7 @@
     }
 
     if (state.gameOver) return;
+    trackMutations();
 
     // Cycle jour/nuit.
     state.elapsed += dt;
@@ -1068,7 +1097,7 @@
       var dx = e.x - me.x, dy = e.y - me.y;
       return dx * dx + dy * dy < SNAP_ZOMBIE_RANGE * SNAP_ZOMBIE_RANGE;
     }
-    return {
+    var snapObj = {
       started: state.started,
       gameOver: state.gameOver,
       gameOverCause: state.gameOverCause,
@@ -1114,7 +1143,12 @@
           +((z.vx || 0)).toFixed(0), +((z.vy || 0)).toFixed(0)
         ];
       }),
-      walls: state.walls.map(function (m) {
+      // Murs et objets : envoyes seulement si leur contenu a change depuis
+      // le dernier snapshot de CE joueur (versions trackees par tick). Les
+      // cles sont alors ABSENTES du snapshot ; le client conserve son etat
+      // (cf. applyRemoteState). Economise la majeure partie du JSON a 10 Hz
+      // en pleine journee (aucune pose, aucun ramassage).
+      walls: (lastWallsRevSent[forPlayerId] === wallsRev) ? undefined : state.walls.map(function (m) {
         // Grace anti-blocage : envoyee en DELTA de temps (temps restant), pas
         // en horodatage absolu — les horloges client/serveur different. Sans
         // cette sync, la palissade bloquait le joueur immediatement dans la
@@ -1124,7 +1158,7 @@
         if (grace !== undefined && grace < 0) grace = 0;
         return { x: Math.round(m.x), y: Math.round(m.y), w: Math.round(m.w), h: Math.round(m.h), hp: m.hp, orient: m.orient, built: m.built, grace: grace };
       }),
-      items: state.items.filter(function (it) { return !it.taken; }).map(function (it) {
+      items: (lastItemsRevSent[forPlayerId] === itemsRev) ? undefined : state.items.filter(function (it) { return !it.taken; }).map(function (it) {
         return { x: Math.round(it.x), y: Math.round(it.y), name: it.name, kind: it.kind, color: it.color };
       }),
       projectiles: state.projectiles.filter(inRange).map(function (pr) {
@@ -1211,6 +1245,9 @@
       // destines). Consommes a la lecture : jamais livres deux fois.
       events: takeEvents(forPlayerId)
     };
+    lastWallsRevSent[forPlayerId] = wallsRev;
+    lastItemsRevSent[forPlayerId] = itemsRev;
+    return snapObj;
   }
 
   function countNoVotes() {

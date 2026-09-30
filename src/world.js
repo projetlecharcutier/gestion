@@ -354,13 +354,14 @@
   G.buildPerimeterWall = function () {
     var state = G.state;
     state.walls = [];
+    G.rebuildWallGrid();
     // Perimetre = barricades (memes objets que celles du joueur : built:true, bloquent joueur+zombies).
     // Dimensions identiques aux planches du joueur : meme apparence et taille visuelle.
     var wd = G.wallSpriteDims();
     var seg = wd.longW;
     var thick = wd.thick;
     var pad = 6;
-    function addWall(w) { state.walls.push(w); }
+    function addWall(w) { state.walls.push(w); G.indexWall(w); }
     // Trou d'une palissade de largeur dans le mur nord : on omet un segment
     // pour créer une entrée dans la ville au démarrage.
     var gapIndex = Math.floor((G.TOWN_MAX - G.TOWN_MIN) / seg / 2);

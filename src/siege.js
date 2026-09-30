@@ -273,9 +273,9 @@
 
   // Le losange de base (déplacé en cx,cy) heurte-t-il une palissade posée ?
   function diamondHitsWalls(d) {
-    var walls = G.state.walls || [];
-    for (var i = 0; i < walls.length; i++) {
-      var m = walls[i];
+    var nearWalls = G.wallsNear(d.cx - d.a, d.cy - d.b, d.a * 2, d.b * 2);
+    for (var i = 0; i < nearWalls.length; i++) {
+      var m = nearWalls[i];
       if (!m.built) continue;
       if (G.diamondHitsBox(d, m.x, m.y, m.w, m.h)) return true;
     }
@@ -388,8 +388,9 @@
   function findWallTarget(s) {
     var state = G.state;
     var best = null, bestD = Infinity, bestPt = null;
-    for (var i = 0; i < state.walls.length; i++) {
-      var m = state.walls[i];
+    var nearWalls = G.wallsInRange(s.x, s.y, G.SIEGE_WALL_SENSE);
+    for (var i = 0; i < nearWalls.length; i++) {
+      var m = nearWalls[i];
       if (!m.built) continue;
       var clx = Math.max(m.x, Math.min(s.x, m.x + m.w));
       var cly = Math.max(m.y, Math.min(s.y, m.y + m.h));
