@@ -445,6 +445,21 @@
   // metal...) est une nouvelle entree : menu, combat et rendu la prennent en
   // compte automatiquement.
   G.TOWER_BUILD_TIME = 10; // duree du chantier (s), scierie et tours
+  // Animaux sauvages (cerf, cochon, vache, mouton) : errent hors ville,
+  // tues par les projectiles, droppent de la Nourriture. Repop chaque matin
+  // pour maintenir FAUNA_COUNT betes sur la carte.
+  G.FAUNA_COUNT = 200;
+  G.FAUNA_HIT_R = 16;
+  G.FAUNA_TYPES = {
+    cerf:   { name: "Cerf",   hp: 3, speed: 110, color: "#b45309", w: 14, h: 10 },
+    cochon: { name: "Cochon", hp: 3, speed: 70,  color: "#e8a0a8", w: 13, h: 9  },
+    vache:  { name: "Vache",  hp: 4, speed: 55,  color: "#f5f5f4", w: 15, h: 10 },
+    mouton: { name: "Mouton", hp: 2, speed: 60,  color: "#e7e5e4", w: 12, h: 9  }
+  };
+  // Repartition du spawn : poids par type (somme libre, normalisee au spawn).
+  G.FAUNA_WEIGHTS = { cerf: 3, cochon: 3, vache: 2, mouton: 2 };
+  // Nourriture dropee par animal tue (kind "objet" : mangee depuis le sac).
+  G.FAUNA_FOOD = { name: "Nourriture", color: "#f59e0b", kind: "objet" };
   // Montgolfiere : l'animation idle ne se joue qu'au clic du joueur, une
   // seule fois, sur cette duree (s). A la fin, le message d'annonce de vague
   // s'affiche au-dessus du batiment.

@@ -35,6 +35,7 @@
   load("chop.js");
   load("weapons.js");
   load("birds.js");
+  load("fauna.js");
   load("siege.js");
   load("zombies.js");
 
@@ -215,6 +216,7 @@
   // dimensions par défaut ; le serveur n'a pas besoin de rendu).
   G.buildWorld();
   G.spawnBirds();
+  G.spawnFaunaAll();
 
   function findPlayer(id) {
     for (var i = 0; i < state.players.length; i++) {
@@ -358,6 +360,7 @@
     lastWallsRevSent = {}; lastItemsRevSent = {};
     G.buildWorld();
     G.spawnBirds();
+    G.spawnFaunaAll();
     state.started = true;
     state.startTimer = 0;
     // Replace les joueurs existants (spawn dispersés : jamais empilés).
@@ -746,6 +749,7 @@
     if (state.day !== state.lastDay) {
       G.regenForets();
       G.spawnNightReliques();
+      G.repopFauna();
       state.lastDay = state.day;
     }
 
@@ -1063,6 +1067,8 @@
     G.cleanupBirds();
     G.cleanupWalls();
     G.updateBirds(dt);
+    G.cleanupFauna();
+    G.updateFauna(dt);
     for (var di2 = 0; di2 < state.players.length; di2++) {
       if (!state.players[di2].alive && deadNames.indexOf(state.players[di2].name) >= 0) {
         pushEvent(null, { t: "msg", msg: state.players[di2].name + " est mort" });
@@ -1178,6 +1184,9 @@
       }),
       projectiles: state.projectiles.filter(inRange).map(function (pr) {
         return { x: Math.round(pr.x), y: Math.round(pr.y), vx: pr.vx, vy: pr.vy, color: pr.color, type: pr.type, size: pr.size, trail: pr.trail || [] };
+      }),
+      fauna: state.fauna.map(function (a) {
+        return { type: a.type, x: Math.round(a.x), y: Math.round(a.y), vx: Math.round(a.vx), vy: Math.round(a.vy), hp: a.hp };
       }),
       birds: state.birds.map(function (b) {
         // vx/vy : le client extrapole entre deux snapshots (10 Hz -> 60 fps)

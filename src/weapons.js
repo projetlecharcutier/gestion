@@ -156,6 +156,16 @@
                 if (b.hp <= 0 && G.birdDrop) G.birdDrop(b.x, b.y);
             }
         }
+        // Animaux sauvages : l'explosion les tue aussi dans le rayon.
+        for (var ai = 0; ai < (state.fauna || []).length; ai++) {
+            var aa = state.fauna[ai];
+            if (aa.hp <= 0) continue;
+            var aadx = aa.x - x, aady = aa.y - y;
+            if (Math.sqrt(aadx * aadx + aady * aady) <= r) {
+                aa.hp -= dmg;
+                if (aa.hp <= 0 && G.faunaDrop) G.faunaDrop(aa);
+            }
+        }
         // Dégâts alliés : l'explosion blesse aussi les joueurs dans le
         // rayon, sauf le propriétaire du tir (grenade, lance-flammes).
         if (state.players && pr.owner && pr.owner !== "tour" && pr.owner !== "local") {
@@ -313,6 +323,30 @@
                 }
             }
 
+            // 2b. Collisions avec les Animaux sauvages (cerf, cochon, vache,
+            // mouton) : tués par les projectiles, droppent de la Nourriture.
+            // Les flèches de tour les ignorent (cible : zombies uniquement).
+            if (!shouldDestroy && pr.owner !== "tour" && state.fauna) {
+                for (var fi = 0; fi < state.fauna.length; fi++) {
+                    var an = state.fauna[fi];
+                    if (an.hp <= 0 || pr.hitEntities.indexOf(an) !== -1) continue;
+                    var adx = pr.x - an.x, ady = pr.y - an.y;
+                    if (Math.sqrt(adx * adx + ady * ady) < G.FAUNA_HIT_R) {
+                        an.hp -= pr.dmg;
+                        if (an.hp <= 0) G.faunaDrop(an);
+                        pr.hitEntities.push(an);
+                        if (pr.piercing && pr.pierceCount > 0) {
+                            pr.pierceCount--;
+                            if (pr.pierceCount <= 0) {
+                                shouldDestroy = true;
+                            }
+                        } else {
+                            shouldDestroy = true;
+                        }
+                        break;
+                    }
+                }
+            }
             // Suppression si le projectile a touché sa limite de transpercement, sa vie (portée max), ou sort de la map
             if (shouldDestroy || pr.life <= 0 || pr.x < 0 || pr.x > G.WORLD || pr.y < 0 || pr.y > G.WORLD) {
                 state.projectiles.splice(i, 1);

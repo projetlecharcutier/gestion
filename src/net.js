@@ -403,6 +403,8 @@
     if (s.items !== undefined) state.items = s.items;
     state.projectiles = s.projectiles || [];
     state.birds = s.birds || [];
+    // Animaux sauvages : etat serveur + extrapolation locale entre snapshots.
+    state.fauna = s.fauna || [];
     // Traces de zombies morts : gerees cote serveur (autorite). Le client ne
     // fait que les afficher (rendu juste au-dessus du fond).
     if (s.deadTraces) state.deadTraces = s.deadTraces;

@@ -388,6 +388,7 @@
     function doBuild() {
       G.buildWorld();
       G.spawnBirds();
+      G.spawnFaunaAll();
       var p = state.player;
       p.x = G.WORLD / 2; p.y = G.WORLD / 2 + 140;
       var tries = 0;

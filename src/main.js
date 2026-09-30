@@ -53,7 +53,7 @@
         state.elapsed += dt;
         state.clock += (12 / G.DAY_SECONDS) * G.TIME_SCALE * dt;
         if (state.clock >= 24) { state.clock -= 24; state.day += 1; }
-        if (state.day !== state.lastDay) { G.regenForets(); G.spawnNightReliques(); state.lastDay = state.day; }
+        if (state.day !== state.lastDay) { G.regenForets(); G.spawnNightReliques(); G.repopFauna(); state.lastDay = state.day; }
       }
       if (!state.gameOver) G.updateZombies(dt);
       if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.churchOpen && !state.gameOver) {
@@ -89,6 +89,8 @@
       G.cleanupBirds();
       G.cleanupWalls();
       G.updateBirds(dt);
+      G.cleanupFauna();
+      G.updateFauna(dt);
       G.updateChop(dt);
       G.updateFloaters(dt);
     } else {
@@ -105,6 +107,14 @@
         fbd.x += fbd.vx * dt;
         fbd.y += fbd.vy * dt;
         fbd.wing = (fbd.wing || 0) + dt * 12;
+      }
+      // Animaux sauvages : meme extrapolation en ligne droite entre snapshots.
+      var ffa = G.state.fauna || [];
+      for (var ffai = 0; ffai < ffa.length; ffai++) {
+        var ffan = ffa[ffai];
+        if (ffan.vx === undefined || ffan.hp <= 0) continue;
+        ffan.x += ffan.vx * dt;
+        ffan.y += ffan.vy * dt;
       }
       // Zombies : meme traitement — le snapshot (10 Hz) est trop espacé pour
       // un rendu fluide, on extrapole en ligne droite avec la velocite serveur.

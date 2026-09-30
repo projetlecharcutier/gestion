@@ -8,7 +8,7 @@ Mode **multijoueur (serveur) par défaut** : `cd server && npm install && npm st
 
 ### Tests
 
-Tests Node sans framework : `./test/run.sh` (tout), `./test/run.sh zombies` (une catégorie), `node test/<categorie>/<fichier>.js` (0 = OK). Stubs DOM embarqués, aucun navigateur requis. Catégories : `zombies`, `world`, `buildings`, `walls`, `chop`, `bag`, `ville`, `towers`, `siege`, `birds`, `menu`, `loopback` (intégration complète avec serveur spawné), `potence`, `serveur`. `TEST_SEED` rend le monde reproductible (PRNG remplaçant `Math.random` côté serveur) ; `TEST_START_PLANKS` donne des planches de départ.
+Tests Node sans framework : `./test/run.sh` (tout), `./test/run.sh zombies` (une catégorie), `node test/<categorie>/<fichier>.js` (0 = OK). Stubs DOM embarqués, aucun navigateur requis. Catégories : `zombies`, `world`, `buildings`, `walls`, `chop`, `bag`, `ville`, `towers`, `siege`, `birds`, `fauna`, `menu`, `loopback` (intégration complète avec serveur spawné), `potence`, `serveur`. `TEST_SEED` rend le monde reproductible (PRNG remplaçant `Math.random` côté serveur) ; `TEST_START_PLANKS` donne des planches de départ.
 
 ## Architecture
 
@@ -34,6 +34,7 @@ Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fo
 | 12 | `src/chop.js` | Récolte de planches à la hache (décompte près d'un arbre) | `updateChop`, `chopProgress` |
 | 13 | `src/weapons.js` | Stats arme équipée, tir, déplacement projectiles | `equippedStats`, `handleShooting`, `updateProjectiles` |
 | 14 | `src/birds.js` | Oiseaux volants (drop or/planches) | `updateBirds`, `drawBirds` |
+| 14b | `src/fauna.js` | Animaux sauvages (cerf, cochon, vache, mouton : errent hors ville, tués par projectiles, droppent Nourriture, repop chaque matin pour maintenir 200 bêtes) | `spawnFaunaAll`, `updateFauna`, `cleanupFauna`, `repopFauna`, `faunaDrop` |
 | 15 | `src/siege.js` | Tour de siège zombie (lente, 100 PV, attaque murs/ville) | `updateSiege`, `drawSiege` |
 | 16 | `src/zombies.js` | Vagues, groupes qui fusionnent, IA zombies (priorité : palissade > tour > mairie/joueur) | `spawnWave`, `mergeGroups`, `updateZombies`, `cleanupZombies` |
 | 17 | `src/bag.js` | Sac : disposition, rendu, clic équiper (armes & hache) | `bagLayout`, `handleBagClick`, `drawBag` |

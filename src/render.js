@@ -1165,6 +1165,47 @@ G.drawGround = function () {
     ctx.restore();
   };
 
+  // Animaux sauvages (cerf, cochon, vache, mouton) : sprite pixel art par
+  // type (G.TEXTURES.fauna), vu de cote, retourne selon la direction du
+  // deplacement. Aucun PNG : les betes sont des textures JS pures.
+  G.drawFauna = function (a) {
+    var ctx = G.ctx;
+    var t = G.TEXTURES.fauna[a.type];
+    if (!t) return;
+    var base = G.proj(a.x, a.y);
+    var zoom = G.state.zoom;
+    var cell = zoom * 0.5;
+    if (cell < 1.2) cell = 1.2;
+    var cols = 10, rows = 8;
+    var ox = base[0] - (cols / 2) * cell;
+    var oy = base[1] - rows * cell;
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(base[0], base[1], cols / 2 * cell, cell, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Face au sens du mouvement (marche vers la gauche : miroir).
+    var flip = a.vx < 0;
+    if (flip) {
+      ctx.translate(base[0], 0);
+      ctx.scale(-1, 1);
+      ctx.translate(-base[0], 0);
+    }
+    var sprite = t.sprite;
+    var palette = t.palette;
+    for (var r = 0; r < rows; r++) {
+      var line = sprite[r];
+      for (var c = 0; c < cols; c++) {
+        var ch = line.charAt(c);
+        if (ch === ".") continue;
+        var col = palette[ch];
+        if (!col) continue;
+        ctx.fillStyle = col;
+        ctx.fillRect(ox + c * cell, oy + r * cell, cell + 0.5, cell + 0.5);
+      }
+    }
+    ctx.restore();
+  };
   G.drawBird = function (b) {
     var ctx = G.ctx;
     var t = G.TEXTURES.bird;
@@ -1409,6 +1450,14 @@ G.drawGround = function () {
       var bd = state.birds[bi2];
       drawables.push({ depth: bd.x + bd.y + 100000, type: "bird", ref: bd });
     }
+    // Animaux sauvages : tries comme les autres entites au sol.
+    if (state.fauna) {
+      for (var fai = 0; fai < state.fauna.length; fai++) {
+        var fa = state.fauna[fai];
+        if (fa.hp <= 0) continue;
+        drawables.push({ depth: fa.x + fa.y, type: "fauna", ref: fa });
+      }
+    }
     // Autres joueurs (multijoueur) : affichés comme le joueur local.
     if (state.remotePlayers) {
       for (var rpi = 0; rpi < state.remotePlayers.length; rpi++) {
@@ -1437,6 +1486,7 @@ G.drawGround = function () {
       else if (d.type === "siege") G.drawSiegeTower(d.ref);
       else if (d.type === "zombie") G.drawZombie(d.ref);
       else if (d.type === "bird") G.drawBird(d.ref);
+      else if (d.type === "fauna") G.drawFauna(d.ref);
       else if (d.type === "player") G.drawRemotePlayer(d.ref);
       else if (d.type === "ville") G.drawVilleBand(d.ref.v, d.ref.band, d.ref.entry);
     }
