@@ -124,11 +124,24 @@
   // de laisser un zombie socket qui sature le broadcast.
   var HEARTBEAT_MS = 15000;
   var HEARTBEAT_TIMEOUT_MS = 10000;
+  // Grâce de reconnexion : une coupure réseau (WiFi, NAT, hibernation) ne
+  // supprime pas le personnage tout de suite. Le client watchdog détecte la
+  // panne, se reconnecte et renvoie son playerId (message "rejoin") : il
+  // reprend son état exact. Passé ce délai, le joueur est retiré comme avant.
+  var RECONNECT_GRACE_MS = 15000;
   var heartbeatTimer = null;
   function startHeartbeat() {
     if (heartbeatTimer) return;
     heartbeatTimer = setInterval(function () {
       var now = Date.now();
+      // Grâce expirée : retire définitivement les joueurs non revenus.
+      for (var gid in clients) {
+        var gc = clients[gid];
+        if (gc.disconnectedAt && now - gc.disconnectedAt >= RECONNECT_GRACE_MS) {
+          log("[ws] grâce expirée pour " + gid + " (" + (gc.name || "?") + ") : joueur retiré");
+          hardCleanup(gid);
+        }
+      }
       wss.clients.forEach(function (ws) {
         if (ws.isAlive === false) {
           var cid = ws._clientId || "?";
@@ -306,6 +319,30 @@
       var msg;
       try { msg = JSON.parse(message); } catch (e) { return; }
 
+      // Reconnexion (watchdog client) : le joueur revient avec son playerId
+      // après une coupure. S'il est encore en partie (grâce
+      // RECONNECT_GRACE_MS), il reprend son personnage tel quel ; sinon on
+      // retombe sur un join normal (nouveau personnage).
+      if (msg.type === "rejoin") {
+        var rid = msg.playerId;
+        var rname = (msg.name || "").trim().slice(0, 20);
+        var rplayer = rid ? game.reconnect(rid, rname || null) : null;
+        if (rplayer) {
+          if (clients[rid] && clients[rid].ws && clients[rid].ws !== ws) {
+            try { clients[rid].ws.terminate(); } catch (e) {}
+          }
+          delete clients[rid];
+          delete clients[id];
+          clients[rid] = { ws: ws, id: rid, name: rplayer.name, joined: true };
+          ws._clientId = rid;
+          ws.isAlive = true;
+          ws.send(JSON.stringify({ type: "joined", playerId: rid, started: game.getState().started, map: game.mapSnapshot(), clock: game.getState().clock }));
+          log("[ws] RECONNEXION " + rid + " (" + rplayer.name + ") : personnage restauré");
+          return;
+        }
+        msg.type = "join"
+      }
+
       if (msg.type === "join") {
         if (game.getState().players.length >= game.MAX_PLAYERS) {
           ws.send(JSON.stringify({ type: "full" }));
@@ -341,19 +378,33 @@
       var r = "";
       try { r = reason ? reason.toString() : ""; } catch (e) {}
       log("[ws] close " + id + " (" + (clients[id] && clients[id].name || "?") + ") code=" + code + (r ? " raison=" + r : ""));
-      cleanup(id);
+      softCleanup(id);
     });
     ws.on("error", function (err) {
       log("[ws] error " + id + " (" + (clients[id] && clients[id].name || "?") + ") :", err && err.message || err);
-      cleanup(id);
+      softCleanup(id);
     });
   });
 
-  function cleanup(id) {
-    if (clients[id] && clients[id].joined) {
+  // Coupure socket : le joueur reste en partie pendant la grâce de
+  // reconnexion (personnage NON retiré). Le watchdog client renvoie
+  // "rejoin" avec son playerId ; sans retour, la grâce expire dans
+  // startHeartbeat et hardCleanup() le retire définitivement.
+  function softCleanup(id) {
+    var c = clients[id];
+    if (!c || c.disconnectedAt) return;
+    c.disconnectedAt = Date.now();
+    log("[ws] coupure " + id + " (" + (c.name || "?") + ") : grâce de reconnexion " + RECONNECT_GRACE_MS + " ms");
+  }
+
+  // Retrait définitif ("leave" explicite ou grâce expirée).
+  function cleanup(id) { hardCleanup(id); }
+  function hardCleanup(id) {
+    var c = clients[id];
+    if (c && c.joined) {
       game.removePlayer(id);
-      log("[ws] déconnexion " + (clients[id].name || id) + " (" + id + ") | joueurs restants=" + game.getState().players.length + "/" + game.MAX_PLAYERS +
-        " | données envoyées=" + Math.round((clients[id].bytesOut || 0) / 1024) + " Ko");
+      log("[ws] déconnexion " + (c.name || id) + " (" + id + ") | joueurs restants=" + game.getState().players.length + "/" + game.MAX_PLAYERS +
+        " | données envoyées=" + Math.round((c.bytesOut || 0) / 1024) + " Ko");
     }
     delete clients[id];
   }

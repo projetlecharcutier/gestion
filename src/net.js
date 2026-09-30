@@ -8,6 +8,35 @@
   var playerId = null;
   var connected = false;
 
+  // Watchdog de connexion : une coupure réseau à moitié morte (WiFi drop,
+  // NAT timeout) n'émets JAMAIS onclose — le client croit être connecté,
+  // la prédiction locale continue à tourner (hache qui coupe dans le vide,
+  // floaters de récolte en boucle) et aucun snapshot n'arrive plus.
+  // Détection : pas de message serveur depuis WATCHDOG_TIMEOUT_MS alors
+  // qu'on est en jeu → force la reconnexion. Le serveur garde le
+  // personnage pendant une grâce (message "rejoin" avec playerId) : le
+  // joueur revient dans la partie tel quel, sans quitter l'écran de jeu.
+  var WATCHDOG_TIMEOUT_MS = 8000; // serveur : état 10 Hz + lobby 2 Hz
+  var lastServerMsgAt = 0;
+  var watchdogTimer = null;
+
+  function netWatchdogCheck() {
+    if (!connected || !playerId) return;
+    var now = (typeof performance !== "undefined" ? performance.now() : Date.now());
+    if (lastServerMsgAt && now - lastServerMsgAt > WATCHDOG_TIMEOUT_MS) {
+      if (G.addFloater) G.addFloater("Connexion perdue — reconnexion…");
+      lastServerMsgAt = 0;
+      try { ws.close(); } catch (e) { try { ws.terminate && ws.terminate(); } catch (e2) {} }
+      connected = false;
+      setTimeout(G.netConnect, 300);
+    }
+  }
+
+  function startWatchdog() {
+    if (watchdogTimer) return;
+    watchdogTimer = setInterval(netWatchdogCheck, 2000);
+  }
+
   // Reconciliation equipement : horodatage du dernier input equip/toggleAxe
   // envoye + valeur attendue, pour eviter que l'etat serveur (10 Hz) ecrase la
   // valeur optimistic du client avant que le serveur n'ait traite l'input.
@@ -42,8 +71,15 @@
       console.warn("Connexion serveur impossible :", e);
       return;
     }
+    startWatchdog();
     ws.onopen = function () {
       connected = true;
+      // Reconnexion : le joueur était déjà en jeu (playerId attribué).
+      // "rejoin" restaure le personnage côté serveur (grâce de
+      // reconnexion) au lieu d'en recréer un neuf.
+      if (playerId) {
+        G.netSend({ type: "rejoin", playerId: playerId, name: G.state.playerName || null });
+      }
       // Join en attente (le joueur a validé son nom avant que la connexion
       // soit établie) : envoyé dès l'ouverture.
       if (pendingJoin) {
@@ -57,6 +93,7 @@
     ws.onmessage = function (ev) {
       var msg;
       try { msg = JSON.parse(ev.data); } catch (e) { return; }
+      lastServerMsgAt = (typeof performance !== "undefined" ? performance.now() : Date.now());
       G.netHandle(msg);
     };
   };

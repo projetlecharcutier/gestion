@@ -325,6 +325,21 @@
     return p;
   }
 
+  // Reconnexion : un joueur dont le socket a coupé (WiFi, NAT) mais qui
+  // n'a pas encore été supprimé (grâce côté serveur) retrouve son
+  // personnage tel quel (position, PV, inventaire, planches, or, stats).
+  // Retourne le joueur ou null si l'id n'est plus en partie.
+  function reconnect(id, name) {
+    for (var i = 0; i < state.players.length; i++) {
+      var p = state.players[i];
+      if (p.id === id) {
+        if (name) p.name = name;
+        return p;
+      }
+    }
+    return null;
+  }
+
   function removePlayer(id) {
     for (var i = state.players.length - 1; i >= 0; i--) {
       if (state.players[i].id === id) state.players.splice(i, 1);
@@ -1343,6 +1358,7 @@
     getState: getState,
     MAX_PLAYERS: MAX_PLAYERS,
     addPlayer: addPlayer,
+    reconnect: reconnect,
     removePlayer: removePlayer,
     applyInput: applyInput,
     tick: tick,
