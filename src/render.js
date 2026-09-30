@@ -1345,13 +1345,16 @@ G.drawGround = function () {
       // DERRIERE le PNG -> les bandes couvrantes passent devant lui ;
       // cellule TRANSPARENTE = il est devant la ville -> derriere lui.
       var villePinfo = (G.villeCellInfo && state.started) ? G.villeCellInfo(state.player.x, state.player.y) : null;
-      var villeV = null, villePlayerMode = 0;
-      if (villePinfo && villePinfo.mode !== 0) {
+      var villeV = null;
+      if (villePinfo) {
         for (var vmi = 0; vmi < state.villes.length; vmi++) {
           if (state.villes[vmi].sprite === villePinfo.sprite) { villeV = state.villes[vmi]; break; }
         }
-        villePlayerMode = villePinfo.mode; // 1 = pieds sur zone verte (DERRIERE le PNG), 2 = pieds sur zone transparente (DEVANT)
       }
+      // Ecran horizontal du joueur (axe du sprite) : le point de departage
+      // PAR BANDE. Le joueur etant vertical, tout pixel de son axe ecran
+      // couvert par la bande sample le masque a la MEME position ecran.
+      var vAxisX = villeV ? G.proj(state.player.x, state.player.y)[0] : 0;
       for (var vi = 0; vi < state.villes.length; vi++) {
         var vv = state.villes[vi];
         if (vv.x + vv.w < bnds.minX || vv.x > bnds.maxX || vv.y + vv.h < bnds.minY || vv.y > bnds.maxY) continue;
@@ -1371,14 +1374,19 @@ G.drawGround = function () {
         for (var vb = 0; vb < vEntry.bands.length; vb++) {
           var vBand = vEntry.bands[vb];
           var vbDepth = vBand.depth;
-          if (isVilleV && villePlayerMode !== 0) {
+          if (isVilleV) {
             var vBandY0 = vGroundY - vFullDh + (vBand.sy / vEntry.ih) * vFullDh;
             var vBandY1 = vBandY0 + vFullDh * vBand.sh / vEntry.ih;
             // La bande couvre une partie du corps du joueur : le masque
-            // (vert sous les pieds) decide si elle le cache ou non.
+            // est echantillonne PAR BANDE, au milieu du corps du joueur a
+            // la hauteur de CETTE bande. Une bande VERTE (cell 1 ou 2)
+            // passe DEVANT le joueur ; une bande TRANSPARENTE (cell 0)
+            // reste DERRIERE -> le joueur reste visible dans les parties
+            // non couvertes du PNG, meme les pieds sur une zone verte.
             if (vTopY < vBandY1 && vBase[1] > vBandY0) {
-              if (villePlayerMode === 1) vbDepth = state.player.x + state.player.y + 1;
-              else if (villePlayerMode === 2) vbDepth = state.player.x + state.player.y - 1;
+              var vCellBand = G.villeCellAtScreen(vv, vAxisX, (Math.max(vBandY0, vTopY) + Math.min(vBandY1, vBase[1])) / 2);
+              if (vCellBand === 1 || vCellBand === 2) vbDepth = state.player.x + state.player.y + 1;
+              else if (vCellBand === 0) vbDepth = state.player.x + state.player.y - 1;
             }
           }
           drawables.push({ depth: vbDepth, type: "ville", ref: { v: vv, band: vBand, entry: vEntry } });

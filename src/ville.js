@@ -414,6 +414,25 @@
     return null;
   };
 
+  // Cellule de grille d une ville au point ECRAN (sx, sy) : unproj le
+  // point, puis lit la grille de la ville v. La grille ayant ete construite
+  // par echantillonnage inverse (cellule monde -> pixel masque), la cellule
+  // en unproj(sx, sy) est EXACTEMENT le pixel du masque dessine a l ecran
+  // en (sx, sy). Sert au departage PAR BANDE du rendu : chaque bande qui
+  // chevauche le corps du joueur echantillonne le masque a SA hauteur ->
+  // seule la partie VERTE du PNG passe devant lui, la partie transparente
+  // reste derriere. Retourne -1 si le point n est pas dans la grille.
+  G.villeCellAtScreen = function (v, sx, sy) {
+    var grids = G.villeGrids;
+    if (!grids || !v || !grids[v.sprite] || !G.unproj) return -1;
+    var g = grids[v.sprite];
+    var w = G.unproj(sx, sy);
+    var gx = Math.floor((w[0] - g.ox) / g.cell);
+    var gy = Math.floor((w[1] - g.oy) / g.cell);
+    if (gx < 0 || gy < 0 || gx >= g.cols || gy >= g.rows) return -1;
+    return g.data[gy * g.cols + gx];
+  };
+
   // Direction de fuite (dx, dy, non normalisee) vers le bord le plus proche
   // de l'emprise de la ville contenant (x, y), ou null si hors de toute
   // ville. Sert a extraire un zombie pris dans une cellule solide (spawn
