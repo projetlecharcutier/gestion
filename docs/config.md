@@ -4,7 +4,7 @@
 Expose toutes les constantes du jeu et des helpers mathématiques/temporels sur `window.GAME`. **Aucune logique de jeu**, uniquement des valeurs et fonctions pures.
 
 ## Exposé sur `G`
-- Dimensions : `WORLD` (10000), `TOWN` (1000), `TOWN_MIN`, `TOWN_MAX`. Bâtiments ≤ `PLAYER_W*20` (120 px).
+- Dimensions : `WORLD` (20000), `WORLD_SPAWN` (10000 : rayon de spawn des zombies, frontieres de l'ancienne carte), `TOWN` (1000), `TOWN_MIN`, `TOWN_MAX`. Bâtiments ≤ `PLAYER_W*20` (120 px).
 - Joueur : `PLAYER_W`, `PLAYER_H`, `PLAYER_HALF`, `SPEED`, `FOG_RADIUS`, `TS` (taille tuile)
 - Armes : `WEAPON_STATS` — `{ nom: { speed, life, cd, dmg, color, spread, label } }`
 - Cycle jour/nuit & zombies : `NIGHT_START` (23), `NIGHT_END` (7), `DAY_SECONDS`, `NIGHT_SECONDS`, `CYCLE_SECONDS`, `WAVE_EVERY`, `WAVE_LEAVE`, `ZOMBIE_SPEED`, `ZOMBIE_W`, `ZOMBIE_HALF`, `ZOMBIE_ATTACK_RANGE`, `ZOMBIE_PLAYER_DMG`, `ZOMBIE_WALL_DMG`, `ZOMBIE_WALL_CD`, `ZOMBIE_ATTACK_CD`, `ZOMBIE_HP`, `ZOMBIE_PER_WAVE_BASE` (50, double chaque nuit), `ZOMBIE_WAVE_GROWTH` (2), `ZOMBIE_UNSTICK_TIME` (5 s sans progres -> maneuvre), `ZOMBIE_UNSTICK_BACK` (1 s cap oppose), `ZOMBIE_UNSTICK_SIDE` (1 s a 90 degres), `ZOMBIE_UNSTICK_CD` (3 s de repos), `ZOMBIE_UNSTICK_TOWN` (250 px : marge de proximite de la ville ou la maneuvre est desactivee), `ZOMBIE_NAV_DIRECT_DIST` (700 px : sous cette distance a l'objectif, cap direct au lieu de la fleche du champ)
@@ -17,3 +17,7 @@ Expose toutes les constantes du jeu et des helpers mathématiques/temporels sur 
 ## Étendre
 - **Nouvelle arme** : ajouter une entrée à `WEAPON_STATS`. Automatiquement prise en compte par le tir, le sac et l'affichage des stats.
 - **Nouvelle constante d'équilibrage** : l'ajouter ici, pas en dur dans un autre fichier.
+
+## Conventions de nommage
+
+Tout prefixe par le systeme : `ZOMBIE_*`, `BIRD_*`, `SIEGE_*`, `WALL_*`, `VOTE_*`, `TOWER_*`... Les tables par entite (`WEAPON_STATS`, `TOWER_STATS`, `TOWN_BUILDINGS`, `BIRD_DROPS`) s'etendent par simple entree : menu, rendu, combat et son s'adaptent automatiquement.
