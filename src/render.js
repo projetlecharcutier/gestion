@@ -1377,16 +1377,23 @@ G.drawGround = function () {
           if (isVilleV) {
             var vBandY0 = vGroundY - vFullDh + (vBand.sy / vEntry.ih) * vFullDh;
             var vBandY1 = vBandY0 + vFullDh * vBand.sh / vEntry.ih;
-            // La bande couvre une partie du corps du joueur : le masque
-            // est echantillonne PAR BANDE, au milieu du corps du joueur a
-            // la hauteur de CETTE bande. Une bande VERTE (cell 1 ou 2)
-            // passe DEVANT le joueur ; une bande TRANSPARENTE (cell 0)
-            // reste DERRIERE -> le joueur reste visible dans les parties
-            // non couvertes du PNG, meme les pieds sur une zone verte.
+            // La bande couvre une partie du corps du joueur : si les PIEDS
+            // du joueur sont sur une zone TRANSPARENTE du masque (mode 2),
+            // le personnage entier reste DEVANT -- la ville ne doit jamais
+            // le recouvrir, meme si une bande echantillonnee plus haut
+            // tombe sur une cellule rouge (facade/elevation). Sinon le
+            // masque est echantillonne PAR BANDE, au milieu du corps du
+            // joueur a la hauteur de CETTE bande : une bande VERTE (cell
+            // 1 ou 2) passe DEVANT le joueur ; une bande TRANSPARENTE
+            // (cell 0) reste DERRIERE.
             if (vTopY < vBandY1 && vBase[1] > vBandY0) {
-              var vCellBand = G.villeCellAtScreen(vv, vAxisX, (Math.max(vBandY0, vTopY) + Math.min(vBandY1, vBase[1])) / 2);
-              if (vCellBand === 1 || vCellBand === 2) vbDepth = state.player.x + state.player.y + 1;
-              else if (vCellBand === 0) vbDepth = state.player.x + state.player.y - 1;
+              if (villePinfo && villePinfo.mode === 2) {
+                vbDepth = state.player.x + state.player.y - 1;
+              } else {
+                var vCellBand = G.villeCellAtScreen(vv, vAxisX, (Math.max(vBandY0, vTopY) + Math.min(vBandY1, vBase[1])) / 2);
+                if (vCellBand === 1 || vCellBand === 2) vbDepth = state.player.x + state.player.y + 1;
+                else if (vCellBand === 0) vbDepth = state.player.x + state.player.y - 1;
+              }
             }
           }
           drawables.push({ depth: vbDepth, type: "ville", ref: { v: vv, band: vBand, entry: vEntry } });
