@@ -232,8 +232,13 @@ G.drawGround = function () {
   }
   G.drawPaths = function () {
     var state = G.state;
+    // Culling : les blobs de chemin (12 courbes quadratiques x 2 couches par
+    // bâtiment) etaient traces pour TOUS les bâtiments de la carte a chaque
+    // frame, y compris hors ecran (~150 bâtiments, ~3600 courbes gaspillees).
+    var bnds = G.visibleWorldBounds();
     for (var bi = 0; bi < state.buildings.length; bi++) {
       var b = state.buildings[bi];
+      if (b.x + b.w < bnds.minX || b.x > bnds.maxX || b.y + b.h < bnds.minY || b.y > bnds.maxY) continue;
       // Pas de jaune sous les forêts (éléments naturels, pas des bâtiments).
       if (b.isForet) continue;
       // Halo externe translucide, plus large (bord degradé "usé").
@@ -1439,7 +1444,14 @@ G.drawGround = function () {
     // Objets au sol : dessines APRES la passe triee, au-dessus des batiments
     // et des forets — un objet ne doit jamais etre cache par une maison ou un
     // arbre (il reste toujours visible/ramassable).
-    for (var ii = 0; ii < state.items.length; ii++) G.drawItem(state.items[ii]);
+    // Culling des objets au sol : dessines APRES la passe triee (jamais
+    // caches par un bâtiment), mais uniquement si visibles a l'ecran.
+    var ibnds = bnds;
+    for (var ii = 0; ii < state.items.length; ii++) {
+      var itm = state.items[ii];
+      if (itm.x < ibnds.minX - 40 || itm.x > ibnds.maxX + 40 || itm.y < ibnds.minY - 40 || itm.y > ibnds.maxY + 40) continue;
+      G.drawItem(itm);
+    }
 
     // Montgolfiere : au premier plan, apres le joueur et les zombies. Le
     // ballon (moitie haute du PNG) n'a aucune collision : un joueur qui passe

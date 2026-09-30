@@ -510,8 +510,9 @@
           // un mur collé reste attaqué avant de fuir). On cherche d'abord un
           // mur à portée ; s'il y en a un, on le cible, sinon on fuit.
           var nearWall = null, nearWallD = Infinity, nearWallPt = null;
-          for (var wj = 0; wj < state.walls.length; wj++) {
-            var wm = state.walls[wj];
+          var retreatWalls = G.wallsInRange(grp.x, grp.y, 40);
+          for (var wj = 0; wj < retreatWalls.length; wj++) {
+            var wm = retreatWalls[wj];
             var wlx = Math.max(wm.x, Math.min(grp.x, wm.x + wm.w));
             var wly = Math.max(wm.y, Math.min(grp.y, wm.y + wm.h));
             var wmd = Math.sqrt((wlx - grp.x) * (wlx - grp.x) + (wly - grp.y) * (wly - grp.y));
@@ -532,8 +533,9 @@
           // La cible d'un mur est le point du bord le plus proche du groupe,
           // pour que le zombie attaque quand il est collé au mur.
           var best = null, bestD = Infinity, bestPt = null;
-          for (var j = 0; j < state.walls.length; j++) {
-            var m = state.walls[j];
+          var nearWalls = G.wallsInRange(grp.x, grp.y, 40);
+          for (var j = 0; j < nearWalls.length; j++) {
+            var m = nearWalls[j];
             var clx = Math.max(m.x, Math.min(grp.x, m.x + m.w));
             var cly = Math.max(m.y, Math.min(grp.y, m.y + m.h));
             var md = Math.sqrt((clx - grp.x) * (clx - grp.x) + (cly - grp.y) * (cly - grp.y));
@@ -557,8 +559,9 @@
             var raiderCible = null;
             if (grp.hasRaider) {
               var rb = null, rbD = Infinity, rbPt = null;
-              for (var rj = 0; rj < state.walls.length; rj++) {
-                var rw = state.walls[rj];
+              var raidWalls = G.wallsInRange(grp.x, grp.y, G.ZOMBIE_RAID_RANGE);
+              for (var rj = 0; rj < raidWalls.length; rj++) {
+                var rw = raidWalls[rj];
                 if (!rw.built) continue;
                 var rclx = Math.max(rw.x, Math.min(grp.x, rw.x + rw.w));
                 var rcly = Math.max(rw.y, Math.min(grp.y, rw.y + rw.h));
@@ -599,6 +602,58 @@
           // (mairie/mur/tour) au lieu de rester parqué en formation sur place.
           if (nsd < G.ZOMBIE_NOISE_RANGE && nsd > 60) {
             cible = { x: lastShot.x, y: lastShot.y, isPlayer: false, noise: true };
+          }
+        }
+        // LOD (level of detail) de simulation : un groupe LOIN de tout
+        // joueur et hors de la ville n'a pas besoin de l'IA complete a
+        // chaque tick (collisions membre par membre, separation, sense de
+        // mur, anti-blocage...). On le deplace en bloc vers sa cible via le
+        // flow field (ou en ligne droite au-dela de NAV_DIRECT_DIST) et on
+        // passe au groupe suivant. A 5000 zombies la nuit, la majorite de la
+        // horde est dans ce cas a un instant donne : le cout de simulation
+        // par tick s'effondre sans effet visible (personne ne regarde).
+        var lodMinD2 = Infinity;
+        var lodAny = false;
+        if (G.state.players) {
+          for (var lodP = 0; lodP < G.state.players.length; lodP++) {
+            var lodPp = G.state.players[lodP];
+            if (!lodPp.alive) continue;
+            lodAny = true;
+            var lodDx = lodPp.x - grp.x, lodDy = lodPp.y - grp.y;
+            var lodD2 = lodDx * lodDx + lodDy * lodDy;
+            if (lodD2 < lodMinD2) lodMinD2 = lodD2;
+          }
+        }
+        // Sans joueur vivant (solo : state.players absent ou vide, tests),
+        // JAMAIS de LOD : comportement complet partout, comme avant.
+        if (lodAny) {
+          var lodFar = lodMinD2 > G.ZOMBIE_LOD_RANGE * G.ZOMBIE_LOD_RANGE;
+          var lodInTown = G.inTown(grp.x, grp.y);
+          var lodCibleTown = !!cible.town || !!cible.mairie;
+          if (lodFar && !lodInTown && !lodCibleTown && !cible.isPlayer && !cible.prey) {
+            var lodSpd = (grp.isHorde ? G.ZOMBIE_SPEED * (1 + G.ZOMBIE_HORDE_SPEED_BONUS) : G.ZOMBIE_SPEED) * G.zombieRamp();
+            var lodNav = G.navStep ? G.navStep(grp.x, grp.y) : null;
+            var lodLx = cible.x - grp.x, lodLy = cible.y - grp.y;
+            var lodLen = Math.sqrt(lodLx * lodLx + lodLy * lodLy) || 1;
+            var lodVx, lodVy;
+            if (lodNav && lodLen > G.ZOMBIE_NAV_DIRECT_DIST) {
+              // Le flow field guide vers la ville (contourne les massifs) :
+              // direction = point suivant du champ - position du chef.
+              var lodNx = lodNav.x - grp.x, lodNy = lodNav.y - grp.y;
+              var lodNLen = Math.sqrt(lodNx * lodNx + lodNy * lodNy) || 1;
+              lodVx = lodNx / lodNLen; lodVy = lodNy / lodNLen;
+            } else {
+              lodVx = lodLx / lodLen; lodVy = lodLy / lodLen;
+            }
+            var lodStep = lodSpd * dt;
+            grp.x += lodVx * lodStep;
+            grp.y += lodVy * lodStep;
+            for (var lodM = 0; lodM < grp.members.length; lodM++) {
+              var lodZ = grp.members[lodM];
+              lodZ.x += lodVx * lodStep * lodZ.speedFactor;
+              lodZ.y += lodVy * lodStep * lodZ.speedFactor;
+            }
+            continue;
           }
         }
         var ldx = cible.x - grp.x, ldy = cible.y - grp.y;
@@ -783,8 +838,9 @@
           // groupe vise la mairie ou un point de slot éloigné. Un mur détecté
           // devient la cible effective : le zombie l'attaque ou le longe.
           var zNearWall = null, zNearWallD = Infinity, zNearWallPt = null;
-          for (var zw = 0; zw < state.walls.length; zw++) {
-            var zwl = state.walls[zw];
+          var senseWalls = G.wallsInRange(z.x, z.y, G.ZOMBIE_WALL_SENSE);
+          for (var zw = 0; zw < senseWalls.length; zw++) {
+            var zwl = senseWalls[zw];
             var zclx = Math.max(zwl.x, Math.min(z.x, zwl.x + zwl.w));
             var zcly = Math.max(zwl.y, Math.min(z.y, zwl.y + zwl.h));
             var zwd = Math.sqrt((zclx - z.x) * (zclx - z.x) + (zcly - z.y) * (zcly - z.y));
@@ -1027,8 +1083,9 @@
                     // Réoriente vers le mur le plus proche (contournement
                     // dirigé de la forêt) pour rejoindre la palissade.
                     var reWall = null, reD = G.ZOMBIE_FORET_REORIENT, rePt = null;
-                    for (var rw2 = 0; rw2 < state.walls.length; rw2++) {
-                      var rwm = state.walls[rw2];
+                    var reWalls = G.wallsInRange(z.x, z.y, G.ZOMBIE_FORET_REORIENT);
+                    for (var rw2 = 0; rw2 < reWalls.length; rw2++) {
+                      var rwm = reWalls[rw2];
                       var rlx2 = Math.max(rwm.x, Math.min(z.x, rwm.x + rwm.w));
                       var rly2 = Math.max(rwm.y, Math.min(z.y, rwm.y + rwm.h));
                       var rmd2 = Math.sqrt((rlx2 - z.x) * (rlx2 - z.x) + (rly2 - z.y) * (rly2 - z.y));

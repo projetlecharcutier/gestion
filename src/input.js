@@ -368,6 +368,7 @@
     state.deadTraces = [];
     state.birds = [];
     state.walls = [];
+    G.rebuildWallGrid();
     state.buildMode = false;
     state.buildSel = null;
     state.plankRotation = 0;

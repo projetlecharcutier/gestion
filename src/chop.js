@@ -91,7 +91,7 @@
         state.chopWall.hp -= G.WALL_AXE_DMG;
         if (state.chopWall.hp <= 0) {
           var wi = state.walls.indexOf(state.chopWall);
-          if (wi >= 0) state.walls.splice(wi, 1);
+          if (wi >= 0) { G.unindexWall(state.chopWall); state.walls.splice(wi, 1); }
           // Récupère les 4 planches qui formaient la palissade.
           state.planks += G.WALL_PLANKS;
           if (G.statsAddPlanks) G.statsAddPlanks(G.WALL_PLANKS);

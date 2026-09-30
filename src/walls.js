@@ -2,6 +2,107 @@
 (function () {
   "use strict";
   var G = window.GAME = window.GAME || {};
+  // === Hash spatial des murs (palissades posees) ===
+  // Remplace le scan O(n_murs) de aabbHitsWalls par une requete de grille.
+  // Reconstruction incrementale : indexWall apres une pose, unindexWall
+  // apres une destruction, rebuildWallGrid apres tout remplacement du
+  // tableau state.walls (carte recue, snapshot, reinitialisation).
+  // Taille de cellule >= PLANK_LONG (120) : une palissade ne couvre jamais
+  // plus que les cellules qu'elle recouvre -> requete sans voisines.
+  var WALL_CELL = 128;
+  var wallGrid = null; // { "cx,cy": [wall, ...] }
+  var wallIndexed = null; // wall -> [cles de cellules couvertes]
+  var wallCount = 0;
+  function wallCellKey(cx, cy) { return cx + "," + cy; }
+  function wallGridAdd(m) {
+    var keys = [];
+    var x0 = Math.floor(m.x / WALL_CELL), x1 = Math.floor((m.x + m.w) / WALL_CELL);
+    var y0 = Math.floor(m.y / WALL_CELL), y1 = Math.floor((m.y + m.h) / WALL_CELL);
+    for (var gx = x0; gx <= x1; gx++) {
+      for (var gy = y0; gy <= y1; gy++) {
+        var k = wallCellKey(gx, gy);
+        if (!wallGrid[k]) wallGrid[k] = [];
+        wallGrid[k].push(m);
+        keys.push(k);
+      }
+    }
+    wallIndexed.set(m, keys);
+  }
+  G.rebuildWallGrid = function () {
+    wallGrid = {};
+    wallIndexed = new Map();
+    wallCount = 0;
+    var walls = G.state.walls;
+    if (!walls) return;
+    for (var i = 0; i < walls.length; i++) wallGridAdd(walls[i]);
+    wallCount = walls.length;
+  };
+  // Resynchronisation paresseuse : le tableau state.walls peut etre remplace
+  // ou mute directement (tests, splice a la main) sans passer par
+  // rebuildWallGrid. On detecte la divergence par le nombre d'objets indexes
+  // != longueur du tableau et on reconstruit alors -- O(n) rare, pas a
+  // chaque requete.
+  function wallGridSync() {
+    var walls = G.state.walls;
+    if (!wallGrid || !wallIndexed || !walls || wallIndexed.size !== walls.length) {
+      G.rebuildWallGrid();
+    }
+  }
+  G.indexWall = function (m) {
+    if (!wallGrid) { G.rebuildWallGrid(); return; }
+    if (wallIndexed.has(m)) return;
+    wallGridAdd(m);
+    wallCount++;
+  };
+  G.unindexWall = function (m) {
+    if (!wallGrid || !wallIndexed || !wallIndexed.has(m)) return;
+    var keys = wallIndexed.get(m);
+    for (var i = 0; i < keys.length; i++) {
+      var arr = wallGrid[keys[i]];
+      if (!arr) continue;
+      var j = arr.indexOf(m);
+      if (j >= 0) arr.splice(j, 1);
+      if (arr.length === 0) delete wallGrid[keys[i]];
+    }
+    wallIndexed.delete(m);
+    wallCount--;
+  };
+  // Palissades candidates au chevauchement avec la boite (cx,cy,cw,ch).
+  // Doublons possibles (mur couvrant plusieurs cellules) : sans consequence
+  // pour un test booleen.
+  G.wallsNear = function (cx, cy, cw, ch) {
+    var out = [];
+    wallGridSync();
+    var x0 = Math.floor(cx / WALL_CELL), x1 = Math.floor((cx + cw) / WALL_CELL);
+    var y0 = Math.floor(cy / WALL_CELL), y1 = Math.floor((cy + ch) / WALL_CELL);
+    for (var gx = x0; gx <= x1; gx++) {
+      for (var gy = y0; gy <= y1; gy++) {
+        var arr = wallGrid[wallCellKey(gx, gy)];
+        if (!arr) continue;
+        for (var i = 0; i < arr.length; i++) out.push(arr[i]);
+      }
+    }
+    return out;
+  };
+  // Palissades dans un rayon range autour de (x, y) (IA : mur le plus
+  // proche, sense, reorientation de foret). Dedupliquees.
+  G.wallsInRange = function (x, y, range) {
+    var out = [];
+    wallGridSync();
+    var x0 = Math.floor((x - range) / WALL_CELL), x1 = Math.floor((x + range) / WALL_CELL);
+    var y0 = Math.floor((y - range) / WALL_CELL), y1 = Math.floor((y + range) / WALL_CELL);
+    for (var gx = x0; gx <= x1; gx++) {
+      for (var gy = y0; gy <= y1; gy++) {
+        var arr = wallGrid[wallCellKey(gx, gy)];
+        if (!arr) continue;
+        for (var i = 0; i < arr.length; i++) {
+          var m = arr[i];
+          if (out.indexOf(m) < 0) out.push(m);
+        }
+      }
+    }
+    return out;
+  };
 
   // Dimensions d'une planche posée. Rotation 0 = horizontale, 1 = verticale.
   G.PLANK_LONG = 120;
@@ -57,6 +158,7 @@
     // apres sa pose, pour eviter qu'il se retrouve coince dessus.
     var wall = { x: mx, y: my, w: w, h: h, hp: G.WALL_MAX_HP, orient: w > h ? "h" : "v", built: true, noBlockUntil: state.time + G.WALL_GRACE };
     state.walls.push(wall);
+    G.indexWall(wall);
     // Stats de fin de partie : batiment construit (palissade posee).
     if (G.statsAddBuilt) G.statsAddBuilt();
     // Anti-blocage : si le joueur est à l'intérieur de la palissade, le repousser
@@ -120,9 +222,9 @@
   // par pushPlayerOutOfWall pour ne pas être bloqué par la palissade fraîchement
   // posée lors de la recherche d'une position libre.
   G.aabbHitsWallsExcluding = function (cx, cy, cw, ch, excl) {
-    var walls = G.state.walls;
-    for (var i = 0; i < walls.length; i++) {
-      var m = walls[i];
+    var near = G.wallsNear(cx, cy, cw, ch);
+    for (var i = 0; i < near.length; i++) {
+      var m = near[i];
       if (m === excl) continue;
       if (!m.built) continue;
       if (cx < m.x + m.w && cx + cw > m.x && cy < m.y + m.h && cy + ch > m.y) return true;
@@ -135,10 +237,10 @@
   // Si forPlayer est vrai, on ignore les planches en grace period (noBlockUntil > state.time)
   // pour ne pas bloquer le joueur sur une planche qu'il vient de poser.
   G.aabbHitsWalls = function (cx, cy, cw, ch, forPlayer) {
-    var walls = G.state.walls;
+    var near = G.wallsNear(cx, cy, cw, ch);
     var now = G.state.time;
-    for (var i = 0; i < walls.length; i++) {
-      var m = walls[i];
+    for (var i = 0; i < near.length; i++) {
+      var m = near[i];
       if (!m.built) continue;
       if (forPlayer && m.noBlockUntil && m.noBlockUntil > now) continue;
       if (cx < m.x + m.w && cx + cw > m.x && cy < m.y + m.h && cy + ch > m.y) return true;
@@ -155,7 +257,7 @@
   G.cleanupWalls = function () {
     var walls = G.state.walls;
     for (var wj = walls.length - 1; wj >= 0; wj--) {
-      if (walls[wj].hp <= 0) walls.splice(wj, 1);
+      if (walls[wj].hp <= 0) { G.unindexWall(walls[wj]); walls.splice(wj, 1); }
     }
   };
 })();

@@ -202,6 +202,11 @@
   // Attraction par le bruit des coups de feu : portée (px) et durée (s)
   // pendant laquelle un groupe dévie sa cible vers la position du tir.
   G.ZOMBIE_NOISE_RANGE = 1600;
+  // LOD de simulation : au-dela de cette distance au joueur le plus proche,
+  // un groupe hors ville est simule en mode simplifie (deplacement en bloc,
+  // cf. updateZombies). Doit rester > SNAP_ZOMBIE_RANGE (900) : les zombies
+  // simplifies sont envoyes au client mais bougent de facon grossiere.
+  G.ZOMBIE_LOD_RANGE = 1400;
   G.ZOMBIE_NOISE_TIME = 4.0;
   // Contournement des murs : biais latéral (px/s) appliqué quand le zombie
   // est bloqué, pour longer le mur plutôt que de s'enliser.
@@ -473,6 +478,9 @@
   // PNG, cf. siege.js), plafond du nombre de tours,
   // taille de repli sans PNG.
   G.SIEGE_SPEED = G.ZOMBIE_SPEED * 0.5;
+  // Rayon de detection des palissades pour la tour de siege (findWallTarget) :
+  // assez large pour trouver un mur avant de le percuter a SIEGE_SPEED.
+  G.SIEGE_WALL_SENSE = 600;
   G.SIEGE_HP = 100;
   G.SIEGE_RELEASE_COUNT = 100;
   G.SIEGE_COLLIDE_BOTTOM = 0.05;

@@ -98,8 +98,9 @@
       var b = state.buildings[i];
       if (mx < b.x + b.w && mx + w > b.x && my < b.y + b.h && my + h > b.y) return false;
     }
-    for (var wi = 0; wi < state.walls.length; wi++) {
-      var m = state.walls[wi];
+    var nearWalls = G.wallsNear(mx, my, w, h);
+    for (var wi = 0; wi < nearWalls.length; wi++) {
+      var m = nearWalls[wi];
       if (!m.built) continue;
       if (mx < m.x + m.w && mx + w > m.x && my < m.y + m.h && my + h > m.y) return false;
     }
