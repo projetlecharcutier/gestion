@@ -35,6 +35,59 @@
     };
     return b;
   };
+  // Poteau de torche : petit decor interactif pose pres des villes/villages.
+  // isDecor le rend non cliquable par le flux batiment standard, le clic est
+  // gere par un bloc dedie dans input.js (rayon de portee + equip torche).
+  // L'emprise au sol est TORCHE_SIDE (pas la largeur du PNG) pour rester un
+  // petit obstacle coherent quelle que soit la taille du PNG depose.
+  G.makeTorche = function (x, y) {
+    var sp = (G.SPRITES && G.SPRITES.torche && G.SPRITES.torche.idle) || null;
+    var side = G.TORCHE_SIDE || 24;
+    return {
+      x: x - side / 2, y: y - side / 2, w: side, h: side,
+      name: "Poteau de torche", msg: "", height: sp ? sp.h : 48,
+      isDecor: true, isTorche: true,
+      torcheSprite: sp, door: { x: x, y: y + side / 2 }
+    };
+  };
+  // Tente de poser un poteau de torche a (x, y) : evite batiments, murs,
+  // forets et villes PNG. Retourne true si pose.
+  G.placeTorche = function (x, y) {
+    var state = G.state;
+    var side = G.TORCHE_SIDE || 24;
+    var half = side / 2;
+    if (x < half + 20 || x > G.WORLD - half - 20 || y < half + 20 || y > G.WORLD - half - 20) return false;
+    if (G.nearBuilding && G.nearBuilding(x, y, 12)) return false;
+    if (G.villeBoxHits && G.villeBoxHits(x - half, y - half, side, side)) return false;
+    if (!G.villeBoxHits && G.villeAt && G.villeAt(x, y, 0)) return false;
+    if (G.aabbHitsWalls && G.aabbHitsWalls(x - half, y - half, side, side, true)) return false;
+    for (var i = 0; i < state.buildings.length; i++) {
+      var ob = state.buildings[i];
+      if (x - half < ob.x + ob.w + 2 && x + half > ob.x - 2 &&
+          y - half < ob.y + ob.h + 2 && y + half > ob.y - 2) return false;
+    }
+    state.buildings.push(G.makeTorche(x, y));
+    return true;
+  };
+  // Pose un poteau de torche a proximite d'un point (ville, village) :
+  // cherche une position libre autour de (cx, cy) en s'ecartant
+  // progressivement (anneaux de 40 px, 16 angles par anneau). r0 = rayon de
+  // depart (par defaut 40) : pour les grandes villes PNG (Minas : cote 1334,
+  // bbox VISUELLE ~2000 px du centre), il faut commencer HORS de cette bbox
+  // sinon tous les premiers anneaux sont rejetes par villeBoxHits.
+  G.placeTorcheNear = function (cx, cy, r0) {
+    var start = r0 || 40;
+    for (var ring = 0; ring < 30; ring++) {
+      var r = start + ring * 40;
+      for (var a = 0; a < 16; a++) {
+        var ang = a * Math.PI / 8;
+        var tx = cx + Math.cos(ang) * r;
+        var ty = cy + Math.sin(ang) * r;
+        if (G.placeTorche(tx, ty)) return true;
+      }
+    }
+    return false;
+  };
   G.makeBuilding = function (x, y, w, h, name, msg, height) {
     var b = {
       x: x, y: y, w: w, h: h,
@@ -547,9 +600,32 @@
           for (var vc = 1; vc < vCount; vc++) {
             if (placeAdjacent(vHouses, false)) vHouses.push(state.buildings[state.buildings.length - 1]);
           }
+          // Un poteau de torche par village : pose a proximite du centre du
+          // regroupement de maisons (anneaux progressifs autour du centroide).
+          var vcx = 0, vcy = 0;
+          for (var vh = 0; vh < vHouses.length; vh++) {
+            vcx += vHouses[vh].x + vHouses[vh].w / 2;
+            vcy += vHouses[vh].y + vHouses[vh].h / 2;
+          }
+          G.placeTorcheNear(vcx / vHouses.length, vcy / vHouses.length);
         }
       }
     }
+    // Poteaux de torche : un pres de chaque ville decorative PNG + un pres
+    // de la porte nord de la ville principale (Ville de l'Est), quelle que
+    // soit la disponibilite des sprites de maison.
+    var villesPng = state.villes || [];
+    for (var vt = 0; vt < villesPng.length; vt++) {
+      var vv = villesPng[vt];
+      // Rayon de depart : hors de la bbox VISUELLE du PNG (le feuillage
+      // deborde loin de l'emprise au sol, cf. villeSetup vx0..vy1).
+      var rv = 40;
+      if (vv.vx0 !== undefined) {
+        rv = Math.max(vv.vx1 - vv.vx0, vv.vy1 - vv.vy0) / 2 + 80;
+      }
+      G.placeTorcheNear(vv.x + vv.w / 2, vv.y + vv.h / 2, rv);
+    }
+    G.placeTorcheNear(G.TOWN_MIN + G.TOWN / 2, G.TOWN_MIN);
     state.items = [
       // Équipement de départ en ville.
       { x: c - 60, y: c - 40, taken: false, name: "Pistolet", color: "#94a3b8", kind: "arme" },

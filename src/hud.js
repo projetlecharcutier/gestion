@@ -82,6 +82,46 @@
     }
   };
 
+  // Jauge de torche (bas de l'ecran) : "Torche : [====  ]" pendant la duree
+  // de l'effet. Le niveau passe de 100 (torche vient d'etre prise) a 0 (fin
+  // de la minute) ; la jauge disparait quand la torche est entierement
+  // consommee et le brouillard revient a son etat initial.
+  G.drawTorcheGauge = function () {
+    var state = G.state;
+    if (state.torcheUntil === undefined || state.torcheUntil === null) return;
+    var left = state.torcheUntil - (state.time || 0);
+    var total = G.TORCHE_TIME || 60;
+    if (left <= 0) { state.torcheUntil = null; return; }
+    var level = Math.max(0, Math.min(100, Math.round(left / total * 100)));
+    var ctx = G.ctx;
+    var W = G.canvas.width / (window.devicePixelRatio || 1);
+    var H = G.canvas.height / (window.devicePixelRatio || 1);
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.font = "bold 15px Segoe UI, system-ui, sans-serif";
+    ctx.fillStyle = "rgba(2,6,23,0.55)";
+    var label = "Torche : ";
+    var lw = ctx.measureText(label).width;
+    var barW = 160, barH = 12;
+    var totalW = lw + barW;
+    var x0 = W / 2 - totalW / 2;
+    var y0 = H - 14;
+    ctx.fillRect(x0 - 8, y0 - 22, totalW + 16, 30);
+    ctx.fillStyle = "#fde68a";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, x0 + lw / 2, y0 - 7);
+    ctx.fillStyle = "rgba(15,23,42,0.9)";
+    ctx.fillRect(x0 + lw, y0 - 13, barW, barH);
+    var ratio = level / 100;
+    var col = ratio > 0.5 ? "#f59e0b" : (ratio > 0.25 ? "#fb923c" : "#ef4444");
+    ctx.fillStyle = col;
+    ctx.fillRect(x0 + lw + 1, y0 - 12, (barW - 2) * ratio, barH - 2);
+    ctx.strokeStyle = "rgba(253,230,138,0.7)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x0 + lw + 0.5, y0 - 12.5, barW, barH);
+    ctx.restore();
+  };
   G.drawClock = function () {
     var ctx = G.ctx;
     var t = G.TEXTURES.clock;

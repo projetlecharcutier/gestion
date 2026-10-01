@@ -339,6 +339,9 @@ G.drawGround = function () {
       if (stageKey && G.hasSprite("foret", stageKey)) { sprite = G.SPRITES.foret[stageKey]; spriteEnt = "foret"; spriteKey = stageKey; }
       else if (G.hasSprite("foret", b.foretFrame)) { sprite = G.SPRITES.foret[b.foretFrame]; spriteEnt = "foret"; spriteKey = b.foretFrame; }
     }
+    else if (b.isDecor && b.isTorche && G.hasSprite && G.hasSprite("torche", "idle")) {
+      sprite = G.SPRITES.torche.idle; spriteEnt = "torche"; spriteKey = "idle";
+    }
     else if (b.isDecor && b.houseSprite) sprite = b.houseSprite;
     else if (b.isMairie && G.hasSprite("building", "mairie")) { sprite = G.SPRITES.building.mairie; spriteEnt = "building"; spriteKey = "mairie"; }
     else if (b.isChurch && G.hasSprite("church", "church")) { sprite = G.SPRITES.church.church; spriteEnt = "church"; spriteKey = "church"; }
@@ -775,7 +778,14 @@ G.drawGround = function () {
     var H = G.canvas.height / (window.devicePixelRatio || 1);
     // Sources : joueur (rayon FOG_RADIUS) + tours construites (fogRadius).
     var sources = [];
-    if (!G.inTown(p.x, p.y)) sources.push({ x: p.x, y: p.y, r: G.FOG_RADIUS });
+    if (!G.inTown(p.x, p.y)) {
+      // Torche equipee : rayon x5 pendant TORCHE_TIME s (jauge en bas d'ecran).
+      var torchR = G.FOG_RADIUS;
+      if (state.torcheUntil !== undefined && state.torcheUntil !== null && state.time < state.torcheUntil) {
+        torchR = G.TORCHE_RADIUS || G.FOG_RADIUS * 5;
+      }
+      sources.push({ x: p.x, y: p.y, r: torchR });
+    }
     var towers = state.towers || [];
     for (var ti = 0; ti < towers.length; ti++) {
       var tw = towers[ti];
@@ -1588,6 +1598,7 @@ G.drawGround = function () {
     G.drawBuildHint();
     G.drawChopProgress();
     G.drawClock();
+    if (G.drawTorcheGauge) G.drawTorcheGauge();
     G.drawCompass();
     G.drawMinimap();
 

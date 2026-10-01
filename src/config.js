@@ -465,6 +465,13 @@
   G.FAUNA_WEIGHTS = { cerf: 3, cochon: 3, vache: 2, mouton: 2 };
   // Nourriture dropee par animal tue (kind "objet" : mangee depuis le sac).
   G.FAUNA_FOOD = { name: "Nourriture", color: "#f59e0b", kind: "objet" };
+  // Poteaux de torche : poses pres de chaque ville (principale + villes PNG)
+  // et de chaque regroupement de maisons hors ville. Au clic, le joueur est
+  // equipe d'une torche : rayon de brouillard x5 pendant TORCHE_TIME s.
+  // Jauge "Torche" en bas de l'ecran (100 -> 0 sur la duree).
+  G.TORCHE_RADIUS = G.FOG_RADIUS * 5;  // 1000 px : vision 5x plus loin
+  G.TORCHE_TIME = 60;                 // 1 minute
+  G.TORCHE_SIDE = 24;                 // emprise sol du poteau (unites monde)
   // Montgolfiere : l'animation idle ne se joue qu'au clic du joueur, une
   // seule fois, sur cette duree (s). A la fin, le message d'annonce de vague
   // s'affiche au-dessus du batiment.
