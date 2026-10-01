@@ -247,6 +247,35 @@
     return null;
   };
 
+  // Bbox VISUELLE monde d'une foret : le sprite PNG (ancré bas-centre sur le
+  // bord sud de l'emprise, hauteur dessinée = losW * h/w) déborde vers le
+  // NORD de son AABB au sol quand h/w > 1/2 (ex. foret1 : 52x37). Projeter
+  // les 4 coins du PNG (zoom 1, cf. ville.js/villeSetup) donne la vraie zone
+  // couverte à l'écran : c'est ELLE qui doit éviter les villes, sinon le
+  // feuillage se dessine par-dessus le PNG de la ville.
+  G.foretVisualBox = function (b) {
+    var sp = G.SPRITES.foret && G.SPRITES.foret[b.foretFrame + "s" + (b.foretStage || 0)];
+    if (!sp && G.SPRITES.foret) sp = G.SPRITES.foret[b.foretFrame];
+    var iw = sp ? sp.w : 0, ih = sp ? sp.h : 0;
+    if (!iw || !ih) return { x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.h };
+    var losW = (b.w + b.h) / 2;
+    var cx0 = (b.x - b.y) / 2;
+    var groundY0 = (b.x + b.y + b.w + b.h) / 2 / 2;
+    var drawnH = losW * ih / iw;
+    var xs = [], ys = [];
+    for (var ci = 0; ci < 4; ci++) {
+      var px = (ci % 2) * iw, py = (ci < 2 ? 0 : ih);
+      var sx = cx0 - losW / 2 + (px / iw) * losW;
+      var sy = groundY0 - drawnH + (py / ih) * drawnH;
+      xs.push(sx + 2 * sy);
+      ys.push(2 * sy - sx);
+    }
+    return {
+      x0: Math.min.apply(null, xs), x1: Math.max.apply(null, xs),
+      y0: Math.min.apply(null, ys), y1: Math.max.apply(null, ys)
+    };
+  };
+
   // Vrai si la boîte monde (bx, by, bw, bh) touche l'anneau de palissades du
   // perimètre de la ville, avec la marge G.FORET_WALL_GAP de chaque cote :
   // les forets de l'init ne doivent pas coller aux murs. L'anneau est un
@@ -339,10 +368,13 @@
         if (tx < half || tx > G.WORLD - half || ty < half || ty > G.WORLD - half) continue;
         if (!inTown && G.inTown(tx, ty)) continue;
         if (nearTownWall(tx, ty, half)) continue;
-        // Villes PNG : aucune foret dans la bbox VISUELLE d'une ville
-        // decorative (boite-contre-boite, pas juste le centre : une foret
-        // centree juste hors emprise avait la moitie de son AABB dedans).
-        if (G.villeBoxHits && G.villeBoxHits(tx - half, ty - half, half * 2, half * 2)) continue;
+        // Villes PNG : aucune foret dont la bbox VISUELLE (le sprite deborde
+        // vers le nord de son AABB au sol) touche la bbox visuelle d'une
+        // ville decorative. L'ancien test AABB-sol laissait le feuillage se
+        // dessiner par-dessus le PNG de la ville.
+        var cand = G.makeForet(tx, ty, frame);
+        var vbox = G.foretVisualBox(cand);
+        if (G.villeBoxHits && G.villeBoxHits(vbox.x0, vbox.y0, vbox.x1 - vbox.x0, vbox.y1 - vbox.y0)) continue;
         if (!G.villeBoxHits && G.villeAt && G.villeAt(tx, ty, half)) continue;
         if (nearForet(tx, ty, half)) continue;
         addForet(tx, ty, frame);
@@ -592,7 +624,11 @@
       var fSp = G.SPRITES.foret && G.SPRITES.foret[fFrame];
       var fSide = (fSp ? fSp.w : 64) * 2;
       if (!G.nearBuilding(ftx, fty, 10) &&
-          !(G.villeBoxHits && G.villeBoxHits(ftx - fSide / 2, fty - fSide / 2, fSide, fSide)) &&
+          !(G.villeBoxHits && (function () {
+            var fc = G.makeForet(ftx, fty, fFrame);
+            var fb = G.foretVisualBox(fc);
+            return G.villeBoxHits(fb.x0, fb.y0, fb.x1 - fb.x0, fb.y1 - fb.y0);
+          })()) &&
           !(G.villeAt && G.villeAt(ftx, fty, fSide / 2)) &&
           !G.foretNearTownWall(ftx - fSide / 2, fty - fSide / 2, fSide, fSide)) {
         state.buildings.push(G.makeForet(ftx, fty, fFrame));
