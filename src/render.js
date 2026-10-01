@@ -1314,6 +1314,74 @@ G.drawGround = function () {
     ctx.restore();
   };
 
+  // Mini-carte globale : losange en bas a droite, a gauche de la boussole.
+  // Vue de dessus (plan monde), basse definition : le rectangle jouable
+  // [0, WORLD]^2 est projete dans le losange iso (proportion 2:1) pour
+  // rappeler l'orientation du terrain vu a l'ecran. Le joueur y est un
+  // point blanc, la mairie un point rouge, la ville un rectangle plus
+  // clair, les forets non epuisees des points verts et les villes PNG
+  // decoratives des rectangles gris.
+  G.drawMinimap = function () {
+    var ctx = G.ctx;
+    var state = G.state;
+    var W = G.canvas.width / (window.devicePixelRatio || 1);
+    var H = G.canvas.height / (window.devicePixelRatio || 1);
+    var cx = W - 180, cy = H - 56;
+    var mw = 132, mh = 66;
+    var w0 = cx - mw / 2, h0 = cy - mh / 2;
+    var s = mw / G.WORLD;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(w0, cy);
+    ctx.lineTo(cx, h0);
+    ctx.lineTo(w0 + mw, cy);
+    ctx.lineTo(cx, cy + mh / 2);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(15,23,42,0.7)";
+    ctx.fill();
+    ctx.strokeStyle = "#f8fafc";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.clip();
+    function toMap(x, y) { return [w0 + x * s, h0 + y * s]; }
+    // Ville (TOWN_MIN..TOWN_MAX) : rectangle plus clair.
+    var t1 = toMap(G.TOWN_MIN, G.TOWN_MIN), t2 = toMap(G.TOWN_MAX, G.TOWN_MAX);
+    ctx.fillStyle = "rgba(148,163,184,0.35)";
+    ctx.fillRect(t1[0], t1[1], t2[0] - t1[0], t2[1] - t1[1]);
+    // Villes PNG decoratives.
+    if (state.villes) {
+      ctx.fillStyle = "rgba(148,163,184,0.5)";
+      for (var vi = 0; vi < state.villes.length; vi++) {
+        var vv = state.villes[vi];
+        var v1 = toMap(vv.x, vv.y), v2 = toMap(vv.x + vv.w, vv.y + vv.h);
+        ctx.fillRect(v1[0], v1[1], Math.max(1, v2[0] - v1[0]), Math.max(1, v2[1] - v1[1]));
+      }
+    }
+    // Forets non epuisees : points verts 1px.
+    ctx.fillStyle = "#22c55e";
+    for (var fi = 0; fi < state.buildings.length; fi++) {
+      var fb = state.buildings[fi];
+      if (!fb.isForet || (fb.foretStage || 0) >= (G.FORET_STAGES - 1)) continue;
+      var fp = toMap(fb.x + fb.w / 2, fb.y + fb.h / 2);
+      ctx.fillRect(fp[0], fp[1], 1, 1);
+    }
+    // Mairie : point rouge.
+    for (var mi = 0; mi < state.buildings.length; mi++) {
+      var mb = state.buildings[mi];
+      if (!mb.isMairie) continue;
+      var mp = toMap(mb.x + mb.w / 2, mb.y + mb.h / 2);
+      ctx.fillStyle = "#ef4444";
+      ctx.fillRect(mp[0] - 1.5, mp[1] - 1.5, 3, 3);
+      break;
+    }
+    // Joueur : point blanc clignotant.
+    var p = state.player;
+    var pp = toMap(p.x, p.y);
+    var blink = (Math.floor(state.time * 2) % 2) === 0;
+    ctx.fillStyle = blink ? "#ffffff" : "#e2e8f0";
+    ctx.fillRect(pp[0] - 1.5, pp[1] - 1.5, 3, 3);
+    ctx.restore();
+  };
   G.render = function () {
     var ctx = G.ctx;
     var state = G.state;
@@ -1521,6 +1589,7 @@ G.drawGround = function () {
     G.drawChopProgress();
     G.drawClock();
     G.drawCompass();
+    G.drawMinimap();
 
     if (state.bag.open) G.drawBag();
 
