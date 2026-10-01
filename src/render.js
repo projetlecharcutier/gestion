@@ -1374,12 +1374,14 @@ G.drawGround = function () {
       ctx.fillRect(mp[0] - 1.5, mp[1] - 1.5, 3, 3);
       break;
     }
-    // Joueur : point blanc clignotant.
+    // Joueur : petit point rouge clignotant.
     var p = state.player;
     var pp = toMap(p.x, p.y);
     var blink = (Math.floor(state.time * 2) % 2) === 0;
-    ctx.fillStyle = blink ? "#ffffff" : "#e2e8f0";
-    ctx.fillRect(pp[0] - 1.5, pp[1] - 1.5, 3, 3);
+    ctx.fillStyle = blink ? "#ef4444" : "#dc2626";
+    ctx.beginPath();
+    ctx.arc(pp[0], pp[1], blink ? 2.5 : 2, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   };
   G.render = function () {
