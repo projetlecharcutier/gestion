@@ -713,6 +713,11 @@
 
     state.zombies = [];
     G.rebuildBuildingGrid();
+    // Réseau rivières + chemins : APRÈS la pose des forêts et du périmètre
+    // de palissades, pour que les tracés les évitent. Généré aussi côté
+    // serveur (buildWorld partagé) — en mode réseau, le réseau est transmis
+    // dans msg.map et appliqué par applyRivieres.
+    if (G.buildRivieres) G.buildRivieres();
     // La generation aleatoire des forets peut refermer des enclaves : retire
     // les massifs qui enferment des poches inaccessibles, pour que chaque
     // point de spawn hors ville garde un chemin vers la palissade.
