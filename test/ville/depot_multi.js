@@ -85,8 +85,13 @@ assert(r.names.indexOf("est") >= 0, "ville est toujours presente");
 assert(r.names.indexOf("dup_exact") === -1 && r.names.indexOf("dup_renomme") === -1,
   "doublons (meme contenu PNG) ignores, jamais deux fois la meme ville");
 assert(r.placed === 8, "8 villes uniques placees automatiquement (obtenu " + r.placed + ")");
-var names = r.names.filter(function (n) { return n !== "est" && n.indexOf("dup") !== 0; });
-assert(names.length === 8, "9 villes detectees au total dont est + 8 uniques (obtenu " + r.names.length + ")");
+// Villes configurees au repo (VILLE_DEFS : est, laputa, minas) : elles ne
+// font pas partie des 8 villes UNIQUES deposees par ce test.
+var builtin = ["est", "laputa", "minas"];
+var names = r.names.filter(function (n) {
+  return builtin.indexOf(n) === -1 && n.indexOf("dup") !== 0;
+});
+assert(names.length === 8, "11 villes detectees au total dont 3 configurees (est, laputa, minas) + 8 uniques (obtenu " + r.names.length + ")");
 
 // 3. Placement : 2 par direction diagonale, SANS superposition.
 var pos = r.positions;

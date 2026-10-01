@@ -323,7 +323,12 @@
   // relative a la ville conservee apres le passage de WORLD 10000 ->
   // 20000 (centre +1210/-100).
   G.VILLE_DEFS = [
-    { name: "Ville de l'Est", sprite: "est", x: 11210, y: 9900 }
+    { name: "Ville de l'Est", sprite: "est", x: 11210, y: 9900 },
+    // Laputa (cite celeste) : nord-ouest de la carte. PNG placeholder
+    // (transparent) tant que le pixel art n'est pas pose ; les dossiers
+    // assets/sprites/ville/laputa/ et /minas/ sont DETECTES automatiquement.
+    { name: "Laputa", sprite: "laputa", x: 4500, y: 4500 },
+    { name: "Minas", sprite: "minas", x: 15500, y: 15500 }
   ];
   // Placement automatique des nouvelles villes DETECTEES par le serveur
   // (ville-sync.js) : distance au centre de la ville principale. Les
