@@ -135,6 +135,28 @@
 
     for (var i = 0; i < state.buildings.length; i++) {
       var b = state.buildings[i];
+      if (b.isTorche) {
+        // Poteau de torche : clic a portee -> le joueur est equipe d'une
+        // torche (vision x5 pendant 1 min). En ligne, le serveur est
+        // autoritaire (equip diffuse a tous via le snapshot).
+        var cxT = b.x + b.w / 2, cyT = b.y + b.h / 2;
+        var ddxT = w[0] - cxT, ddyT = w[1] - cyT;
+        if (Math.sqrt(ddxT * ddxT + ddyT * ddyT) < Math.max(b.w, b.h) / 2 + 12) {
+          var reachT = Math.max(b.w, b.h) / 2 + 70;
+          var pdxT = p.x - cxT, pdyT = p.y - cyT;
+          if (Math.sqrt(pdxT * pdxT + pdyT * pdyT) < reachT) {
+            if (G.netConnected && G.netConnected()) {
+              // Floater via l'evenement serveur (msg), pas localement : evite
+              // le doublon au snapshot suivant.
+              G.netInput({ torche: true });
+            } else {
+              G.equipTorche();
+            }
+            return;
+          }
+        }
+        continue;
+      }
       if (b.isDecor) continue;
       if (b.isChurch) {
         // L'eglise est cliquable : depot de relique (+100 or) + son church.mp3.

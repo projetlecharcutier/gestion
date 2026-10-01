@@ -339,6 +339,9 @@ G.drawGround = function () {
       if (stageKey && G.hasSprite("foret", stageKey)) { sprite = G.SPRITES.foret[stageKey]; spriteEnt = "foret"; spriteKey = stageKey; }
       else if (G.hasSprite("foret", b.foretFrame)) { sprite = G.SPRITES.foret[b.foretFrame]; spriteEnt = "foret"; spriteKey = b.foretFrame; }
     }
+    else if (b.isDecor && b.isTorche && G.hasSprite && G.hasSprite("torche", "idle")) {
+      sprite = G.SPRITES.torche.idle; spriteEnt = "torche"; spriteKey = "idle";
+    }
     else if (b.isDecor && b.houseSprite) sprite = b.houseSprite;
     else if (b.isMairie && G.hasSprite("building", "mairie")) { sprite = G.SPRITES.building.mairie; spriteEnt = "building"; spriteKey = "mairie"; }
     else if (b.isChurch && G.hasSprite("church", "church")) { sprite = G.SPRITES.church.church; spriteEnt = "church"; spriteKey = "church"; }
@@ -775,7 +778,14 @@ G.drawGround = function () {
     var H = G.canvas.height / (window.devicePixelRatio || 1);
     // Sources : joueur (rayon FOG_RADIUS) + tours construites (fogRadius).
     var sources = [];
-    if (!G.inTown(p.x, p.y)) sources.push({ x: p.x, y: p.y, r: G.FOG_RADIUS });
+    if (!G.inTown(p.x, p.y)) {
+      // Torche equipee : rayon x5 pendant TORCHE_TIME s (jauge en bas d'ecran).
+      var torchR = G.FOG_RADIUS;
+      if (state.torcheUntil !== undefined && state.torcheUntil !== null && state.time < state.torcheUntil) {
+        torchR = G.TORCHE_RADIUS || G.FOG_RADIUS * 5;
+      }
+      sources.push({ x: p.x, y: p.y, r: torchR });
+    }
     var towers = state.towers || [];
     for (var ti = 0; ti < towers.length; ti++) {
       var tw = towers[ti];
@@ -1273,7 +1283,10 @@ G.drawGround = function () {
     var mx = mairie.x + mairie.w / 2, my = mairie.y + mairie.h / 2;
     var dx = mx - p.x, dy = my - p.y;
     var ang = Math.atan2(dy, dx);
-    var cx = W - 56, cy = H - 56;
+    // A gauche de la minimap agrandie (528x264, pointe droite a W-40) :
+    // la boussole reste en bas a droite mais hors du losange, sinon elle
+    // est recouverte par la carte 4x.
+    var cx = W - 40 - 528 - 56, cy = H - 56;
     var r = 32;
     ctx.save();
     // Fond de la boussole.
@@ -1326,8 +1339,11 @@ G.drawGround = function () {
     var state = G.state;
     var W = G.canvas.width / (window.devicePixelRatio || 1);
     var H = G.canvas.height / (window.devicePixelRatio || 1);
-    var cx = W - 180, cy = H - 56;
-    var mw = 132, mh = 66;
+    // 4x plus grande (132x66 -> 528x264) pour distinguer les villes PNG
+    // (Laputa/Minas). Ancree en bas a droite : pointe droite et pointe bas
+    // a 40 px des bords de l'ecran.
+    var mw = 528, mh = 264;
+    var cx = W - 40 - mw / 2, cy = H - 40 - mh / 2;
     var w0 = cx - mw / 2, h0 = cy - mh / 2;
     var s = mw / G.WORLD;
     ctx.save();
@@ -1357,30 +1373,30 @@ G.drawGround = function () {
         ctx.fillRect(v1[0], v1[1], Math.max(1, v2[0] - v1[0]), Math.max(1, v2[1] - v1[1]));
       }
     }
-    // Forets non epuisees : points verts 1px.
+    // Forets non epuisees : points verts 2x2 (lisible a la nouvelle echelle).
     ctx.fillStyle = "#22c55e";
     for (var fi = 0; fi < state.buildings.length; fi++) {
       var fb = state.buildings[fi];
       if (!fb.isForet || (fb.foretStage || 0) >= (G.FORET_STAGES - 1)) continue;
       var fp = toMap(fb.x + fb.w / 2, fb.y + fb.h / 2);
-      ctx.fillRect(fp[0], fp[1], 1, 1);
+      ctx.fillRect(fp[0], fp[1], 2, 2);
     }
-    // Mairie : point rouge.
+    // Mairie : point rouge 5x5.
     for (var mi = 0; mi < state.buildings.length; mi++) {
       var mb = state.buildings[mi];
       if (!mb.isMairie) continue;
       var mp = toMap(mb.x + mb.w / 2, mb.y + mb.h / 2);
       ctx.fillStyle = "#ef4444";
-      ctx.fillRect(mp[0] - 1.5, mp[1] - 1.5, 3, 3);
+      ctx.fillRect(mp[0] - 2.5, mp[1] - 2.5, 5, 5);
       break;
     }
     // Joueur : petit point rouge clignotant.
     var p = state.player;
     var pp = toMap(p.x, p.y);
     var blink = (Math.floor(state.time * 2) % 2) === 0;
-    ctx.fillStyle = blink ? "#ef4444" : "#dc2626";
+    ctx.fillStyle = blink ? "#ef4444" : "#b91c1c";
     ctx.beginPath();
-    ctx.arc(pp[0], pp[1], blink ? 2.5 : 2, 0, Math.PI * 2);
+    ctx.arc(pp[0], pp[1], blink ? 5 : 3.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   };
@@ -1590,6 +1606,7 @@ G.drawGround = function () {
     G.drawBuildHint();
     G.drawChopProgress();
     G.drawClock();
+    if (G.drawTorcheGauge) G.drawTorcheGauge();
     G.drawCompass();
     G.drawMinimap();
 

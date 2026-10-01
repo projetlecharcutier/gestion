@@ -314,6 +314,9 @@
       chopTarget: null,
       chopWall: null,
       chopTimer: 0,
+      // Torche : instant (state.time) de fin de l'effet vision x5, declenche
+      // au clic d'un poteau de torche. null = pas de torche equipee.
+      torcheUntil: null,
       // Stats de fin de partie (cf. src/stats.js) : compteurs par joueur.
       stats: G.newPlayerStats ? G.newPlayerStats() : null
     };
@@ -429,6 +432,22 @@
     if (input.buildSel !== undefined) p._buildSel = input.buildSel;
     if (input.placeBuild) {
       p._placeBuild = { x: input.placeBuild.wx, y: input.placeBuild.wy };
+    }
+    // Torche : clic sur un poteau a portee. Le serveur fait autorite : il
+    // verifie lui-meme la proximite d'un poteau (le clic client est optimiste
+    // sur sa position PREDITE, comme les pickups).
+    if (input.torche) {
+      var nearTorche = false;
+      for (var tb = 0; tb < state.buildings.length; tb++) {
+        var tbld = state.buildings[tb];
+        if (!tbld.isTorche) continue;
+        var tdx = p.x - (tbld.x + tbld.w / 2), tdy = p.y - (tbld.y + tbld.h / 2);
+        if (Math.sqrt(tdx * tdx + tdy * tdy) < 150) { nearTorche = true; break; }
+      }
+      if (nearTorche) {
+        p.torcheUntil = state.time + (G.TORCHE_TIME || 60);
+        pushEvent(p.id, { t: "msg", msg: "Torche", x: Math.round(p.x), y: Math.round(p.y) });
+      }
     }
     // Montgolfiere : le clic client declenche l'animation LOCALEMENT chez
     // lui seul (animStart sur le batiment local). En ligne, on declenche
@@ -1141,6 +1160,11 @@
           bag: p.bag.contents, inventory: p.bag.contents.length,
           planks: p.planks || 0,
           gold: p.gold || 0,
+          // Torche : reste (s) avant la fin de l'effet vision x5, transmis
+          // en DUREE (pas d'horodatage) pour eviter tout decalage d'horloge
+          // client/serveur. Le client pose torcheUntil = time + reste.
+          torcheLeft: (p.torcheUntil !== null && p.torcheUntil > state.time)
+            ? +(p.torcheUntil - state.time).toFixed(2) : 0,
           // Stats de fin de partie : compteurs du joueur (affiches au game
           // over). Envoyes a chaque snapshot pour simplifier (leger).
           stats: p.stats ? {
@@ -1332,6 +1356,9 @@
           h: roundPos ? Math.round(b.h) : b.h,
           name: b.name, isMairie: b.isMairie, isChurch: b.isChurch, isDecor: b.isDecor,
           isForet: b.isForet || false, foretFrame: b.foretFrame || null, foretStage: b.foretStage || 0,
+          // Poteau de torche : le client retrouve le PNG torche/idle par
+          // isTorche (pas de nom de frame a transmettre, serie unique).
+          isTorche: b.isTorche || false,
           // Ne PAS serialiser l'objet sprite du serveur (stub sans image :
           // drawImage(null) cote client). Le client retrouve le PNG par nom
           // (G.SPRITES.house[houseSpriteName]) a la reception de la carte.

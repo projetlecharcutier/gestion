@@ -678,6 +678,12 @@
             state.planks = p.planks;
           }
           if (p.gold !== undefined) state.gold = p.gold;
+          // Torche : le serveur envoie le RESTE (s) d'effet ; le client pose
+          // torcheUntil = time + reste (sa propre horloge) pour la jauge et le
+          // rayon de brouillard x5. 0 = torche finie/absente.
+          if (p.torcheLeft !== undefined) {
+            state.torcheUntil = p.torcheLeft > 0 ? (state.time || 0) + p.torcheLeft : null;
+          }
           // Stats de fin de partie : compteurs du joueur local, recus du
           // serveur autoritaire (le client ne simule ni le tir ni la coupe).
           if (p.stats) state.localStats = p.stats;

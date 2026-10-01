@@ -138,6 +138,7 @@
     zombieMode: "attack",
     waveMsgTimer: 0,
     hordeMsgTimer: 0,
-    time: 0
+    time: 0,
+    torcheUntil: null   // instant (state.time) de fin de l'effet torche
   };
 })();

@@ -35,6 +35,13 @@
     return true;
   }
 
+  // Torche : declenchee au clic d'un poteau (solo) ou par le snapshot serveur
+  // (en ligne, champ torcheUntil par joueur). Vision x5 pendant TORCHE_TIME s.
+  G.equipTorche = function () {
+    var state = G.state;
+    state.torcheUntil = (state.time || 0) + (G.TORCHE_TIME || 60);
+    if (G.addFloater) G.addFloater("Torche");
+  };
   function update(dt) {
     var state = G.state;
     state.time += dt;

@@ -169,6 +169,9 @@
     },
     montgolfiere: {
       idle: { src: "assets/sprites/montgolfiere/idle.png", w: 96, h: 96 }
+    },
+    torche: {
+      idle: { src: "assets/sprites/torche/idle.png", w: 24, h: 48 }
     }
   };
   // Sonde les maisons house/H1.png, H2.png, ... jusqu'au premier fichier
