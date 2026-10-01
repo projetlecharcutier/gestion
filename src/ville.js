@@ -36,7 +36,7 @@
   // la geometrie du filtre de sol change (le losange L1 -> carre d'emprise
   // a fixe le bas du PNG ignore). ville-sync regenere les grilles stockees
   // quand cette version differe de celle encodee dans ville-grids.json.
-  G.VILLE_GRID_VERSION = 7;
+  G.VILLE_GRID_VERSION = 8;
 
   // Hauteur d'une bande de rendu (px image). Les bandes doivent rester
   // fines pour une occlusion precise du joueur par les façades.
@@ -217,7 +217,11 @@
     var oy = Math.floor(minWy / cell) * cell;
     var cols = Math.ceil((maxWx - ox) / cell) + 1;
     var rows = Math.ceil((maxWy - oy) / cell) + 1;
-    if (cols <= 0 || rows <= 0 || cols * rows > 4 * 1024 * 1024) return null;
+    // Plafond de cellules : une grande ville (Minas 667x682 -> emprise 1334)
+    // couvre ~16,5 M de cellules de 1 px ; l'ancien plafond de 4 M la rejetait
+    // SILENCIEUSEMENT (aucune collision, aucun effet au clic). 25 M = ~25 Mo
+    // de Uint8Array, calcule UNE fois au chargement.
+    if (cols <= 0 || rows <= 0 || cols * rows > 25 * 1024 * 1024) return null;
     var data = new Uint8Array(cols * rows);
     // ECHANTILLONNAGE INVERSE : pour chaque cellule monde de la BBOX de la
     // grille (projection ecran du PNG ENTIER, y compris l'elevation), on
