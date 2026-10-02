@@ -126,7 +126,6 @@ G.drawGround = function () {
         c3 = G.proj(G.TOWN_MAX, G.TOWN_MAX), c4 = G.proj(G.TOWN_MIN, G.TOWN_MAX);
     G.fillPoly([c1, c2, c3, c4], null, tx_.border);
 
-    if (G.drawRivieresChemins) G.drawRivieresChemins();
     G.drawPaths();
   };
 
@@ -243,83 +242,9 @@ G.drawGround = function () {
       // Pas de jaune sous les forêts (éléments naturels, pas des bâtiments).
       if (b.isForet) continue;
       // Halo externe translucide, plus large (bord degradé "usé").
-      drawPathBlob(b, 1.18, 0.35, G.CHEMIN_HALO || "#e8d99a");
+      drawPathBlob(b, 1.18, 0.35, "#e8d99a");
       // Blob interne plein.
-      drawPathBlob(b, 1, 1, G.CHEMIN_COLOR || "#fffabc");
-    }
-  };
-
-  // Réseau rivières + chemins + ponts (src/rivieres.js). Les polylines sont
-  // déjè lissées (Catmull-Rom échantillonné) : il suffit de les suivre avec
-  // lineTo — les points sont assez denses pour une courbe parfaite. Le tracé
-  // est fait en coordonnées ÉCRAN (projection de chaque point) : la largeur
-  // est en px écran (finesse garantie quel que soit le zoom), ordre : rivières
-  // d'abord (sous tout), puis chemins, puis ponts par-dessus la rivière.
-  function tracePolyline(ctx, pts, width, color) {
-    if (!pts || pts.length < 2) return;
-    ctx.beginPath();
-    var p0 = G.proj(pts[0].x, pts[0].y);
-    ctx.moveTo(p0[0], p0[1]);
-    for (var i = 1; i < pts.length; i++) {
-      var pi = G.proj(pts[i].x, pts[i].y);
-      ctx.lineTo(pi[0], pi[1]);
-    }
-    ctx.lineWidth = width;
-    ctx.strokeStyle = color;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.stroke();
-  }
-
-  G.drawRivieresChemins = function () {
-    var state = G.state;
-    var ctx = G.ctx;
-    var z = state.zoom;
-    if (!state.rivieres && !state.chemins) return;
-    var bnds = G.visibleWorldBounds();
-    function visible(pts) {
-      for (var i = 0; i < pts.length; i += 4) {
-        var p = pts[i];
-        if (p.x >= bnds.minX && p.x <= bnds.maxX && p.y >= bnds.minY && p.y <= bnds.maxY) return true;
-      }
-      return false;
-    }
-    // Rivières : largeur écran = largeur monde * 0.5 (le rapport iso rend
-    // une diagonale ~0.7x) — plafonnée pour rester fine à petit zoom.
-    var rivW = Math.min(G.RIVIERE_W * z * 0.5, 24);
-    var rivs = state.rivieres || [];
-    for (var r = 0; r < rivs.length; r++) {
-      if (!visible(rivs[r].pts)) continue;
-      tracePolyline(ctx, rivs[r].pts, rivW, G.RIVIERE_COLOR);
-    }
-    // Chemins : deux passes (halo usé + cœur), plus fins que les rivières.
-    var chW = Math.min(G.CHEMIN_W * z * 0.5, 20);
-    var chs = state.chemins || [];
-    for (var c1 = 0; c1 < chs.length; c1++) {
-      if (!visible(chs[c1].pts)) continue;
-      ctx.globalAlpha = 0.35;
-      tracePolyline(ctx, chs[c1].pts, chW * 1.35, G.CHEMIN_HALO);
-      ctx.globalAlpha = 1;
-      tracePolyline(ctx, chs[c1].pts, chW, G.CHEMIN_COLOR);
-    }
-    // Ponts : petites planches grises perpendiculaires à la rivière (donc
-    // alignées avec le chemin) au point de croisement, posées SOUS le tracé
-    // du chemin pour une jonction sans couture.
-    var pts3 = state.ponts || [];
-    for (var pt = 0; pt < pts3.length; pt++) {
-      var pp = pts3[pt];
-      var sp = G.proj(pp.x, pp.y);
-      var len = Math.sqrt(pp.dx * pp.dx + pp.dy * pp.dy) || 1;
-      var dirX = pp.dx / len, dirY = pp.dy / len;
-      var a = G.proj(pp.x - dirX * 30, pp.y - dirY * 30);
-      var bpt = G.proj(pp.x + dirX * 30, pp.y + dirY * 30);
-      ctx.beginPath();
-      ctx.moveTo(a[0], a[1]);
-      ctx.lineTo(bpt[0], bpt[1]);
-      ctx.lineWidth = rivW * 1.5;
-      ctx.strokeStyle = G.PONT_COLOR || "#9ca3af";
-      ctx.lineCap = "butt";
-      ctx.stroke();
+      drawPathBlob(b, 1, 1, "#fffabc");
     }
   };
 

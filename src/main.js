@@ -77,9 +77,8 @@
             // direction visee, independamment de la distance souris.
             p.lastDx = nx; p.lastDy = ny;
             if (nx < 0) p.face = -1; else if (nx > 0) p.face = 1;
-            var spd = G.playerSpeed ? G.playerSpeed() : G.SPEED;
-            var stepX = p.x + nx * spd * dt;
-            var stepY = p.y + ny * spd * dt;
+            var stepX = p.x + nx * G.SPEED * dt;
+            var stepY = p.y + ny * G.SPEED * dt;
             p.moving = G.tryMove(stepX, stepY);
           } else { p.moving = false; p.lastDx = 0; p.lastDy = 0; }
         } else { p.moving = false; p.lastDx = 0; p.lastDy = 0; }
@@ -150,8 +149,7 @@
             var pnx = pdx / pdist, pny = pdy / pdist;
             pp.lastDx = pnx; pp.lastDy = pny;
             if (pnx < 0) pp.face = -1; else if (pnx > 0) pp.face = 1;
-            var pspd = G.playerSpeed ? G.playerSpeed() : G.SPEED;
-            pp.moving = G.tryMove(pp.x + pnx * pspd * dt, pp.y + pny * pspd * dt);
+            pp.moving = G.tryMove(pp.x + pnx * G.SPEED * dt, pp.y + pny * G.SPEED * dt);
           } else { pp.moving = false; pp.lastDx = 0; pp.lastDy = 0; }
         } else { pp.moving = false; pp.lastDx = 0; pp.lastDy = 0; }
       } else {

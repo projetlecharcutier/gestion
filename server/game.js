@@ -27,7 +27,6 @@
   load("stats.js");
   load("projection.js");
   load("ville.js");
-  load("rivieres.js");
   load("world.js");
   load("flowfield.js");
   load("player.js");
@@ -800,9 +799,8 @@
           // direction visee, independamment de la distance souris.
           p.lastDx = nx; p.lastDy = ny;
           if (nx < 0) p.face = -1; else if (nx > 0) p.face = 1;
-          var spd = G.playerSpeed ? G.playerSpeed() : G.SPEED;
-          var stepX = p.x + nx * spd * dt;
-          var stepY = p.y + ny * spd * dt;
+          var stepX = p.x + nx * G.SPEED * dt;
+          var stepY = p.y + ny * G.SPEED * dt;
           // tryMove valide les collisions (bâtiments, arbres, murs).
           // tryMove valide les collisions (batiments, arbres, murs).
           withPlayer(p, {}, function () {
@@ -1382,10 +1380,7 @@
       // demarrage). Le client l'applique en PRIORITE sur le villes.js
       // statique : sur un depot en lecture seule, le fichier statique ne
       // peut pas etre regenere, mais la reseau transporte la version fraiche.
-      villes: (G.VILLE_MANIFEST && G.VILLE_MANIFEST.length) ? G.VILLE_MANIFEST : undefined,
-      // Réseau rivières/chemins/ponts (src/rivieres.js) : polylines compactes,
-      // le client les applique via G.applyRivieres (même rendu qu'en solo).
-      rivieres: (G.rivieresSnapshot && state.chemins) ? G.rivieresSnapshot() : undefined
+      villes: (G.VILLE_MANIFEST && G.VILLE_MANIFEST.length) ? G.VILLE_MANIFEST : undefined
     };
   }
 

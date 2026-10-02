@@ -77,4 +77,4 @@ setTimeout(function () {
       process.exit(ok ? 0 : 1);
     }, 8000);
   }, 15000);
-}, 4000);
+}, 1000);

@@ -19,4 +19,4 @@ setTimeout(function () {
     console.log("stderr serveur:", logs.join("").indexOf("ERR") >= 0 ? logs.join("").slice(0, 300) : "aucune");
     srv.kill(); process.exit(ok ? 0 : 1);
   }, 40000);
-}, 4000);
+}, 1000);

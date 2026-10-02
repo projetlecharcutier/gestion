@@ -201,9 +201,6 @@
         state.items = msg.map.items || [];
         G.rebuildBuildingGrid();
       }
-      // Réseau rivières/chemins/ponts généré par le serveur (en solo il est
-      // construit localement par buildWorld).
-      if (msg.map.rivieres && G.applyRivieres) G.applyRivieres(msg.map.rivieres);
       if (msg.clock !== undefined) G.state.clock = msg.clock;
       // La carte recue au "joined" est DEFINITIVE seulement si la partie
       // tournait deja (rejoindre une partie en cours). Sinon (premier joueur
@@ -254,7 +251,6 @@
         G.state.items = msg.map.items || [];
         G.rebuildBuildingGrid();
       }
-      if (msg.map.rivieres && G.applyRivieres) G.applyRivieres(msg.map.rivieres);
       if (msg.clock !== undefined) G.state.clock = msg.clock;
       G.state.gameOver = false;
       G.state.started = true;
