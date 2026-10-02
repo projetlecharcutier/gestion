@@ -100,9 +100,11 @@
       G.updateFauna(dt);
       G.updateChop(dt);
       G.updateFloaters(dt);
+      if (G.updateAnneauPoeme) G.updateAnneauPoeme(dt);
     } else {
       // Hors-ligne les floaters/chop ne tournent pas ; en ligne ils restent côté serveur.
       G.updateFloaters(dt);
+      if (G.updateAnneauPoeme) G.updateAnneauPoeme(dt);
       // Oiseaux : le snapshot (10 Hz) ne donne que position + direction ; on
       // extrapole en ligne droite entre deux snapshots pour un vol fluide a
       // 60 fps (rebonds et dégâts restent côté serveur). Sans vx/vy le sprite

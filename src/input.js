@@ -121,6 +121,7 @@
             G.netInput({ pickup: { x: Math.round(it.x), y: Math.round(it.y) } });
             // Message optimiste (le serveur valide et retire l'item du snapshot).
             if (G.addFloater) G.addFloater(it.name);
+            if (it.anneau && G.showAnneauPoeme) G.showAnneauPoeme();
           } else {
             it.taken = true;
             state.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });
@@ -128,6 +129,8 @@
             if (G.addFloater) G.addFloater(it.name);
             G.updateHud();
           }
+          // L'Anneau Unique declenche le poeme au ramassage (5 s, non bloquant).
+          if (it.anneau && G.showAnneauPoeme) G.showAnneauPoeme();
         }
         return;
       }

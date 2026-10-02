@@ -27,6 +27,7 @@
   load("stats.js");
   load("projection.js");
   load("ville.js");
+  load("anneau.js");
   load("world.js");
   load("flowfield.js");
   load("player.js");
@@ -634,6 +635,22 @@
         if (p.stats) p.stats.gold += 100;
         // Meme retour que le solo (sellRelic) : +100 or.
         pushEvent(p.id, { t: "msg", msg: "100 pièces d'or" });
+      }
+    }
+    // Vente de l'Anneau Unique au monastere (eglise) : +1000 or au coffre.
+    if (input.anneauSell) {
+      var aIdx = -1;
+      if (nearEglise(p)) {
+        for (var ai = 0; ai < p.bag.contents.length; ai++) {
+          if (p.bag.contents[ai].name === "Anneau unique") { aIdx = ai; break; }
+        }
+      }
+      if (aIdx >= 0) {
+        p.bag.contents.splice(aIdx, 1);
+        p.inventory = p.bag.contents.length;
+        state.mairieGold = (state.mairieGold || 0) + 1000;
+        if (p.stats) p.stats.gold += 1000;
+        pushEvent(p.id, { t: "msg", msg: "1000 pièces d'or" });
       }
     }
     // Équipement : un seul objet équipé à la fois.

@@ -285,6 +285,8 @@ G.drawGround = function () {
 
   G.drawItem = function (it) {
     if (it.taken) return;
+    // L'Anneau Unique a son propre rendu (anneau d'or scintillant).
+    if (it.anneau && G.drawAnneauUnique) { G.drawAnneauUnique(it); return; }
     var ctx = G.ctx;
     var t = G.TEXTURES.item;
     var s = G.proj(it.x, it.y);
@@ -1596,6 +1598,7 @@ G.drawGround = function () {
 
     G.drawProjectiles();
     G.drawFloaters();
+    if (G.drawAnneauPoeme) G.drawAnneauPoeme();
     G.drawFog();
     var darkness = G.nightDarkness(state.clock);
     if (darkness > 0) {

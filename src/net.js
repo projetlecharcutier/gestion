@@ -199,6 +199,11 @@
         state.walls = msg.map.walls || [];
         G.rebuildWallGrid();
         state.items = msg.map.items || [];
+        // L'Anneau Unique voyage sans son flag (serie compacte) : le client
+        // le retablit par nom pour le rendu et le poeme au ramassage.
+        for (var ani = 0; ani < state.items.length; ani++) {
+          if (state.items[ani].name === "Anneau unique") state.items[ani].anneau = true;
+        }
         G.rebuildBuildingGrid();
       }
       if (msg.clock !== undefined) G.state.clock = msg.clock;
@@ -249,6 +254,10 @@
         G.state.walls = msg.map.walls || [];
         G.rebuildWallGrid();
         G.state.items = msg.map.items || [];
+        // Flag de l'Anneau Unique retabli par nom (serie compacte sans flag).
+        for (var rsi = 0; rsi < G.state.items.length; rsi++) {
+          if (G.state.items[rsi].name === "Anneau unique") G.state.items[rsi].anneau = true;
+        }
         G.rebuildBuildingGrid();
       }
       if (msg.clock !== undefined) G.state.clock = msg.clock;
@@ -400,7 +409,13 @@
     // ([], tous les murs detruits) est bien envoye et traite ci-dessus.
     // Items : idem murs -- absents du snapshot = inchanges, on garde l'etat
     // local (le serveur ne les renvoie que sur mutation reelle).
-    if (s.items !== undefined) state.items = s.items;
+    if (s.items !== undefined) {
+      state.items = s.items;
+      // Flag de l'Anneau Unique retabli par nom (serie compacte sans flag).
+      for (var rani = 0; rani < state.items.length; rani++) {
+        if (state.items[rani].name === "Anneau unique") state.items[rani].anneau = true;
+      }
+    }
     state.projectiles = s.projectiles || [];
     state.birds = s.birds || [];
     // Animaux sauvages : etat serveur + extrapolation locale entre snapshots.

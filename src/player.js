@@ -464,6 +464,19 @@
         ? ("Reliques : " + relics.length)
         : "Aucune relique dans votre sac";
     }
+    // L'Anneau Unique est aussi vendable ici (monastere) pour 1000 or.
+    var anneauIdx = -1;
+    for (var ai = 0; ai < state.bag.contents.length; ai++) {
+      if (state.bag.contents[ai].name === "Anneau unique") { anneauIdx = ai; break; }
+    }
+    if (anneauIdx >= 0 && G.sellAnneau) {
+      var abtn = document.createElement("button");
+      abtn.type = "button";
+      abtn.className = "btn chest__item";
+      abtn.textContent = "Anneau unique  \u2014  Vendre (+" + G.ANNEAU_PRICE + " or)";
+      abtn.addEventListener("click", function () { G.sellAnneau(anneauIdx); });
+      list.appendChild(abtn);
+    }
     if (relics.length === 0) {
       var empty = document.createElement("p");
       empty.textContent = "(ramassez une relique puis revenez la vendre)";
