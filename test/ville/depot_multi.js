@@ -87,7 +87,7 @@ assert(r.names.indexOf("dup_exact") === -1 && r.names.indexOf("dup_renomme") ===
 assert(r.placed === 8, "8 villes uniques placees automatiquement (obtenu " + r.placed + ")");
 // Villes configurees au repo (VILLE_DEFS : est, laputa, minas) : elles ne
 // font pas partie des 8 villes UNIQUES deposees par ce test.
-var builtin = ["est", "laputa", "minas"];
+var builtin = ["est", "laputa", "minas", "camp_romain"];
 var names = r.names.filter(function (n) {
   return builtin.indexOf(n) === -1 && n.indexOf("dup") !== 0;
 });
