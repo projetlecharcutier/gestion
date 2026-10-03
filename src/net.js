@@ -199,10 +199,11 @@
         state.walls = msg.map.walls || [];
         G.rebuildWallGrid();
         state.items = msg.map.items || [];
-        // L'Anneau Unique voyage sans son flag (serie compacte) : le client
-        // le retablit par nom pour le rendu et le poeme au ramassage.
+        // Flags retablis par nom (serie compacte) : Anneau Unique (poeme)
+        // et Glaive en or (camp romain).
         for (var ani = 0; ani < state.items.length; ani++) {
           if (state.items[ani].name === "Anneau unique") state.items[ani].anneau = true;
+          if (state.items[ani].name === "Glaive en or") state.items[ani].glaive = true;
         }
         G.rebuildBuildingGrid();
       }
@@ -254,9 +255,10 @@
         G.state.walls = msg.map.walls || [];
         G.rebuildWallGrid();
         G.state.items = msg.map.items || [];
-        // Flag de l'Anneau Unique retabli par nom (serie compacte sans flag).
+        // Flags retablis par nom : Anneau Unique et Glaive en or.
         for (var rsi = 0; rsi < G.state.items.length; rsi++) {
           if (G.state.items[rsi].name === "Anneau unique") G.state.items[rsi].anneau = true;
+          if (G.state.items[rsi].name === "Glaive en or") G.state.items[rsi].glaive = true;
         }
         G.rebuildBuildingGrid();
       }
@@ -411,15 +413,19 @@
     // local (le serveur ne les renvoie que sur mutation reelle).
     if (s.items !== undefined) {
       state.items = s.items;
-      // Flag de l'Anneau Unique retabli par nom (serie compacte sans flag).
+      // Flags retablis par nom (serie compacte sans flags) : Anneau Unique
+      // (poeme au ramassage) et Glaive en or (rendu special camp romain).
       for (var rani = 0; rani < state.items.length; rani++) {
         if (state.items[rani].name === "Anneau unique") state.items[rani].anneau = true;
+        if (state.items[rani].name === "Glaive en or") state.items[rani].glaive = true;
       }
     }
     state.projectiles = s.projectiles || [];
     state.birds = s.birds || [];
     // Animaux sauvages : etat serveur + extrapolation locale entre snapshots.
     state.fauna = s.fauna || [];
+    // Soldats romains du camp : etat serveur (autorite), le client affiche.
+    if (s.soldats) state.soldats = s.soldats;
     // Traces de zombies morts : gerees cote serveur (autorite). Le client ne
     // fait que les afficher (rendu juste au-dessus du fond).
     if (s.deadTraces) state.deadTraces = s.deadTraces;

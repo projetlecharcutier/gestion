@@ -464,6 +464,21 @@
         ? ("Reliques : " + relics.length)
         : "Aucune relique dans votre sac";
     }
+    // Le Glaive en or du camp romain est vendable ici pour 500 or.
+    var glaiveIdx = -1;
+    for (var gi = 0; gi < state.bag.contents.length; gi++) {
+      if (state.bag.contents[gi].name === "Glaive en or") { glaiveIdx = gi; break; }
+    }
+    if (glaiveIdx >= 0 && G.sellGlaive) {
+      var gbtn = document.createElement("button");
+      gbtn.type = "button";
+      gbtn.className = "btn chest__item";
+      gbtn.textContent = "Glaive en or  \u2014  Vendre (+" + G.GLAIVE_PRICE + " or)";
+      gbtn.addEventListener("click", (function (idx) {
+        return function () { G.sellGlaive(idx); };
+      })(glaiveIdx));
+      list.appendChild(gbtn);
+    }
     // L'Anneau Unique est aussi vendable ici (monastere) pour 1000 or.
     var anneauIdx = -1;
     for (var ai = 0; ai < state.bag.contents.length; ai++) {

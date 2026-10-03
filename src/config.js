@@ -328,7 +328,10 @@
     // (transparent) tant que le pixel art n'est pas pose ; les dossiers
     // assets/sprites/ville/laputa/ et /minas/ sont DETECTES automatiquement.
     { name: "Laputa", sprite: "laputa", x: 4500, y: 4500 },
-    { name: "Minas", sprite: "minas", x: 15500, y: 15500 }
+    { name: "Minas", sprite: "minas", x: 15500, y: 15500 },
+    // Camp romain : sud-ouest de la carte, garde par 50 legionnaires
+    // (src/soldats.js). PNG optionnel : assets/sprites/ville/camp_romain/.
+    { name: "Camp romain", sprite: "camp_romain", x: 4500, y: 15500 }
   ];
   // Placement automatique des nouvelles villes DETECTEES par le serveur
   // (ville-sync.js) : distance au centre de la ville principale. Les

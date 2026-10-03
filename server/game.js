@@ -28,6 +28,7 @@
   load("projection.js");
   load("ville.js");
   load("anneau.js");
+  load("soldats.js");
   load("world.js");
   load("flowfield.js");
   load("player.js");
@@ -637,6 +638,22 @@
         pushEvent(p.id, { t: "msg", msg: "100 pièces d'or" });
       }
     }
+    // Vente du Glaive en or (camp romain) au monastere : +500 or.
+    if (input.glaiveSell) {
+      var gIdx = -1;
+      if (nearEglise(p)) {
+        for (var gj = 0; gj < p.bag.contents.length; gj++) {
+          if (p.bag.contents[gj].name === "Glaive en or") { gIdx = gj; break; }
+        }
+      }
+      if (gIdx >= 0) {
+        p.bag.contents.splice(gIdx, 1);
+        p.inventory = p.bag.contents.length;
+        state.mairieGold = (state.mairieGold || 0) + 500;
+        if (p.stats) p.stats.gold += 500;
+        pushEvent(p.id, { t: "msg", msg: "500 pièces d'or" });
+      }
+    }
     // Vente de l'Anneau Unique au monastere (eglise) : +1000 or au coffre.
     if (input.anneauSell) {
       var aIdx = -1;
@@ -1068,6 +1085,7 @@
       zPrev.push(state.zombies[zpi].x + "," + state.zombies[zpi].y);
     }
     G.updateZombies(dt);
+    if (G.updateSoldats) { G.updateSoldats(dt); G.cleanupSoldats(); }
     // Velocite effective de chaque zombie (position actuelle - precedente).
     // Les morts (hp <= 0) ne bougent plus : velocite nulle.
     for (var zvi = 0; zvi < state.zombies.length && zvi < zPrev.length; zvi++) {
@@ -1225,6 +1243,9 @@
       }),
       projectiles: state.projectiles.filter(inRange).map(function (pr) {
         return { x: Math.round(pr.x), y: Math.round(pr.y), vx: pr.vx, vy: pr.vy, color: pr.color, type: pr.type, size: pr.size, trail: pr.trail || [] };
+      }),
+      soldats: (state.soldats || []).map(function (s) {
+        return { x: Math.round(s.x), y: Math.round(s.y), vx: +(s.vx || 0).toFixed(2), vy: +(s.vy || 0).toFixed(2), hp: s.hp };
       }),
       fauna: state.fauna.map(function (a) {
         return { type: a.type, x: Math.round(a.x), y: Math.round(a.y), vx: Math.round(a.vx), vy: Math.round(a.vy), hp: a.hp };

@@ -156,6 +156,17 @@
                 if (b.hp <= 0 && G.birdDrop) G.birdDrop(b.x, b.y);
             }
         }
+        // Soldats romains du camp : fragiles, tues par l'explosion aussi.
+        var soldats = state.soldats || [];
+        for (var si2 = 0; si2 < soldats.length; si2++) {
+            var sd = soldats[si2];
+            if (sd.hp <= 0) continue;
+            var sdx2 = sd.x - x, sdy2 = sd.y - y;
+            if (Math.sqrt(sdx2 * sdx2 + sdy2 * sdy2) <= r) {
+                sd.hp -= dmg;
+                sd.hitFlash = 0.25;
+            }
+        }
         // Animaux sauvages : l'explosion les tue aussi dans le rayon.
         for (var ai = 0; ai < (state.fauna || []).length; ai++) {
             var aa = state.fauna[ai];
@@ -323,6 +334,27 @@
                 }
             }
 
+            // 2c. Collisions avec les Soldats romains : fragiles, un tir
+            // au projectile suffit. Les flèches de tour les ignorent.
+            if (!shouldDestroy && pr.owner !== "tour" && state.soldats) {
+                for (var soi = 0; soi < state.soldats.length; soi++) {
+                    var so2 = state.soldats[soi];
+                    if (so2.hp <= 0 || pr.hitEntities.indexOf(so2) !== -1) continue;
+                    var sodx = pr.x - so2.x, sody = pr.y - so2.y;
+                    if (Math.sqrt(sodx * sodx + sody * sody) < 14) {
+                        so2.hp -= pr.dmg;
+                        so2.hitFlash = 0.25;
+                        pr.hitEntities.push(so2);
+                        if (pr.piercing && pr.pierceCount > 0) {
+                            pr.pierceCount--;
+                            if (pr.pierceCount <= 0) shouldDestroy = true;
+                        } else {
+                            shouldDestroy = true;
+                        }
+                        break;
+                    }
+                }
+            }
             // 2b. Collisions avec les Animaux sauvages (cerf, cochon, vache,
             // mouton) : tués par les projectiles, droppent de la Nourriture.
             // Les flèches de tour les ignorent (cible : zombies uniquement).

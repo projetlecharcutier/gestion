@@ -60,7 +60,7 @@
         state.elapsed += dt;
         state.clock += (12 / G.DAY_SECONDS) * G.TIME_SCALE * dt;
         if (state.clock >= 24) { state.clock -= 24; state.day += 1; }
-        if (state.day !== state.lastDay) { G.regenForets(); G.spawnNightReliques(); G.repopFauna(); state.lastDay = state.day; }
+        if (state.day !== state.lastDay) { G.regenForets(); G.spawnNightReliques(); G.repopFauna(); if (G.repopSoldats) G.repopSoldats(); state.lastDay = state.day; }
       }
       if (!state.gameOver) G.updateZombies(dt);
       if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.churchOpen && !state.gameOver) {
@@ -98,6 +98,8 @@
       G.updateBirds(dt);
       G.cleanupFauna();
       G.updateFauna(dt);
+      if (G.updateSoldats) G.updateSoldats(dt);
+      if (G.cleanupSoldats) G.cleanupSoldats();
       G.updateChop(dt);
       G.updateFloaters(dt);
       if (G.updateAnneauPoeme) G.updateAnneauPoeme(dt);

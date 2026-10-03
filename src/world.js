@@ -716,6 +716,10 @@
     // L'Anneau Unique : pose sur la tache #5a944a la plus au nord du PNG de
     // Minas, apres toute la generation (jamais deplace, position constante).
     if (G.placeAnneauUnique) G.placeAnneauUnique(state);
+    // Camp romain : les 50 legionnaires patrouillent autour, et le glaive
+    // d'or est pose au milieu du camp (vendable 500 or a l'eglise).
+    if (G.spawnSoldats) G.spawnSoldats(state);
+    if (G.placeGlaiveOr) G.placeGlaiveOr(state);
     // La generation aleatoire des forets peut refermer des enclaves : retire
     // les massifs qui enferment des poches inaccessibles, pour que chaque
     // point de spawn hors ville garde un chemin vers la palissade.

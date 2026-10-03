@@ -287,6 +287,8 @@ G.drawGround = function () {
     if (it.taken) return;
     // L'Anneau Unique a son propre rendu (anneau d'or scintillant).
     if (it.anneau && G.drawAnneauUnique) { G.drawAnneauUnique(it); return; }
+    // Le Glaive en or du camp romain : epee doree plantee au sol.
+    if (it.glaive && G.drawGlaiveOr) { G.drawGlaiveOr(it); return; }
     var ctx = G.ctx;
     var t = G.TEXTURES.item;
     var s = G.proj(it.x, it.y);
@@ -1546,6 +1548,14 @@ G.drawGround = function () {
         drawables.push({ depth: fa.x + fa.y, type: "fauna", ref: fa });
       }
     }
+    // Soldats romains du camp : tries comme les autres entites au sol.
+    if (state.soldats && G.drawSoldat) {
+      for (var soi = 0; soi < state.soldats.length; soi++) {
+        var so = state.soldats[soi];
+        if (so.hp <= 0) continue;
+        drawables.push({ depth: so.x + so.y, type: "soldat", ref: so });
+      }
+    }
     // Autres joueurs (multijoueur) : affichés comme le joueur local.
     if (state.remotePlayers) {
       for (var rpi = 0; rpi < state.remotePlayers.length; rpi++) {
@@ -1575,6 +1585,7 @@ G.drawGround = function () {
       else if (d.type === "zombie") G.drawZombie(d.ref);
       else if (d.type === "bird") G.drawBird(d.ref);
       else if (d.type === "fauna") G.drawFauna(d.ref);
+      else if (d.type === "soldat") G.drawSoldat(d.ref);
       else if (d.type === "player") G.drawRemotePlayer(d.ref);
       else if (d.type === "ville") G.drawVilleBand(d.ref.v, d.ref.band, d.ref.entry);
     }
