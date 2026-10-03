@@ -58,10 +58,11 @@ G.FOG_RADIUS = 300;
 
 G.drawFog();
 
-// 1) Le fond fog est rempli une fois en source-over avec l'alpha max (0.97)
+// 1) Le fond fog est rempli une fois en source-over avec l'alpha max (1.0,
+// brouillard fonce : opaque au loin).
 var fills = fogStore.filter(function (c) { return c[1] === "fillRect"; });
 assert(fills.length === 3, "1 remplissage fond + 2 trous (obtenu " + fills.length + " fillRect)");
-assert(fills[0][2] === "source-over" && String(fills[0][3]).indexOf("0.97") >= 0, "fond fog alpha 0.97 en source-over");
+assert(fills[0][2] === "source-over" && /,1\)$|,1\)/.test(String(fills[0][3])), "fond fog alpha 1 en source-over");
 // 2) Les 2 trous (joueur + tour construite) en destination-out : cumulatif
 assert(fills[1][2] === "destination-out" && fills[2][2] === "destination-out", "trous en destination-out (union)");
 // 3) Les gradients de trou reprennent la courbe TEXTURES.fog.stops inverses

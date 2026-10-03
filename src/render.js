@@ -1287,10 +1287,10 @@ G.drawGround = function () {
     var mx = mairie.x + mairie.w / 2, my = mairie.y + mairie.h / 2;
     var dx = mx - p.x, dy = my - p.y;
     var ang = Math.atan2(dy, dx);
-    // A gauche de la minimap agrandie (528x264, pointe droite a W-40) :
+    // A gauche de la minimap agrandie (792x396, pointe droite a W-40) :
     // la boussole reste en bas a droite mais hors du losange, sinon elle
-    // est recouverte par la carte 4x.
-    var cx = W - 40 - 528 - 56, cy = H - 56;
+    // est recouverte par la carte.
+    var cx = W - 40 - 792 - 56, cy = H - 56;
     var r = 32;
     ctx.save();
     // Fond de la boussole.
@@ -1332,10 +1332,11 @@ G.drawGround = function () {
   };
 
   // Mini-carte globale : losange en bas a droite, a gauche de la boussole.
-  // Vue de dessus (plan monde), basse definition : le rectangle jouable
-  // [0, WORLD]^2 est projete dans le losange iso (proportion 2:1) pour
-  // rappeler l'orientation du terrain vu a l'ecran. Le joueur y est un
-  // point blanc, la mairie un point rouge, la ville un rectangle plus
+  // Vue de dessus (plan monde) en VERITABLE projection iso (comme le jeu :
+  // sx = (x-y)/2, sy = (x+y)/4) : le monde ENTIER [0,WORLD]^2 tient
+  // exactement dans le losange -- aucune region de la carte n'est coupee
+  // (l'ancienne projection rectangle-rogne perdait les coins). Le joueur y
+  // est un point blanc, la mairie un point rouge, la ville un rectangle plus
   // clair, les forets non epuisees des points verts et les villes PNG
   // decoratives des rectangles gris.
   G.drawMinimap = function () {
@@ -1346,10 +1347,18 @@ G.drawGround = function () {
     // 4x plus grande (132x66 -> 528x264) pour distinguer les villes PNG
     // (Laputa/Minas). Ancree en bas a droite : pointe droite et pointe bas
     // a 40 px des bords de l'ecran.
-    var mw = 528, mh = 264;
+    // 2x plus grand qu'avant (528 -> 792 px de large) pour lire les villes
+    // PNG (Laputa, Minas, Camp romain). Le losange iso fait exactement
+    // mw x mw/2 : hauteur = largeur / 2.
+    var mw = 792, mh = mw / 2;
     var cx = W - 40 - mw / 2, cy = H - 40 - mh / 2;
     var w0 = cx - mw / 2, h0 = cy - mh / 2;
-    var s = mw / G.WORLD;
+    // Projection iso monde -> minimap : le monde ENTIER tient dans le
+    // losange. sx = (x-y)/2 etendu sur mw, sy = (x+y)/4 etendu sur mh.
+    // A l'ecran : (0,0) -> pointe nord, (WORLD,WORLD) -> pointe sud,
+    // (WORLD,0) -> pointe est, (0,WORLD) -> pointe ouest.
+    var sX = mw / G.WORLD;     // echelle horizontale : (x-y) / 2 sur [0,WORLD]
+    var sY = mh / G.WORLD;     // echelle verticale : (x+y) / 4 sur [0,WORLD]
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(w0, cy);
@@ -1363,18 +1372,30 @@ G.drawGround = function () {
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.clip();
-    function toMap(x, y) { return [w0 + x * s, h0 + y * s]; }
-    // Ville (TOWN_MIN..TOWN_MAX) : rectangle plus clair.
-    var t1 = toMap(G.TOWN_MIN, G.TOWN_MIN), t2 = toMap(G.TOWN_MAX, G.TOWN_MAX);
-    ctx.fillStyle = "rgba(148,163,184,0.35)";
-    ctx.fillRect(t1[0], t1[1], t2[0] - t1[0], t2[1] - t1[1]);
-    // Villes PNG decoratives.
+    function toMap(x, y) {
+      return [w0 + ((x - y) / 2 + G.WORLD / 2) * sX,
+              h0 + ((x + y) / 4) * sY * 2];
+    }
+    // Ville (TOWN_MIN..TOWN_MAX) : losange iso plus clair.
+    function fillLosange(x, y, w, h, fill) {
+      var a = toMap(x, y), b = toMap(x + w, y),
+          c = toMap(x + w, y + h), d = toMap(x, y + h);
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.moveTo(a[0], a[1]);
+      ctx.lineTo(b[0], b[1]);
+      ctx.lineTo(c[0], c[1]);
+      ctx.lineTo(d[0], d[1]);
+      ctx.closePath();
+      ctx.fill();
+    }
+    fillLosange(G.TOWN_MIN, G.TOWN_MIN, G.TOWN, G.TOWN, "rgba(148,163,184,0.35)");
+    // Villes PNG decoratives : losanges iso (l'ancien fillRect couvrait une
+    // zone fausse depuis la projection iso et se chevauchaient).
     if (state.villes) {
-      ctx.fillStyle = "rgba(148,163,184,0.5)";
       for (var vi = 0; vi < state.villes.length; vi++) {
         var vv = state.villes[vi];
-        var v1 = toMap(vv.x, vv.y), v2 = toMap(vv.x + vv.w, vv.y + vv.h);
-        ctx.fillRect(v1[0], v1[1], Math.max(1, v2[0] - v1[0]), Math.max(1, v2[1] - v1[1]));
+        fillLosange(vv.x, vv.y, vv.w, vv.h, "rgba(148,163,184,0.5)");
       }
     }
     // Forets non epuisees : points verts 2x2 (lisible a la nouvelle echelle).

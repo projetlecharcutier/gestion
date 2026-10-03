@@ -8,8 +8,8 @@
     color: "2,6,23",
     stops: [
       { at: 0,   alpha: 0    },
-      { at: 0.6, alpha: 0.55  },
-      { at: 1,   alpha: 0.97  }
+      { at: 0.5, alpha: 0.75  },
+      { at: 1,   alpha: 1     }
     ]
   };
 })();
