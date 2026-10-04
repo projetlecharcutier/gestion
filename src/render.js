@@ -442,15 +442,16 @@ G.drawGround = function () {
       ctx.stroke();
     }
 
-    var door = G.proj(b.door.x, b.door.y);
     var dw = 12 * z * 0.25, dh = 26 * z * 0.25;
     if (dw < 3) dw = 3; if (dh < 6) dh = 6;
+    if (b.door) {
+    var door = G.proj(b.door.x, b.door.y);
     ctx.fillStyle = t.door.fill;
     ctx.fillRect(door[0] - dw / 2, door[1] - dh, dw, dh);
     ctx.strokeStyle = t.door.stroke;
     ctx.lineWidth = 1;
     ctx.strokeRect(door[0] - dw / 2, door[1] - dh, dw, dh);
-
+    }
     // Barre de vie de la mairie (uniquement si endommagée).
     if (b.isMairie && b.hp < b.maxHp) {
       var ratio = b.hp / b.maxHp;

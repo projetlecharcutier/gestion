@@ -187,6 +187,7 @@
       if (msg.map) {
         var state = G.state;
         state.buildings = msg.map.buildings || [];
+        _applyBuildingDoors(state.buildings);
         _applyHouseSprites(state.buildings);
         _applyForetsCollision(state.buildings);
         // Villes PNG : manifeste serveur prioritaire (positions fraiches
@@ -248,6 +249,7 @@
       G.state._execFocus = null;
       if (msg.map) {
         G.state.buildings = msg.map.buildings || [];
+        _applyBuildingDoors(G.state.buildings);
         _applyHouseSprites(G.state.buildings);
         _applyForetsCollision(G.state.buildings);
         _applyVilleManifest(msg.map.villes);
@@ -750,6 +752,16 @@
   // Maisons décoratives : le serveur n'envoie que le nom du sprite (H1, H2,
   // ...) — jamais l'objet sprite (côté serveur c'est un stub sans image qui
   // ferait drawImage(null)). On résout le PNG réel côté client.
+  // Le snapshot serveur ne serialise pas b.door (pas utile a la simulation).
+  // Le client le reconstruit a la reception : porte au milieu du bord sud,
+  // meme convention que G.makeBuilding cote generation locale.
+  function _applyBuildingDoors(buildings) {
+    for (var i = 0; i < buildings.length; i++) {
+      var b = buildings[i];
+      if (!b.door) b.door = { x: b.x + b.w / 2, y: b.y + b.h };
+    }
+  }
+
   function _applyHouseSprites(buildings) {
     for (var i = 0; i < buildings.length; i++) {
       var b = buildings[i];
