@@ -54,13 +54,17 @@
   // Mesure son propre dt : appelé depuis render() qui n'a pas de dt réel.
   var _last = null;
   G.updateCiel = function (dt) {
+    // Initialisation paresseuse : en mode serveur la carte arrive du réseau
+    // (pas de doBuild local), la couche ciel se remplit au premier rendu.
+    // [] est truthy en JS : tester la longueur, pas l'existence.
+    if (!G.state.ciel || G.state.ciel.length === 0) G.cielInit();
+    if (!G.state.ciel || G.state.ciel.length === 0) return;
     if (dt === undefined || dt === null) {
       var now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
       dt = _last === null ? 0.016 : Math.min(0.1, (now - _last) / 1000);
       _last = now;
     }
     var st = G.state;
-    if (!st.ciel) { G.cielInit(); return; }
     var W = viewW(), H = viewH();
     for (var i = 0; i < st.ciel.length; i++) {
       var c = st.ciel[i];

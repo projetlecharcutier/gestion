@@ -84,6 +84,11 @@
   // donc tout fonctionne sur un seul port : http://<ip>:<port>.
   var server = http.createServer(function (req, res) {
     var url = req.url.split("?")[0];
+    // Décodage %-encoded : les navigateurs demandent les PNG à espaces/accents
+    // (assets/sprites/elementdecord : "Abord rémalard-2.png", "CHAMP BLE.png"...)
+    // sous forme encodée ("Abord%20r%C3%A9malard-2.png"). Sans décodage, le
+    // fs.readFile échoue et renvoie 404 : le sprite ne s'affiche jamais.
+    try { url = decodeURIComponent(url); } catch (e) { /* URI mal formée : garde l'URL brute */ }
     if (url === "/") url = "/index.html";
     // Version deployee (affichee dans le menu d'accueil du client).
     if (url === "/version.json") {
