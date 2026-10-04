@@ -239,8 +239,10 @@ G.drawGround = function () {
     for (var bi = 0; bi < state.buildings.length; bi++) {
       var b = state.buildings[bi];
       if (b.x + b.w < bnds.minX || b.x > bnds.maxX || b.y + b.h < bnds.minY || b.y > bnds.maxY) continue;
-      // Pas de jaune sous les forêts (éléments naturels, pas des bâtiments).
-      if (b.isForet) continue;
+      // Pas de jaune sous les forêts ni sous les éléments de décor
+      // PNG (elementdecord) : éléments naturels/décoratifs, pas des
+      // bâtiments — seul le vert de la carte apparaît dessous.
+      if (b.isForet || b.decorSpriteName) continue;
       // Halo externe translucide, plus large (bord degradé "usé").
       drawPathBlob(b, 1.18, 0.35, "#e8d99a");
       // Blob interne plein.

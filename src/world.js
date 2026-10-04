@@ -218,6 +218,23 @@
     if (!G.SPRITES || !G.SPRITES.elementdecord) return;
     // Marge autour de la ville : les décors restent en campagne.
     var townPad = 160;
+    // Emprise VISUELLE d'un décor (rectangle écran à zoom 1) : la texture
+    // PNG est ancrée bas-centre sur le coin sud du losange et déborde vers
+    // le nord de sa hauteur (drawBuilding : dh = dw * h/w). Deux décors dont
+    // les AABB au sol ne se touchent pas peuvent quand même se recouvrir
+    // visuellement (moulin vs champ, éolienne vs buisson...). Le placement
+    // interdit tout chevauchement de ces rectangles entre décors.
+    function decorVisRect(bx, by, side, sp) {
+      var dw = side;
+      var dh = dw * (sp ? sp.h / sp.w : 1);
+      var cx = (bx - by) / 2;
+      var groundY = (bx + by) / 4 + side / 2;
+      return { x0: cx - dw / 2, x1: cx + dw / 2, y0: groundY - dh, y1: groundY };
+    }
+    function visRectsHit(a, b) {
+      return a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+    }
+    var visRects = [];
     for (var si = 0; si < G.DECOR_SPECS.length; si++) {
       var frame = G.DECOR_SPECS[si][0], mode = G.DECOR_SPECS[si][1], total = G.DECOR_SPECS[si][2];
       var sp = G.SPRITES.elementdecord[frame];
@@ -260,6 +277,14 @@
         // Bloquants : pas non plus sur la palissade ni près de la muraille.
         if (mode === "bloquant" && G.aabbHitsWalls &&
             G.aabbHitsWalls(bx, by, side, side, true)) continue;
+        // Chevauchement visuel avec les décors déjà posés : interdit.
+        var candRect = decorVisRect(bx, by, side, sp);
+        var hitsVis = false;
+        for (var vr = 0; vr < visRects.length; vr++) {
+          if (visRectsHit(candRect, visRects[vr])) { hitsVis = true; break; }
+        }
+        if (hitsVis) continue;
+        visRects.push(candRect);
         state.buildings.push(G.makeDecor(gx, gy, frame, mode));
         placed++;
       }
