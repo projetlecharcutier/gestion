@@ -1397,6 +1397,11 @@
           // Poteau de torche : le client retrouve le PNG torche/idle par
           // isTorche (pas de nom de frame a transmettre, serie unique).
           isTorche: b.isTorche || false,
+          // Élément de décor PNG (elementdecord) : le client retrouve le PNG
+          // par decorSpriteName (G.SPRITES.elementdecord[...]).
+          decorSpriteName: b.decorSpriteName || null,
+          decorPassable: b.decorPassable || false,
+          decorSous: b.decorSous || false,
           // Ne PAS serialiser l'objet sprite du serveur (stub sans image :
           // drawImage(null) cote client). Le client retrouve le PNG par nom
           // (G.SPRITES.house[houseSpriteName]) a la reception de la carte.

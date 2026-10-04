@@ -760,6 +760,9 @@
         b.houseSprite = G.SPRITES.house[name];
         b.height = b.houseSprite.h;
       }
+      // Élément de décor (elementdecord) : le serveur n'envoie que le nom,
+      // le sprite est déjà résolu par drawBuilding via G.SPRITES — rien à
+      // faire ici (pas d'objet sprite sérialisé à rattacher).
     }
   }
 

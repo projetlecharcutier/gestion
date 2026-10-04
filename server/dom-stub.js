@@ -83,6 +83,14 @@ function setupStub() {
     var slash = key.lastIndexOf("/");
     var ent = key.slice(0, slash);
     var frame = key.slice(slash + 1);
+    // Éléments de décor : les PNG sont sous trois sous-dossiers (bloquant/,
+    // Dessous/, nonbloquant/) et le client les stocke sous l'entité unique
+    // "elementdecord" avec la clé "<sous-dossier>/<nom>" (cf. DECOR_SPECS
+    // dans src/world.js et probeElementDecor dans src/assets.js).
+    if (key.indexOf("elementdecord/") === 0) {
+      ent = "elementdecord";
+      frame = key.slice("elementdecord/".length);
+    }
     // Parité client : probeForets (src/assets.js) charge les PNG du dossier
     // tree/ sous l'entité "foret", clés en minuscules, et le stade s0 tient
     // lieu de sprite de base quand foretN.png n'existe pas (clé "foretN").

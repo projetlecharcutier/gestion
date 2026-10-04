@@ -26,7 +26,7 @@ Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fo
 | 4 | `src/state.js` | État global + références DOM (canvas, HUD, écrans) | `state`, `canvas`, `ctx`, `hud*`, `startScreen`… |
 | 5 | `src/projection.js` | Projection iso monde↔écran, limites visibles, `inTown` | `proj`, `unproj`, `viewW/H`, `visibleWorldBounds`, `inTown` |
 | 6 | `src/ville.js` | Villes décoratives PNG (collisions par masque, rendu en bandes) | `villeSetup`, `aabbHitsVilles`, `villeAt`, `villeBlockNav`, `villeBands`, `drawVilleBand` |
-| 7 | `src/world.js` | Génération : bâtiments, mur de périmètre, objets, arbres | `buildWorld`, `makeBuilding`, `nearBuilding`, `buildPerimeterWall` |
+| 7 | `src/world.js` | Génération : bâtiments, mur de périmètre, objets, arbres, éléments de décor (`DECOR_SPECS` : bloquant = collision, nonbloquant = traversable, dessous = le joueur passe sous la texture, ex. éolienne ×10, cerf géant ×1, moulins ×20, buissons ×50, champs ×12 chacun) | `buildWorld`, `makeBuilding`, `makeDecor`, `spawnDecor`, `nearBuilding`, `buildPerimeterWall` |
 | 8 | `src/flowfield.js` | Flow field zombies : BFS vers la ville + flèche précalculée par cellule, connectivité des forêts | `rebuildNavGrid`, `navStep`, `navAngle`, `ensureForetConnectivity` |
 | 9 | `src/player.js` | Déplacement, collisions (bâtiments + planches posées), entrée bâtiment, soin hôpital, pause | `tryMove`, `aabbHitsBuildings`, `clampPlayer`, `enterBuilding`, `leaveBuilding`, `togglePause`, `tryHealAtHospital`, `hasGoldPiece` |
 | 10 | `src/walls.js` | Construction de planches/murs (Z + clic) + rotation + collisions + nettoyage murs détruits | `tryBuildWall`, `cleanupWalls`, `plankDims`, `rotatePlank`, `aabbHitsWalls` |
@@ -35,6 +35,7 @@ Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fo
 | 13 | `src/weapons.js` | Stats arme équipée, tir, déplacement projectiles | `equippedStats`, `handleShooting`, `updateProjectiles` |
 | 14 | `src/birds.js` | Oiseaux volants (drop or/planches) | `updateBirds`, `drawBirds` |
 | 14b | `src/fauna.js` | Animaux sauvages (cerf, cochon, vache, mouton : errent hors ville, tués par projectiles, droppent Nourriture, repop chaque matin pour maintenir 200 bêtes) | `spawnFaunaAll`, `updateFauna`, `cleanupFauna`, `repopFauna`, `faunaDrop` |
+| 14c | `src/ciel.js` | Couche ciel (nuages ×50 O→E, montgolfières ×20 toutes directions, oiseaux ×10 cap 250°, avions Porco ×5 cap 330° plus rapides) : purement visuelle, aucune collision, dessinée au-dessus de tout ; nuages toujours au-dessus des autres éléments du ciel ; sortie d'un bord = réapparition au bord opposé | `cielInit`, `updateCiel`, `drawCiel` |
 | 15 | `src/siege.js` | Tour de siège zombie (lente, 100 PV, attaque murs/ville) | `updateSiege`, `drawSiege` |
 | 16 | `src/zombies.js` | Vagues, groupes qui fusionnent, IA zombies (priorité : palissade > tour > mairie/joueur) | `spawnWave`, `mergeGroups`, `updateZombies`, `cleanupZombies` |
 | 17 | `src/bag.js` | Sac : disposition, rendu, clic équiper (armes & hache) | `bagLayout`, `handleBagClick`, `drawBag` |

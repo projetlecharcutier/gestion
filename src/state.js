@@ -107,6 +107,7 @@
     deadTraces: [],
     birds: [],
     fauna: [],
+    ciel: [],
     bag: { open: false, contents: [] },
     chest: [],
     chestOpen: false,

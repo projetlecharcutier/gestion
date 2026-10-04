@@ -125,6 +125,135 @@
     return b;
   };
 
+  // Élément de décor PNG (assets/sprites/elementdecord/) : objet de type
+  // bâtiment isDecor, exactement comme une forêt/maison.
+  //   mode "bloquant"    : collision normale (AABB zone opaque, shrinkToOpaque).
+  //   mode "nonbloquant" : decorPassable -> ignoré par aabbHitsBuildings
+  //                        (le joueur circule par-dessus), trié normalement.
+  //   mode "dessous"     : decorPassable ET decorSous -> le joueur passe SOUS
+  //                        la texture : dessiné après le joueur (depth max).
+  // Le PNG donne la taille (largeur * 2), comme pour les maisons/forêts.
+  G.makeDecor = function (x, y, frame, mode) {
+    var sp = (G.SPRITES && G.SPRITES.elementdecord && G.SPRITES.elementdecord[frame]) || null;
+    var side = sp ? sp.w * 2 : 96;
+    var b = {
+      x: x - side / 2, y: y - side / 2, w: side, h: side,
+      name: "Décor", msg: "", height: sp ? sp.h : 64,
+      isDecor: true, decorSpriteName: frame,
+      door: { x: x, y: y + side / 2 }
+    };
+    if (mode === "bloquant") {
+      if (sp) shrinkToOpaque(b, "elementdecord", frame);
+    } else {
+      b.decorPassable = true;
+      if (mode === "dessous") b.decorSous = true;
+    }
+    return b;
+  };
+  // Table de génération des éléments de décor : [dossier/nom PNG, mode, nombre].
+  // bloquant = collision ; nonbloquant = traversable, trié par profondeur ;
+  // dessous = traversable, le joueur passe sous la texture (éolienne, cerf).
+  // Exposée sur G : src/assets.js s'en sert pour charger les PNG clients.
+  G.DECOR_SPECS = [
+    ["Dessous/eolienne", "dessous", 10],
+    ["Dessous/certgeant", "dessous", 1],
+    ["bloquant/montagne", "bloquant", 2],
+    ["bloquant/moulin", "bloquant", 20],
+    ["bloquant/poulailler", "bloquant", 6],
+    ["bloquant/Sprite-0133", "bloquant", 2],
+    ["bloquant/Abord rémalard-2", "bloquant", 2],
+    ["bloquant/Abord rémalard-3", "bloquant", 10],
+    ["bloquant/citerne", "bloquant", 20],
+    ["bloquant/eglise brevedent", "bloquant", 2],
+    ["bloquant/fermepomme", "bloquant", 5],
+    ["bloquant/LE BOULAY", "bloquant", 1],
+    ["bloquant/Lisieux- eglise saint jacque", "bloquant", 2],
+    ["bloquant/deuxmaison", "bloquant", 1],
+    ["bloquant/maison de la serre", "bloquant", 1],
+    ["nonbloquant/buisson1", "nonbloquant", 50],
+    ["nonbloquant/buisson2", "nonbloquant", 50],
+    ["nonbloquant/Totoro", "nonbloquant", 2],
+    ["nonbloquant/Sprite-0120", "nonbloquant", 3],
+    ["nonbloquant/herbebotte", "nonbloquant", 20],
+    ["nonbloquant/cinema", "nonbloquant", 1],
+    ["nonbloquant/CIMETIERE", "nonbloquant", 1],
+    ["nonbloquant/LE BOULAY", "nonbloquant", 1],
+    ["nonbloquant/Panneaux solaires", "nonbloquant", 1],
+    // Champs (tous les PNG champ/CHAMP) : chacun au moins 10 fois.
+    ["nonbloquant/champ", "nonbloquant", 12],
+    ["nonbloquant/champ2", "nonbloquant", 12],
+    ["nonbloquant/champ3", "nonbloquant", 12],
+    ["nonbloquant/champ4", "nonbloquant", 12],
+    ["nonbloquant/champ5", "nonbloquant", 12],
+    ["nonbloquant/champ6", "nonbloquant", 12],
+    ["nonbloquant/champ7", "nonbloquant", 12],
+    ["nonbloquant/champ8", "nonbloquant", 12],
+    ["nonbloquant/champ9", "nonbloquant", 12],
+    ["nonbloquant/champ10", "nonbloquant", 12],
+    ["nonbloquant/champ11", "nonbloquant", 12],
+    ["nonbloquant/champ12", "nonbloquant", 12],
+    ["nonbloquant/champ13", "nonbloquant", 12],
+    ["nonbloquant/champ14", "nonbloquant", 12],
+    ["nonbloquant/champ15", "nonbloquant", 12],
+    ["nonbloquant/champ16", "nonbloquant", 12],
+    ["nonbloquant/CHAMP BLE", "nonbloquant", 12],
+    ["nonbloquant/CHAMP BLE 2", "nonbloquant", 12],
+    ["nonbloquant/CHAMP BLE E", "nonbloquant", 12],
+    ["nonbloquant/CHAMP FOIN", "nonbloquant", 12],
+    ["nonbloquant/CHAMP VACHE", "nonbloquant", 12]
+  ];
+  // Boîte (x, y, w, h) chevauche-t-elle un bâtiment existant (avec marge px) ?
+  function decorBoxHitsBuildings(state, bx, by, bw, bh, pad) {
+    for (var i = 0; i < state.buildings.length; i++) {
+      var ob = state.buildings[i];
+      if (bx < ob.x + ob.w + pad && bx + bw > ob.x - pad &&
+          by < ob.y + ob.h + pad && by + bh > ob.y - pad) return true;
+    }
+    return false;
+  }
+  // Pose tous les éléments de décor, hors de la ville (campagne), en évitant
+  // bâtiments, forêts, villes PNG et palissades. Tolérant : si les sprites du
+  // dossier elementdecord sont absents, rien n'est posé (comme les maisons).
+  G.spawnDecor = function (state) {
+    if (!G.SPRITES || !G.SPRITES.elementdecord) return;
+    // Marge autour de la ville : les décors restent en campagne.
+    var townPad = 160;
+    for (var si = 0; si < G.DECOR_SPECS.length; si++) {
+      var frame = G.DECOR_SPECS[si][0], mode = G.DECOR_SPECS[si][1], total = G.DECOR_SPECS[si][2];
+      var sp = G.SPRITES.elementdecord[frame];
+      if (!sp) continue;
+      var side = sp.w * 2;
+      var placed = 0, guard = 0;
+      // Garde plus large pour les gros éléments (l'église du Lisieux fait
+      // 800 px : trouver une place libre demande plus d'essais).
+      var maxGuard = total * (60 + side) + 400;
+      while (placed < total && guard < maxGuard) {
+        guard++;
+        // Position hors ville : un axe proche du bord aléatoire, l'autre libre.
+        var gx, gy;
+        if (Math.random() < 0.5) {
+          gx = Math.random() < 0.5 ? G.rand(80, G.TOWN_MIN - townPad) : G.rand(G.TOWN_MAX + townPad, G.WORLD - 80);
+          gy = G.rand(80, G.WORLD - 80);
+        } else {
+          gx = G.rand(80, G.WORLD - 80);
+          gy = Math.random() < 0.5 ? G.rand(80, G.TOWN_MIN - townPad) : G.rand(G.TOWN_MAX + townPad, G.WORLD - 80);
+        }
+        var bx = gx - side / 2, by = gy - side / 2;
+        if (bx < 60 || by < 60 || bx + side > G.WORLD - 60 || by + side > G.WORLD - 60) continue;
+        // Villes PNG : emprise visuelle interdite.
+        if (G.villeBoxHits && G.villeBoxHits(bx, by, side, side)) continue;
+        if (!G.villeBoxHits && G.villeAt && G.villeAt(gx, gy, side / 2)) continue;
+        // Écart avec les bâtiments/forêts : plus grand pour les bloquants.
+        var pad = mode === "bloquant" ? 6 : 2;
+        if (decorBoxHitsBuildings(state, bx, by, side, side, pad)) continue;
+        // Bloquants : pas non plus sur la palissade ni près de la muraille.
+        if (mode === "bloquant" && G.aabbHitsWalls &&
+            G.aabbHitsWalls(bx, by, side, side, true)) continue;
+        state.buildings.push(G.makeDecor(gx, gy, frame, mode));
+        placed++;
+      }
+    }
+  };
   G.nearBuilding = function (x, y, pad) {
     for (var i = 0; i < G.state.buildings.length; i++) {
       var b = G.state.buildings[i];
@@ -711,6 +840,9 @@
       }
     }
 
+    // Éléments de décor PNG (moulins, églises, champs, buissons...) :
+    // posés après les forêts pour les éviter, avant la grille de collisions.
+    G.spawnDecor(state);
     state.zombies = [];
     G.rebuildBuildingGrid();
     // L'Anneau Unique : pose sur la tache #5a944a la plus au nord du PNG de

@@ -414,6 +414,7 @@
       G.buildWorld();
       G.spawnBirds();
       G.spawnFaunaAll();
+      if (G.cielInit) G.cielInit();
       var p = state.player;
       p.x = G.WORLD / 2; p.y = G.WORLD / 2 + 140;
       var tries = 0;

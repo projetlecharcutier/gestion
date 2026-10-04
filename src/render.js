@@ -346,6 +346,10 @@ G.drawGround = function () {
     else if (b.isDecor && b.isTorche && G.hasSprite && G.hasSprite("torche", "idle")) {
       sprite = G.SPRITES.torche.idle; spriteEnt = "torche"; spriteKey = "idle";
     }
+    else if (b.isDecor && b.decorSpriteName && G.hasSprite("elementdecord", b.decorSpriteName)) {
+      sprite = G.SPRITES.elementdecord[b.decorSpriteName];
+      spriteEnt = "elementdecord"; spriteKey = b.decorSpriteName;
+    }
     else if (b.isDecor && b.houseSprite) sprite = b.houseSprite;
     else if (b.isMairie && G.hasSprite("building", "mairie")) { sprite = G.SPRITES.building.mairie; spriteEnt = "building"; spriteKey = "mairie"; }
     else if (b.isChurch && G.hasSprite("church", "church")) { sprite = G.SPRITES.church.church; spriteEnt = "church"; spriteKey = "church"; }
@@ -1464,6 +1468,9 @@ G.drawGround = function () {
       if (bld.isForet && (bld.foretStage || 0) > 0) {
         depth -= bld.foretStage * G.FORET_DEPTH_BIAS;
       }
+      // Décor "dessous" (éolienne, cerf géant) : le joueur passe SOUS la
+      // texture -> toujours dessiné après le joueur, quel que soit le tri.
+      if (bld.decorSous) depth = state.player.x + state.player.y + 200000;
       drawables.push({ depth: depth, type: "building", ref: bld });
     }
     for (var wi = 0; wi < state.walls.length; wi++) {
@@ -1637,6 +1644,11 @@ G.drawGround = function () {
       ctx.fillStyle = "rgba(" + G.NIGHT_DARK_COLOR + "," + darkness + ")";
       ctx.fillRect(0, 0, W, H);
     }
+    // Couche ciel (nuages, montgolfières, oiseaux, Porco) : au-dessus de
+    // TOUT, y compris l'obscurité de nuit — ces éléments sont dans le ciel,
+    // jamais masqués. Aucune collision, purement visuel côté client.
+    if (G.updateCiel) G.updateCiel();
+    if (G.drawCiel) G.drawCiel();
     G.drawCrosshair();
     G.drawBuildHint();
     G.drawChopProgress();

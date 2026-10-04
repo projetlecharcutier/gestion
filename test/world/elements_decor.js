@@ -1,0 +1,74 @@
+// Éléments de décor (assets/sprites/elementdecord/) : quotas exacts par
+// type (DECOR_SPECS), modes bloquant / nonbloquant / dessous, placement hors
+// ville et hors villes PNG, collisions conformes au mode.
+var game = require("../../server/game.js");
+var G = game.G;
+game.startGame();
+var st = G.state;
+function fail(msg) { console.log("FAIL: " + msg); process.exit(1); }
+
+var decors = st.buildings.filter(function (b) { return b.decorSpriteName; });
+var specs = G.DECOR_SPECS;
+
+// 1. Quotas : chaque spec doit être posée exactement le nombre demandé.
+for (var i = 0; i < specs.length; i++) {
+  var frame = specs[i][0], total = specs[i][2];
+  var n = 0;
+  for (var j = 0; j < decors.length; j++) if (decors[j].decorSpriteName === frame) n++;
+  if (n !== total) fail(frame + " : " + n + " posé(s), attendu " + total);
+}
+if (decors.length === 0) fail("aucun décor posé (sprites elementdecord absents ?)");
+
+// 2. Modes : bloquant = solide (pas decorPassable) ; nonbloquant =
+// decorPassable sans decorSous ; dessous = decorPassable + decorSous.
+for (var k = 0; k < decors.length; k++) {
+  var b = decors[k];
+  var spec = null;
+  for (var s = 0; s < specs.length; s++) if (specs[s][0] === b.decorSpriteName) { spec = specs[s]; break; }
+  if (!spec) fail("décor sans spec : " + b.decorSpriteName);
+  if (spec[1] === "bloquant" && b.decorPassable) fail(b.decorSpriteName + " bloquant mais passable");
+  if (spec[1] === "nonbloquant" && (!b.decorPassable || b.decorSous)) fail(b.decorSpriteName + " nonbloquant mal marqué");
+  if (spec[1] === "dessous" && (!b.decorPassable || !b.decorSous)) fail(b.decorSpriteName + " dessous mal marqué");
+  if (!b.isDecor) fail(b.decorSpriteName + " sans isDecor");
+}
+
+// 3. Placement : hors de la ville principale, hors des villes PNG, dans la
+// carte, et les bloquants ne chevauchent aucun autre bâtiment.
+for (var d = 0; d < decors.length; d++) {
+  var b2 = decors[d];
+  if (b2.x < 0 || b2.y < 0 || b2.x + b2.w > G.WORLD || b2.y + b2.h > G.WORLD)
+    fail(b2.decorSpriteName + " hors carte");
+  if (G.inTown(b2.x + b2.w / 2, b2.y + b2.h / 2))
+    fail(b2.decorSpriteName + " dans la ville principale");
+  if (G.villeBoxHits && G.villeBoxHits(b2.x, b2.y, b2.w, b2.h))
+    fail(b2.decorSpriteName + " dans une ville PNG");
+}
+for (var bl = 0; bl < decors.length; bl++) {
+  var bb = decors[bl];
+  if (bb.decorPassable) continue;
+  for (var ob = 0; ob < st.buildings.length; ob++) {
+    var o = st.buildings[ob];
+    if (o === bb || o.decorPassable) continue;
+    if (bb.x < o.x + o.w + 6 && bb.x + bb.w > o.x - 6 &&
+        bb.y < o.y + o.h + 6 && bb.y + bb.h > o.y - 6)
+      fail(bb.decorSpriteName + " (bloquant) chevauche un bâtiment");
+  }
+}
+
+// 4. Collisions joueur : bloquant bloque, passable laisse passer.
+var p = st.player;
+var bloq = null, pass = null, sous = null;
+for (var q = 0; q < decors.length; q++) {
+  if (!decors[q].decorPassable && !bloq) bloq = decors[q];
+  if (decors[q].decorPassable && !decors[q].decorSous && !pass) pass = decors[q];
+  if (decors[q].decorSous && !sous) sous = decors[q];
+}
+if (!bloq || !pass || !sous) fail("il faut au moins un décor de chaque mode");
+p.x = bloq.x + bloq.w / 2; p.y = bloq.y + bloq.h / 2;
+if (!G.aabbHitsBuildings(p.x, p.y)) fail("bloquant ne bloque pas le joueur");
+p.x = pass.x + pass.w / 2; p.y = pass.y + pass.h / 2;
+if (G.aabbHitsBuildings(p.x, p.y)) fail("nonbloquant bloque le joueur");
+p.x = sous.x + sous.w / 2; p.y = sous.y + sous.h / 2;
+if (G.aabbHitsBuildings(p.x, p.y)) fail("dessous bloque le joueur");
+
+console.log("ALL_OK");

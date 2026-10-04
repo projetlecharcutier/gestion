@@ -422,7 +422,9 @@
       }
     }
     function finish() { if (G.buildVilleGrids) G.buildVilleGrids(); _ready = true; if (onReady) onReady(); }
-    function afterSiege() { probeVilles(finish); }
+    function afterCiel() { probeVilles(finish); }
+    function afterDecor() { probeCiel(afterCiel); }
+    function afterSiege() { probeElementDecor(afterDecor); }
     function afterTraces() { probeDeadTraces(afterSiege); }
     function afterHouses() { probeForets(afterTraces); }
     function afterTours() { probeHouses(afterHouses); }
@@ -547,6 +549,56 @@
     }
     if (toLoad.length === 0) { onDone(); return; }
     for (var j = 0; j < toLoad.length; j++) loadOne(toLoad[j]);
+  }
+
+  // Sonde le dossier du ciel : assets/sprites/ciel/<nom>.png. Charge chaque
+  // PNG present sous G.SPRITES.ciel[<nom sans extension>] (nuage1, nuage2,
+  // montoglfiere, oiseau, PORCO...). Tolerant : dossier absent -> aucun sprite,
+  // la couche ciel reste vide et rien ne se dessine.
+  function probeCiel(onDone) {
+    G.SPRITES.ciel = {};
+    var keys = ["nuage1", "nuage2", "montoglfiere", "oiseau", "PORCO"];
+    var loaded = 0;
+    function done() { loaded++; if (loaded >= keys.length) onDone(); }
+    for (var i = 0; i < keys.length; i++) {
+      (function (k) {
+        var img = new Image();
+        img.onload = function () {
+          if (img.naturalWidth > 0) {
+            G.SPRITES.ciel[k] = { img: img, w: img.naturalWidth, h: img.naturalHeight };
+          }
+          done();
+        };
+        img.onerror = function () { done(); };
+        img.src = bust("assets/sprites/ciel/" + k + ".png");
+      })(keys[i]);
+    }
+  }
+
+  // Sonde les éléments de décor : assets/sprites/elementdecord/<dossier>/<nom>.png
+  // (bloquant/, Dessous/, nonbloquant/). La liste des fichiers vient de
+  // G.DECOR_SPECS (src/world.js) : une seule source de vérité pour les noms.
+  // Stocke sous G.SPRITES.elementdecord["<dossier>/<nom>"] (frame = chemin
+  // relatif sans extension), exactement comme le serveur (sprite-meta.json).
+  function probeElementDecor(onDone) {
+    G.SPRITES.elementdecord = {};
+    var specs = G.DECOR_SPECS || [];
+    var loaded = 0;
+    function done() { loaded++; if (loaded >= specs.length) onDone(); }
+    for (var i = 0; i < specs.length; i++) {
+      (function (frame) {
+        var img = new Image();
+        img.onload = function () {
+          if (img.naturalWidth > 0) {
+            G.SPRITES.elementdecord[frame] =
+              { img: img, w: img.naturalWidth, h: img.naturalHeight };
+          }
+          done();
+        };
+        img.onerror = function () { done(); };
+        img.src = bust("assets/sprites/elementdecord/" + frame + ".png");
+      })(specs[i][0]);
+    }
   }
 
   // Sonde les traces de zombies morts : assets/sprites/zomb/dead/deadzomb1.png,
