@@ -19,10 +19,16 @@
   var SCALES = { nuage: 3, montgolfiere: 4, oiseau: 2.5, porco: 2 };
   function sp(key) { return (G.SPRITES.ciel && G.SPRITES.ciel[key]) || null; }
   function rnd(a, b) { return a + Math.random() * (b - a); }
-  // Cap boussole (0° = nord, sens horaire) -> vecteur écran (y vers le bas).
+  // Cap boussole VISUEL à l'écran (0° = nord de l'écran, sens horaire,
+  // y écran vers le bas) -> vecteur MONDE équivalent. La projection iso
+  // donne dsx=(vx-vy)/2 et dsy=(vx+vy)/4 : en résolvant pour une direction
+  // écran (a, b) on obtient vx=a+2b, vy=2b-a, puis on normalise.
   function bearingVec(deg) {
     var r = deg * Math.PI / 180;
-    return [Math.sin(r), -Math.cos(r)];
+    var a = Math.sin(r), b = -Math.cos(r);
+    var vx = a + 2 * b, vy = 2 * b - a;
+    var n = Math.sqrt(vx * vx + vy * vy);
+    return [vx / n, vy / n];
   }
   function mk(kind, keys, speed, dir) {
     var key = keys[Math.floor(Math.random() * keys.length)];

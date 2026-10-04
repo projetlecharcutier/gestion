@@ -580,6 +580,57 @@
   // G.DECOR_SPECS (src/world.js) : une seule source de vérité pour les noms.
   // Stocke sous G.SPRITES.elementdecord["<dossier>/<nom>"] (frame = chemin
   // relatif sans extension), exactement comme le serveur (sprite-meta.json).
+  // Les sprites de champs (nonbloquant/champ*) posent au sol un aplat de
+  // couleur (jaune blé ou vert clair) qui masque le fond de carte : le joueur
+  // doit voir le vert habituel sous les éléments de décor. On rend donc
+  // transparentes les couleurs de remplissage dominantes jaunâtres de ces
+  // PNG, côté client uniquement (les fichiers ne sont pas modifiés, le
+  // rendu et les métas serveur gardent les mêmes dimensions).
+  function stripDecorGround(frame, img) {
+    if (!/^nonbloquant\/(champ|CHAMP)/.test(frame)) return img;
+    try {
+      var c = document.createElement("canvas");
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      var cx = c.getContext("2d");
+      cx.drawImage(img, 0, 0);
+      var d;
+      try { d = cx.getImageData(0, 0, c.width, c.height); }
+      catch (e) { return img; }
+      var px = d.data;
+      // Compte les couleurs opaques et retient les dominantes jaunâtres
+      // (r>g>b, clair) : aplat de sol à retirer.
+      var counts = {};
+      for (var i = 0; i < px.length; i += 4) {
+        if (px[i + 3] < 250) continue;
+        var k = px[i] + "," + px[i + 1] + "," + px[i + 2];
+        counts[k] = (counts[k] || 0) + 1;
+      }
+      var entries = [];
+      for (var key in counts) entries.push([key, counts[key]]);
+      entries.sort(function (a, b) { return b[1] - a[1]; });
+      var total = 0;
+      for (var e0 = 0; e0 < entries.length; e0++) total += entries[e0][1];
+      var fillKeys = {};
+      for (var e = 0; e < entries.length && e < 3; e++) {
+        var p = entries[e][0].split(",").map(Number);
+        if (entries[e][1] / total < 0.08) break;
+        // Jaune / paille clair (aplat de sol) : garde les épis orange
+        // (b très bas) et les bruns (r < 170) qui sont du dessin.
+        if (p[0] > 170 && p[1] > 140 && p[2] >= 40 && p[2] < 150 &&
+            p[0] >= p[1] && p[1] > p[2])
+          fillKeys[entries[e][0]] = true;
+      }
+      var removed = false;
+      for (var j = 0; j < px.length; j += 4) {
+        if (px[j + 3] < 250) continue;
+        var kk = px[j] + "," + px[j + 1] + "," + px[j + 2];
+        if (fillKeys[kk]) { px[j + 3] = 0; removed = true; }
+      }
+      if (!removed) return img;
+      cx.putImageData(d, 0, 0);
+      return c;
+    } catch (err) { return img; }
+  }
   function probeElementDecor(onDone) {
     G.SPRITES.elementdecord = {};
     var specs = G.DECOR_SPECS || [];
@@ -591,7 +642,7 @@
         img.onload = function () {
           if (img.naturalWidth > 0) {
             G.SPRITES.elementdecord[frame] =
-              { img: img, w: img.naturalWidth, h: img.naturalHeight };
+              { img: stripDecorGround(frame, img), w: img.naturalWidth, h: img.naturalHeight };
           }
           done();
         };

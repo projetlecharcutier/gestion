@@ -155,52 +155,52 @@
   // dessous = traversable, le joueur passe sous la texture (éolienne, cerf).
   // Exposée sur G : src/assets.js s'en sert pour charger les PNG clients.
   G.DECOR_SPECS = [
-    ["Dessous/eolienne", "dessous", 10],
-    ["Dessous/certgeant", "dessous", 1],
-    ["bloquant/montagne", "bloquant", 2],
-    ["bloquant/moulin", "bloquant", 20],
-    ["bloquant/poulailler", "bloquant", 6],
-    ["bloquant/Sprite-0133", "bloquant", 2],
-    ["bloquant/Abord rémalard-2", "bloquant", 2],
-    ["bloquant/Abord rémalard-3", "bloquant", 10],
-    ["bloquant/citerne", "bloquant", 20],
-    ["bloquant/eglise brevedent", "bloquant", 2],
-    ["bloquant/fermepomme", "bloquant", 5],
-    ["bloquant/LE BOULAY", "bloquant", 1],
-    ["bloquant/Lisieux- eglise saint jacque", "bloquant", 2],
-    ["bloquant/deuxmaison", "bloquant", 1],
-    ["bloquant/maison de la serre", "bloquant", 1],
-    ["nonbloquant/buisson1", "nonbloquant", 50],
-    ["nonbloquant/buisson2", "nonbloquant", 50],
-    ["nonbloquant/Totoro", "nonbloquant", 2],
-    ["nonbloquant/Sprite-0120", "nonbloquant", 3],
-    ["nonbloquant/herbebotte", "nonbloquant", 20],
-    ["nonbloquant/cinema", "nonbloquant", 1],
-    ["nonbloquant/CIMETIERE", "nonbloquant", 1],
-    ["nonbloquant/LE BOULAY", "nonbloquant", 1],
-    ["nonbloquant/Panneaux solaires", "nonbloquant", 1],
+    ["Dessous/eolienne", "dessous", 18],
+    ["Dessous/certgeant", "dessous", 2],
+    ["bloquant/montagne", "bloquant", 4],
+    ["bloquant/moulin", "bloquant", 32],
+    ["bloquant/poulailler", "bloquant", 10],
+    ["bloquant/Sprite-0133", "bloquant", 4],
+    ["bloquant/Abord rémalard-2", "bloquant", 4],
+    ["bloquant/Abord rémalard-3", "bloquant", 16],
+    ["bloquant/citerne", "bloquant", 30],
+    ["bloquant/eglise brevedent", "bloquant", 4],
+    ["bloquant/fermepomme", "bloquant", 8],
+    ["bloquant/LE BOULAY", "bloquant", 2],
+    ["bloquant/Lisieux- eglise saint jacque", "bloquant", 4],
+    ["bloquant/deuxmaison", "bloquant", 2],
+    ["bloquant/maison de la serre", "bloquant", 2],
+    ["nonbloquant/buisson1", "nonbloquant", 90],
+    ["nonbloquant/buisson2", "nonbloquant", 90],
+    ["nonbloquant/Totoro", "nonbloquant", 4],
+    ["nonbloquant/Sprite-0120", "nonbloquant", 6],
+    ["nonbloquant/herbebotte", "nonbloquant", 36],
+    ["nonbloquant/cinema", "nonbloquant", 2],
+    ["nonbloquant/CIMETIERE", "nonbloquant", 2],
+    ["nonbloquant/LE BOULAY", "nonbloquant", 2],
+    ["nonbloquant/Panneaux solaires", "nonbloquant", 2],
     // Champs (tous les PNG champ/CHAMP) : chacun au moins 10 fois.
-    ["nonbloquant/champ", "nonbloquant", 12],
-    ["nonbloquant/champ2", "nonbloquant", 12],
-    ["nonbloquant/champ3", "nonbloquant", 12],
-    ["nonbloquant/champ4", "nonbloquant", 12],
-    ["nonbloquant/champ5", "nonbloquant", 12],
-    ["nonbloquant/champ6", "nonbloquant", 12],
-    ["nonbloquant/champ7", "nonbloquant", 12],
-    ["nonbloquant/champ8", "nonbloquant", 12],
-    ["nonbloquant/champ9", "nonbloquant", 12],
-    ["nonbloquant/champ10", "nonbloquant", 12],
-    ["nonbloquant/champ11", "nonbloquant", 12],
-    ["nonbloquant/champ12", "nonbloquant", 12],
-    ["nonbloquant/champ13", "nonbloquant", 12],
-    ["nonbloquant/champ14", "nonbloquant", 12],
-    ["nonbloquant/champ15", "nonbloquant", 12],
-    ["nonbloquant/champ16", "nonbloquant", 12],
-    ["nonbloquant/CHAMP BLE", "nonbloquant", 12],
-    ["nonbloquant/CHAMP BLE 2", "nonbloquant", 12],
-    ["nonbloquant/CHAMP BLE E", "nonbloquant", 12],
-    ["nonbloquant/CHAMP FOIN", "nonbloquant", 12],
-    ["nonbloquant/CHAMP VACHE", "nonbloquant", 12]
+    ["nonbloquant/champ", "nonbloquant", 18],
+    ["nonbloquant/champ2", "nonbloquant", 18],
+    ["nonbloquant/champ3", "nonbloquant", 18],
+    ["nonbloquant/champ4", "nonbloquant", 18],
+    ["nonbloquant/champ5", "nonbloquant", 18],
+    ["nonbloquant/champ6", "nonbloquant", 18],
+    ["nonbloquant/champ7", "nonbloquant", 18],
+    ["nonbloquant/champ8", "nonbloquant", 18],
+    ["nonbloquant/champ9", "nonbloquant", 18],
+    ["nonbloquant/champ10", "nonbloquant", 18],
+    ["nonbloquant/champ11", "nonbloquant", 18],
+    ["nonbloquant/champ12", "nonbloquant", 18],
+    ["nonbloquant/champ13", "nonbloquant", 18],
+    ["nonbloquant/champ14", "nonbloquant", 18],
+    ["nonbloquant/champ15", "nonbloquant", 18],
+    ["nonbloquant/champ16", "nonbloquant", 18],
+    ["nonbloquant/CHAMP BLE", "nonbloquant", 18],
+    ["nonbloquant/CHAMP BLE 2", "nonbloquant", 18],
+    ["nonbloquant/CHAMP BLE E", "nonbloquant", 18],
+    ["nonbloquant/CHAMP FOIN", "nonbloquant", 18],
+    ["nonbloquant/CHAMP VACHE", "nonbloquant", 18]
   ];
   // Boîte (x, y, w, h) chevauche-t-elle un bâtiment existant (avec marge px) ?
   function decorBoxHitsBuildings(state, bx, by, bw, bh, pad) {
@@ -226,12 +226,23 @@
       var placed = 0, guard = 0;
       // Garde plus large pour les gros éléments (l'église du Lisieux fait
       // 800 px : trouver une place libre demande plus d'essais).
-      var maxGuard = total * (60 + side) + 400;
+      var maxGuard = total * (200 + side * 2) + 1600;
       while (placed < total && guard < maxGuard) {
         guard++;
         // Position hors ville : un axe proche du bord aléatoire, l'autre libre.
+        // Les très gros éléments (église 1600 px de côté) passent presque
+        // toujours ce filtre : échantillonnage uniforme sur toute la carte
+        // hors rectangle de ville, sinon la bande proche de la ville gaspille
+        // des essais sur une carte dense en forêts.
+        var big = side > 800;
         var gx, gy;
-        if (Math.random() < 0.5) {
+        if (big) {
+          gx = G.rand(80, G.WORLD - 80);
+          gy = G.rand(80, G.WORLD - 80);
+          var inTownRect = gx > G.TOWN_MIN - townPad - side / 2 && gx < G.TOWN_MAX + townPad + side / 2 &&
+                           gy > G.TOWN_MIN - townPad - side / 2 && gy < G.TOWN_MAX + townPad + side / 2;
+          if (inTownRect) continue;
+        } else if (Math.random() < 0.5) {
           gx = Math.random() < 0.5 ? G.rand(80, G.TOWN_MIN - townPad) : G.rand(G.TOWN_MAX + townPad, G.WORLD - 80);
           gy = G.rand(80, G.WORLD - 80);
         } else {
@@ -490,9 +501,18 @@
     // maisons) pour éviter qu'une forêt ne se superpose à ceux-ci.
     for (var bi0 = 0; bi0 < state.buildings.length; bi0++) {
       var ob0 = state.buildings[bi0];
-      var k0 = gkey(ob0.x, ob0.y);
-      if (!grid[k0]) grid[k0] = [];
-      grid[k0].push(ob0);
+      // Le batiment est enregistre dans TOUTES les cellules qu il couvre
+      // (un decor de 484 px s etend sur plusieurs cellules de 200 px : une
+      // seule cellule d origine laissait les forets se glisser dedans).
+      var cx0 = Math.floor(ob0.x / cell), cx1 = Math.floor((ob0.x + ob0.w) / cell);
+      var cy0 = Math.floor(ob0.y / cell), cy1 = Math.floor((ob0.y + ob0.h) / cell);
+      for (var gx0 = cx0; gx0 <= cx1; gx0++) {
+        for (var gy0 = cy0; gy0 <= cy1; gy0++) {
+          var k0 = gx0 + "," + gy0;
+          if (!grid[k0]) grid[k0] = [];
+          grid[k0].push(ob0);
+        }
+      }
     }
     // Vrai si la boîte (tx, ty, half) touche la palissade de perimetre (avec
     // la marge G.FORET_WALL_GAP) : les forets ne doivent pas coller aux murs.
@@ -508,8 +528,8 @@
           if (!arr) continue;
           for (var n = 0; n < arr.length; n++) {
             var o = arr[n];
-            if (tx + half > o.x && tx - half < o.x + o.w &&
-                ty + half > o.y && ty - half < o.y + o.h) return true;
+            if (tx + half > o.x - 6 && tx - half < o.x + o.w + 6 &&
+                ty + half > o.y - 6 && ty - half < o.y + o.h + 6) return true;
           }
         }
       }
@@ -517,9 +537,15 @@
     }
     function addForet(tx, ty, frame) {
       var f = G.makeForet(tx, ty, frame);
-      var key = gkey(f.x, f.y);
-      if (!grid[key]) grid[key] = [];
-      grid[key].push(f);
+      var ax0 = Math.floor(f.x / cell), ax1 = Math.floor((f.x + f.w) / cell);
+      var ay0 = Math.floor(f.y / cell), ay1 = Math.floor((f.y + f.h) / cell);
+      for (var gx0 = ax0; gx0 <= ax1; gx0++) {
+        for (var gy0 = ay0; gy0 <= ay1; gy0++) {
+          var key = gx0 + "," + gy0;
+          if (!grid[key]) grid[key] = [];
+          grid[key].push(f);
+        }
+      }
       state.buildings.push(f);
     }
     var placed = 0;
@@ -814,8 +840,7 @@
     // Forêts : mêmes règles de distribution que l'ancien système d'arbres
     // (clusters de 1 à 10, ~5 en ville, 2400 hors ville, 5 en lisière), mais
     // comme bâtiments (isForet) avec collision identique aux bâtiments.
-    G.spawnForets(state, 5, true);
-    G.spawnForets(state, 2400, false);
+
     // Lisière : quelques forêts juste autour des murs (4 côtés).
     var names = G.foretNames();
     for (var fi = 0; fi < 5 && names.length > 0; fi++) {
@@ -829,6 +854,11 @@
       var fSp = G.SPRITES.foret && G.SPRITES.foret[fFrame];
       var fSide = (fSp ? fSp.w : 64) * 2;
       if (!G.nearBuilding(ftx, fty, 10) &&
+          (function () {
+            var fb2 = G.makeForet(ftx, fty, fFrame);
+            return fb2.x < 60 || fb2.y < 60 || fb2.x + fb2.w > G.WORLD - 60 ||
+                   fb2.y + fb2.h > G.WORLD - 60 || G.nearBuilding(ftx, fty, fb2.w / 2 + 8);
+          })() === false &&
           !(G.villeBoxHits && (function () {
             var fc = G.makeForet(ftx, fty, fFrame);
             var fb = G.foretVisualBox(fc);
@@ -840,9 +870,12 @@
       }
     }
 
-    // Éléments de décor PNG (moulins, églises, champs, buissons...) :
-    // posés après les forêts pour les éviter, avant la grille de collisions.
+    // Éléments de décor PNG (moulins, églises, champs, buissons...) : posés
+    // AVANT les forêts (primeauté sur l espace libre pour les gros bloquants),
+    // avant la grille de collisions.
     G.spawnDecor(state);
+    G.spawnForets(state, 5, true);
+    G.spawnForets(state, 3600, false);
     state.zombies = [];
     G.rebuildBuildingGrid();
     // L'Anneau Unique : pose sur la tache #5a944a la plus au nord du PNG de
