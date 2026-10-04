@@ -1,8 +1,10 @@
 // Couche ciel : nuages, montgolfières, oiseaux et avions (Porco).
 // Éléments purement visuels, côté client uniquement : aucune collision,
 // dessinés au-dessus de tout (y compris l'obscurité de nuit).
-// Espace écran : chaque élément circule lentement et réapparaît au bord
-// opposé de la carte vue quand il en sort (jamais au milieu).
+// Position en COORDONNÉES MONDE (comme le sol) : les éléments du ciel sont
+// projetés à l'écran via G.proj, ils ne bougent pas quand la caméra se
+// déplace ni quand le zoom change — le personnage se déplace au sol avec
+// le ciel au-dessus de lui, comme les maisons et les forêts.
 (function () {
   "use strict";
   var G = window.GAME = window.GAME || {};
@@ -10,12 +12,12 @@
   var MONTGOLF_N = 20;   // montgolfières lentes, direction quelconque
   var OISEAU_N = 10;     // oiseaux NE -> SO (cap ~250°)
   var PORCO_N = 5;       // avions rapides S -> NO (cap ~330°)
-  var MARGIN = 420;      // marge hors écran avant réapparition
+  // Marge monde hors carte avant réapparition (px monde) : les éléments
+  // peuvent déborder un peu au-delà des bords de la carte.
+  var MARGIN = 600;
   // Échelle de dessin par type (les PNG du dossier ciel sont petits).
   var SCALES = { nuage: 3, montgolfiere: 4, oiseau: 2.5, porco: 2 };
   function sp(key) { return (G.SPRITES.ciel && G.SPRITES.ciel[key]) || null; }
-  function viewW() { return G.canvas.width / (window.devicePixelRatio || 1); }
-  function viewH() { return G.canvas.height / (window.devicePixelRatio || 1); }
   function rnd(a, b) { return a + Math.random() * (b - a); }
   // Cap boussole (0° = nord, sens horaire) -> vecteur écran (y vers le bas).
   function bearingVec(deg) {
@@ -25,10 +27,14 @@
   function mk(kind, keys, speed, dir) {
     var key = keys[Math.floor(Math.random() * keys.length)];
     var s = sp(key);
+    // Élévation : les objets du ciel volent à une altitude visuelle fixe
+    // (px écran au zoom 1) au-dessus de leur position au sol projetée.
+    var ALT = { nuage: 320, montgolfiere: 240, oiseau: 280, porco: 340 };
     return {
       kind: kind, key: key,
-      x: rnd(-MARGIN, viewW() + MARGIN), y: rnd(0, viewH()),
+      x: rnd(-MARGIN, G.WORLD + MARGIN), y: rnd(-MARGIN, G.WORLD + MARGIN),
       speed: speed, dx: dir[0], dy: dir[1],
+      alt: ALT[kind] || 280,
       w: s ? s.w : 64, h: s ? s.h : 64,
       scale: SCALES[kind] || 2
     };
@@ -64,26 +70,31 @@
       dt = _last === null ? 0.016 : Math.min(0.1, (now - _last) / 1000);
       _last = now;
     }
-    var st = G.state;
-    var W = viewW(), H = viewH();
-    for (var i = 0; i < st.ciel.length; i++) {
-      var c = st.ciel[i];
+    var list = G.state.ciel;
+    var W = G.WORLD;
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i];
       c.x += c.dx * c.speed * dt;
       c.y += c.dy * c.speed * dt;
-      var sw = c.w * c.scale, sh = c.h * c.scale;
-      // Sortie de carte : réapparaît au bord opposé (extrémité uniquement),
-      // à une nouvelle position sur l'autre axe.
-      if (c.dx > 0 && c.x - sw / 2 > W + MARGIN) { c.x = -MARGIN; c.y = rnd(0, H); }
-      else if (c.dx < 0 && c.x + sw / 2 < -MARGIN) { c.x = W + MARGIN; c.y = rnd(0, H); }
-      if (c.dy > 0 && c.y - sh / 2 > H + MARGIN) { c.y = -MARGIN; c.x = rnd(-MARGIN, W + MARGIN); }
-      else if (c.dy < 0 && c.y + sh / 2 < -MARGIN) { c.y = H + MARGIN; c.x = rnd(-MARGIN, W + MARGIN); }
+      // Sortie de la carte (extrémités) : réapparaît au bord opposé, à une
+      // nouvelle position sur l'autre axe — jamais au milieu de la carte.
+      if (c.dx > 0 && c.x > W + MARGIN) { c.x = -MARGIN; c.y = rnd(0, W); }
+      else if (c.dx < 0 && c.x < -MARGIN) { c.x = W + MARGIN; c.y = rnd(0, W); }
+      if (c.dy > 0 && c.y > W + MARGIN) { c.y = -MARGIN; c.x = rnd(0, W); }
+      else if (c.dy < 0 && c.y < -MARGIN) { c.y = W + MARGIN; c.x = rnd(0, W); }
     }
   };
   function drawOne(c) {
     var s = sp(c.key);
     if (!s || !s.img) return;
-    var w = c.w * c.scale, h = c.h * c.scale;
-    G.ctx.drawImage(s.img, c.x - w / 2, c.y - h / 2, w, h);
+    // Projection monde -> écran (comme le sol), avec l'altitude visuelle
+    // décalée vers le haut. Le zoom est appliqué naturellement par proj
+    // via le monde : la taille suit le même zoom que le reste de la carte.
+    var p = G.proj(c.x, c.y);
+    var z = G.state.zoom;
+    var w = c.w * c.scale * z * 0.5;
+    var h = c.h * c.scale * z * 0.5;
+    G.ctx.drawImage(s.img, p[0] - w / 2, p[1] - c.alt * z * 0.25 - h / 2, w, h);
   }
   // Nuages toujours AU-DESSUS des autres éléments du ciel en cas de
   // croisement : montgolfières/oiseaux/avions d'abord, nuages en dernier.
