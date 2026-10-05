@@ -298,168 +298,274 @@
       var pad = mode === "bloquant" ? 6 : 2;
       if (decorBoxHitsBuildings(state, bx, by, side, side, pad)) return false;
       if (mode === "bloquant" && G.aabbHitsWalls && G.aabbHitsWalls(bx, by, side, side, true)) return false;
-      var wb = 0;
-      while (wb < worldBoxes.length) {
-        var o = worldBoxes[wb];
-        if (boxHitsBox(bx - pad, by - pad, side + pad * 2, side + pad * 2,
-                        o.x, o.y, o.w, o.h)) return false;
-        wb++;
-      }
+      if (worldBoxHitsAny(bx, by, side, side, pad)) return false;
       var candRect = decorVisRect(bx, by, side, sp);
-      for (var vr = 0; vr < visRects.length; vr++) {
-        if (visRectsHit(candRect, visRects[vr])) return false;
-      }
+      if (visRectHitsAny(candRect)) return false;
       return true;
     }
     decorGrid = null;
     var visRects = [];
     var worldBoxes = [];
-    // Gros elements (eglises, montagnes...) en PREMIER : poses isoles, ils
-    // ont besoin de zones libres que les 3000 petits decors saturent vite.
-    var order = G.DECOR_SPECS.map(function (spc, idx) { return idx; });
-    order.sort(function (a, b) {
-      var sa = G.SPRITES.elementdecord[G.DECOR_SPECS[a][0]];
-      var sb = G.SPRITES.elementdecord[G.DECOR_SPECS[b][0]];
-      return (sb ? sb.w * 2 : 0) - (sa ? sa.w * 2 : 0);
-    });
-    for (var oi = 0; oi < order.length; oi++) {
-      var si = order[oi];
+    // Index spatiaux des decors deja poses : sans eux, chaque canPlace
+    // scanne lineairement ~3000 boxes + ~3000 rects (des centaines de
+    // milliers d essais => plusieurs secondes). Grille 512 monde pour les
+    // AABB, grille 512 ecran pour les rects visuels.
+    var idxCell = 512;
+    var wbGrid = { cells: {} };
+    var vrGrid = { cells: {} };
+    function gridKey(x, y) { return Math.floor(x / idxCell) + "," + Math.floor(y / idxCell); }
+    function gridInsert(gr, x0, y0, x1, y1, idx) {
+      for (var gx = Math.floor(x0 / idxCell); gx <= Math.floor(x1 / idxCell); gx++) {
+        for (var gy = Math.floor(y0 / idxCell); gy <= Math.floor(y1 / idxCell); gy++) {
+          var k = gx + "," + gy;
+          if (!gr.cells[k]) gr.cells[k] = [];
+          gr.cells[k].push(idx);
+        }
+      }
+    }
+    function pushWorldBox(bx, by, bw, bh) {
+      worldBoxes.push({ x: bx, y: by, w: bw, h: bh });
+      gridInsert(wbGrid, bx, by, bx + bw, by + bh, worldBoxes.length - 1);
+    }
+    function pushVisRect(r) {
+      visRects.push(r);
+      gridInsert(vrGrid, r.x0, r.y0, r.x1, r.y1, visRects.length - 1);
+    }
+    function worldBoxHitsAny(bx, by, bw, bh, pad) {
+      var seen = {};
+      for (var gx = Math.floor((bx - pad) / idxCell); gx <= Math.floor((bx + bw + pad) / idxCell); gx++) {
+        for (var gy = Math.floor((by - pad) / idxCell); gy <= Math.floor((by + bh + pad) / idxCell); gy++) {
+          var arr = wbGrid.cells[gx + "," + gy];
+          if (!arr) continue;
+          for (var n = 0; n < arr.length; n++) {
+            var o = worldBoxes[arr[n]];
+            if (bx - pad < o.x + o.w && bx + bw + pad > o.x &&
+                by - pad < o.y + o.h && by + bh + pad > o.y) return true;
+          }
+        }
+      }
+      return false;
+    }
+    function visRectHitsAny(r) {
+      for (var gx = Math.floor(r.x0 / idxCell); gx <= Math.floor(r.x1 / idxCell); gx++) {
+        for (var gy = Math.floor(r.y0 / idxCell); gy <= Math.floor(r.y1 / idxCell); gy++) {
+          var arr = vrGrid.cells[gx + "," + gy];
+          if (!arr) continue;
+          for (var n = 0; n < arr.length; n++) {
+            if (visRectsHit(r, visRects[arr[n]])) return true;
+          }
+        }
+      }
+      return false;
+    }
+    // Elements similaires le plus loin possible les uns des autres : on
+    // enregistre chaque pose par nom de sprite et on rejette tout candidat
+    // a moins de minD d'un deja-pose du meme type. minD repartit le type
+    // sur toute la carte (une cellule par occurrence) ; si la carte est trop
+    // chargee, il est relache par palais (jamais en dessous du plancher).
+    var ptsByName = {};
+    function recordName(name, x, y) {
+      (ptsByName[name] || (ptsByName[name] = [])).push({ x: x, y: y });
+    }
+    function nameFarEnough(name, x, y, minD) {
+      var pts = ptsByName[name];
+      if (!pts || minD <= 0) return true;
+      var m = minD * minD;
+      for (var i = 0; i < pts.length; i++) {
+        var dx = pts[i].x - x, dy = pts[i].y - y;
+        if (dx * dx + dy * dy < m) return false;
+      }
+      return true;
+    }
+    function idealMinD(want) {
+      // Distance ideale = repartir les N occurrences sur la carte, mais
+      // borne au realisable : N disques de rayon D/2 doivent tenir dans la
+      // carte. Sans borne, 72 points a D=2100 demandent plus de place que la
+      // carte n en contient (pose alors impossible, quota jamais atteint).
+      return Math.max(300, Math.min(
+        Math.sqrt(G.WORLD * G.WORLD / Math.max(1, want)) * 0.9,
+        Math.sqrt(0.35 * G.WORLD * G.WORLD / Math.max(1, want))));
+    }
+    // Pose un decor (frame/mode/sp/side donnes) en (cx, cy). Sans effet de
+    // bord : renvoie false sans rien ecrire si un filtre refuse.
+    function placeDecorAt(frame, mode, sp, side, cx, cy) {
+      var bx = Math.round(cx - side / 2), by = Math.round(cy - side / 2);
+      if (!canPlace(bx, by, side, mode, sp, visRects, worldBoxes)) return false;
+      pushVisRect(decorVisRect(bx, by, side, sp));
+      pushWorldBox(bx, by, side, side);
+      recordName(frame, cx, cy);
+      state.buildings.push(G.makeDecor(cx, cy, frame, mode));
+      return true;
+    }
+    // Gros elements (eglise, montagne...) : pose isolee sur la box shrinkee
+    // a l opaque, tous les filtres habituels, plus l espacement par type.
+    function placeBigAt(frame, mode, sp, side, cx, cy) {
+      var b = G.makeDecor(cx, cy, frame, mode);
+      var bx = Math.round(cx - side / 2), by = Math.round(cy - side / 2);
+      if (b.x < 60 || b.y < 60 || b.x + b.w > G.WORLD - 60 || b.y + b.h > G.WORLD - 60) return false;
+      if (G.inTown && (G.inTown(b.x, b.y) || G.inTown(b.x + b.w, b.y) ||
+                        G.inTown(b.x, b.y + b.h) || G.inTown(b.x + b.w, b.y + b.h) ||
+                        G.inTown(b.x + b.w / 2, b.y + b.h / 2))) return false;
+      if (G.villeBoxHits && G.villeBoxHits(b.x, b.y, b.w, b.h)) return false;
+      if (!G.villeBoxHits && G.villeAt && G.villeAt(cx, cy, side / 2)) return false;
+      if (decorBoxHitsBuildings(state, b.x, b.y, b.w, b.h, 6)) return false;
+      if (G.aabbHitsWalls && G.aabbHitsWalls(b.x, b.y, b.w, b.h, true)) return false;
+      if (worldBoxHitsAny(b.x, b.y, b.w, b.h, 6)) return false;
+      var candRect = buildingVisRect(b);
+      if (visRectHitsAny(candRect)) return false;
+      pushVisRect(candRect);
+      pushWorldBox(b.x, b.y, b.w, b.h);
+      recordName(frame, cx, cy);
+      state.buildings.push(b);
+      return true;
+    }
+    var MULT = 4;
+    var small = [], bigList = [];
+    for (var si = 0; si < G.DECOR_SPECS.length; si++) {
       var frame = G.DECOR_SPECS[si][0], mode = G.DECOR_SPECS[si][1], total = G.DECOR_SPECS[si][2];
       var sp = G.SPRITES.elementdecord[frame];
       if (!sp) continue;
-      var side = sp.w * 2;
-      var want = total * MULT;
-      // >= : un sprite de 400 px donne side = 800 pile (eglise saint jacques),
-      // qui doit rester en pose isolee (une grille 2x2 de 1600 px ne tient pas).
-      var big = side >= 480;
-      var placed = 0, guard = 0;
-      var maxGuard = want * (200 + side * 2) * 4 + 6400;
-      function placeOne(cx, cy) {
-        var bx = Math.round(cx - side / 2), by = Math.round(cy - side / 2);
-        if (!canPlace(bx, by, side, mode, sp, visRects, worldBoxes)) return false;
-        visRects.push(decorVisRect(bx, by, side, sp));
-        worldBoxes.push({ x: bx, y: by, w: side, h: side });
-        state.buildings.push(G.makeDecor(cx, cy, frame, mode));
-        return true;
-      }
-      // Gros elements isoles (eglise...) : tous les filtres (batiments,
-      // forets, ville, murs, autres decors) s appliquent a la box SHRINKEE
-      // a l opaque (empreinte visible reelle), pas a la cellule side x side
-      // entiere : exiger une cellule de 800 px totalement libre etait
-      // impossible avec 3600 forets deja posees.
-      function placeOneBig(cx, cy) {
-        var b = G.makeDecor(cx, cy, frame, mode);
-        var bx = Math.round(cx - side / 2), by = Math.round(cy - side / 2);
-        if (b.x < 60 || b.y < 60 || b.x + b.w > G.WORLD - 60 || b.y + b.h > G.WORLD - 60) return false;
-        if (G.inTown && (G.inTown(b.x, b.y) || G.inTown(b.x + b.w, b.y) ||
-                          G.inTown(b.x, b.y + b.h) || G.inTown(b.x + b.w, b.y + b.h) ||
-                          G.inTown(b.x + b.w / 2, b.y + b.h / 2))) return false;
-        if (G.villeBoxHits && G.villeBoxHits(b.x, b.y, b.w, b.h)) return false;
-        if (!G.villeBoxHits && G.villeAt && G.villeAt(cx, cy, side / 2)) return false;
-        if (decorBoxHitsBuildings(state, b.x, b.y, b.w, b.h, 6)) return false;
-        if (G.aabbHitsWalls && G.aabbHitsWalls(b.x, b.y, b.w, b.h, true)) return false;
-        var wb = 0;
-        while (wb < worldBoxes.length) {
-          var o = worldBoxes[wb];
-          if (b.x - 6 < o.x + o.w && b.x + b.w + 6 > o.x &&
-              b.y - 6 < o.y + o.h && b.y + b.h + 6 > o.y) return false;
-          wb++;
-        }
-        var candRect = buildingVisRect(b);
-        for (var vr = 0; vr < visRects.length; vr++) {
-          if (visRectsHit(candRect, visRects[vr])) return false;
-        }
-        visRects.push(candRect);
-        worldBoxes.push({ x: b.x, y: b.y, w: b.w, h: b.h });
-        state.buildings.push(b);
-        return true;
-      }
-      // Essaie de poser une grille rows x cols (cellules adjacentes bord a
-      // bord en monde). Retourne le nombre d'elements poses, 0 si echec.
-      function tryPlaceGrid(rows, cols, gx0, gy0) {
-        var bw = cols * side, bh = rows * side;
-        var bx0, by0;
-        if (gx0 === undefined) {
-          bx0 = Math.random() < 0.5
-            ? G.rand(80, G.TOWN_MIN - townPad)
-            : G.rand(G.TOWN_MAX + townPad, G.WORLD - 80);
-          by0 = G.rand(80, G.WORLD - 80);
-        } else {
-          bx0 = gx0; by0 = gy0;
-        }
-        bx0 = Math.round(bx0); by0 = Math.round(by0);
-        if (bx0 + bw > G.WORLD - 80 || by0 + bh > G.WORLD - 80) return 0;
-        var pad = mode === "bloquant" ? 6 : 2;
-        for (var r = 0; r < rows; r++) {
-          for (var c = 0; c < cols; c++) {
-            if (!canPlace(bx0 + c * side, by0 + r * side, side, mode, sp, visRects, worldBoxes)) return 0;
-          }
-        }
-        var gRect = worldBoxVisRect(bx0, by0, bw, bh);
-        for (var vr = 0; vr < visRects.length; vr++) {
-          if (visRectsHit(gRect, visRects[vr])) return 0;
-        }
-        for (var ob = 0; ob < worldBoxes.length; ob++) {
-          if (boxHitsBox(bx0 - pad, by0 - pad, bw + pad * 2, bh + pad * 2,
-                          worldBoxes[ob].x, worldBoxes[ob].y, worldBoxes[ob].w, worldBoxes[ob].h)) return 0;
-        }
-        visRects.push(gRect);
-        worldBoxes.push({ x: bx0, y: by0, w: bw, h: bh });
-        var n = 0;
-        for (var r2 = 0; r2 < rows; r2++) {
-          for (var c2 = 0; c2 < cols; c2++) {
-            state.buildings.push(G.makeDecor(bx0 + c2 * side + side / 2,
-                                             by0 + r2 * side + side / 2, frame, mode));
-            n++;
-          }
-        }
-        return n;
-      }
-      while (placed < want && guard < maxGuard) {
+      var entry = { frame: frame, mode: mode, sp: sp, side: sp.w * 2,
+                    want: total * MULT, left: total * MULT, scale: 1,
+                    minD: idealMinD(total * MULT) };
+      if (entry.side >= 480) bigList.push(entry); else small.push(entry);
+    }
+    // Phase 1 : gros elements isoles, du plus grand au plus petit. minD se
+    // relache par palais apres une serie d echecs (carte trop chargee),
+    // sans jamais descendre sous 600.
+    bigList.sort(function (a, b) { return b.side - a.side; });
+    for (var bi2 = 0; bi2 < bigList.length; bi2++) {
+      var be = bigList[bi2];
+      var minD = be.minD, fails = 0;
+      var guard = 0, maxGuard = be.want * (400 + be.side * 2) * 4 + 6400;
+      while (be.left > 0 && guard < maxGuard) {
         guard++;
-        var gx, gy;
-        if (big) {
-          gx = G.rand(80, G.WORLD - 80);
-          gy = G.rand(80, G.WORLD - 80);
-          var inTownRect = gx > G.TOWN_MIN - townPad - side / 2 && gx < G.TOWN_MAX + townPad + side / 2 &&
-                           gy > G.TOWN_MIN - townPad - side / 2 && gy < G.TOWN_MAX + townPad + side / 2;
-          if (inTownRect) continue;
-          if (placeOneBig(gx, gy)) placed++;
-          continue;
+        var gx = G.rand(80, G.WORLD - 80), gy = G.rand(80, G.WORLD - 80);
+        var inTownRect = gx > G.TOWN_MIN - townPad - be.side / 2 && gx < G.TOWN_MAX + townPad + be.side / 2 &&
+                         gy > G.TOWN_MIN - townPad - be.side / 2 && gy < G.TOWN_MAX + townPad + be.side / 2;
+        if (inTownRect) continue;
+        if (placeBigAt(be.frame, be.mode, be.sp, be.side, gx, gy)) {
+          be.left--; fails = 0;
+        } else {
+          fails++;
+          if (fails >= 40) { minD = Math.max(600, minD * 0.85); fails = 0; }
         }
-        var rem = want - placed;
-        if (rem < 4) break;
-        var n = tryPlaceGrid(2, 2);
-        if (n > 0) placed += n;
       }
-      // Phase 2 : si la garde s'est epuisee avec des grilles 2x2 alors
-      // qu'il reste beaucoup a poser, la carte est trop dense pour n'utiliser
-      // QUE des 2x2. On reprend alors avec les replis (2x1, 1x2, isoles) pour
-      // atteindre le quota.
-      if (placed < want) {
-        var guard2 = 0;
-        var maxGuard2 = (want - placed) * (200 + side * 2) * 4 + 6400;
-        while (placed < want && guard2 < maxGuard2) {
-          guard2++;
-          var rem2 = want - placed;
-          var tries2 = rem2 >= 4 ? [[2, 2], [1, 2], [2, 1], [1, 1]]
-                     : rem2 >= 2 ? [[1, 2], [2, 1], [1, 1]]
-                     : [[1, 1]];
-          var n2 = 0;
-          for (var t2 = 0; t2 < tries2.length; t2++) {
-            n2 = tryPlaceGrid(tries2[t2][0], tries2[t2][1]);
-            if (n2 > 0) break;
-          }
-          if (n2 === 0) {
-            var gx2 = Math.random() < 0.5
-              ? G.rand(80, G.TOWN_MIN - townPad)
-              : G.rand(G.TOWN_MAX + townPad, G.WORLD - 80);
-            var gy2 = G.rand(80, G.WORLD - 80);
-            if (!placeOne(gx2, gy2)) continue;
-            n2 = 1;
-          }
-          placed += n2;
+    }
+    // Phase 2 : groupes MIXTES de 4. Chaque groupe est une grille 2x2 monde
+    // (cellules de la taille du plus grand sprite du groupe) et recoit 4
+    // types TOUS DIFFERENTS, pris parmi ceux au quota le plus eleve : les
+    // quotas restent exacts quel que soit le nombre de specs ajoutees.
+    function pickGroupMembers() {
+      var avail = small.filter(function (e) { return e.left > 0; });
+      if (avail.length === 0) return avail;
+      // Ancre : le plus GRAND sprite restant (les gros elements ont besoin
+      // de zones libres que les petits saturent : gros d abord, comme pour
+      // la pose isolee). Les voisins de groupe sont de taille comparable
+      // (facteur <= 2) pour ne pas gaspiller la cellule du plus grand.
+      avail.sort(function (a, b) { return b.side - a.side || b.left - a.left; });
+      var anchor = avail[0];
+      var near = [];
+      for (var i = 1; i < avail.length; i++) {
+        if (avail[i].side >= anchor.side / 2 && avail[i].side <= anchor.side * 2) near.push(avail[i]);
+      }
+      near.sort(function (a, b) { return b.left - a.left; });
+      var pool = [anchor].concat(near.slice(0, 3));
+      return pool;
+    }
+    function tryPlaceMixedGroup() {
+      var pool = pickGroupMembers();
+      if (pool.length === 0) return -1;
+      var cellSide = 0;
+      for (var pi = 0; pi < pool.length; pi++) cellSide = Math.max(cellSide, pool[pi].side);
+      var bw = 2 * cellSide, bh = 2 * cellSide;
+      // Plusieurs positions de lattice par appel : une seule tentative
+      // dans une carte saturee echoue presque toujours sur un des filtres.
+      var tries = 12;
+      while (tries-- > 0) {
+        var got = tryPlaceMixedGroupAt(pool, cellSide, bw, bh);
+        if (got !== 0) return got;
+      }
+      return 0;
+    }
+    function tryPlaceMixedGroupAt(pool, cellSide, bw, bh) {
+      var step = Math.max(60, Math.floor(cellSide / 2));
+      var nx = Math.floor((G.WORLD - 160 - bw) / step) + 1;
+      var ny = Math.floor((G.WORLD - 160 - bh) / step) + 1;
+      if (nx < 1 || ny < 1) return 0;
+      var gx0 = 80 + Math.floor(Math.random() * nx) * step;
+      var gy0 = 80 + Math.floor(Math.random() * ny) * step;
+      if (gx0 + bw > G.WORLD - 80 || gy0 + bh > G.WORLD - 80) return 0;
+      // Assignation aleatoire des membres aux 4 cellules de la grille.
+      var order4 = pool.slice();
+      for (var sh = order4.length - 1; sh > 0; sh--) {
+        var rr = Math.floor(Math.random() * (sh + 1));
+        var tmp = order4[sh]; order4[sh] = order4[rr]; order4[rr] = tmp;
+      }
+      var cands = [];
+      for (var r = 0; r < 2; r++) {
+        for (var c = 0; c < 2; c++) {
+          var idx = r * 2 + c;
+          if (idx >= order4.length) continue;
+          var me = order4[idx];
+          var cx = gx0 + c * cellSide + cellSide / 2;
+          var cy = gy0 + r * cellSide + cellSide / 2;
+          if (!nameFarEnough(me.frame, cx, cy, me.minD * me.scale)) return 0;
+          var bx = Math.round(cx - me.side / 2), by = Math.round(cy - me.side / 2);
+          if (!canPlace(bx, by, me.side, me.mode, me.sp, visRects, worldBoxes)) return 0;
+          cands.push({ me: me, cx: cx, cy: cy, bx: bx, by: by });
         }
+      }
+      var gRect = worldBoxVisRect(gx0, gy0, bw, bh);
+      if (visRectHitsAny(gRect)) return 0;
+      for (var ci = 0; ci < cands.length; ci++) {
+        var m = cands[ci].me;
+        pushVisRect(decorVisRect(cands[ci].bx, cands[ci].by, m.side, m.sp));
+        pushWorldBox(cands[ci].bx, cands[ci].by, m.side, m.side);
+        recordName(m.frame, cands[ci].cx, cands[ci].cy);
+        state.buildings.push(G.makeDecor(cands[ci].cx, cands[ci].cy, m.frame, m.mode));
+        m.left--;
+      }
+      return cands.length;
+    }
+    var fails = 0, guardG = 0;
+    var maxGuardG = 400000;
+    while (guardG < maxGuardG) {
+      guardG++;
+      var left2 = 0;
+      for (var le = 0; le < small.length; le++) left2 += small[le].left;
+      if (left2 === 0) break;
+      var n3 = tryPlaceMixedGroup();
+      if (n3 > 0) { fails = 0; continue; }
+      if (n3 < 0) break;
+      fails++;
+      // Relaxation PAR TYPE : un facteur global ecrasait la distance des
+      // types a gros quota des les premiers blocages ; chaque type ne relache
+      // que sa propre cible quand SES poses echouent.
+      if (fails >= 25) {
+        for (var rl = 0; rl < small.length; rl++) {
+          if (small[rl].left > 0) small[rl].scale = Math.max(0.05, small[rl].scale * 0.8);
+        }
+        fails = 0;
+      }
+    }
+    // Phase 3 : restes isoles (quotats non multiples ou carte saturee),
+    // meme espacement par type, meme relachement progressif.
+    for (var r3 = 0; r3 < small.length; r3++) {
+      var e3 = small[r3];
+      if (e3.left <= 0) continue;
+      var minD3 = e3.minD, fails3 = 0;
+      var g3 = 0, mg3 = e3.left * (200 + e3.side * 2) * 4 + 6400;
+      while (e3.left > 0 && g3 < mg3) {
+        g3++;
+        var gx3 = Math.random() < 0.5
+          ? G.rand(80, G.TOWN_MIN - townPad)
+          : G.rand(G.TOWN_MAX + townPad, G.WORLD - 80);
+        var gy3 = G.rand(80, G.WORLD - 80);
+        if (!nameFarEnough(e3.frame, gx3, gy3, minD3)) { fails3++; }
+        else if (placeDecorAt(e3.frame, e3.mode, e3.sp, e3.side, gx3, gy3)) { e3.left--; fails3 = 0; continue; }
+        else { fails3++; }
+        if (fails3 >= 40) { minD3 = Math.max(60, minD3 * 0.7); fails3 = 0; }
       }
     }
   };

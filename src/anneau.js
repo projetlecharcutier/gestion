@@ -9,7 +9,12 @@
   // Position monde de la tache #5a944a la plus au nord du PNG de Minas
   // (pixel 380,166 du sprite 667x682, emprise 1334 a (15500,15500)), calculee
   // par la projection inverse de ville.js. Constante : le PNG est stable.
-  G.ANNEAU_POS = { x: 14863, y: 14677 };
+  // Offset RELATIF au coin nord-ouest de Minas (emprise 1334) : la tache
+  // #5a944a la plus au nord du PNG (pixel 380,166). Les villes etant posees
+  // a des positions ALEATOIRES a chaque generation, la position absolue est
+  // calculee au moment de la pose (placeAnneauUnique).
+  G.ANNEAU_OFFSET = { x: 14863 - 15500, y: 14677 - 15500 };
+  G.ANNEAU_POS = { x: 14863, y: 14677 };  // compat : def de config d origine
   G.ANNEAU_PRICE = 1000;
   G.ANNEAU_POEME = [
     "Trois Anneaux pour les rois elfes sous le ciel,",
@@ -32,8 +37,19 @@
     for (var i = 0; i < st.items.length; i++) {
       if (st.items[i].name === "Anneau unique") return;
     }
+    // Position reelle de Minas dans CETTE generation (state.villes pose par
+    // villeSetup) ; repli sur la def historique si Minas n est pas posee.
+    var pos = { x: G.ANNEAU_POS.x, y: G.ANNEAU_POS.y };
+    var villes = st.villes || [];
+    for (var vi = 0; vi < villes.length; vi++) {
+      if (villes[vi].sprite === "minas") {
+        pos.x = villes[vi].x + G.ANNEAU_OFFSET.x;
+        pos.y = villes[vi].y + G.ANNEAU_OFFSET.y;
+        break;
+      }
+    }
     st.items.push({
-      x: G.ANNEAU_POS.x, y: G.ANNEAU_POS.y, taken: false,
+      x: pos.x, y: pos.y, taken: false,
       name: "Anneau unique", color: "#f5c542", kind: "objet",
       anneau: true
     });

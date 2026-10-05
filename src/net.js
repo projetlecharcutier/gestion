@@ -159,6 +159,20 @@
   function _applyVilleManifest(manifest) {
     if (!manifest || !manifest.length) return;
     var defs = G.VILLE_DEFS;
+    // Positions SERVEUR : verrouille le generateur aleatoire local
+    // (villeSetup ne doit PAS re-tirer d autres positions, la carte du
+    // serveur est la source de verite des collisions et des decors poses
+    // autour des villes).
+    var latch = {};
+    var any = false;
+    for (var li = 0; li < manifest.length; li++) {
+      var lm = manifest[li];
+      if (lm && lm.sprite && lm.x != null && lm.y != null) {
+        latch[lm.sprite] = { x: lm.x, y: lm.y };
+        any = true;
+      }
+    }
+    if (any) G._villeRng = latch;
     for (var mi = 0; mi < manifest.length; mi++) {
       var m = manifest[mi];
       if (!m || !m.sprite) continue;

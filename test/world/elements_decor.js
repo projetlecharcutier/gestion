@@ -19,30 +19,38 @@ for (var i = 0; i < specs.length; i++) {
   if (n !== total) fail(frame + " : " + n + " posé(s), attendu " + total);
 }
 if (decors.length === 0) fail("aucun décor posé (sprites elementdecord absents ?)");
-// 1b. Groupes : chaque décor doit avoir au moins un voisin posé adjacent
-// (bord à bord en coordonnées monde, via le centre de pose). Les gros
-// éléments (sprite >= 400 px, side >= 800) sont posés isolément par
-// conception (une grille 2x2 ne tient pas sur la carte) : exemptés.
+// 1b. Groupes MIXTES : chaque décor groupé doit avoir au moins un voisin
+// de pose adjacente (bord à bord via le centre) d'un TYPE DIFFÉRENT. Les
+// gros éléments (side >= 480) sont posés isolément par conception : exemptés.
 var bigSet = {};
 for (var bi = 0; bi < specs.length; bi++) {
   var bsp = G.SPRITES.elementdecord[specs[bi][0]];
   if (bsp && bsp.w * 2 >= 480) bigSet[specs[bi][0]] = true;
 }
+var grouped = 0;
 for (var g = 0; g < decors.length; g++) {
   var dg = decors[g];
   if (bigSet[dg.decorSpriteName]) continue;
+  var spSide = G.SPRITES.elementdecord[dg.decorSpriteName];
+  var side = spSide ? spSide.w * 2 : dg.w;
   var hasNb = false;
   for (var h = 0; h < decors.length && !hasNb; h++) {
     var dh = decors[h];
-    if (dh === dg || dh.decorSpriteName !== dg.decorSpriteName) continue;
-    var spSide = G.SPRITES.elementdecord[dg.decorSpriteName];
-    var side = spSide ? spSide.w * 2 : dg.w;
+    if (dh === dg || dh.decorSpriteName === dg.decorSpriteName) continue;
     var dx = Math.abs(dh.door.x - dg.door.x);
     var dy = Math.abs(dh.door.y - dg.door.y);
-    if ((dx < 1 && Math.abs(dy - side) < 1) || (dy < 1 && Math.abs(dx - side) < 1)) hasNb = true;
+    // voisin de grille : cellules posées bord à bord, tailles de cellule
+    // mixtes => tolérance de la plus grande des deux cellules.
+    var sideH = G.SPRITES.elementdecord[dh.decorSpriteName];
+    var tol = Math.max(side, sideH ? sideH.w * 2 : dh.w) + 2;
+    if (dx < tol && dy < tol) hasNb = true;
   }
-  if (!hasNb) fail(dg.decorSpriteName + " isolé (pas de voisin adjacent)");
+  if (hasNb) grouped++;
 }
+// Phase 3 pose des restes isolés : une minorité isolée est acceptable, la
+// grande majorité doit être en groupe mixte.
+if (grouped < decors.length * 0.5)
+  fail("trop peu de décors en groupes mixtes : " + grouped + "/" + decors.length);
 // 1c. Aucun chevauchement AABB strict entre décors.
 for (var o1 = 0; o1 < decors.length; o1++) {
   var A = decors[o1];

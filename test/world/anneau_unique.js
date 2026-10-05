@@ -23,14 +23,20 @@ var st = G.state;
 var anneaux = st.items.filter(function (it) { return it.name === "Anneau unique"; });
 assert(anneaux.length === 1, "un seul Anneau unique pose");
 var an = anneaux[0];
-assert(Math.abs(an.x - G.ANNEAU_POS.x) < 3 && Math.abs(an.y - G.ANNEAU_POS.y) < 3,
+// Minas est posee a une position ALEATOIRE a chaque generation : la
+// position de reference est lue dans state.villes, pas en dur.
+var minas = (st.villes || []).filter(function (v) { return v.sprite === "minas"; })[0];
+assert(!!minas, "ville Minas posee");
+var MX = minas.x, MY = minas.y, MS = minas.w;
+assert(Math.abs(an.x - (MX + G.ANNEAU_OFFSET.x)) < 3 &&
+       Math.abs(an.y - (MY + G.ANNEAU_OFFSET.y)) < 3,
        "anneau sur la position #5a944a nord de Minas (" + an.x + "," + an.y + ")");
-// La position est bien dans l'emprise de Minas (15500,15500, cote 1334).
-assert(an.x > 15500 - 1334 && an.x < 15500 && an.y > 15500 - 1334 && an.y < 15500,
+// La position est bien dans l'emprise de Minas.
+assert(an.x > MX - MS && an.x < MX && an.y > MY - MS && an.y < MY,
        "position dans l'emprise de Minas");
 // Et c'est bien le point le PLUS AU NORD : l'anneau est au-dessus (plus petit
 // x+y iso) du centre de la ville.
-assert(an.x + an.y < 15500 - 1334 + 15500 - 1334 + 2668, "anneau cote nord de Minas");
+assert(an.x + an.y < 2 * MX + 2 * MY, "anneau cote nord de Minas");
 
 // 2) Idempotence : re-pose n'ajoute pas un deuxieme anneau.
 G.placeAnneauUnique(st);

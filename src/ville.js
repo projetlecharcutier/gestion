@@ -104,10 +104,104 @@
   // Appele par buildWorld (solo/serveur) et apres le chargement des assets
   // (mode serveur, le client ne lance pas buildWorld). Une ville sans PNG
   // charge est ignoree : le PNG est la source de verite de l'emprise.
+  // Positions ALEATOIRES des villes PNG : tirees une fois par process (solo :
+  // une fois par partie ; serveur : une fois par demarrage, le restart
+  // reutilise les memes positions pour que les clients connectes gardent la
+  // meme carte). La projection iso etant AFFINE, la grille de collision
+  // pre-calculee d'une ville se TRANSLATE exactement de (dx, dy) : on
+  // decale ox/oy au lieu de regenerer (Minas = ~16 M de cellules).
+  G.villeRandomizePositions = function () {
+    var defs = G.VILLE_DEFS || [];
+    if (!defs.length) return;
+    // Latch : positions deja tirees pour ce process.
+    if (G._villeRng) return;
+    var rng = {};
+    var placed = [];  // emprises visuelles [{x0,y0,x1,y1}]
+    var MARGE = 400;
+    for (var i = 0; i < defs.length; i++) {
+      var d = defs[i];
+      var sp = (G.SPRITES && G.SPRITES.ville && G.SPRITES.ville[d.sprite || d.name]) || null;
+      var side = sp ? G.villeSideFor(sp.w, d) : (d.w || 0);
+      if (!side || side <= 0) side = 400;
+      var best = null, bestD = -1;
+      // Chaque ville essaye N positions; on garde la plus ELOIGNEE des
+      // autres villes (repartition maximale, evite les amas).
+      for (var tryI = 0; tryI < 60; tryI++) {
+        var x = Math.round(G.rand(200, G.WORLD - side - 200));
+        var y = Math.round(G.rand(200, G.WORLD - side - 200));
+        // Ville principale (TOWN_MIN..TOWN_MAX) : interdite + marge.
+        if (x - MARGE < G.TOWN_MAX && x + side + MARGE > G.TOWN_MIN &&
+            y - MARGE < G.TOWN_MAX && y + side + MARGE > G.TOWN_MIN) continue;
+        // Bbox VISUELLE approx : le haut du PNG deborde au nord/ouest/est.
+        var elev = side * 0.8;
+        var x0 = x - elev, y0 = y - elev, x1 = x + side + elev, y1 = y + side;
+        var ok = true, minD = Infinity;
+        for (var p = 0; p < placed.length; p++) {
+          var q = placed[p];
+          if (x0 < q.x1 + MARGE && x1 > q.x0 - MARGE &&
+              y0 < q.y1 + MARGE && y1 > q.y0 - MARGE) { ok = false; break; }
+          var dx = Math.max(0, Math.max(q.x0 - x1, x0 - q.x1));
+          var dy = Math.max(0, Math.max(q.y0 - y1, y0 - q.y1));
+          var dd = dx * dx + dy * dy;
+          if (dd < minD) minD = dd;
+        }
+        if (!ok) continue;
+        if (!placed.length) minD = 1;
+        if (minD > bestD) { bestD = minD; best = { x: x, y: y, side: side, x0: x0, y0: y0, x1: x1, y1: y1 }; }
+      }
+      if (!best) {
+        // Carte saturee : derniere position valide vue, sinon def initiale.
+        best = { x: d.x || 0, y: d.y || 0, side: side,
+                 x0: (d.x || 0) - side * 0.8, y0: (d.y || 0) - side * 0.8,
+                 x1: (d.x || 0) + side * 1.8, y1: (d.y || 0) + side };
+      }
+      rng[d.sprite || d.name] = { x: best.x, y: best.y };
+      placed.push(best);
+    }
+    G._villeRng = rng;
+  };
+  // Applique les positions aleatoires aux defs + TRANSLATE les grilles deja
+  // pre-calculees (serveur : ville-grids.json chargees par dom-stub avant le
+  // premier villeSetup ; les grilles sont affines -> ox/oy += (dx, dy)).
+  G.villeApplyRandomPositions = function () {
+    var defs = G.VILLE_DEFS || [];
+    var rng = G._villeRng;
+    if (!rng) return;
+    for (var i = 0; i < defs.length; i++) {
+      var d = defs[i];
+      var key = d.sprite || d.name;
+      var p = rng[key];
+      if (!p) continue;
+      var dx = p.x - (d.x || 0), dy = p.y - (d.y || 0);
+      d.x = p.x; d.y = p.y;
+      if (dx === 0 && dy === 0) continue;
+      if (G.villeGrids && G.villeGrids[key]) {
+        G.villeGrids[key].ox += dx;
+        G.villeGrids[key].oy += dy;
+      }
+    }
+    // Manifeste serveur (positions envoyees au client au join) : il est
+    // construit depuis ces memes defs par ville-sync, on le re-synchronise.
+    if (G.VILLE_MANIFEST && G.VILLE_MANIFEST.length) {
+      for (var mi = 0; mi < G.VILLE_MANIFEST.length; mi++) {
+        var m = G.VILLE_MANIFEST[mi];
+        if (!m || !m.sprite) continue;
+        for (var di = 0; di < defs.length; di++) {
+          if ((defs[di].sprite || defs[di].name) === m.sprite) {
+            m.x = defs[di].x; m.y = defs[di].y; break;
+          }
+        }
+      }
+    }
+  };
   G.villeSetup = function (state) {
     var st = state || G.state;
     var defs = G.VILLE_DEFS || [];
     var out = [];
+    // Positions aleatoires : tirees UNE fois par process puis verrouillees
+    // (le restart serveur garde la meme carte pour les clients connectes).
+    G.villeRandomizePositions();
+    G.villeApplyRandomPositions();
     for (var i = 0; i < defs.length; i++) {
       var d = defs[i];
       if (!G.hasSprite("ville", d.sprite || d.name)) continue;
