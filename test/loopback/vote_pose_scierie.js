@@ -1,5 +1,5 @@
 // Test loopback cible : relique->eglise(+100 or) -> vote -> buildSel=scierie + placeBuild pose la scierie.
-var WebSocket = require("../../server/node_modules/ws");
+var connectWs = require("./ws_connect");
 // Centre de la carte : lu dans la config partagee (WORLD / 2).
 global.window = global;
 (0, eval)(require("fs").readFileSync(require("path").join(__dirname, "..", "..", "src", "config.js"), "utf8"));
@@ -8,14 +8,18 @@ var PORT = 45743;
 var srv = require("child_process").spawn("node", ["index.js"], { cwd: require("path").join(__dirname, "..", "..", "server"), env: { PATH: process.env.PATH, PORT: String(PORT), TEST_START_PLANKS: "200" }, stdio: ["ignore", "pipe", "pipe"] });
 var logs = []; srv.stdout.on("data", function (d) { logs.push(d.toString()); }); srv.stderr.on("data", function (d) { logs.push("ERR:" + d.toString()); });
 setTimeout(function () {
-  var ws = new WebSocket("ws://127.0.0.1:" + PORT);
   var snap = null, mapBuildings = [];
-  ws.on("open", function () { ws.send(JSON.stringify({ type: "join", name: "T" })); });
-  ws.on("message", function (m) {
+  var ws = null;
+  connectWs(PORT, function (sock) {
+    ws = sock;
+    sock.send(JSON.stringify({ type: "join", name: "T" }));
+    sock.on("message", handleMessage);
+  });
+  function handleMessage(m) {
     var msg = JSON.parse(m);
     if (msg.type === "state") snap = msg;
     if (msg.type === "joined" && msg.map) mapBuildings = msg.map.buildings || [];
-  });
+  }
   function waitUntil(cond, cb, tries) {
     if (tries === undefined) tries = 2000;
     if (cond()) { cb(); return; }

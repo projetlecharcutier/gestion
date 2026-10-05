@@ -1474,6 +1474,13 @@ G.drawGround = function () {
       // Décor "dessous" (éolienne, cerf géant) : le joueur passe SOUS la
       // texture -> toujours dessiné après le joueur, quel que soit le tri.
       if (bld.decorSous) depth = state.player.x + state.player.y + 200000;
+      // Champs (décors nonbloquant CHAMP/champ*) : le joueur passe TOUJOURS
+      // AU-DESSUS de la texture, quel que soit le côté d'où il arrive
+      // -> dessinés derrière le joueur en toutes circonstances.
+      if (bld.decorSpriteName && bld.decorPassable && !bld.decorSous &&
+          /^nonbloquant\/(champ|CHAMP)/.test(bld.decorSpriteName)) {
+        depth -= 400000;
+      }
       drawables.push({ depth: depth, type: "building", ref: bld });
     }
     for (var wi = 0; wi < state.walls.length; wi++) {
@@ -1641,7 +1648,8 @@ G.drawGround = function () {
     G.drawProjectiles();
     G.drawFloaters();
     if (G.drawAnneauPoeme) G.drawAnneauPoeme();
-    G.drawFog();
+    // Mode spectateur : pas de brouillard, toute la carte est visible.
+    if (!state.spectator) G.drawFog();
     var darkness = G.nightDarkness(state.clock);
     if (darkness > 0) {
       ctx.fillStyle = "rgba(" + G.NIGHT_DARK_COLOR + "," + darkness + ")";

@@ -4,6 +4,7 @@
 // proche de l'ancienne) pendant la grace de reconnexion, pas creer un
 // nouveau personnage.
 var WebSocket = require("../../server/node_modules/ws");
+var connectWs = require("./ws_connect");
 var PORT = 45747;
 var srv = require("child_process").spawn("node", ["index.js"], {
   cwd: require("path").join(__dirname, "..", "..", "server"),
@@ -15,16 +16,16 @@ srv.stdout.on("data", function (d) { logs.push(d.toString()); });
 srv.stderr.on("data", function (d) { logs.push("ERR:" + d.toString()); });
 
 setTimeout(function () {
-  var ws1 = new WebSocket("ws://127.0.0.1:" + PORT);
   var myId = null, lastSnap = null;
-
-  ws1.on("open", function () {
-    ws1.send(JSON.stringify({ type: "join", name: "Reco" }));
-  });
-  ws1.on("message", function (m) {
-    var msg = JSON.parse(m);
-    if (msg.type === "joined") myId = msg.playerId;
-    if (msg.type === "state") lastSnap = msg;
+  var ws1 = null;
+  connectWs(PORT, function (sock) {
+    ws1 = sock;
+    sock.send(JSON.stringify({ type: "join", name: "Reco" }));
+    sock.on("message", function (m) {
+      var msg = JSON.parse(m);
+      if (msg.type === "joined") myId = msg.playerId;
+      if (msg.type === "state") lastSnap = msg;
+    });
   });
 
   setTimeout(function () {

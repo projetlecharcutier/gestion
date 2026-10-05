@@ -256,8 +256,19 @@
 
   window.addEventListener("keydown", function (e) {
     var state = G.state;
+    state.keys[e.code] = true;
     if (e.code === "Space") {
       e.preventDefault();
+      // Mort + Espace = mode spectateur : vue libre de toute la carte,
+      // sans brouillard, sans personnage. La partie continue pour les
+      // autres joueurs ; le serveur reste autoritaire.
+      if (state.gameOver && state.gameOverCause === "player" && !state.spectator) {
+        state.spectator = true;
+        if (G.screen && G.screen.hidden !== undefined) G.screen.hidden = true;
+        var goEl = document.getElementById("gameOverScreen");
+        if (goEl) goEl.hidden = true;
+        return;
+      }
       // Espace = avancer (vers la souris), y compris en mode build.
       state.keys.space = true;
     }
@@ -287,6 +298,7 @@
     }
   });
   window.addEventListener("keyup", function (e) {
+    G.state.keys[e.code] = false;
     if (e.code === "Space") G.state.keys.space = false;
   });
 

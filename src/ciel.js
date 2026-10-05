@@ -8,7 +8,7 @@
 (function () {
   "use strict";
   var G = window.GAME = window.GAME || {};
-  var CLOUD_N = 50;      // ~50 nuages en permanence
+  var CLOUD_N = 100;     // ~100 nuages en permanence
   var MONTGOLF_N = 20;   // montgolfières lentes, direction quelconque
   var OISEAU_N = 10;     // oiseaux NE -> SO (cap ~250°)
   var PORCO_N = 5;       // avions rapides S -> NO (cap ~330°)

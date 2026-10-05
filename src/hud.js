@@ -288,6 +288,8 @@
     return lines;
   }
   G.drawGameOver = function () {
+    // Mode spectateur : plus d'ecran de mort, le joueur regarde la carte.
+    if (G.state.spectator) return;
     if (!G.state.gameOver) return;
     var ctx = G.ctx;
     var t = G.TEXTURES.gameOver;

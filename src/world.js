@@ -203,11 +203,42 @@
     ["nonbloquant/CHAMP VACHE", "nonbloquant", 18]
   ];
   // Boîte (x, y, w, h) chevauche-t-elle un bâtiment existant (avec marge px) ?
-  function decorBoxHitsBuildings(state, bx, by, bw, bh, pad) {
+  // Grille spatiale des batiments/forets pour decorBoxHitsBuildings : un
+  // scan lineaire de ~5000 batiments par candidat (des centaines de milliers
+  // d essais) prenait ~3 s au boot ; la grille ne teste que les voisins.
+  var decorGridCell = 512;
+  var decorGrid = null;
+  function decorGridIndex(state) {
+    if (decorGrid) return decorGrid;
+    decorGrid = { cell: decorGridCell, cells: {} };
     for (var i = 0; i < state.buildings.length; i++) {
       var ob = state.buildings[i];
-      if (bx < ob.x + ob.w + pad && bx + bw > ob.x - pad &&
-          by < ob.y + ob.h + pad && by + bh > ob.y - pad) return true;
+      var cx0 = Math.floor(ob.x / decorGridCell), cx1 = Math.floor((ob.x + ob.w) / decorGridCell);
+      var cy0 = Math.floor(ob.y / decorGridCell), cy1 = Math.floor((ob.y + ob.h) / decorGridCell);
+      for (var gx = cx0; gx <= cx1; gx++) {
+        for (var gy = cy0; gy <= cy1; gy++) {
+          var k = gx + "," + gy;
+          if (!decorGrid.cells[k]) decorGrid.cells[k] = [];
+          decorGrid.cells[k].push(ob);
+        }
+      }
+    }
+    return decorGrid;
+  }
+  function decorBoxHitsBuildings(state, bx, by, bw, bh, pad) {
+    var gr = decorGridIndex(state);
+    var cx0 = Math.floor((bx - pad) / gr.cell), cx1 = Math.floor((bx + bw + pad) / gr.cell);
+    var cy0 = Math.floor((by - pad) / gr.cell), cy1 = Math.floor((by + bh + pad) / gr.cell);
+    for (var gx = cx0; gx <= cx1; gx++) {
+      for (var gy = cy0; gy <= cy1; gy++) {
+        var arr = gr.cells[gx + "," + gy];
+        if (!arr) continue;
+        for (var n = 0; n < arr.length; n++) {
+          var ob = arr[n];
+          if (bx < ob.x + ob.w + pad && bx + bw > ob.x - pad &&
+              by < ob.y + ob.h + pad && by + bh > ob.y - pad) return true;
+        }
+      }
     }
     return false;
   }
@@ -216,14 +247,13 @@
   // dossier elementdecord sont absents, rien n'est posé (comme les maisons).
   G.spawnDecor = function (state) {
     if (!G.SPRITES || !G.SPRITES.elementdecord) return;
-    // Marge autour de la ville : les décors restent en campagne.
+    // Marge autour de la ville : les decors restent en campagne.
     var townPad = 160;
-    // Emprise VISUELLE d'un décor (rectangle écran à zoom 1) : la texture
-    // PNG est ancrée bas-centre sur le coin sud du losange et déborde vers
-    // le nord de sa hauteur (drawBuilding : dh = dw * h/w). Deux décors dont
-    // les AABB au sol ne se touchent pas peuvent quand même se recouvrir
-    // visuellement (moulin vs champ, éolienne vs buisson...). Le placement
-    // interdit tout chevauchement de ces rectangles entre décors.
+    // Qux4 : 4 fois plus d'elements, poses par GROUPES DE 4 adjacents
+    // (grille 2x2 monde), sans jamais se chevaucher entre eux ni avec les
+    // batiments/forets/villes. Les gros elements bloquants (eglise) restent
+    // en pose isolee (une grille 2x2 d'eglises ne tiendrait pas sur la carte).
+    var MULT = 4;
     function decorVisRect(bx, by, side, sp) {
       var dw = side;
       var dh = dw * (sp ? sp.h / sp.w : 1);
@@ -231,27 +261,162 @@
       var groundY = (bx + by) / 4 + side / 2;
       return { x0: cx - dw / 2, x1: cx + dw / 2, y0: groundY - dh, y1: groundY };
     }
+    // Rectangle ecran couvrant EXACTEMENT une boite monde (X, Y, W, H) :
+    // projection iso des 4 coins du losange.
+    function buildingVisRect(bb) {
+      var dw = (bb.w + bb.h) / 2;
+      var dh = dw * (sp ? sp.h / sp.w : 1);
+      var cx = (bb.x - bb.y + (bb.w - bb.h) / 2 * 0) / 2;
+      cx = (bb.x - (bb.y + bb.h) + (bb.x + bb.w) - bb.y) / 4;
+      var groundY = (bb.x + bb.w + bb.y + bb.h) / 4;
+      return { x0: cx - dw / 2, x1: cx + dw / 2, y0: groundY - dh, y1: groundY };
+    }
+    function worldBoxVisRect(X, Y, W, H) {
+      return {
+        x0: (X - Y - H) / 2, x1: (X + W - Y) / 2,
+        y0: (X + Y) / 4, y1: (X + Y + W + H) / 4
+      };
+    }
     function visRectsHit(a, b) {
       return a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
     }
+    function boxHitsBox(ax, ay, aw, ah, bx, by, bw, bh) {
+      return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+    }
+    // Un decore (bx, by, side) peut-il etre pose la ? Tous les filtres.
+    // worldBoxes : AABB monde des grilles/decores deja poses (jamais de
+    // chevauchement AABB, meme bord a bord interdit via le pad des batiments).
+    function canPlace(bx, by, side, mode, sp, visRects, worldBoxes) {
+      if (bx < 60 || by < 60 || bx + side > G.WORLD - 60 || by + side > G.WORLD - 60) return false;
+      // Ville principale : AUCUNE cellule d'une grille ne doit y pénétrer,
+      // même si le coin nord-ouest de la grille est hors ville.
+      if (G.inTown && (G.inTown(bx, by) || G.inTown(bx + side, by) ||
+                        G.inTown(bx, by + side) || G.inTown(bx + side, by + side) ||
+                        G.inTown(bx + side / 2, by + side / 2))) return false;
+      if (G.villeBoxHits && G.villeBoxHits(bx, by, side, side)) return false;
+      if (!G.villeBoxHits && G.villeAt && G.villeAt(bx + side / 2, by + side / 2, side / 2)) return false;
+      var pad = mode === "bloquant" ? 6 : 2;
+      if (decorBoxHitsBuildings(state, bx, by, side, side, pad)) return false;
+      if (mode === "bloquant" && G.aabbHitsWalls && G.aabbHitsWalls(bx, by, side, side, true)) return false;
+      var wb = 0;
+      while (wb < worldBoxes.length) {
+        var o = worldBoxes[wb];
+        if (boxHitsBox(bx - pad, by - pad, side + pad * 2, side + pad * 2,
+                        o.x, o.y, o.w, o.h)) return false;
+        wb++;
+      }
+      var candRect = decorVisRect(bx, by, side, sp);
+      for (var vr = 0; vr < visRects.length; vr++) {
+        if (visRectsHit(candRect, visRects[vr])) return false;
+      }
+      return true;
+    }
+    decorGrid = null;
     var visRects = [];
-    for (var si = 0; si < G.DECOR_SPECS.length; si++) {
+    var worldBoxes = [];
+    // Gros elements (eglises, montagnes...) en PREMIER : poses isoles, ils
+    // ont besoin de zones libres que les 3000 petits decors saturent vite.
+    var order = G.DECOR_SPECS.map(function (spc, idx) { return idx; });
+    order.sort(function (a, b) {
+      var sa = G.SPRITES.elementdecord[G.DECOR_SPECS[a][0]];
+      var sb = G.SPRITES.elementdecord[G.DECOR_SPECS[b][0]];
+      return (sb ? sb.w * 2 : 0) - (sa ? sa.w * 2 : 0);
+    });
+    for (var oi = 0; oi < order.length; oi++) {
+      var si = order[oi];
       var frame = G.DECOR_SPECS[si][0], mode = G.DECOR_SPECS[si][1], total = G.DECOR_SPECS[si][2];
       var sp = G.SPRITES.elementdecord[frame];
       if (!sp) continue;
       var side = sp.w * 2;
+      var want = total * MULT;
+      // >= : un sprite de 400 px donne side = 800 pile (eglise saint jacques),
+      // qui doit rester en pose isolee (une grille 2x2 de 1600 px ne tient pas).
+      var big = side >= 480;
       var placed = 0, guard = 0;
-      // Garde plus large pour les gros éléments (l'église du Lisieux fait
-      // 800 px : trouver une place libre demande plus d'essais).
-      var maxGuard = total * (200 + side * 2) + 1600;
-      while (placed < total && guard < maxGuard) {
+      var maxGuard = want * (200 + side * 2) * 4 + 6400;
+      function placeOne(cx, cy) {
+        var bx = Math.round(cx - side / 2), by = Math.round(cy - side / 2);
+        if (!canPlace(bx, by, side, mode, sp, visRects, worldBoxes)) return false;
+        visRects.push(decorVisRect(bx, by, side, sp));
+        worldBoxes.push({ x: bx, y: by, w: side, h: side });
+        state.buildings.push(G.makeDecor(cx, cy, frame, mode));
+        return true;
+      }
+      // Gros elements isoles (eglise...) : tous les filtres (batiments,
+      // forets, ville, murs, autres decors) s appliquent a la box SHRINKEE
+      // a l opaque (empreinte visible reelle), pas a la cellule side x side
+      // entiere : exiger une cellule de 800 px totalement libre etait
+      // impossible avec 3600 forets deja posees.
+      function placeOneBig(cx, cy) {
+        var b = G.makeDecor(cx, cy, frame, mode);
+        var bx = Math.round(cx - side / 2), by = Math.round(cy - side / 2);
+        if (b.x < 60 || b.y < 60 || b.x + b.w > G.WORLD - 60 || b.y + b.h > G.WORLD - 60) return false;
+        if (G.inTown && (G.inTown(b.x, b.y) || G.inTown(b.x + b.w, b.y) ||
+                          G.inTown(b.x, b.y + b.h) || G.inTown(b.x + b.w, b.y + b.h) ||
+                          G.inTown(b.x + b.w / 2, b.y + b.h / 2))) return false;
+        if (G.villeBoxHits && G.villeBoxHits(b.x, b.y, b.w, b.h)) return false;
+        if (!G.villeBoxHits && G.villeAt && G.villeAt(cx, cy, side / 2)) return false;
+        if (decorBoxHitsBuildings(state, b.x, b.y, b.w, b.h, 6)) return false;
+        if (G.aabbHitsWalls && G.aabbHitsWalls(b.x, b.y, b.w, b.h, true)) return false;
+        var wb = 0;
+        while (wb < worldBoxes.length) {
+          var o = worldBoxes[wb];
+          if (b.x - 6 < o.x + o.w && b.x + b.w + 6 > o.x &&
+              b.y - 6 < o.y + o.h && b.y + b.h + 6 > o.y) return false;
+          wb++;
+        }
+        var candRect = buildingVisRect(b);
+        for (var vr = 0; vr < visRects.length; vr++) {
+          if (visRectsHit(candRect, visRects[vr])) return false;
+        }
+        visRects.push(candRect);
+        worldBoxes.push({ x: b.x, y: b.y, w: b.w, h: b.h });
+        state.buildings.push(b);
+        return true;
+      }
+      // Essaie de poser une grille rows x cols (cellules adjacentes bord a
+      // bord en monde). Retourne le nombre d'elements poses, 0 si echec.
+      function tryPlaceGrid(rows, cols, gx0, gy0) {
+        var bw = cols * side, bh = rows * side;
+        var bx0, by0;
+        if (gx0 === undefined) {
+          bx0 = Math.random() < 0.5
+            ? G.rand(80, G.TOWN_MIN - townPad)
+            : G.rand(G.TOWN_MAX + townPad, G.WORLD - 80);
+          by0 = G.rand(80, G.WORLD - 80);
+        } else {
+          bx0 = gx0; by0 = gy0;
+        }
+        bx0 = Math.round(bx0); by0 = Math.round(by0);
+        if (bx0 + bw > G.WORLD - 80 || by0 + bh > G.WORLD - 80) return 0;
+        var pad = mode === "bloquant" ? 6 : 2;
+        for (var r = 0; r < rows; r++) {
+          for (var c = 0; c < cols; c++) {
+            if (!canPlace(bx0 + c * side, by0 + r * side, side, mode, sp, visRects, worldBoxes)) return 0;
+          }
+        }
+        var gRect = worldBoxVisRect(bx0, by0, bw, bh);
+        for (var vr = 0; vr < visRects.length; vr++) {
+          if (visRectsHit(gRect, visRects[vr])) return 0;
+        }
+        for (var ob = 0; ob < worldBoxes.length; ob++) {
+          if (boxHitsBox(bx0 - pad, by0 - pad, bw + pad * 2, bh + pad * 2,
+                          worldBoxes[ob].x, worldBoxes[ob].y, worldBoxes[ob].w, worldBoxes[ob].h)) return 0;
+        }
+        visRects.push(gRect);
+        worldBoxes.push({ x: bx0, y: by0, w: bw, h: bh });
+        var n = 0;
+        for (var r2 = 0; r2 < rows; r2++) {
+          for (var c2 = 0; c2 < cols; c2++) {
+            state.buildings.push(G.makeDecor(bx0 + c2 * side + side / 2,
+                                             by0 + r2 * side + side / 2, frame, mode));
+            n++;
+          }
+        }
+        return n;
+      }
+      while (placed < want && guard < maxGuard) {
         guard++;
-        // Position hors ville : un axe proche du bord aléatoire, l'autre libre.
-        // Les très gros éléments (église 1600 px de côté) passent presque
-        // toujours ce filtre : échantillonnage uniforme sur toute la carte
-        // hors rectangle de ville, sinon la bande proche de la ville gaspille
-        // des essais sur une carte dense en forêts.
-        var big = side > 800;
         var gx, gy;
         if (big) {
           gx = G.rand(80, G.WORLD - 80);
@@ -259,34 +424,42 @@
           var inTownRect = gx > G.TOWN_MIN - townPad - side / 2 && gx < G.TOWN_MAX + townPad + side / 2 &&
                            gy > G.TOWN_MIN - townPad - side / 2 && gy < G.TOWN_MAX + townPad + side / 2;
           if (inTownRect) continue;
-        } else if (Math.random() < 0.5) {
-          gx = Math.random() < 0.5 ? G.rand(80, G.TOWN_MIN - townPad) : G.rand(G.TOWN_MAX + townPad, G.WORLD - 80);
-          gy = G.rand(80, G.WORLD - 80);
-        } else {
-          gx = G.rand(80, G.WORLD - 80);
-          gy = Math.random() < 0.5 ? G.rand(80, G.TOWN_MIN - townPad) : G.rand(G.TOWN_MAX + townPad, G.WORLD - 80);
+          if (placeOneBig(gx, gy)) placed++;
+          continue;
         }
-        var bx = gx - side / 2, by = gy - side / 2;
-        if (bx < 60 || by < 60 || bx + side > G.WORLD - 60 || by + side > G.WORLD - 60) continue;
-        // Villes PNG : emprise visuelle interdite.
-        if (G.villeBoxHits && G.villeBoxHits(bx, by, side, side)) continue;
-        if (!G.villeBoxHits && G.villeAt && G.villeAt(gx, gy, side / 2)) continue;
-        // Écart avec les bâtiments/forêts : plus grand pour les bloquants.
-        var pad = mode === "bloquant" ? 6 : 2;
-        if (decorBoxHitsBuildings(state, bx, by, side, side, pad)) continue;
-        // Bloquants : pas non plus sur la palissade ni près de la muraille.
-        if (mode === "bloquant" && G.aabbHitsWalls &&
-            G.aabbHitsWalls(bx, by, side, side, true)) continue;
-        // Chevauchement visuel avec les décors déjà posés : interdit.
-        var candRect = decorVisRect(bx, by, side, sp);
-        var hitsVis = false;
-        for (var vr = 0; vr < visRects.length; vr++) {
-          if (visRectsHit(candRect, visRects[vr])) { hitsVis = true; break; }
+        var rem = want - placed;
+        if (rem < 4) break;
+        var n = tryPlaceGrid(2, 2);
+        if (n > 0) placed += n;
+      }
+      // Phase 2 : si la garde s'est epuisee avec des grilles 2x2 alors
+      // qu'il reste beaucoup a poser, la carte est trop dense pour n'utiliser
+      // QUE des 2x2. On reprend alors avec les replis (2x1, 1x2, isoles) pour
+      // atteindre le quota.
+      if (placed < want) {
+        var guard2 = 0;
+        var maxGuard2 = (want - placed) * (200 + side * 2) * 4 + 6400;
+        while (placed < want && guard2 < maxGuard2) {
+          guard2++;
+          var rem2 = want - placed;
+          var tries2 = rem2 >= 4 ? [[2, 2], [1, 2], [2, 1], [1, 1]]
+                     : rem2 >= 2 ? [[1, 2], [2, 1], [1, 1]]
+                     : [[1, 1]];
+          var n2 = 0;
+          for (var t2 = 0; t2 < tries2.length; t2++) {
+            n2 = tryPlaceGrid(tries2[t2][0], tries2[t2][1]);
+            if (n2 > 0) break;
+          }
+          if (n2 === 0) {
+            var gx2 = Math.random() < 0.5
+              ? G.rand(80, G.TOWN_MIN - townPad)
+              : G.rand(G.TOWN_MAX + townPad, G.WORLD - 80);
+            var gy2 = G.rand(80, G.WORLD - 80);
+            if (!placeOne(gx2, gy2)) continue;
+            n2 = 1;
+          }
+          placed += n2;
         }
-        if (hitsVis) continue;
-        visRects.push(candRect);
-        state.buildings.push(G.makeDecor(gx, gy, frame, mode));
-        placed++;
       }
     }
   };
@@ -588,7 +761,8 @@
         gx = Math.random() < 0.5 ? G.rand(40, G.TOWN_MIN - 40) : G.rand(G.TOWN_MAX + 40, G.WORLD - 40);
         gy = G.rand(40, G.WORLD - 40);
       }
-      var count = G.randi(1, 10);
+      // Forêts par groupes fixes de 4.
+      var count = 4;
       for (var j = 0; j < count && placed < total; j++) {
         var frame = names[G.randi(0, names.length - 1)];
         var sp = G.SPRITES.foret && G.SPRITES.foret[frame];
@@ -895,12 +1069,12 @@
       }
     }
 
-    // Éléments de décor PNG (moulins, églises, champs, buissons...) : posés
-    // AVANT les forêts (primeauté sur l espace libre pour les gros bloquants),
-    // avant la grille de collisions.
-    G.spawnDecor(state);
+    // Forêts d'abord, décors ensuite : les décors voient les forêts dans
+    // decorBoxHitsBuildings et ne peuvent jamais s'y superposer (une forêt
+    // posée après pouvait se coller à un décor shrinké à l opaque).
     G.spawnForets(state, 5, true);
     G.spawnForets(state, 3600, false);
+    G.spawnDecor(state);
     state.zombies = [];
     G.rebuildBuildingGrid();
     // L'Anneau Unique : pose sur la tache #5a944a la plus au nord du PNG de

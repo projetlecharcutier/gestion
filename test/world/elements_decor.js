@@ -10,14 +10,48 @@ function fail(msg) { console.log("FAIL: " + msg); process.exit(1); }
 var decors = st.buildings.filter(function (b) { return b.decorSpriteName; });
 var specs = G.DECOR_SPECS;
 
-// 1. Quotas : chaque spec doit être posée exactement le nombre demandé.
+// 1. Quotas : chaque spec doit être posée exactement 4x le nombre demandé
+// (décors 4x plus nombreux, par groupes de 4 adjacents).
 for (var i = 0; i < specs.length; i++) {
-  var frame = specs[i][0], total = specs[i][2];
+  var frame = specs[i][0], total = specs[i][2] * 4;
   var n = 0;
   for (var j = 0; j < decors.length; j++) if (decors[j].decorSpriteName === frame) n++;
   if (n !== total) fail(frame + " : " + n + " posé(s), attendu " + total);
 }
 if (decors.length === 0) fail("aucun décor posé (sprites elementdecord absents ?)");
+// 1b. Groupes : chaque décor doit avoir au moins un voisin posé adjacent
+// (bord à bord en coordonnées monde, via le centre de pose). Les gros
+// éléments (sprite >= 400 px, side >= 800) sont posés isolément par
+// conception (une grille 2x2 ne tient pas sur la carte) : exemptés.
+var bigSet = {};
+for (var bi = 0; bi < specs.length; bi++) {
+  var bsp = G.SPRITES.elementdecord[specs[bi][0]];
+  if (bsp && bsp.w * 2 >= 480) bigSet[specs[bi][0]] = true;
+}
+for (var g = 0; g < decors.length; g++) {
+  var dg = decors[g];
+  if (bigSet[dg.decorSpriteName]) continue;
+  var hasNb = false;
+  for (var h = 0; h < decors.length && !hasNb; h++) {
+    var dh = decors[h];
+    if (dh === dg || dh.decorSpriteName !== dg.decorSpriteName) continue;
+    var spSide = G.SPRITES.elementdecord[dg.decorSpriteName];
+    var side = spSide ? spSide.w * 2 : dg.w;
+    var dx = Math.abs(dh.door.x - dg.door.x);
+    var dy = Math.abs(dh.door.y - dg.door.y);
+    if ((dx < 1 && Math.abs(dy - side) < 1) || (dy < 1 && Math.abs(dx - side) < 1)) hasNb = true;
+  }
+  if (!hasNb) fail(dg.decorSpriteName + " isolé (pas de voisin adjacent)");
+}
+// 1c. Aucun chevauchement AABB strict entre décors.
+for (var o1 = 0; o1 < decors.length; o1++) {
+  var A = decors[o1];
+  for (var o2 = o1 + 1; o2 < decors.length; o2++) {
+    var B = decors[o2];
+    if (A.x < B.x + B.w && A.x + A.w > B.x && A.y < B.y + B.h && A.y + A.h > B.y)
+      fail(A.decorSpriteName + " chevauche " + B.decorSpriteName);
+  }
+}
 
 // 2. Modes : bloquant = solide (pas decorPassable) ; nonbloquant =
 // decorPassable sans decorSous ; dessous = decorPassable + decorSous.
@@ -49,6 +83,10 @@ for (var bl = 0; bl < decors.length; bl++) {
   for (var ob = 0; ob < st.buildings.length; ob++) {
     var o = st.buildings[ob];
     if (o === bb || o.decorPassable) continue;
+    // Deux décors d'un même groupe se touchent bord à bord (groupes adjacents)
+    // : la marge de 6 ne s'applique qu'entre un décor et un bâtiment/forêt,
+    // pas entre décors (le chevauchement strict est vérifié au point 1c).
+    if (o.decorSpriteName) continue;
     if (bb.x < o.x + o.w + 6 && bb.x + bb.w > o.x - 6 &&
         bb.y < o.y + o.h + 6 && bb.y + bb.h > o.y - 6)
       fail(bb.decorSpriteName + " (bloquant) chevauche un bâtiment");

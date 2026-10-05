@@ -184,8 +184,33 @@
         if (state.targetZoom < 14) state.targetZoom = 14;
       }
     }
-    state.camera.x += (state.player.x - state.camera.x) * Math.min(1, dt * 6);
-    state.camera.y += (state.player.y - state.camera.y) * Math.min(1, dt * 6);
+    // Mode spectateur : la camera est libre (touches flechees + ZQSD), le
+    // joueur mort n'existe plus sur la carte. Deplacement en coordonnees
+    // ECRAN converties en monde pour rester intuitif (haut de l'ecran =
+    // vers le nord visuel).
+    if (state.spectator) {
+      var k = G.state.keys, sp = 1400 * dt;
+      var vx = 0, vy = 0;
+      if (k.ArrowLeft || k.KeyA || k.KeyQ) vx -= 1;
+      if (k.ArrowRight || k.KeyD) vx += 1;
+      if (k.ArrowUp || k.KeyW || k.KeyZ) vy -= 1;
+      if (k.ArrowDown || k.KeyS) vy += 1;
+      if (vx !== 0 || vy !== 0) {
+        // (vx, vy) ecran -> monde : proj donne dsx=(wx-wy)/2, dsy=(wx+wy)/4.
+        var wx = vx + 2 * vy, wy = 2 * vy - vx;
+        var n = Math.sqrt(wx * wx + wy * wy);
+        state.camera.x += (wx / n) * sp;
+        state.camera.y += (wy / n) * sp;
+        // Bornage a la carte.
+        if (state.camera.x < 0) state.camera.x = 0;
+        if (state.camera.x > G.WORLD) state.camera.x = G.WORLD;
+        if (state.camera.y < 0) state.camera.y = 0;
+        if (state.camera.y > G.WORLD) state.camera.y = G.WORLD;
+      }
+    } else {
+      state.camera.x += (state.player.x - state.camera.x) * Math.min(1, dt * 6);
+      state.camera.y += (state.player.y - state.camera.y) * Math.min(1, dt * 6);
+    }
 
     if (state.mouse.inside) {
       var w = G.unproj(state.mouse.sx, state.mouse.sy);

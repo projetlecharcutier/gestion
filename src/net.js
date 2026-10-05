@@ -247,6 +247,8 @@
       G.state.playerHidden = false;
       G.state.hungByPotence = false;
       G.state._execFocus = null;
+      // Spectateur : nouvelle partie -> le joueur reprend son personnage.
+      G.state.spectator = false;
       if (msg.map) {
         G.state.buildings = msg.map.buildings || [];
         _applyBuildingDoors(G.state.buildings);

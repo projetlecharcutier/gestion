@@ -66,6 +66,7 @@
     started: false,
     paused: false,
     gameOver: false,
+    spectator: false,
     inBuilding: null,
     playerName: "",
     player: { x: G.WORLD / 2, y: G.WORLD / 2, face: 1, moving: false, hp: G.PLAYER_MAX_HP },
