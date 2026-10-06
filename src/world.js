@@ -823,6 +823,42 @@
     function nearTownWall(tx, ty, half) {
       return G.foretNearTownWall(tx - half, ty - half, half * 2, half * 2);
     }
+    // Validite d'une foret candidate (AABB reelle, cf. shrinkToOpaque de
+    // makeForet) par rapport aux forets deja posees : soit elle recouvre
+    // FRANCHEMENT une voisine (>= 12 px sur les deux axes) en etant plus au
+    // SUD (elle se dessine devant, cf. tri depth = x + y du rendu), soit
+    // elle en est degagee d'au moins G.FORET_GAP sur un axe. Entre les deux
+    // (angle etroit, couloir plus etroit qu'un zombie) : refuse. Sans cela,
+    // l'angle entre deux PNG etait un piege ou les zombies se coincaient.
+    function foretPlacementOk(cand) {
+      var gap = G.FORET_GAP || 34;
+      var minCx = Math.floor((cand.x - gap) / cell), maxCx = Math.floor((cand.x + cand.w + gap) / cell);
+      var minCy = Math.floor((cand.y - gap) / cell), maxCy = Math.floor((cand.y + cand.h + gap) / cell);
+      for (var cx = minCx; cx <= maxCx; cx++) {
+        for (var cy = minCy; cy <= maxCy; cy++) {
+          var arr = grid[cx + "," + cy];
+          if (!arr) continue;
+          for (var n = 0; n < arr.length; n++) {
+            var o = arr[n];
+            if (!o.isForet) continue;
+            var ox = Math.min(cand.x + cand.w, o.x + o.w) - Math.max(cand.x, o.x);
+            var oy = Math.min(cand.y + cand.h, o.y + o.h) - Math.max(cand.y, o.y);
+            if (ox >= 12 && oy >= 12) {
+              // Ordre de rendu : depth = x + y (coin, cf. render.js). La
+              // posee doit etre plus au SUD (depth plus grand) pour se
+              // dessiner devant sa voisine recouverte.
+              if (!(cand.x + cand.y > o.x + o.y + 20)) return false;
+            } else if (ox > -gap && oy > -gap) {
+              return false;
+            }
+          }
+        }
+      }
+      return true;
+    }
+    // Vrai si la boite (tx, ty, half) touche un batiment non-foret (marge 6).
+    // Les forets sont exclues : la regle de recouvrement/degagement ci-dessus
+    // (foretPlacementOk) les gere avec ses propres marges.
     function nearForet(tx, ty, half) {
       var minCx = Math.floor((tx - half) / cell), maxCx = Math.floor((tx + half) / cell);
       var minCy = Math.floor((ty - half) / cell), maxCy = Math.floor((ty + half) / cell);
@@ -832,6 +868,7 @@
           if (!arr) continue;
           for (var n = 0; n < arr.length; n++) {
             var o = arr[n];
+            if (o.isForet) continue;
             if (tx + half > o.x - 6 && tx - half < o.x + o.w + 6 &&
                 ty + half > o.y - 6 && ty - half < o.y + o.h + 6) return true;
           }
@@ -852,6 +889,15 @@
       }
       state.buildings.push(f);
     }
+    // Demi-emprise REELLE (apres shrinkToOpaque) par frame de foret : sert
+    // a calibrer le pas entre deux forets d'un groupe. Avec la demi-largeur
+    // brute du PNG, le pas etait trop grand et la pose suivante tombait
+    // systematiquement dans la zone interdite (recouvrement trop faible).
+    var realHalf = {};
+    for (var rh = 0; rh < names.length; rh++) {
+      var rf = G.makeForet(0, 0, names[rh]);
+      realHalf[names[rh]] = rf.w / 2;
+    }
     var placed = 0;
     var guard = 0;
     while (placed < total && guard < total * 8) {
@@ -867,31 +913,53 @@
         gx = Math.random() < 0.5 ? G.rand(40, G.TOWN_MIN - 40) : G.rand(G.TOWN_MAX + 40, G.WORLD - 40);
         gy = G.rand(40, G.WORLD - 40);
       }
-      // Forêts par groupes fixes de 4.
-      var count = 4;
+      // Un groupe fait de 2 a 10 forets posees a la queue leu leu : chaque
+      // nouvelle foret se colle a la precedente selon une direction tiree
+      // au hasard. Les emplacements qui echouent a un test sont retentes
+      // avec une autre direction ; si la posee precedente est perdue de vue,
+      // le groupe s'arrete (il ne repart jamais d'un point isole).
+      var prev = null;
+      var count = G.randi(2, 10);
       for (var j = 0; j < count && placed < total; j++) {
         var frame = names[G.randi(0, names.length - 1)];
         var sp = G.SPRITES.foret && G.SPRITES.foret[frame];
         var side = sp ? sp.w * 2 : 128;
         var half = side / 2;
-        var ang = Math.random() * Math.PI * 2;
-        var dist = Math.random() * Math.max(side * 0.6, 20);
-        var tx = gx + Math.cos(ang) * dist;
-        var ty = gy + Math.sin(ang) * dist;
-        if (tx < half || tx > G.WORLD - half || ty < half || ty > G.WORLD - half) continue;
-        if (!inTown && G.inTown(tx, ty)) continue;
-        if (nearTownWall(tx, ty, half)) continue;
-        // Villes PNG : aucune foret dont la bbox VISUELLE (le sprite deborde
-        // vers le nord de son AABB au sol) touche la bbox visuelle d'une
-        // ville decorative. L'ancien test AABB-sol laissait le feuillage se
-        // dessiner par-dessus le PNG de la ville.
-        var cand = G.makeForet(tx, ty, frame);
-        var vbox = G.foretVisualBox(cand);
-        if (G.villeBoxHits && G.villeBoxHits(vbox.x0, vbox.y0, vbox.x1 - vbox.x0, vbox.y1 - vbox.y0)) continue;
-        if (!G.villeBoxHits && G.villeAt && G.villeAt(tx, ty, half)) continue;
-        if (nearForet(tx, ty, half)) continue;
-        addForet(tx, ty, frame);
+        var rh2 = realHalf[frame] || half;
+        var base = prev || { x: gx, y: gy, half: rh2 };
+        var best = null;
+        for (var t = 0; t < 14 && !best; t++) {
+          var ang = (t === 0 && prev) ? Math.random() * Math.PI * 2
+            : (Math.floor(Math.random() * 8) + (prev ? 1 : 0)) * Math.PI / 4;
+          var prevHalf = prev ? prev.half : rh2;
+          // Adherence (recouvrement) : le pas est plus court que la somme
+          // des demi-AABB reelles, les sprites se chevauchent franchement
+          // (un seul massif visuel) sans jamais se contenir.
+          var step = (prevHalf + rh2) * (0.55 + Math.random() * 0.25);
+          var tx = base.x + Math.cos(ang) * step;
+          var ty = base.y + Math.sin(ang) * step;
+          if (tx < half || tx > G.WORLD - half || ty < half || ty > G.WORLD - half) continue;
+          if (!inTown && G.inTown(tx, ty)) continue;
+          if (nearTownWall(tx, ty, half)) continue;
+          // Villes PNG : aucune foret dont la bbox VISUELLE (le sprite deborde
+          // vers le nord de son AABB au sol) touche la bbox visuelle d'une
+          // ville decorative. L'ancien test AABB-sol laissait le feuillage se
+          // dessiner par-dessus le PNG de la ville.
+          var cand = G.makeForet(tx, ty, frame);
+          var vbox = G.foretVisualBox(cand);
+          if (G.villeBoxHits && G.villeBoxHits(vbox.x0, vbox.y0, vbox.x1 - vbox.x0, vbox.y1 - vbox.y0)) continue;
+          if (!G.villeBoxHits && G.villeAt && G.villeAt(tx, ty, half)) continue;
+          if (nearForet(tx, ty, half)) continue;
+          // Recouvrement sud > nord ou degagement complet : pas d'angle etroit
+          // entre deux PNG ou les zombies se coincent (cf. foretPlacementOk).
+          if (!foretPlacementOk(cand)) continue;
+          best = { tx: tx, ty: ty, half: cand.w / 2 };
+          break;
+        }
+        if (!best) break;
+        addForet(best.tx, best.ty, frame);
         placed++;
+        prev = { x: best.tx, y: best.ty, half: best.half };
       }
     }
   };
@@ -1179,7 +1247,7 @@
     // decorBoxHitsBuildings et ne peuvent jamais s'y superposer (une forêt
     // posée après pouvait se coller à un décor shrinké à l opaque).
     G.spawnForets(state, 5, true);
-    G.spawnForets(state, 3600, false);
+    G.spawnForets(state, 5400, false);
     G.spawnDecor(state);
     state.zombies = [];
     G.rebuildBuildingGrid();

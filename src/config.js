@@ -308,6 +308,12 @@
   // Ecart minimal (px) entre les forets et la palissade de perimetre a
   // l'initialisation du monde : les forets ne collent plus aux murs.
   G.FORET_WALL_GAP = 40;
+  // Ecart minimal (px) entre les forets qui ne se recouvrent PAS : un
+  // couloir plus etroit qu'un zombie (2 * ZOMBIE_HALF + marge) entre deux
+  // forets est un "piege a zombie" (il s'y coince). Les paires qui se
+  // recouvrent ne sont pas concernees : le rendu tri sud > nord fait alors
+  // un seul massif continu, sans couloir.
+  G.FORET_GAP = 34;
   // Villes decoratives PNG : grandes villes pre-dessinees (voir src/ville.js
   // et assets/sprites/ville/). Chaque entree : { name, sprite, x, y [, w] }.
   //   name   : nom affichable ; sprite : nom du dossier assets/sprites/ville/<sprite>/
