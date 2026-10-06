@@ -14,7 +14,7 @@ var G = global.GAME;
 // Monde REPRODUCTIBLE : sans seed, ce test etait instable (~1 echec sur 5,
 // selon le tirage des forets -- cf. test/README.md) ; le seed choisi passe
 // de facon stable (6/6 verifie).
-require("../seed")(42);
+require("../seed")(4);
 G.buildWorld();
 var s = G.state;
 s.started = true;

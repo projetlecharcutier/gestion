@@ -919,7 +919,7 @@
       // avec une autre direction ; si la posee precedente est perdue de vue,
       // le groupe s'arrete (il ne repart jamais d'un point isole).
       var prev = null;
-      var count = G.randi(2, 10);
+      var count = G.randi(4, 20);
       for (var j = 0; j < count && placed < total; j++) {
         var frame = names[G.randi(0, names.length - 1)];
         var sp = G.SPRITES.foret && G.SPRITES.foret[frame];
@@ -1247,7 +1247,7 @@
     // decorBoxHitsBuildings et ne peuvent jamais s'y superposer (une forêt
     // posée après pouvait se coller à un décor shrinké à l opaque).
     G.spawnForets(state, 5, true);
-    G.spawnForets(state, 5400, false);
+    G.spawnForets(state, 7020, false);
     G.spawnDecor(state);
     state.zombies = [];
     G.rebuildBuildingGrid();

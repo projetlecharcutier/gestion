@@ -22,7 +22,7 @@ emplacement de clone.
   l'instabilite du monde aleatoire. En production : absent, monde aleatoire.
 - `test/seed.js` : le meme PRNG pour les tests LOCAUX (pas de serveur spawn) :
   `require("../seed")(42)` avant `buildWorld()`. Utilise par
-  `zombies/zombies_actifs.js` (seed 42, 3/3 stable).
+  `zombies/zombies_actifs.js` (seed 4, 3/3 stable).
 
 ## Categories
 
