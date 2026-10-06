@@ -6,12 +6,36 @@
   G.aabbHitsBuildings = function (x, y) {
     var bx = x - G.PLAYER_HALF, by = y - G.PLAYER_HALF;
     var bw = G.PLAYER_W, bh = G.PLAYER_W;
-    for (var i = 0; i < G.state.buildings.length; i++) {
-      var b = G.state.buildings[i];
-      if (b.decorPassable) continue;
-      if (b.isForet && G.foretDepleted(b)) continue;
-      if (bx < b.x + b.w && bx + bw > b.x && by < b.y + b.h && by + bh > b.y) {
-        return true;
+    // Grille spatiale des batiments (construite par rebuildBuildingGrid) :
+    // le scan lineaire de TOUS les batiments (~7700 avec les forets) etait
+    // le hot spot du tick serveur (50 legionnaires -> libre -> ici, 20 Hz).
+    // Repli sur le scan lineaire si la grille n'est pas encore batie.
+    var grid = G.buildingGrid, cell = G.BUILDING_CELL;
+    if (!grid || !cell) {
+      for (var i = 0; i < G.state.buildings.length; i++) {
+        var b0 = G.state.buildings[i];
+        if (b0.decorPassable) continue;
+        if (b0.isForet && G.foretDepleted(b0)) continue;
+        if (bx < b0.x + b0.w && bx + bw > b0.x && by < b0.y + b0.h && by + bh > b0.y) {
+          return true;
+        }
+      }
+      return false;
+    }
+    var minCx = Math.floor(bx / cell), maxCx = Math.floor((bx + bw) / cell);
+    var minCy = Math.floor(by / cell), maxCy = Math.floor((by + bh) / cell);
+    for (var cx = minCx; cx <= maxCx; cx++) {
+      for (var cy = minCy; cy <= maxCy; cy++) {
+        var arr = grid[cx + "," + cy];
+        if (!arr) continue;
+        for (var n = 0; n < arr.length; n++) {
+          var b = arr[n];
+          if (b.decorPassable) continue;
+          if (b.isForet && G.foretDepleted(b)) continue;
+          if (bx < b.x + b.w && bx + bw > b.x && by < b.y + b.h && by + bh > b.y) {
+            return true;
+          }
+        }
       }
     }
     return false;
