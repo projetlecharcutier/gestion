@@ -11,12 +11,13 @@
   var CLOUD_N = 100;     // ~100 nuages en permanence
   var MONTGOLF_N = 20;   // montgolfières lentes, direction quelconque
   var OISEAU_N = 10;     // oiseaux NE -> SO (cap ~250°)
-  var PORCO_N = 5;       // avions rapides S -> NO (cap ~330°)
+  var PORCO_N = 5;       // avions rapides (cap 300° : SE -> NO)
+  var CIEL_N = 2;        // PNG "ciel" : exactement 2, toujours cap 300°
   // Marge monde hors carte avant réapparition (px monde) : les éléments
   // peuvent déborder un peu au-delà des bords de la carte.
   var MARGIN = 600;
   // Échelle de dessin par type (les PNG du dossier ciel sont petits).
-  var SCALES = { nuage: 3, montgolfiere: 4, oiseau: 2.5, porco: 2 };
+  var SCALES = { nuage: 3, montgolfiere: 4, oiseau: 2.5, porco: 2, ciel: 3 };
   function sp(key) { return (G.SPRITES.ciel && G.SPRITES.ciel[key]) || null; }
   function rnd(a, b) { return a + Math.random() * (b - a); }
   // Cap boussole VISUEL à l'écran (0° = nord de l'écran, sens horaire,
@@ -35,7 +36,7 @@
     var s = sp(key);
     // Élévation : les objets du ciel volent à une altitude visuelle fixe
     // (px écran au zoom 1) au-dessus de leur position au sol projetée.
-    var ALT = { nuage: 320, montgolfiere: 240, oiseau: 280, porco: 340 };
+    var ALT = { nuage: 320, montgolfiere: 240, oiseau: 280, porco: 340, ciel: 300 };
     return {
       kind: kind, key: key,
       x: rnd(-MARGIN, G.WORLD + MARGIN), y: rnd(-MARGIN, G.WORLD + MARGIN),
@@ -61,7 +62,9 @@
     for (i = 0; i < OISEAU_N; i++)
       st.ciel.push(mk("oiseau", ["oiseau"], rnd(38, 55), bearingVec(250)));
     for (i = 0; i < PORCO_N; i++)
-      st.ciel.push(mk("porco", ["PORCO"], rnd(120, 170), bearingVec(330)));
+      st.ciel.push(mk("porco", ["PORCO"], rnd(120, 170), bearingVec(300)));
+    for (i = 0; i < CIEL_N; i++)
+      st.ciel.push(mk("ciel", ["ciel"], rnd(15, 25), bearingVec(300)));
   };
   // Mesure son propre dt : appelé depuis render() qui n'a pas de dt réel.
   var _last = null;
