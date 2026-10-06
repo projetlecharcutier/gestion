@@ -1478,7 +1478,7 @@ G.drawGround = function () {
       // AU-DESSUS de la texture, quel que soit le côté d'où il arrive
       // -> dessinés derrière le joueur en toutes circonstances.
       if (bld.decorSpriteName && bld.decorPassable && !bld.decorSous &&
-          /^nonbloquant\/(champ|CHAMP)/.test(bld.decorSpriteName)) {
+          /^nonbloquant\/(champ|CHAMP|herbebotte|CIMETIERE)/.test(bld.decorSpriteName)) {
         depth -= 400000;
       }
       drawables.push({ depth: depth, type: "building", ref: bld });

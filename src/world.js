@@ -144,6 +144,17 @@
     };
     if (mode === "bloquant") {
       if (sp) shrinkToOpaque(b, "elementdecord", frame);
+      // Montagne : PNG plein cadre sans transparence -> shrinkToOpaque ne
+      // resserre rien et l'AABB plein losange depasse largement le massif
+      // visible. Hitbox de collision retrainee centree (~55%), independante
+      // de l'emprise visuelle (b.w/b.h restent la taille du rendu).
+      if (frame === "bloquant/montagne") {
+        var hw = b.w * 0.55, hh = b.h * 0.55;
+        b.hit = {
+          x: b.x + (b.w - hw) / 2, y: b.y + (b.h - hh) / 2,
+          w: hw, h: hh
+        };
+      }
     } else {
       b.decorPassable = true;
       if (mode === "dessous") b.decorSous = true;
@@ -684,8 +695,9 @@
     var blds = G.state.buildings;
     for (var i = 0; i < blds.length; i++) {
       var b = blds[i];
-      var minCx = Math.floor(b.x / cell), maxCx = Math.floor((b.x + b.w) / cell);
-      var minCy = Math.floor(b.y / cell), maxCy = Math.floor((b.y + b.h) / cell);
+      var bb = b.hit || b;
+      var minCx = Math.floor(bb.x / cell), maxCx = Math.floor((bb.x + bb.w) / cell);
+      var minCy = Math.floor(bb.y / cell), maxCy = Math.floor((bb.y + bb.h) / cell);
       for (var cx = minCx; cx <= maxCx; cx++) {
         for (var cy = minCy; cy <= maxCy; cy++) {
           var key = cx + "," + cy;

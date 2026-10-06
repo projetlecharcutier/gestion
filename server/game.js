@@ -1402,6 +1402,13 @@
           decorSpriteName: b.decorSpriteName || null,
           decorPassable: b.decorPassable || false,
           decorSous: b.decorSous || false,
+          // Hitbox de collision retrainee (montagne : PNG plein cadre, l'AABB
+          // visuelle depasse le massif). Synchronisee pour que la collision
+          // client (aabbHitsBuildings) matche celle du serveur.
+          hit: b.hit ? {
+            x: Math.round(b.hit.x), y: Math.round(b.hit.y),
+            w: Math.round(b.hit.w), h: Math.round(b.hit.h)
+          } : null,
           // Ne PAS serialiser l'objet sprite du serveur (stub sans image :
           // drawImage(null) cote client). Le client retrouve le PNG par nom
           // (G.SPRITES.house[houseSpriteName]) a la reception de la carte.

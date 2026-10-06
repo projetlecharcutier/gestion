@@ -16,7 +16,8 @@
         var b0 = G.state.buildings[i];
         if (b0.decorPassable) continue;
         if (b0.isForet && G.foretDepleted(b0)) continue;
-        if (bx < b0.x + b0.w && bx + bw > b0.x && by < b0.y + b0.h && by + bh > b0.y) {
+        var h0 = b0.hit || b0;
+        if (bx < h0.x + h0.w && bx + bw > h0.x && by < h0.y + h0.h && by + bh > h0.y) {
           return true;
         }
       }
@@ -32,7 +33,8 @@
           var b = arr[n];
           if (b.decorPassable) continue;
           if (b.isForet && G.foretDepleted(b)) continue;
-          if (bx < b.x + b.w && bx + bw > b.x && by < b.y + b.h && by + bh > b.y) {
+          var hb = b.hit || b;
+          if (bx < hb.x + hb.w && bx + bw > hb.x && by < hb.y + hb.h && by + bh > hb.y) {
             return true;
           }
         }
