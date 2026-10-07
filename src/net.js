@@ -41,6 +41,19 @@
   }
   var _wasReconnecting = false;
 
+  // Backoff exponentiel de reconnexion : 0.5 s puis x2 jusqu'a 8 s, reset
+  // des qu'une connexion s'ouvre. Un rythme fixe de 2 s en boucle spammait
+  // le serveur pendant une panne reseau longue ; le backoff le decharge
+  // tout en restant reactif sur une micro-coupure (premier essai a 0.5 s,
+  // deuxieme a 1 s : plus vite qu'avant).
+  var RECO_MIN_MS = 500;
+  var RECO_MAX_MS = 8000;
+  var recoDelayMs = RECO_MIN_MS;
+  function scheduleReconnect() {
+    var d = recoDelayMs;
+    recoDelayMs = Math.min(recoDelayMs * 2, RECO_MAX_MS);
+    setTimeout(G.netConnect, d);
+  }
   function netWatchdogCheck() {
     if (!connected || !playerId) return;
     var now = (typeof performance !== "undefined" ? performance.now() : Date.now());
@@ -51,7 +64,8 @@
       lastServerMsgAt = 0;
       try { ws.close(); } catch (e) { try { ws.terminate && ws.terminate(); } catch (e2) {} }
       connected = false;
-      setTimeout(G.netConnect, 300);
+      recoDelayMs = RECO_MIN_MS; // coupure a moitie morte : premier essai rapide
+      scheduleReconnect();
     }
   }
 
@@ -97,6 +111,7 @@
     startWatchdog();
     ws.onopen = function () {
       connected = true;
+      recoDelayMs = RECO_MIN_MS; // connexion ouverte : le backoff repart a zero
       if (playerId) {
         showNetBanner("Reconnexion au serveur…");
       }
@@ -120,7 +135,7 @@
       // attribué) : en menu, la liste du lobby suffit comme indicateur.
       if (playerId) showNetBanner("Connexion perdue — reconnexion en cours…");
       _wasReconnecting = true;
-      setTimeout(G.netConnect, 2000);
+      scheduleReconnect();
     };
     ws.onerror = function () { connected = false; };
     ws.onmessage = function (ev) {

@@ -153,13 +153,18 @@
   // timeout) n'est detectee que quand un send echoue. Un ping periodique
   // force la detection en ~30 s et coupe proprement (close 1001) au lieu
   // de laisser un zombie socket qui sature le broadcast.
-  var HEARTBEAT_MS = 15000;
+  // 5 s au lieu de 15 : detecte une connexion morte (WiFi drop, NAT) en
+  // ~10 s au lieu de ~25 s et libere la place plus tot. Le [stats] reste
+  // cadence ici : toutes les 15 s (3 battements), pas a chaque ping.
+  var HEARTBEAT_MS = 5000;
   var HEARTBEAT_TIMEOUT_MS = 10000;
+  var STATS_EVERY_N_BEATS = 3;
+  var heartbeatBeats = 0;
   // Grâce de reconnexion : une coupure réseau (WiFi, NAT, hibernation) ne
   // supprime pas le personnage tout de suite. Le client watchdog détecte la
   // panne, se reconnecte et renvoie son playerId (message "rejoin") : il
   // reprend son état exact. Passé ce délai, le joueur est retiré comme avant.
-  var RECONNECT_GRACE_MS = 15000;
+  var RECONNECT_GRACE_MS = 30000;
   var heartbeatTimer = null;
   function startHeartbeat() {
     if (heartbeatTimer) return;
@@ -168,6 +173,8 @@
       // Log continu : etat du serveur a chaque battement (15 s), meme sans
       // evenement — permet de verifier "a posteriori" que le serveur etait
       // vivant lors d'un signalement utilisateur.
+      heartbeatBeats++;
+      if (heartbeatBeats % STATS_EVERY_N_BEATS === 1) {
       var nbPlayers = 0;
       for (var pid in clients) if (clients[pid] && clients[pid].joined) nbPlayers++;
       var mem = 0;
@@ -178,6 +185,7 @@
         " http:200=" + http200Count + " http:404=" + http404Count +
         " httpSorti=" + Math.round(httpBytesOut / 1024) + " Ko" +
         " memoire=" + mem + " Mo");
+      }
       // Grâce expirée : retire définitivement les joueurs non revenus.
       for (var gid in clients) {
         var gc = clients[gid];
@@ -358,6 +366,11 @@
     clients[id] = { ws: ws, id: id, name: null, joined: false };
     ws._clientId = id;
     ws.isAlive = true;
+    // TCP keepalive : le heartbeat applicatif detecte les sockets mortes,
+    // mais le keepalive TCP fait aussi tomber les connexions zombies (NAT,
+    // routeur) au niveau OS, meme pour un client muet qui ne repond ni pong
+    // ni close (onglet gele, hibernation).
+    try { if (ws._socket && ws._socket.setKeepAlive) ws._socket.setKeepAlive(true, 10000); } catch (e) {}
     ws.on("pong", function () { ws.isAlive = true; });
 
     ws.on("message", function incoming(message) {
