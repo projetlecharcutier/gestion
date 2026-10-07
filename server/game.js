@@ -25,6 +25,7 @@
   // Ordre : config d'abord, puis projection, puis world/zombies/walls/chop/weapons/birds.
   load("config.js");
   load("stats.js");
+  load("ghost.js");
   load("projection.js");
   load("ville.js");
   load("anneau.js");
@@ -1014,6 +1015,8 @@
       var hungP = findPlayer(voteProposal.slice(5));
       if (hungP && hungP.alive) {
         hungP.alive = false;
+        // Tombe à l'endroit du décès (mode fantôme : rip - <nom>).
+        if (G.spawnGrave) G.spawnGrave(state, hungP, hungP.name);
         hungP.hp = 0;
         // Execution scenique : la potence horodate la sentence (execAt, meme
         // horloge pour tous les clients) et l'evenement broadcast diffuse le
@@ -1257,6 +1260,10 @@
       }),
       deadTraces: (state.deadTraces || []).map(function (t) {
         return { x: t.x, y: t.y, v: t.v, r: t.r };
+      }),
+      // Tombes des joueurs morts (mode fantôme) : petites, toujours envoyées.
+      graves: (state.graves || []).map(function (g) {
+        return { id: g.id, x: g.x, y: g.y, name: g.name };
       }),
       mairieHp: mairieHp(),
       mairieMaxHp: G.MAIRIE_MAX_HP,

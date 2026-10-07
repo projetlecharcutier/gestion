@@ -256,6 +256,132 @@ G.drawGround = function () {
   // dessous. Chaque trace est un PNG (variante tiree aleatoirement a la mort)
   // ancre bas-centre a la position du zombie mort, avec une legere rotation.
   // Tolerant : si aucun PNG n'est disponible, ne dessine rien.
+  // Tombes des joueurs morts : petite pierre posée au sol avec le petit
+  // tertre, et l'épitaphe « rip - <nom> » au-dessus. Dessin vectoriel
+  // (aucun PNG requis), ancrée bas-centre sur le point de décès.
+  G.drawGraves = function () {
+    var ctx = G.ctx;
+    var state = G.state;
+    var graves = state.graves;
+    if (!graves || graves.length === 0) return;
+    var t = G.TEXTURES.grave;
+    if (!t) return;
+    var z = state.zoom;
+    if (z < 1.2) z = 1.2;
+    var bnds = G.visibleWorldBounds();
+    var cell = z;
+    // La tombe fait ~10x14 cellules (comparable à un joueur 6x15).
+    var gw = 10 * cell, gh = 14 * cell;
+    for (var i = 0; i < graves.length; i++) {
+      var gr = graves[i];
+      if (gr.x < bnds.minX - 40 || gr.x > bnds.maxX + 40 ||
+          gr.y < bnds.minY - 40 || gr.y > bnds.maxY + 40) continue;
+      var p = G.proj(gr.x, gr.y);
+      var cx = p[0], by = p[1];
+      ctx.save();
+      // Ombre au sol.
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.beginPath();
+      ctx.ellipse(cx, by, gw * 0.55, gw * 0.22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Tertre de terre devant la pierre.
+      ctx.fillStyle = t.mound;
+      ctx.beginPath();
+      ctx.ellipse(cx, by - gh * 0.06, gw * 0.5, gh * 0.14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = t.moundDark;
+      ctx.beginPath();
+      ctx.ellipse(cx, by - gh * 0.02, gw * 0.5, gh * 0.08, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Pierre tombale : dalle arrondie + contour + gravure.
+      var sw = gw * 0.34, sh = gh * 0.78;
+      var sx = cx - sw / 2, sy = by - sh - gh * 0.05;
+      ctx.fillStyle = t.stone;
+      ctx.strokeStyle = t.stoneEdge;
+      ctx.lineWidth = Math.max(1, cell * 0.4);
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(sx, sy, sw, sh, sw * 0.45);
+      else ctx.rect(sx, sy, sw, sh);
+      ctx.fill();
+      ctx.stroke();
+      // Facade plus claire (relief).
+      ctx.fillStyle = t.stoneDark;
+      ctx.fillRect(sx + sw * 0.12, sy + sh * 0.1, sw * 0.76, sh * 0.08);
+      ctx.fillRect(sx + sw * 0.2, sy + sh * 0.3, sw * 0.6, sh * 0.06);
+      // Épitaphe au-dessus de la tombe : « rip - <nom> ».
+      var name = gr.name || "Joueur";
+      var fs = Math.max(10, 11 * Math.min(z, 3));
+      ctx.font = "italic bold " + fs + "px 'Segoe Script', 'Brush Script MT', 'Comic Sans MS', cursive";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = t.epitaphStroke;
+      ctx.fillStyle = t.epitaph;
+      var epit = "rip - " + name;
+      ctx.strokeText(epit, cx, sy - 4);
+      ctx.fillText(epit, cx, sy - 4);
+      ctx.restore();
+    }
+  };
+  // Petit fantôme local (mode spectateur après la mort) : sprite pixel art
+  // blanc translucide qui FLOTTE au-dessus du sol (oscillation verticale
+  // lente), ombre au sol réduite. Dessiné au-dessus de la scène triée.
+  G.drawGhost = function () {
+    var state = G.state;
+    var gh = state.ghost;
+    if (!gh) return;
+    var ctx = G.ctx;
+    var t = G.TEXTURES.ghost;
+    if (!t) return;
+    var z = state.zoom;
+    var cell = z;
+    if (cell < 1.2) cell = 1.2;
+    var base = G.proj(gh.x, gh.y);
+    // Flottaison : oscillation verticale douce (px écran, suit le zoom).
+    var bob = Math.sin((gh.bob || 0) * (t.floatSpeed || 1.6) * Math.PI * 2) * (t.floatAmp || 6) * z * 0.5;
+    var cx = base[0];
+    var groundY = base[1];
+    var floatY = groundY - 18 * z - bob;
+    // Ombre au sol, réduite et décalée (le fantôme est en l'air).
+    ctx.save();
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = t.shadow;
+    ctx.beginPath();
+    ctx.ellipse(cx, groundY, 6 * z, 2.5 * z, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    // Sprite par cellules (comme le joueur pixel art).
+    var cols = t.sprite[0].length, rows = t.sprite.length;
+    var ox = cx - (cols / 2) * cell;
+    var oy = floatY - rows * cell;
+    ctx.save();
+    // Légère transparence d'ensemble : c'est un fantôme.
+    ctx.globalAlpha = 0.85;
+    for (var r = 0; r < rows; r++) {
+      var line = t.sprite[r];
+      for (var c = 0; c < cols; c++) {
+        var ch = line.charAt(c);
+        if (ch === ".") continue;
+        ctx.fillStyle = t.palette[ch];
+        ctx.fillRect(ox + c * cell, oy + r * cell, cell + 0.5, cell + 0.5);
+      }
+    }
+    ctx.restore();
+    // Nom du joueur sous le fantôme (comme les vivants).
+    if (G.state.playerName) {
+      ctx.save();
+      ctx.font = "bold 11px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.globalAlpha = 0.8;
+      ctx.strokeStyle = "rgba(0,0,0,0.7)";
+      ctx.lineWidth = 3;
+      ctx.strokeText(G.state.playerName, cx, floatY + 6);
+      ctx.fillStyle = "#e2e8f0";
+      ctx.fillText(G.state.playerName, cx, floatY + 6);
+      ctx.restore();
+    }
+  };
   G.drawDeadTraces = function () {
     var ctx = G.ctx;
     var z = G.state.zoom;
@@ -1450,6 +1576,9 @@ G.drawGround = function () {
     // Traces de destruction des tours de siège : même couche que les traces
     // de zombies (juste au-dessus du fond, derrière tout le reste).
     G.drawSiegeTraces();
+    // Tombes des joueurs morts (rip - <nom>) : juste au-dessus des traces,
+    // derrière tout le reste.
+    if (G.drawGraves) G.drawGraves();
 
     var drawables = [];
     var bnds = G.visibleWorldBounds();
@@ -1628,6 +1757,9 @@ G.drawGround = function () {
       else if (d.type === "ville") G.drawVilleBand(d.ref.v, d.ref.band, d.ref.entry);
     }
     if (!drewPlayer && !pHidden) { G.drawPlayer(); G.drawPlayerHpBar(); }
+    // Fantôme local (mode spectateur après la mort) : dessiné au-dessus de
+    // la scène triée, il vole au-dessus de tout.
+    if (state.spectator && G.drawGhost) G.drawGhost();
     // Objets au sol : dessines APRES la passe triee, au-dessus des batiments
     // et des forets — un objet ne doit jamais etre cache par une maison ou un
     // arbre (il reste toujours visible/ramassable).

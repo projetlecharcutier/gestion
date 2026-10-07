@@ -259,11 +259,15 @@
     state.keys[e.code] = true;
     if (e.code === "Space") {
       e.preventDefault();
-      // Mort + Espace = mode spectateur : vue libre de toute la carte,
-      // sans brouillard, sans personnage. La partie continue pour les
-      // autres joueurs ; le serveur reste autoritaire.
+      // Mort + Espace = mode fantôme : un petit fantôme vole sur la carte,
+      // sans brouillard noir, sans aucune interaction. La partie continue
+      // pour les autres joueurs ; le serveur reste autoritaire.
       if (state.gameOver && state.gameOverCause === "player" && !state.spectator) {
         state.spectator = true;
+        // Le fantôme naît à l'endroit du décès (tombe posée au même point).
+        if (!state.ghost) {
+          state.ghost = { x: state.player.x, y: state.player.y, bob: 0 };
+        }
         if (G.screen && G.screen.hidden !== undefined) G.screen.hidden = true;
         var goEl = document.getElementById("gameOverScreen");
         if (goEl) goEl.hidden = true;

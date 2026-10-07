@@ -334,7 +334,10 @@
       G.state.hungByPotence = false;
       G.state._execFocus = null;
       // Spectateur : nouvelle partie -> le joueur reprend son personnage.
+      // Le fantôme local disparaît, les tombes de la partie finie aussi.
       G.state.spectator = false;
+      G.state.ghost = null;
+      if (G.state.graves) G.state.graves = [];
       if (msg.map) {
         G.state.buildings = msg.map.buildings || [];
         _applyBuildingDoors(G.state.buildings);
@@ -519,6 +522,8 @@
     // Traces de zombies morts : gerees cote serveur (autorite). Le client ne
     // fait que les afficher (rendu juste au-dessus du fond).
     if (s.deadTraces) state.deadTraces = s.deadTraces;
+    // Tombes des joueurs morts (serveur autoritaire, mode fantôme).
+    if (s.graves) state.graves = s.graves;
     state.mairieHp = s.mairieHp;
     state.mairieMaxHp = s.mairieMaxHp;
     if (s.mairieGold !== undefined) state.mairieGold = s.mairieGold;

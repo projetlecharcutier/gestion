@@ -106,6 +106,10 @@
     zombies: [],
     zombieGroups: [],
     deadTraces: [],
+    graves: [],            // tombes « rip - <nom> » aux endroits des décès
+    ghost: null,            // fantôme local {x, y, bob} après mort + Espace
+    ghostX: 0, ghostY: 0,  // (référence de rendu/caméra)
+    ghostHint: false,      // « Appuyez sur ESPACE » affiché après la mort
     birds: [],
     fauna: [],
     ciel: [],

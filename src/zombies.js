@@ -900,6 +900,8 @@
               z.lungeDx = zdx / (zd || 1); z.lungeDy = zdy / (zd || 1);
               if (tgt.hp <= 0) {
                 tgt.hp = 0;
+                // Tombe à l'endroit du décès (mode fantôme : rip - <nom>).
+                if (G.spawnGrave) G.spawnGrave(state, tgt, tgt.name || state.playerName);
                 if (tgt !== p && state.players) {
                   // Vrai joueur (serveur) : il meurt, la partie continue tant
                   // qu'il reste un survivant.

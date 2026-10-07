@@ -329,6 +329,20 @@
     ctx.fillText(dead ? "La Mairie est détruite"
       : (state.hungByPotence ? "Vous avez été pendu" : "Vous êtes mort"),
       bx + bw / 2, y);
+    // Mort individuelle : message BIEN VISIBLE pour entrer en mode fantôme.
+    // Pulsation lente pour attirer l'oeil sans clignoter agressivement.
+    if (!dead) {
+      var pulse = 0.5 + 0.5 * Math.sin((state.time || 0) * 3);
+      ctx.save();
+      ctx.globalAlpha = 0.65 + 0.35 * pulse;
+      ctx.fillStyle = "#e2e8f0";
+      ctx.font = "bold 20px Segoe UI, system-ui, sans-serif";
+      ctx.fillText("Appuyez sur ESPACE", bx + bw / 2, y + 40);
+      ctx.font = "13px Segoe UI, system-ui, sans-serif";
+      ctx.fillStyle = t.hint;
+      ctx.fillText("pour errer sur la carte en fantôme", bx + bw / 2, y + 62);
+      ctx.restore();
+    }
     y += 24;
     ctx.fillStyle = t.text;
     ctx.font = "14px Segoe UI, system-ui, sans-serif";

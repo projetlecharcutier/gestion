@@ -184,29 +184,50 @@
         if (state.targetZoom < 14) state.targetZoom = 14;
       }
     }
-    // Mode spectateur : la camera est libre (touches flechees + ZQSD), le
-    // joueur mort n'existe plus sur la carte. Deplacement en coordonnees
-    // ECRAN converties en monde pour rester intuitif (haut de l'ecran =
-    // vers le nord visuel).
+    // Mode fantôme (spectateur) : le petit fantôme vole librement, il ne
+    // peut plus interagir avec rien (pas de tir, pas de coupe, pas de pose,
+    // pas de ramassage). Déplacement : Espace maintenu + souris comme un
+    // joueur vivant, en OUTREPASSANT toutes les collisions (il vole), ou
+    // touches fléchées + ZQSD en coordonnées écran.
     if (state.spectator) {
-      var k = G.state.keys, sp = 1400 * dt;
-      var vx = 0, vy = 0;
-      if (k.ArrowLeft || k.KeyA || k.KeyQ) vx -= 1;
-      if (k.ArrowRight || k.KeyD) vx += 1;
-      if (k.ArrowUp || k.KeyW || k.KeyZ) vy -= 1;
-      if (k.ArrowDown || k.KeyS) vy += 1;
-      if (vx !== 0 || vy !== 0) {
-        // (vx, vy) ecran -> monde : proj donne dsx=(wx-wy)/2, dsy=(wx+wy)/4.
-        var wx = vx + 2 * vy, wy = 2 * vy - vx;
-        var n = Math.sqrt(wx * wx + wy * wy);
-        state.camera.x += (wx / n) * sp;
-        state.camera.y += (wy / n) * sp;
-        // Bornage a la carte.
-        if (state.camera.x < 0) state.camera.x = 0;
-        if (state.camera.x > G.WORLD) state.camera.x = G.WORLD;
-        if (state.camera.y < 0) state.camera.y = 0;
-        if (state.camera.y > G.WORLD) state.camera.y = G.WORLD;
+      if (!state.ghost) state.ghost = { x: state.player.x, y: state.player.y, bob: 0 };
+      var gh = state.ghost;
+      gh.bob = (gh.bob || 0) + dt;
+      var GSPD = 1.6 * G.SPEED;
+      var gvx = 0, gvy = 0;
+      var kk = state.keys;
+      if (kk.ArrowLeft || kk.KeyA || kk.KeyQ) gvx -= 1;
+      if (kk.ArrowRight || kk.KeyD) gvx += 1;
+      if (kk.ArrowUp || kk.KeyW || kk.KeyZ) gvy -= 1;
+      if (kk.ArrowDown || kk.KeyS) gvy += 1;
+      if (gvx !== 0 || gvy !== 0) {
+        // (gvx, gvy) écran -> monde : proj donne dsx=(wx-wy)/2, dsy=(wx+wy)/4.
+        var gwx = gvx + 2 * gvy, gwy = 2 * gvy - gvx;
+        var gn = Math.sqrt(gwx * gwx + gwy * gwy);
+        if (gn > 0) {
+          gh.x += (gwx / gn) * GSPD * dt;
+          gh.y += (gwy / gn) * GSPD * dt;
+        }
       }
+      if (kk.space && state.mouse.inside) {
+        var gtx = state.mouse.wx, gty = state.mouse.wy;
+        var gdx = gtx - gh.x, gdy = gty - gh.y;
+        var gdist = Math.sqrt(gdx * gdx + gdy * gdy);
+        if (gdist > 0.001) {
+          var gstep = Math.min(GSPD * dt, gdist);
+          gh.x += (gdx / gdist) * gstep;
+          gh.y += (gdy / gdist) * gstep;
+        }
+      }
+      // Bornage à la carte.
+      if (gh.x < 0) gh.x = 0;
+      if (gh.x > G.WORLD) gh.x = G.WORLD;
+      if (gh.y < 0) gh.y = 0;
+      if (gh.y > G.WORLD) gh.y = G.WORLD;
+      state.ghostX = gh.x; state.ghostY = gh.y;
+      // La caméra suit le fantôme.
+      state.camera.x += (gh.x - state.camera.x) * Math.min(1, dt * 6);
+      state.camera.y += (gh.y - state.camera.y) * Math.min(1, dt * 6);
     } else {
       state.camera.x += (state.player.x - state.camera.x) * Math.min(1, dt * 6);
       state.camera.y += (state.player.y - state.camera.y) * Math.min(1, dt * 6);

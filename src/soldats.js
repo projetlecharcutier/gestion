@@ -163,6 +163,8 @@
         // le serveur via le meme code partage).
         if (tgt.hp <= 0) {
           tgt.hp = 0;
+          // Tombe à l'endroit du décès (mode fantôme : rip - <nom>).
+          if (G.spawnGrave) G.spawnGrave(st, tgt, tgt.name || st.playerName);
           if (st.gameOver !== undefined && st.players === undefined) {
             st.gameOver = true;
             if (st.gameOverCause !== undefined) st.gameOverCause = "player";

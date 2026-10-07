@@ -36,6 +36,7 @@ Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fo
 | 14 | `src/birds.js` | Oiseaux volants (drop or/planches) | `updateBirds`, `drawBirds` |
 | 14b | `src/fauna.js` | Animaux sauvages (cerf, cochon, vache, mouton : errent hors ville, tués par projectiles, droppent Nourriture, repop chaque matin pour maintenir 200 bêtes) | `spawnFaunaAll`, `updateFauna`, `cleanupFauna`, `repopFauna`, `faunaDrop` |
 | 14c | `src/ciel.js` | Couche ciel (nuages ×50 O→E, montgolfières ×20 toutes directions, oiseaux ×10 cap 250°, avions Porco ×5 cap 330° plus rapides) : purement visuelle, aucune collision, dessinée au-dessus de tout ; nuages toujours au-dessus des autres éléments du ciel ; sortie d'un bord = réapparition au bord opposé | `cielInit`, `updateCiel`, `drawCiel` |
+| 14d | `src/ghost.js` | Mode fantôme + tombes : à la mort d'un joueur, `spawnGrave` pose une tombe « rip - <nom> » à l'endroit du décès (plafond `GRAVES_MAX`, idempotente par joueur) ; Espace après mort = petit fantôme qui vole (aucune interaction, plus de brouillard), textures `TEXTURES.ghost`/`TEXTURES.grave` ; rendu `drawGhost`/`drawGraves` (`src/render.js`) | `spawnGrave`, `GRAVES_MAX`, `TEXTURES.ghost`, `TEXTURES.grave` |
 | 15 | `src/siege.js` | Tour de siège zombie (lente, 100 PV, attaque murs/ville) | `updateSiege`, `drawSiege` |
 | 16 | `src/zombies.js` | Vagues, groupes qui fusionnent, IA zombies (priorité : palissade > tour > mairie/joueur) | `spawnWave`, `mergeGroups`, `updateZombies`, `cleanupZombies` |
 | 17 | `src/bag.js` | Sac : disposition, rendu, clic équiper (armes & hache) | `bagLayout`, `handleBagClick`, `drawBag` |
@@ -53,7 +54,7 @@ Schéma complet dans `src/state.js`. Champs clés :
 - `player { x, y, face, moving, hp }` — position monde, orientation, vie
 - `camera { x, y }`, `zoom`, `targetZoom`
 - `mouse { sx, sy, wx, wy, inside }` — écran (s*) + monde (w*)
-- `items[]`, `buildings[]`, `trees[]`, `walls[]`, `zombies[]`, `zombieGroups[]`, `deadTraces[]`
+- `items[]`, `buildings[]`, `trees[]`, `walls[]`, `zombies[]`, `zombieGroups[]`, `deadTraces[]`, `graves[]` (tombes « rip - <nom> »), `ghost` (fantôme local après mort + Espace, `{x, y, bob}`)
 - `bag { open, contents[] }`, `equipped` (nom arme ou null), `projectiles[]`
 - `planks`, `inventory`, `shootCd`, `buildMode`, `plankRotation` (0=horizontal, 1=vertical)
 - `axeEquipped` (bool), `chopTarget` (arbre visé ou null), `chopTimer` (accumulateur s)
