@@ -20,11 +20,34 @@
   var lastServerMsgAt = 0;
   var watchdogTimer = null;
 
+  // Bandeau persistant de déconnexion : un floater disparait trop vite pour
+  // une coupure qui dure. Le bandeau reste affiché tant que la reconnexion
+  // n'a abouti (ouvert + rejoin accepté), puis un floater confirme la reprise.
+  var bannerEl = null;
+  function showNetBanner(text) {
+    if (typeof document === "undefined") return;
+    if (!bannerEl) {
+      bannerEl = document.createElement("div");
+      bannerEl.style.cssText = "position:fixed;top:10px;left:50%;transform:translateX(-50%);" +
+        "z-index:9999;background:rgba(140,20,20,0.85);color:#fff;padding:6px 16px;" +
+        "border-radius:8px;font:bold 14px sans-serif;pointer-events:none;white-space:nowrap;";
+      (document.body || document.documentElement).appendChild(bannerEl);
+    }
+    bannerEl.textContent = text;
+    bannerEl.style.display = "block";
+  }
+  function hideNetBanner() {
+    if (bannerEl) bannerEl.style.display = "none";
+  }
+  var _wasReconnecting = false;
+
   function netWatchdogCheck() {
     if (!connected || !playerId) return;
     var now = (typeof performance !== "undefined" ? performance.now() : Date.now());
     if (lastServerMsgAt && now - lastServerMsgAt > WATCHDOG_TIMEOUT_MS) {
       if (G.addFloater) G.addFloater("Connexion perdue — reconnexion…");
+      showNetBanner("Connexion perdue — reconnexion en cours…");
+      _wasReconnecting = true;
       lastServerMsgAt = 0;
       try { ws.close(); } catch (e) { try { ws.terminate && ws.terminate(); } catch (e2) {} }
       connected = false;
@@ -74,6 +97,9 @@
     startWatchdog();
     ws.onopen = function () {
       connected = true;
+      if (playerId) {
+        showNetBanner("Reconnexion au serveur…");
+      }
       // Reconnexion : le joueur était déjà en jeu (playerId attribué).
       // "rejoin" restaure le personnage côté serveur (grâce de
       // reconnexion) au lieu d'en recréer un neuf.
@@ -88,7 +114,14 @@
         G.netSend({ type: "join", name: name });
       }
     };
-    ws.onclose = function () { connected = false; setTimeout(G.netConnect, 2000); };
+    ws.onclose = function () {
+      connected = false;
+      // Message persistant uniquement si le joueur était en jeu (playerId
+      // attribué) : en menu, la liste du lobby suffit comme indicateur.
+      if (playerId) showNetBanner("Connexion perdue — reconnexion en cours…");
+      _wasReconnecting = true;
+      setTimeout(G.netConnect, 2000);
+    };
     ws.onerror = function () { connected = false; };
     ws.onmessage = function (ev) {
       var msg;
@@ -194,6 +227,13 @@
       G.updateLobbyDisplay();
     } else if (msg.type === "joined") {
       playerId = msg.playerId;
+      // Reconnexion aboutie : le bandeau de coupure disparait et un
+      // floater confirme la reprise (le personnage a ete restaure).
+      hideNetBanner();
+      if (G.addFloater && _wasReconnecting) {
+        G.addFloater("Reconnecté — partie reprise");
+        _wasReconnecting = false;
+      }
       // Applique la carte reçue (bâtiments, forêts) à l'état local. Les forêts
       // sont des bâtiments (isForet) envoyés dans msg.map.buildings : aucune
       // logique d'arbres séparée. On reconstruit la grille de collision des

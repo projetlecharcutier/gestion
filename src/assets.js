@@ -16,8 +16,12 @@
   // reste en cache comme 404 (frames d'animation non detectees). En production
   // (serveur redémarré à chaque commit via deploy.sh), la valeur change à
   // chaque redémarrage.
-  var ASSET_V = "v" + Date.now();
-  function bust(url) { return url + (url.indexOf("?") >= 0 ? "&" : "?") + ASSET_V; }
+  var ASSET_V = null;
+  function bust(url) {
+    if (ASSET_V === null) return url;
+    if (!ASSET_V) return url;
+    return url + (url.indexOf("?") >= 0 ? "&" : "?") + "v=" + ASSET_V;
+  }
 
   // Animation par frames : convention <base>-0.png, <base>-1.png, ...
   // Si un sprite de base possede des frames -N (depuis 0), il est anime :
@@ -726,26 +730,56 @@
     return (G.SPRITES.zombDead && G.SPRITES.zombDead.length) || 0;
   };
 
-  G.loadAssets = function (onReady) {
+  // Cle de cache des PNG pour toute la session : la version deployee
+  // (commit via /version.json). Le serveur sert les PNG avec
+  // Cache-Control: immutable 1 an ; l'URL ?v=<commit> change a chaque depot,
+  // donc le cache navigateur reste valide tant que le code ne change pas.
+  // Avec Date.now(), chaque chargement de page re-telechargeait TOUS les PNG.
+  // Les 404 de sondage (foret-3.png absent...) ont une URL stable : le
+  // navigateur met le 404 en cache, la sonde ne re-hit plus le serveur.
+  function fetchAssetVersion(onDone) {
+    if (ASSET_V !== null) { onDone(); return; }
+    if (typeof window === "undefined" || !window.XMLHttpRequest ||
+        window.location.protocol === "file:") {
+      ASSET_V = "";
+      onDone();
+      return;
+    }
     var req = new XMLHttpRequest();
-    req.open("GET", "assets/manifest.json", true);
+    req.open("GET", "version.json", true);
     req.onreadystatechange = function () {
       if (req.readyState !== 4) return;
-      if (req.status !== 200 && req.status !== 0) {
-        // Manifeste indisponible (ex. file://) : repli sur le manifeste embarqué.
-        loadManifest(FALLBACK_MANIFEST, onReady);
-        return;
-      }
-      var manifest;
       try {
-        manifest = JSON.parse(req.responseText);
-      } catch (e) {
-        loadManifest(FALLBACK_MANIFEST, onReady);
-        return;
-      }
-      loadManifest(manifest, onReady);
+        var v = JSON.parse(req.responseText);
+        ASSET_V = (v.version || v.updatedAt || "").toString().replace(/[^\w.-]/g, "");
+      } catch (e) { ASSET_V = ""; }
+      onDone();
     };
-    req.send();
+    try { req.send(); } catch (e) { ASSET_V = ""; onDone(); }
+  }
+
+  G.loadAssets = function (onReady) {
+    fetchAssetVersion(function () {
+      var req = new XMLHttpRequest();
+      req.open("GET", "assets/manifest.json", true);
+      req.onreadystatechange = function () {
+        if (req.readyState !== 4) return;
+        if (req.status !== 200 && req.status !== 0) {
+          // Manifeste indisponible (ex. file://) : repli sur le manifeste embarqué.
+          loadManifest(FALLBACK_MANIFEST, onReady);
+          return;
+        }
+        var manifest;
+        try {
+          manifest = JSON.parse(req.responseText);
+        } catch (e) {
+          loadManifest(FALLBACK_MANIFEST, onReady);
+          return;
+        }
+        loadManifest(manifest, onReady);
+      };
+      req.send();
+    });
   };
   // Liste les noms de maisons disponibles (H1, H2, ...). Vide tant que les
   // assets ne sont pas chargés.

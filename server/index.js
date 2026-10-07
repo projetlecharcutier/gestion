@@ -106,19 +106,45 @@
     }
     fs.readFile(filePath, function (err, data) {
       if (err) {
+        // Trace les 404 : les sondes de frames du client (foret-3.png,
+        // H12.png...) en produisent NORMALEMENT, mais un 404 repete sur un
+        // VRAI sprite revele un asset manquant (maison qui n'affiche pas,
+        // decor absent). Compteur + echantillon, pas un log par requete.
+        http404Count++;
+        if (http404Count <= 50 || http404Count % 100 === 0) {
+          log("[http] 404 " + req.method + " " + url + " (total " + http404Count + ")");
+        }
         res.writeHead(404);
         res.end("Not found");
         return;
       }
       var ext = path.extname(filePath).toLowerCase();
-      // Anti-cache : le client doit toujours recharger la version deployee
-      // (update.sh deploye un nouveau main sans changer les noms de fichier).
+      // Anti-cache HTML/JS/JSON : le client doit toujours recharger la
+      // version deployee (update.sh deploye un nouveau main sans changer
+      // les noms de fichier).
       var headers = { "Content-Type": MIME[ext] || "application/octet-stream" };
       if (ext === ".html" || ext === ".js" || ext === ".json") {
         headers["Cache-Control"] = "no-cache";
       }
+      // PNG : cache navigateur AGRESSIF (1 an) — le client les demande avec
+      // un parametre de version (?v=<commit>) qui change a chaque deploiement,
+      // donc un changement de PNG invalide naturellement le cache. Sans ce
+      // header, le navigateur re-validait chaque PNG (304/200) voir le
+      // re-telechargeait integralement a chaque chargement de page.
+      if (ext === ".png" || ext === ".svg" || ext === ".woff" || ext === ".woff2") {
+        headers["Cache-Control"] = "public, max-age=31536000, immutable";
+      }
       res.writeHead(200, headers);
       res.end(data);
+    });
+  });
+  var http404Count = 0;
+  var http200Count = 0;
+  var httpBytesOut = 0;
+  server.on("request", function (req, res) {
+    http200Count++;
+    res.on("finish", function () {
+      httpBytesOut += (res.socket && res.socket.bytesWritten) || 0;
     });
   });
 
@@ -139,6 +165,19 @@
     if (heartbeatTimer) return;
     heartbeatTimer = setInterval(function () {
       var now = Date.now();
+      // Log continu : etat du serveur a chaque battement (15 s), meme sans
+      // evenement — permet de verifier "a posteriori" que le serveur etait
+      // vivant lors d'un signalement utilisateur.
+      var nbPlayers = 0;
+      for (var pid in clients) if (clients[pid] && clients[pid].joined) nbPlayers++;
+      var mem = 0;
+      try { mem = Math.round(process.memoryUsage().heapUsed / (1024 * 1024)); } catch (e) {}
+      log("[stats] uptime=" + Math.round((now - bootAt) / 1000) + "s" +
+        " joueurs=" + nbPlayers + "/" + game.MAX_PLAYERS +
+        " sockets=" + wss.clients.size +
+        " http:200=" + http200Count + " http:404=" + http404Count +
+        " httpSorti=" + Math.round(httpBytesOut / 1024) + " Ko" +
+        " memoire=" + mem + " Mo");
       // Grâce expirée : retire définitivement les joueurs non revenus.
       for (var gid in clients) {
         var gc = clients[gid];
@@ -160,6 +199,7 @@
       });
     }, HEARTBEAT_MS);
   }
+  var bootAt = Date.now();
   startHeartbeat();
   server.listen(PORT, function () {
     console.log("Serveur Flex Survival en écoute sur le port " + PORT);
