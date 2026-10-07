@@ -98,6 +98,16 @@
     return proto + "//" + loc.hostname + ":" + port;
   }
 
+  // Journal client lisible dans la console (F12) : quand un joueur remonte
+  // une deco, il copie ces lignes et on voit TOUT le cote client (code de
+  // close, delai entre les evenements, nombre de tentatives). Prefixe
+  // [net] pour etre grepable.
+  function nlog() {
+    var args = Array.prototype.slice.call(arguments);
+    args.unshift("[net] " + new Date().toISOString());
+    try { console.log.apply(console, args); } catch (e) {}
+  }
+  var connectAttempts = 0;
   G.netConnect = function () {
     // Garde : ne pas ouvrir une seconde connexion si une est déjà ouverte ou
     // en cours d'ouverture (l'utilisateur peut re-sélectionner le mode serveur).
@@ -109,9 +119,12 @@
       return;
     }
     startWatchdog();
+    connectAttempts++;
+    nlog("connexion tentée n°" + connectAttempts + " vers " + serverUrl());
     ws.onopen = function () {
       connected = true;
       recoDelayMs = RECO_MIN_MS; // connexion ouverte : le backoff repart a zero
+      nlog("connexion ouverte (tentative " + connectAttempts + ")");
       if (playerId) {
         showNetBanner("Reconnexion au serveur…");
       }
@@ -129,15 +142,19 @@
         G.netSend({ type: "join", name: name });
       }
     };
-    ws.onclose = function () {
+    ws.onclose = function (ev) {
       connected = false;
+      nlog("fermee code=" + (ev && ev.code) + " raison=" + (ev && ev.reason) + " propre=" + !!(ev && ev.wasClean));
       // Message persistant uniquement si le joueur était en jeu (playerId
       // attribué) : en menu, la liste du lobby suffit comme indicateur.
       if (playerId) showNetBanner("Connexion perdue — reconnexion en cours…");
       _wasReconnecting = true;
       scheduleReconnect();
     };
-    ws.onerror = function () { connected = false; };
+    ws.onerror = function (ev) {
+      connected = false;
+      nlog("erreur WebSocket :", ev && (ev.message || ev.type) || "(sans detail)");
+    };
     ws.onmessage = function (ev) {
       var msg;
       try { msg = JSON.parse(ev.data); } catch (e) { return; }

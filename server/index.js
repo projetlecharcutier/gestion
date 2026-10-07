@@ -203,6 +203,8 @@
           return;
         }
         ws.isAlive = false;
+        var hc = clients[ws._clientId];
+        if (hc) hc.pings = (hc.pings || 0) + 1;
         try { ws.ping(); } catch (e) {}
       });
     }, HEARTBEAT_MS);
@@ -366,16 +368,23 @@
     clients[id] = { ws: ws, id: id, name: null, joined: false };
     ws._clientId = id;
     ws.isAlive = true;
+    clients[id].openedAt = Date.now();
     // TCP keepalive : le heartbeat applicatif detecte les sockets mortes,
     // mais le keepalive TCP fait aussi tomber les connexions zombies (NAT,
     // routeur) au niveau OS, meme pour un client muet qui ne repond ni pong
     // ni close (onglet gele, hibernation).
     try { if (ws._socket && ws._socket.setKeepAlive) ws._socket.setKeepAlive(true, 10000); } catch (e) {}
-    ws.on("pong", function () { ws.isAlive = true; });
+    ws.on("pong", function () {
+      ws.isAlive = true;
+      var pc = clients[ws._clientId];
+      if (pc) pc.pongs = (pc.pongs || 0) + 1;
+    });
 
     ws.on("message", function incoming(message) {
       var msg;
       try { msg = JSON.parse(message); } catch (e) { return; }
+      var c = clients[id];
+      if (c) c.lastMsgAt = Date.now();
 
       // Reconnexion (watchdog client) : le joueur revient avec son playerId
       // après une coupure. S'il est encore en partie (grâce
@@ -435,7 +444,23 @@
     ws.on("close", function (code, reason) {
       var r = "";
       try { r = reason ? reason.toString() : ""; } catch (e) {}
-      log("[ws] close " + id + " (" + (clients[id] && clients[id].name || "?") + ") code=" + code + (r ? " raison=" + r : ""));
+      // Forensique de coupure : code WS + duree de vie de la socket + silence
+      // depuis le dernier message client. Departage les causes :
+      //   1001 = fermeture propre (onglet ferme, navigation, F5)
+      //   1000 = close() volontaire du client (watchdog)
+      //   1006 = coupure BRUTALE (reseau, NAT, WiFi) : jamais envoye par le
+      //          pair, impose par la couche transport
+      //   1011 = erreur interne serveur
+      // Silence eleve + 1006 = client muet longtemps avant la coupure
+      // (onglet en arriere-plan gele, reseau mort a moitie).
+      var c = clients[id] || {};
+      var life = c.openedAt ? Math.round((Date.now() - c.openedAt) / 1000) : "?";
+      var silence = c.lastMsgAt ? Math.round((Date.now() - c.lastMsgAt) / 1000) : "?";
+      log("[ws] close " + id + " (" + (c.name || "?") + ") code=" + code +
+        (r ? " raison=" + r : "") +
+        " | vie=" + life + "s" +
+        " | silence=" + silence + "s" +
+        " | ping/pong=" + (c.pings || 0) + "/" + (c.pongs || 0));
       softCleanup(id);
     });
     ws.on("error", function (err) {
