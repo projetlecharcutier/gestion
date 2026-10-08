@@ -432,8 +432,15 @@
           // Redémarrage du serveur (ou grâce expirée) : l'ancien personnage
           // n'existe plus. Le client ne doit PAS reprendre sa session — il
           // recharge la page et repart d'un join neuf sur la nouvelle partie.
-          ws.send(JSON.stringify({ type: "sessionInvalid", reason: "session-perimee" }));
+          ws.send(JSON.stringify({ type: "sessionInvalid", reason: "session-perimee", bootId: bootId }));
           log("[ws] rejoin refusé " + (rid || "?") + " : session inconnue (serveur redémarré ?)");
+          // Fermeture FORCÉE avec code dédié : un onglet ouvert avant le
+          // déploiement (ancien JS sans gestionnaire sessionInvalid) resterait
+          // sinon sur l'écran de jeu avec une connexion fantôme et bouclerait
+          // en reconnexion muette. Le close 4000 coupe net : le bandeau de
+          // coupure s'affiche, et le nouveau JS recharge la page.
+          try { ws.close(4000, "session-perimee"); } catch (e) {}
+          setTimeout(function () { try { ws.terminate(); } catch (e) {} }, 1000);
           return;
         }
         if (rplayer) {

@@ -145,6 +145,15 @@
     ws.onclose = function (ev) {
       connected = false;
       nlog("fermee code=" + (ev && ev.code) + " raison=" + (ev && ev.reason) + " propre=" + !!(ev && ev.wasClean));
+      // 4000 = session périmée (serveur redémarré) : pas de reprise de
+      // session, on recharge la page pour repartir d'un join neuf.
+      if (ev && ev.code === 4000) {
+        nlog("session périmée (close 4000) : rechargement de la page");
+        playerId = null;
+        try { window.sessionStorage.removeItem("flexBootId"); } catch (e) {}
+        try { window.location.reload(); } catch (e) {}
+        return;
+      }
       // Message persistant uniquement si le joueur était en jeu (playerId
       // attribué) : en menu, la liste du lobby suffit comme indicateur.
       if (playerId) showNetBanner("Connexion perdue — reconnexion en cours…");

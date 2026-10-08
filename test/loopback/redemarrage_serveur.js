@@ -85,8 +85,15 @@ setTimeout(function () {
 
                   // --- 6) rejoin avec l'ancien playerId -> sessionInvalid ---
                   ws3 = new WebSocket("ws://127.0.0.1:" + PORT);
+                  var closed4000 = false;
                   ws3.on("open", function () {
                     ws3.send(JSON.stringify({ type: "rejoin", playerId: myId, name: "Reboot" }));
+                  });
+                  ws3.on("close", function (code) {
+                    // Fermeture forcée avec code dédié : même un client avec
+                    // l'ancien JS (sans gestionnaire sessionInvalid) est coupé
+                    // net au lieu de rester sur une connexion fantôme.
+                    if (code === 4000) closed4000 = true;
                   });
                   ws3.on("message", function (m) {
                     var msg = JSON.parse(m);
@@ -96,6 +103,7 @@ setTimeout(function () {
                   setTimeout(function () {
                     check("rejoin refusé (sessionInvalid), pas de restauration",
                       gotSessionInvalid && !gotJoined);
+                    check("socket fermée avec code 4000 (client ancien coupé net)", closed4000);
                     check("log serveur \"session inconnue\" présent",
                       srv.logs.join("").indexOf("session inconnue") >= 0);
 
