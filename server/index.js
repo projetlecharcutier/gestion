@@ -8,9 +8,24 @@
   // Log horodate : chaque evenement (connexion, coupure, charge) est
   // retracable par rapport a l'horloge de jeu (nuit/vague) et aux autres
   // evenements. console.log brut garde la ligne "au boot" uniquement.
-  function log() {
+  // Buffer memoire (plafonne) pour le panneau admin : les N dernieres lignes
+  // sont servies via /admin/logs, sans lire server.log (le fichier peut etre
+  // sur un disque lent, ou absent en dev).
+  var LOG_BUFFER_MAX = 500;
+  var logBuffer = [];
+  function pushLog(line) {
+    logBuffer.push(line);
+    if (logBuffer.length > LOG_BUFFER_MAX) logBuffer.shift();
+  }
+  var rawConsoleLog = console.log.bind(console);
+  console.log = function () {
     var args = Array.prototype.slice.call(arguments);
-    console.log(new Date().toISOString() + " " + args.join(" "));
+    var line = new Date().toISOString() + " " + args.join(" ");
+    pushLog(line);
+    rawConsoleLog(line);
+  };
+  function log() {
+    console.log(Array.prototype.slice.call(arguments).join(" "));
   }
   var http = require("http");
   var fs = require("fs");
@@ -120,6 +135,102 @@
     // fs.readFile échoue et renvoie 404 : le sprite ne s'affiche jamais.
     try { url = decodeURIComponent(url); } catch (e) { /* URI mal formée : garde l'URL brute */ }
     if (url === "/") url = "/index.html";
+    // --- Panneau admin (mot de passe) : logs, version, redemarrage+Maj ---
+    // Le mot de passe est verifie COTE SERVEUR (jamais dans le JS client) et
+    // en temps constant pour ne pas leaking la longueur par le temps reponse.
+    // ADMIN_PASSWORD : surchargeable par variable d'environnement.
+    var ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "flex";
+    var crypto = require("crypto");
+    function adminPasswordOk(guess) {
+      var a = Buffer.from(String(guess || ""), "utf8");
+      var b = Buffer.from(ADMIN_PASSWORD, "utf8");
+      if (a.length !== b.length) {
+        // Compare quand meme pour garder un temps constant en longueur.
+        crypto.timingSafeEqual(b, b);
+        return false;
+      }
+      return crypto.timingSafeEqual(a, b);
+    }
+    function adminUnauthorized(res) {
+      res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ error: "unauthorized" }));
+    }
+    function adminAuthorized(req) {
+      // Le mot de passe voyage dans l'en-tete X-Admin-Password (POST : pas
+      // logge par les proxies/serveurs comme une URL GET).
+      return adminPasswordOk(req.headers["x-admin-password"]);
+    }
+    if (url === "/admin/auth") {
+      // Verification du mot de passe (le client affiche le menu si OK).
+      if (req.method !== "POST") { res.writeHead(405); res.end(); return; }
+      var authBody = "";
+      req.on("data", function (c) { authBody += c; });
+      req.on("end", function () {
+        var pass = null;
+        try { pass = (JSON.parse(authBody) || {}).password; } catch (e) {}
+        if (adminPasswordOk(pass)) {
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: true }));
+        } else {
+          adminUnauthorized(res);
+        }
+      });
+      return;
+    }
+    if (url === "/admin/logs") {
+      if (!adminAuthorized(req)) { adminUnauthorized(res); return; }
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ lines: logBuffer }));
+      return;
+    }
+    if (url === "/admin/status") {
+      if (!adminAuthorized(req)) { adminUnauthorized(res); return; }
+      var stA = game.getState();
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({
+        version: version,
+        commitName: commitName,
+        updatedAt: updatedAt,
+        bootId: bootId,
+        uptimeSec: Math.round((Date.now() - bootAt) / 1000),
+        players: stA.players.length,
+        started: stA.started,
+        clock: stA.clock,
+        day: stA.day
+      }));
+      return;
+    }
+    if (url === "/admin/restart") {
+      // Redemarrage + mise a jour git main : equivalent d'un redemarrage du
+      // service mais declenche depuis le panneau admin. Repond AVANT de
+      // mourir ; le watcher (systemd Restart=always) relance le watcher,
+      // le watcher tire main et repart a zero (0 joueur, nouvelle partie).
+      // Sans watcher (dev manuelle), on tente un git pull puis on quitte :
+      // le serveur doit etre relance par son superviseur (systemd/npm).
+      if (req.method !== "POST") { res.writeHead(405); res.end(); return; }
+      if (!adminAuthorized(req)) { adminUnauthorized(res); return; }
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ ok: true, message: "redemarrage en cours" }));
+      log("[admin] redemarrage demande depuis le panneau admin : arret + maj git main");
+      // Petit delai pour laisser la reponse partir avant l'arret du processus.
+      setTimeout(function () {
+        try {
+          var execSync = require("child_process").execSync;
+          var GIT2 = "git -c safe.directory=" + JSON.stringify(WEB_ROOT) + " ";
+          // Maj depuis origin/main : fetch + reset --hard (le depot de prod
+          // est un checkout du watcher, jamais de travail local a conserver).
+          execSync(GIT2 + "fetch --quiet origin main", { cwd: WEB_ROOT, encoding: "utf8", timeout: 60000 });
+          execSync(GIT2 + "checkout --quiet main", { cwd: WEB_ROOT, encoding: "utf8", timeout: 60000 });
+          execSync(GIT2 + "reset --hard --quiet origin/main", { cwd: WEB_ROOT, encoding: "utf8", timeout: 60000 });
+          try { console.log(new Date().toISOString() + " [admin] git main mis a jour : " +
+            execSync(GIT2 + "log -1 --format=%h", { cwd: WEB_ROOT, encoding: "utf8" }).trim()); } catch (e) {}
+        } catch (e) {
+          console.error(new Date().toISOString() + " [admin] maj git echouee (redemarrage quand meme) :", e.message);
+        }
+        process.exit(0);
+      }, 300);
+      return;
+    }
     // Version deployee (affichee dans le menu d'accueil du client).
     if (url === "/version.json") {
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-cache" });

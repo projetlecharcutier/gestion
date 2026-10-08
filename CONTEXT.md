@@ -45,6 +45,7 @@ Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fo
 | 20 | `src/render.js` | Tout le dessin + `render()` (dont `drawTower`, flèche orientée, brouillard multi-sources) | `drawGround/Item/Tree/Building/Player/Wall/Zombie/Projectiles/Fog/Crosshair/DeadTraces`, `drawTower`, `fillPoly`, `roundRect`, `render` |
 | 21 | `src/input.js` | Entrées (souris, molette, clavier) + formulaire démarrage | resize interne, listeners |
 | 22 | `src/sound.js` | Sons (mp3 dans `assets/sounds/`, repli silencieux) | `playSound` |
+| 22b | `src/admin.js` | Panneau admin (login mot de passe, status, logs, restart + mise à jour git main) | `adminFetch`, bindings DOM |
 | 23 | `src/main.js` | Logique par frame `update(dt)` + `loop()` | `update`, `loop` |
 
 ## État global : `G.state`
@@ -223,6 +224,7 @@ Le jeu fonctionne en mode **client-serveur** : un serveur Node.js héberge une *
 5. **Places** : max 20, libérées à la déconnexion (non réservées).
 6. **Redémarrage du serveur** : l'état est en mémoire → la partie repart à zéro, tous les clients sont déconnectés. Chaque boot porte un `bootId` (diffusé dans le lobby + `/version.json`) ; un client qui revient avec un `rejoin` périmé reçoit `sessionInvalid` et **recharge la page** (pas de reprise de session). Le cache PNG est auto-rafraîchi : la clé `?v=` = commit + `assetsStamp` (nb de fichiers + mtime la plus récente sous `assets/`), donc un PNG modifié/ajouté **sans commit** invalide le cache navigateur tout seul (test `loopback/redemarrage_serveur.js`).
 7. **Fermeture de la fenêtre client** : un close WS **1001** (fermeture propre de l'onglet/fenêtre, navigation) → **déconnexion immédiate** du joueur (pas de grâce). Seules les coupures **brutales** (1006 réseau/WiFi, 1000 watchdog, `leave` explicite) gardent la grâce de reconnexion 30 s pour le `rejoin` (test `loopback/fermeture_fenetre.js`).
+8. **Panneau admin** (page d'accueil → bouton « Admin ») : mot de passe vérifié **côté serveur uniquement** (`ADMIN_PASSWORD` env, défaut `flex`), jamais présent dans le JS client — envoyé dans l'en-tête `X-Admin-Password`. Routes HTTP : `POST /admin/auth`, `GET /admin/logs` (buffer mémoire des 500 dernières lignes), `GET /admin/status` (version, commit, bootId, uptime, joueurs, jour/heure), `POST /admin/restart` → répond PUIS après 300 ms fait `git fetch origin main` + `checkout main` + `reset --hard origin/main` puis `process.exit(0)` (le watcher/systemd relance tout) ; le client poll `/version.json` jusqu'à voir un nouveau `bootId` puis recharge la page. Module client `src/admin.js` (test `loopback/admin_panneau.js`).
 
 ### Lancer le serveur
 

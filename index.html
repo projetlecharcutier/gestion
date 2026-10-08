@@ -73,6 +73,9 @@
         </div>
         <button class="btn btn--primary" type="submit">Lancer une partie</button>
       </form>
+      <div class="admin-zone">
+        <button class="btn btn--admin" id="adminBtn" type="button">Admin</button>
+      </div>
       <div class="guide" id="menuGuide">
         <div class="guide__section">
           <h3>Les bâtiments de la ville</h3>
@@ -153,6 +156,29 @@
     </div>
   </div>
 
+  <div class="overlay" id="adminScreen" hidden>
+    <div class="panel panel--admin">
+      <h2>Panneau admin</h2>
+      <div id="adminLogin" class="admin-login">
+        <p class="admin-hint">Ce menu est réservé à l'administration du serveur.</p>
+        <input id="adminPassword" type="password" placeholder="Mot de passe" autocomplete="off" />
+        <button class="btn btn--primary" id="adminLoginBtn" type="button">Entrer</button>
+        <p class="admin-error" id="adminError" hidden>Mot de passe incorrect.</p>
+      </div>
+      <div id="adminPanel" hidden>
+        <div class="admin-status" id="adminStatus">Chargement…</div>
+        <div class="admin-actions">
+          <button class="btn btn--primary" id="adminRestartBtn" type="button">Redémarrer + mettre à jour (git main)</button>
+          <button class="btn" id="adminLogsRefresh" type="button">Rafraîchir les logs</button>
+          <button class="btn" id="adminClose" type="button">Fermer</button>
+        </div>
+        <p class="admin-hint" id="adminRestartNote" hidden>Redémarrage en cours… la page se rechargera automatiquement.</p>
+        <h3>Logs du serveur</h3>
+        <pre class="admin-logs" id="adminLogs">—</pre>
+      </div>
+      <button class="btn" id="adminBack" type="button">Retour</button>
+    </div>
+  </div>
   <div class="overlay" id="loadingScreen" hidden>
     <div class="loading">
       <div class="loading__logo"></div>
@@ -294,6 +320,7 @@
   <script src="src/render.js"></script>
   <script src="src/input.js"></script>
   <script src="src/sound.js"></script>
+  <script src="src/admin.js"></script>
   <script src="src/main.js"></script>
 </body>
 </html>
