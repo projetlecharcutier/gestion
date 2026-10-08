@@ -46,6 +46,34 @@
   var updatedAt = null;
   var version = null; // code de commit court (ex. 3b12130)
   var commitName = null; // titre du dernier commit (affiche dans le menu)
+  // Identifiant de boot : change à CHAQUE redémarrage du processus. Les
+  // clients le comparent à leur dernière valeur connue — s'il diffère, le
+  // serveur a redémarré : la partie locale est périmée, le client recharge
+  // la page (nouvelle partie, pas de reprise de session).
+  var bootId = String(Date.now());
+  // Empreinte des assets PNG (nb de fichiers + mtime la plus récente) :
+  // sert de clé de cache-busting ?v= côté client. Un PNG modifié ou ajouté
+  // SANS nouveau commit change l'empreinte -> les navigateurs re-téléchargent
+  // les sprites ; si rien ne change, l'empreinte est stable et le cache
+  // navigateur (immutable 1 an) reste valide. Aucune réinitialisation
+  // manuelle du cache n'est nécessaire.
+  function computeAssetsStamp() {
+    var count = 0, maxMtime = 0;
+    function walk(dir) {
+      var entries;
+      try { entries = fs.readdirSync(dir); } catch (e) { return; }
+      for (var i = 0; i < entries.length; i++) {
+        var full = path.join(dir, entries[i]);
+        var st;
+        try { st = fs.statSync(full); } catch (e) { continue; }
+        if (st.isDirectory()) { walk(full); continue; }
+        count++;
+        if (st.mtimeMs > maxMtime) maxMtime = st.mtimeMs;
+      }
+    }
+    walk(path.join(WEB_ROOT, "assets"));
+    return count + "-" + Math.round(maxMtime);
+  }
   try {
     var execSync = require("child_process").execSync;
     var REPO = path.join(__dirname, "..");
@@ -63,6 +91,8 @@
   // Racine des fichiers statiques (index.html, src/, assets/) : dossier
   // parent de server/, c'est-à-dire la racine du dépôt.
   var WEB_ROOT = path.join(__dirname, "..");
+  // Empreinte des assets : calculée APRÈS WEB_ROOT (défini juste au-dessus).
+  var assetsStamp = computeAssetsStamp();
   var MIME = {
     ".html": "text/html; charset=utf-8",
     ".js": "application/javascript; charset=utf-8",
@@ -92,8 +122,11 @@
     if (url === "/") url = "/index.html";
     // Version deployee (affichee dans le menu d'accueil du client).
     if (url === "/version.json") {
-      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify({ updatedAt: updatedAt, version: version, commitName: commitName }));
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-cache" });
+      res.end(JSON.stringify({
+        updatedAt: updatedAt, version: version, commitName: commitName,
+        bootId: bootId, assetsStamp: assetsStamp
+      }));
       return;
     }
     // Sécurité : empêche de remonter hors de WEB_ROOT.
@@ -301,6 +334,7 @@
       lobby.updatedAt = updatedAt;
       lobby.version = version;
       lobby.commitName = commitName;
+      lobby.bootId = bootId;
       broadcast(lobby);
     }
 
@@ -394,6 +428,14 @@
         var rid = msg.playerId;
         var rname = (msg.name || "").trim().slice(0, 20);
         var rplayer = rid ? game.reconnect(rid, rname || null) : null;
+        if (!rplayer) {
+          // Redémarrage du serveur (ou grâce expirée) : l'ancien personnage
+          // n'existe plus. Le client ne doit PAS reprendre sa session — il
+          // recharge la page et repart d'un join neuf sur la nouvelle partie.
+          ws.send(JSON.stringify({ type: "sessionInvalid", reason: "session-perimee" }));
+          log("[ws] rejoin refusé " + (rid || "?") + " : session inconnue (serveur redémarré ?)");
+          return;
+        }
         if (rplayer) {
           if (clients[rid] && clients[rid].ws && clients[rid].ws !== ws) {
             try { clients[rid].ws.terminate(); } catch (e) {}

@@ -221,6 +221,7 @@ Le jeu fonctionne en mode **client-serveur** : un serveur Node.js héberge une *
 3. **Partie lancée** → simulation active, vagues de zombies la nuit, mairie attaquable.
 4. **Mairie détruite (PV ≤ 0)** → game over, redémarrage auto après 10 s si des joueurs sont présents.
 5. **Places** : max 20, libérées à la déconnexion (non réservées).
+6. **Redémarrage du serveur** : l'état est en mémoire → la partie repart à zéro, tous les clients sont déconnectés. Chaque boot porte un `bootId` (diffusé dans le lobby + `/version.json`) ; un client qui revient avec un `rejoin` périmé reçoit `sessionInvalid` et **recharge la page** (pas de reprise de session). Le cache PNG est auto-rafraîchi : la clé `?v=` = commit + `assetsStamp` (nb de fichiers + mtime la plus récente sous `assets/`), donc un PNG modifié/ajouté **sans commit** invalide le cache navigateur tout seul (test `loopback/redemarrage_serveur.js`).
 
 ### Lancer le serveur
 

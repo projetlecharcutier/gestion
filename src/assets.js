@@ -751,7 +751,12 @@
       if (req.readyState !== 4) return;
       try {
         var v = JSON.parse(req.responseText);
-        ASSET_V = (v.version || v.updatedAt || "").toString().replace(/[^\w.-]/g, "");
+        // Clé de cache PNG = commit DEPLOYÉ + empreinte des assets (nb de
+        // fichiers + mtime la plus récente, calculée par le serveur au boot).
+        // Un PNG modifié/ajouté SANS commit change l'empreinte -> le cache
+        // navigateur s'invalide tout seul, aucune réinitialisation manuelle.
+        ASSET_V = ((v.version || v.updatedAt || "") + "-" + (v.assetsStamp || ""))
+          .toString().replace(/[^\w.-]/g, "");
       } catch (e) { ASSET_V = ""; }
       onDone();
     };

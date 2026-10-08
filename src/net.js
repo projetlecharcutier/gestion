@@ -253,10 +253,39 @@
     }
   }
 
+  // Détection de redémarrage du serveur : le bootId (horodatage de boot du
+  // processus serveur) change à chaque redémarrage. Un client ouvert PENDANT
+  // le redémarrage (menu ou jeu) voit un bootId différent de celui connu : la
+  // partie locale est périmée, il recharge la page (nouvelle partie à zéro,
+  // cache re-validé). Mémoire en sessionStorage : survit aux rechargements de
+  // la page mais pas au redémarrage du navigateur.
+  var _knownBootId = null;
+  try { _knownBootId = window.sessionStorage.getItem("flexBootId") || null; } catch (e) {}
+  function handleBootId(bootId) {
+    if (!bootId) return;
+    if (_knownBootId && _knownBootId !== bootId) {
+      // Le serveur a redémarré depuis notre dernière visite : recharge complète.
+      try { window.sessionStorage.setItem("flexBootId", bootId); } catch (e) {}
+      try { window.location.reload(); } catch (e) {}
+      return;
+    }
+    _knownBootId = bootId;
+    try { window.sessionStorage.setItem("flexBootId", bootId); } catch (e) {}
+  }
   G.netHandle = function (msg) {
     if (msg.type === "lobby") {
+      if (msg.bootId) handleBootId(msg.bootId);
       G.lobbyInfo = msg;
       G.updateLobbyDisplay();
+    } else if (msg.type === "sessionInvalid") {
+      // Le serveur ne connaît plus notre personnage (redémarrage du serveur,
+      // grâce expirée) : pas de reprise de session — on mémorise le bootId
+      // du serveur courant puis on recharge la page pour repartir d'un join
+      // neuf sur la nouvelle partie.
+      nlog("session périmée (serveur redémarré) : rechargement de la page");
+      playerId = null;
+      try { if (window.sessionStorage.getItem("flexBootId")) window.sessionStorage.removeItem("flexBootId"); } catch (e) {}
+      try { window.location.reload(); } catch (e) {}
     } else if (msg.type === "joined") {
       playerId = msg.playerId;
       // Reconnexion aboutie : le bandeau de coupure disparait et un
