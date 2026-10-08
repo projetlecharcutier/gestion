@@ -243,6 +243,6 @@ En développement local, ouvrir `http://localhost:8080` pendant que le serveur t
 
 | Fichier | Rôle |
 |---------|------|
-| `deploy/deploy.sh` | Watcher : boucle de `git fetch main` toutes les `POLL_INTERVAL` s, redéploie (reset --hard, npm install si besoin, redémarre le serveur) si le commit a changé, relance le serveur s'il a crashé |
+| `deploy/deploy.sh` | Watcher : boucle de `git fetch main` toutes les `POLL_INTERVAL` s, redéploie (reset --hard, npm install si besoin, redémarre le serveur) si le commit a changé, relance le serveur s'il a crashé. **Au démarrage du watcher** : tue TOUJOURS tout serveur existant (orphelin ou lancé à la main) et redéploie proprement — un relancement du service repart à zéro (0 joueur, nouvelle partie). `start_server` tue aussi tout occupant restant du port (`fuser -k`) pour éviter un EADDRINUSE silencieux |
 | `deploy/flex.service` | Service systemd : lance le watcher au boot, le relance s'il crash |
 | `deploy/README.md` | Instructions d'installation sur la VM (prérequis, systemd, logs, pare-feu) |

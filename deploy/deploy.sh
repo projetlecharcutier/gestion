@@ -59,6 +59,14 @@ SERVER_PID=""
 
 # --- Gestion du serveur Node -----------------------------------------------
 start_server() {
+  # Sécurité : si le port est encore occupé (ancien serveur orphelin qui
+  # n'est pas dans la table de processus du motif pkill, ou TIME_WAIT
+  # lourd), le nouveau serveur mourrait en EADDRINUSE en silence. On tue
+  # tout occupant restant avant de démarrer.
+  if command -v fuser >/dev/null 2>&1 && fuser -k "$PORT"/tcp >/dev/null 2>&1; then
+    log "Port $PORT encore occupé : occupant tué avant démarrage."
+    sleep 0.5
+  fi
   log "Démarrage du serveur sur le port $PORT..."
   cd "$APP_DIR/server"
   PORT="$PORT" setsid "$NODE_BIN" index.js >>"$APP_DIR/server.log" 2>&1 &
@@ -143,18 +151,23 @@ deploy() {
 # --- Boucle principale ----------------------------------------------------
 log "Watcher démarré. Repo=$REPO_URL Branche=$BRANCH App=$APP_DIR Port=$PORT Poll=${POLL_INTERVAL}s"
 
-# Premier déploiement si rien n'est encore déployé.
+# Premier déploiement : au démarrage du watcher, on ARRÊTE toujours tout
+# serveur existant et on redéploie — un "relancement" du service doit
+# TOUJOURS repartir à zéro (nouvelle partie, 0 joueur connecté). L'ancien
+# code ne redéployait pas si un serveur tournait déjà : le watcher gardait
+# le vieux processus (et ses joueurs) tel quel, et "relancer" ne servait à
+# rien. Un ancien serveur orphelin (watcher tué avant son nettoyage) est
+# aussi tué ici, sinon il garderait le port et le nouveau démarrage
+# échouerait en EADDRINUSE.
 initial_ref=""
-if [ ! -f "$DEPLOYED_REF_FILE" ]; then
-  initial_ref="$(git_fetch_latest)"
+initial_ref="$(git_fetch_latest || true)"
+if [ -n "$initial_ref" ]; then
+  log "Démarrage du watcher : arrêt de tout serveur existant et déploiement propre..."
+  pkill -KILL -f "node.*index.js" 2>/dev/null || true
+  sleep 0.5
   deploy "$initial_ref"
 else
-  # S'assure qu'un serveur tourne au démarrage du watcher (redémarrage VM).
-  if ! pgrep -f "node.*index.js" >/dev/null 2>&1; then
-    log "Aucun serveur détecté au démarrage, déploiement initial..."
-    initial_ref="$(git_fetch_latest)"
-    deploy "$initial_ref"
-  fi
+  log "Impossible de récupérer la révision distante (réseau ?) : le serveur existant est conservé."
 fi
 
 while true; do
