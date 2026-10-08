@@ -222,6 +222,7 @@ Le jeu fonctionne en mode **client-serveur** : un serveur Node.js héberge une *
 4. **Mairie détruite (PV ≤ 0)** → game over, redémarrage auto après 10 s si des joueurs sont présents.
 5. **Places** : max 20, libérées à la déconnexion (non réservées).
 6. **Redémarrage du serveur** : l'état est en mémoire → la partie repart à zéro, tous les clients sont déconnectés. Chaque boot porte un `bootId` (diffusé dans le lobby + `/version.json`) ; un client qui revient avec un `rejoin` périmé reçoit `sessionInvalid` et **recharge la page** (pas de reprise de session). Le cache PNG est auto-rafraîchi : la clé `?v=` = commit + `assetsStamp` (nb de fichiers + mtime la plus récente sous `assets/`), donc un PNG modifié/ajouté **sans commit** invalide le cache navigateur tout seul (test `loopback/redemarrage_serveur.js`).
+7. **Fermeture de la fenêtre client** : un close WS **1001** (fermeture propre de l'onglet/fenêtre, navigation) → **déconnexion immédiate** du joueur (pas de grâce). Seules les coupures **brutales** (1006 réseau/WiFi, 1000 watchdog, `leave` explicite) gardent la grâce de reconnexion 30 s pour le `rejoin` (test `loopback/fermeture_fenetre.js`).
 
 ### Lancer le serveur
 

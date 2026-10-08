@@ -510,6 +510,16 @@
         " | vie=" + life + "s" +
         " | silence=" + silence + "s" +
         " | ping/pong=" + (c.pings || 0) + "/" + (c.pongs || 0));
+      // 1001 = fermeture PROPRE de la fenetre/onglet (le navigateur envoit
+      // le close frame) : deconnexion IMMEDIATE, pas de grace — sinon le
+      // joueur restait dans la liste des connectes 30 s apres avoir ferme
+      // sa fenetre. La grace ne survit que pour les coupures BRUTALES
+      // (1006 = reseau/NAT/WiFi, 1000 = close() du watchdog client) ou le
+      // message "leave" explicite, ou le joueur pourra se reconnecter.
+      if (code === 1001) {
+        hardCleanup(id);
+        return;
+      }
       softCleanup(id);
     });
     ws.on("error", function (err) {
