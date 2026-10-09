@@ -740,7 +740,7 @@
   function fetchAssetVersion(onDone) {
     if (ASSET_V !== null) { onDone(); return; }
     if (typeof window === "undefined" || !window.XMLHttpRequest ||
-        window.location.protocol === "file:") {
+        !window.location || window.location.protocol === "file:") {
       ASSET_V = "";
       onDone();
       return;
