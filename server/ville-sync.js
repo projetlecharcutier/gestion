@@ -249,10 +249,15 @@
   // visuel d'elevation (vers le nord de l'emprise) est couvert par le
   // MARGE (pad) qui agrandit la boite testee de MARGE px de chaque cote.
   var AUTO_MARGE = 300;
+  // Debord VISUEL du PNG vers le nord/ouest/est (cf. villeRandomizePositions
+  // : elev = side * 0.8) : la bbox visuelle doit rester dans la carte.
+  function elevFor(side) { return Math.min(side * 0.8, (global.GAME.WORLD - side) / 2); }
   function slotLibre(x, y, side, boxes) {
     var G = global.GAME;
+    var elev = elevFor(side);
     var ox = x - side / 2, oy = y - side / 2;
-    if (ox < 60 || oy < 60 || ox + side > G.WORLD - 60 || oy + side > G.WORLD - 60) return false;
+    if (ox < elev || oy < elev || ox + side + elev > G.WORLD || oy + side > G.WORLD) return false;
+    if (G.WORLD - side - 2 * elev < 0) return false;
     if (x + side / 2 + AUTO_MARGE > G.TOWN_MIN && x - side / 2 - AUTO_MARGE < G.TOWN_MAX &&
         y + side / 2 + AUTO_MARGE > G.TOWN_MIN && y - side / 2 - AUTO_MARGE < G.TOWN_MAX) return false;
     for (var bi = 0; bi < boxes.length; bi++) {
@@ -286,16 +291,22 @@
       for (var di2 = 0; di2 < 4; di2++) {
         var dir2 = AUTO_DIRS[di2];
         var x2 = cx + dir2.dx * dd, y2 = cy + dir2.dy * dd;
-        if (x2 > side && y2 > side && x2 < G.WORLD - side && y2 < G.WORLD - side &&
+        var elevS = elevFor(side);
+        if (x2 > side / 2 + elevS && y2 > side / 2 + elevS &&
+            x2 < G.WORLD - side / 2 - elevS && y2 < G.WORLD - side / 2 &&
             slotLibre(x2, y2, side, boxes)) {
           return { x: Math.round(x2 - side / 2), y: Math.round(y2 - side / 2) };
         }
       }
     }
-    // Repli : ancrage est simple, cadre dans la carte.
+    // Repli : ancrage est simple, cadre dans la carte (bbox visuelle si
+    // elle tient, sinon emprise sol).
+    var elevR = elevFor(side);
+    var loR = (G.WORLD - side - 2 * elevR >= 0) ? elevR : 60;
+    var hiR = (G.WORLD - side - 2 * elevR >= 0) ? G.WORLD - side - elevR : G.WORLD - side - 60;
     return {
-      x: Math.round(Math.min(G.WORLD - side - 60, Math.max(60, cx + d1 - side / 2))),
-      y: Math.round(Math.min(G.WORLD - side - 60, Math.max(60, cy - side / 2)))
+      x: Math.round(Math.min(hiR, Math.max(loR, cx + d1 - side / 2))),
+      y: Math.round(Math.min(hiR, Math.max(loR, cy - side / 2)))
     };
   }
 

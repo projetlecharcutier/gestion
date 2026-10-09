@@ -126,14 +126,20 @@
       var best = null, bestD = -1;
       // Chaque ville essaye N positions; on garde la plus ELOIGNEE des
       // autres villes (repartition maximale, evite les amas).
+      // Bbox VISUELLE approx : le haut du PNG deborde au nord/ouest/est de
+      // l'emprise sol -- le tirage doit garder cette bbox DANS la carte,
+      // sinon le decor ville depasse du bord.
+      var elev = side * 0.8;
+      var lo = 200 + elev;
+      var hi = G.WORLD - side - elev - 200;
+      if (hi < lo) hi = lo;
       for (var tryI = 0; tryI < 60; tryI++) {
-        var x = Math.round(G.rand(200, G.WORLD - side - 200));
-        var y = Math.round(G.rand(200, G.WORLD - side - 200));
+        var x = Math.round(G.rand(lo, hi));
+        var y = Math.round(G.rand(lo, hi));
         // Ville principale (TOWN_MIN..TOWN_MAX) : interdite + marge.
         if (x - MARGE < G.TOWN_MAX && x + side + MARGE > G.TOWN_MIN &&
             y - MARGE < G.TOWN_MAX && y + side + MARGE > G.TOWN_MIN) continue;
         // Bbox VISUELLE approx : le haut du PNG deborde au nord/ouest/est.
-        var elev = side * 0.8;
         var x0 = x - elev, y0 = y - elev, x1 = x + side + elev, y1 = y + side;
         var ok = true, minD = Infinity;
         for (var p = 0; p < placed.length; p++) {
@@ -150,10 +156,19 @@
         if (minD > bestD) { bestD = minD; best = { x: x, y: y, side: side, x0: x0, y0: y0, x1: x1, y1: y1 }; }
       }
       if (!best) {
-        // Carte saturee : derniere position valide vue, sinon def initiale.
-        best = { x: d.x || 0, y: d.y || 0, side: side,
-                 x0: (d.x || 0) - side * 0.8, y0: (d.y || 0) - side * 0.8,
-                 x1: (d.x || 0) + side * 1.8, y1: (d.y || 0) + side };
+        // Carte saturee : position par defaut clampee pour que la bbox
+        // VISUELLE (deborg d'elevation au nord/ouest/est) reste dans la carte.
+        // Priorite : bbox visuelle entiere dans la carte ; si elle ne
+        // tient pas, au moins l'emprise sol.
+        var room = G.WORLD - side - elev;
+        var loF = (room >= elev) ? elev : 0;
+        var hiF = (room >= elev) ? room : G.WORLD - side;
+        if (hiF < loF) hiF = loF;
+        var fx = Math.min(Math.max(d.x || 0, loF), hiF);
+        var fy = Math.min(Math.max(d.y || 0, loF), hiF);
+        best = { x: fx, y: fy, side: side,
+                 x0: fx - elev, y0: fy - elev,
+                 x1: fx + side + elev, y1: fy + side };
       }
       rng[d.sprite || d.name] = { x: best.x, y: best.y };
       placed.push(best);
