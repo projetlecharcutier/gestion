@@ -125,15 +125,19 @@
       if (!data || !data.ok) return;
       show("adminRestartNote", true);
       // Le serveur va s'arrêter puis redémarrer (watcher). On surveille
-      // /version.json : quand il répond avec un NOUVEAU bootId, le serveur
-      // est de retour -> on recharge la page (partie à zéro, cache frais).
+      // /version.json : quand il répond avec un bootId DIFFÉRENT de celui
+      // d'avant le clic, le NOUVEAU serveur est de retour -> on recharge
+      // la page (partie à zéro, cache frais). Sans comparaison, l'ANCIEN
+      // serveur répondait pendant la fenêtre git (fetch/checkout/reset)
+      // et la page se rechargeait... sur l'ancienne version.
+      var oldBootId = data.bootId || null;
       var tries = 0;
       var timer = setInterval(function () {
         fetch("/version.json", { cache: "no-store" }).then(function (r) {
           if (!r.ok) throw new Error("down");
           return r.json();
         }).then(function (v) {
-          if (v && v.bootId) {
+          if (v && v.bootId && v.bootId !== oldBootId) {
             clearInterval(timer);
             window.location.reload();
           }

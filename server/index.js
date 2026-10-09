@@ -210,7 +210,11 @@
       if (req.method !== "POST") { res.writeHead(405); res.end(); return; }
       if (!adminAuthorized(req)) { adminUnauthorized(res); return; }
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify({ ok: true, message: "redemarrage en cours" }));
+      // bootId actuel : le client ne recharge la page que quand /version.json
+      // repond avec un bootId DIFFERENT (le nouveau serveur est reellement en
+      // place) -- sinon l'ancien serveur repondait encore pendant la fenetre
+      // git et la page rechargeait l'ancienne version.
+      res.end(JSON.stringify({ ok: true, message: "redemarrage en cours", bootId: bootId }));
       log("[admin] redemarrage demande depuis le panneau admin : arret + maj git main");
       // Petit delai pour laisser la reponse partir avant l'arret du processus.
       setTimeout(function () {
