@@ -22,6 +22,53 @@
     if (!ASSET_V) return url;
     return url + (url.indexOf("?") >= 0 ? "&" : "?") + "v=" + ASSET_V;
   }
+  // Index des fichiers d'assets servis par /assets-index.json : sans lui,
+  // les sondes devinent les noms de PNG et chaque essai raté provoquait un
+  // 404 dans la console du navigateur. Avec l'index, un fichier absent est
+  // rejeté SANS requête réseau (onerror différé : les sondes fonctionnent à
+  // l'identique, la chaîne de repli est la même). Index indisponible
+  // (file://, tests Node, serveur ancien) : ASSET_INDEX = false, comportement
+  // inchangé -- on tente toutes les requêtes.
+  // null = pas encore chargé ; false = indisponible ; objet = chemins connus.
+  var ASSET_INDEX = null;
+  function fetchAssetIndex(onDone) {
+    if (ASSET_INDEX !== null) { onDone(); return; }
+    if (typeof window === "undefined" || !window.XMLHttpRequest || !window.location ||
+        window.location.protocol === "file:") {
+      ASSET_INDEX = false;
+      onDone();
+      return;
+    }
+    var req = new XMLHttpRequest();
+    req.open("GET", "assets-index.json", true);
+    req.onreadystatechange = function () {
+      if (req.readyState !== 4) return;
+      try {
+        var v = JSON.parse(req.responseText);
+        if (req.status === 200 && v && v.files && v.files.length) {
+          ASSET_INDEX = {};
+          for (var i = 0; i < v.files.length; i++) ASSET_INDEX[v.files[i]] = true;
+        } else {
+          ASSET_INDEX = false;
+        }
+      } catch (e) { ASSET_INDEX = false; }
+      onDone();
+    };
+    try { req.send(); } catch (e) { ASSET_INDEX = false; onDone(); }
+  }
+  // Assigne img.src uniquement si le fichier existe dans l'index (ou si
+  // l'index est indisponible). Fichier absent : onerror en différé -- le
+  //navigateur ne produit AUCUN 404 console.
+  function imgSetSrc(img, url) {
+    if (!ASSET_INDEX || ASSET_INDEX[url]) {
+      img.src = bust(url);
+      return;
+    }
+    setTimeout(function () {
+      if (img.onerror) img.onerror();
+      else if (img.onload) img.onload();
+    }, 0);
+  }
 
   // Animation par frames : convention <base>-0.png, <base>-1.png, ...
   // Si un sprite de base possede des frames -N (depuis 0), il est anime :
@@ -93,7 +140,7 @@
         } else onDone(frames);
       };
       img.onerror = function () { onDone(frames); };
-      img.src = bust(dir + base + "-" + n + ".png");
+      imgSetSrc(img, dir + base + "-" + n + ".png");
     }
     next();
   }
@@ -116,7 +163,7 @@
       img.onerror = function () { onDone(frames); };
       var last = String(n);
       while (last.length < 2) last = "0" + last;
-      img.src = bust(dir + base + "-01" + last + ".png");
+      imgSetSrc(img, dir + base + "-01" + last + ".png");
     }
     next();
   }
@@ -217,7 +264,7 @@
         if (consecMiss >= MAX_MISS) { onDone(frames); return; }
         next();
       };
-      img.src = bust(dir + name + ".png");
+      imgSetSrc(img, dir + name + ".png");
     }
     next();
   }
@@ -266,7 +313,7 @@
         img.onerror = function () {
           ci++; tryCand();
         };
-        img.src = bust(dir + name);
+        imgSetSrc(img, dir + name);
       }
       tryCand();
       function tryStageRef(sci) {
@@ -288,7 +335,7 @@
           }
         };
         simg.onerror = function () { sci++; tryStageRef(sci); };
-        simg.src = bust(dir + sname);
+        imgSetSrc(simg, dir + sname);
       }
     }
     next();
@@ -315,7 +362,7 @@
         i++; next();
       };
       img.onerror = function () { i++; next(); };
-      img.src = bust(dir + name);
+      imgSetSrc(img, dir + name);
     }
     next();
   }
@@ -361,7 +408,7 @@
             done();
           });
         };
-        img.src = bust(dir + key + ".png");
+        imgSetSrc(img, dir + key + ".png");
       })(toLoad[i]);
     }
   }
@@ -496,7 +543,7 @@
             nextSeries();
           });
         };
-        img.src = bust(s.dir + s.base + ".png");
+        imgSetSrc(img, s.dir + s.base + ".png");
       }
       nextSeries();
     }
@@ -519,7 +566,7 @@
           _loaded++;
           if (_loaded >= _total) probePlayer(afterPlayer);
         };
-        img.src = bust(e.def.src);
+        imgSetSrc(img, e.def.src);
       })(entries[i]);
     }
   }
@@ -549,7 +596,7 @@
         done();
       };
       img.onerror = function () { done(); };
-      img.src = bust(job.dir + job.base + ".png");
+      imgSetSrc(img, job.dir + job.base + ".png");
     }
     if (toLoad.length === 0) { onDone(); return; }
     for (var j = 0; j < toLoad.length; j++) loadOne(toLoad[j]);
@@ -574,7 +621,7 @@
           done();
         };
         img.onerror = function () { done(); };
-        img.src = bust("assets/sprites/ciel/" + k + ".png");
+        imgSetSrc(img, "assets/sprites/ciel/" + k + ".png");
       })(keys[i]);
     }
   }
@@ -600,7 +647,7 @@
           done();
         };
         img.onerror = function () { done(); };
-        img.src = bust("assets/sprites/elementdecord/" + frame + ".png");
+        imgSetSrc(img, "assets/sprites/elementdecord/" + frame + ".png");
       })(specs[i][0]);
     }
   }
@@ -634,7 +681,7 @@
         n++;
         next();
       };
-      img.src = bust(dir + "deadzomb" + n + ".png");
+      imgSetSrc(img, dir + "deadzomb" + n + ".png");
     }
     next();
   }
@@ -685,7 +732,7 @@
           done();
         });
       };
-      img.src = bust(job.dir + job.base + ".png");
+      imgSetSrc(img, job.dir + job.base + ".png");
     }
     for (var i = 0; i < toLoad.length; i++) loadOne(toLoad[i]);
   }
@@ -712,7 +759,7 @@
         next();
       };
       img.onerror = function () { consecMiss++; n++; next(); };
-      img.src = bust(names.length > 0 ? names.shift() : dir + "destruction" + n + ".png");
+      imgSetSrc(img, names.length > 0 ? names.shift() : dir + "destruction" + n + ".png");
     }
     next();
   }
@@ -765,25 +812,29 @@
 
   G.loadAssets = function (onReady) {
     fetchAssetVersion(function () {
-      var req = new XMLHttpRequest();
-      req.open("GET", "assets/manifest.json", true);
-      req.onreadystatechange = function () {
-        if (req.readyState !== 4) return;
-        if (req.status !== 200 && req.status !== 0) {
-          // Manifeste indisponible (ex. file://) : repli sur le manifeste embarqué.
-          loadManifest(FALLBACK_MANIFEST, onReady);
-          return;
-        }
-        var manifest;
-        try {
-          manifest = JSON.parse(req.responseText);
-        } catch (e) {
-          loadManifest(FALLBACK_MANIFEST, onReady);
-          return;
-        }
-        loadManifest(manifest, onReady);
-      };
-      req.send();
+      // Index des fichiers reels AVANT les sondes : sans lui, chaque essai
+      // ratif des sondes de frames produisait un 404 console.
+      fetchAssetIndex(function () {
+        var req = new XMLHttpRequest();
+        req.open("GET", "assets/manifest.json", true);
+        req.onreadystatechange = function () {
+          if (req.readyState !== 4) return;
+          if (req.status !== 200 && req.status !== 0) {
+            // Manifeste indisponible (ex. file://) : repli sur le manifeste embarqué.
+            loadManifest(FALLBACK_MANIFEST, onReady);
+            return;
+          }
+          var manifest;
+          try {
+            manifest = JSON.parse(req.responseText);
+          } catch (e) {
+            loadManifest(FALLBACK_MANIFEST, onReady);
+            return;
+          }
+          loadManifest(manifest, onReady);
+        };
+        req.send();
+      });
     });
   };
   // Liste les noms de maisons disponibles (H1, H2, ...). Vide tant que les

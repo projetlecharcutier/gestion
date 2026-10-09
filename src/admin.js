@@ -35,6 +35,15 @@
     show("adminScreen", false);
   }
 
+  // Échap pendant le jeu : ouvre la console admin (raccourci clavier),
+  // le deuxième Échap la referme. Exposé pour input.js (touche Échap).
+  G.openAdmin = openAdmin;
+  G.closeAdmin = closeAdmin;
+  G.adminOpen = function () {
+    var e = el("adminScreen");
+    return !!(e && !e.hidden);
+  };
+
   function showLoggedIn() {
     show("adminLogin", false);
     show("adminPanel", true);

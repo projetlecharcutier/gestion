@@ -277,6 +277,17 @@
       state.keys.space = true;
     }
     if (e.code === "Escape") {
+      // Console admin : Échap l'ouvre pendant le jeu (raccourci admin) et un
+      // deuxième Échap la referme AVANT tout autre traitement (pause, menus).
+      if (G.adminOpen && G.adminOpen()) { G.closeAdmin(); return; }
+      if (state.started && !state.paused && !state.gameOver &&
+          !state.buildMenuOpen && !state.churchOpen && !state.chestOpen &&
+          !(state.bag && state.bag.open) &&
+          !(G.universiteScreen && !G.universiteScreen.hidden) &&
+          !(G.marcheScreen && !G.marcheScreen.hidden) &&
+          !(G.potenceScreen && !G.potenceScreen.hidden) &&
+          !state.buildMode &&
+          G.openAdmin) { G.openAdmin(); return; }
       if (state.started && state.buildMenuOpen) { G.closeBuildMenu(); return; }
       if (state.started && state.churchOpen) { G.closeChurch(); return; }
       if (G.universiteScreen && !G.universiteScreen.hidden) { G.closeUniversite(); return; }

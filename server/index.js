@@ -244,6 +244,26 @@
       }));
       return;
     }
+    // Index des fichiers d'assets : le client s'en sert pour NE SONDER que
+    // les PNG existants (les sondes de frames devinent les noms de fichiers
+    // et provoquaient des 404 en masse dans la console du navigateur).
+    if (url === "/assets-index.json") {
+      var filesIdx = [];
+      (function walkIdx(d) {
+        var entries;
+        try { entries = fs.readdirSync(d); } catch (e) { return; }
+        for (var wi = 0; wi < entries.length; wi++) {
+          var full = path.join(d, entries[wi]);
+          var st;
+          try { st = fs.statSync(full); } catch (e) { continue; }
+          if (st.isDirectory()) { walkIdx(full); continue; }
+          filesIdx.push(full.substring(WEB_ROOT.length + 1).replace(/\\/g, "/"));
+        }
+      })(path.join(WEB_ROOT, "assets"));
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-cache" });
+      res.end(JSON.stringify({ files: filesIdx, assetsStamp: assetsStamp }));
+      return;
+    }
     // Sécurité : empêche de remonter hors de WEB_ROOT.
     var rel = path.normalize(url).replace(/^(\.\.[\/\\])+/, "");
     var filePath = path.join(WEB_ROOT, rel);
