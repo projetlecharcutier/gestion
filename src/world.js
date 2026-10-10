@@ -149,9 +149,15 @@
       // visible. Hitbox de collision retrainee centree (~55%), independante
       // de l'emprise visuelle (b.w/b.h restent la taille du rendu).
       if (frame === "bloquant/montagne") {
+        // PNG plein cadre (opaque 242x101 entier) : shrinkToOpaque ne resserre
+        // rien et le rendu dessine le massif sur toute la hauteur du losange.
+        // Le massif visible occupe le BAS de l'emprise (ancrage bas-centre) :
+        // la hitbox doit donc etre ancrée au SUD, pas centrée — la version
+        // centrée couvrait surtout le haut du losange, où il n'y a que du
+        // ciel, et laissait le joueur "dans" la montagne.
         var hw = b.w * 0.55, hh = b.h * 0.55;
         b.hit = {
-          x: b.x + (b.w - hw) / 2, y: b.y + (b.h - hh) / 2,
+          x: b.x + (b.w - hw) / 2, y: b.y + b.h - hh,
           w: hw, h: hh
         };
       }
@@ -301,6 +307,18 @@
     function boxHitsBox(ax, ay, aw, ah, bx, by, bw, bh) {
       return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
     }
+    // Une AABB monde (avec marge) touche-t-elle la muraille ? La palissade
+    // est déjà construite (buildPerimeterWall avant la pose des décors).
+    function boxHitsWallPad(bx, by, bw, bh, marge) {
+      var walls = state.walls || [];
+      for (var i = 0; i < walls.length; i++) {
+        var m = walls[i];
+        if (m && m.built !== false &&
+            bx - marge < m.x + m.w && bx + bw + marge > m.x &&
+            by - marge < m.y + m.h && by + bh + marge > m.y) return true;
+      }
+      return false;
+    }
     // Un decore (bx, by, side) peut-il etre pose la ? Tous les filtres.
     // worldBoxes : AABB monde des grilles/decores deja poses (jamais de
     // chevauchement AABB, meme bord a bord interdit via le pad des batiments).
@@ -313,6 +331,11 @@
                         G.inTown(bx + side / 2, by + side / 2))) return false;
       if (G.villeBoxHits && G.villeBoxHits(bx, by, side, side)) return false;
       if (!G.villeBoxHits && G.villeAt && G.villeAt(bx + side / 2, by + side / 2, side / 2)) return false;
+      // Muraille de la ville : AUCUN décor (même nonbloquant) ne doit
+      // s'enchevêtrer avec la palissade — le filtre aabbHitsWalls ne
+      // s'appliquait qu'aux bloquants et laissait les champs/buissons
+      // recouvrir visuellement le mur. Marge 60 px autour de l'AABB du mur.
+      if (boxHitsWallPad(bx, by, side, side, 60)) return false;
       var pad = mode === "bloquant" ? 6 : 2;
       if (decorBoxHitsBuildings(state, bx, by, side, side, pad)) return false;
       if (mode === "bloquant" && G.aabbHitsWalls && G.aabbHitsWalls(bx, by, side, side, true)) return false;
@@ -427,7 +450,9 @@
       if (G.villeBoxHits && G.villeBoxHits(b.x, b.y, b.w, b.h)) return false;
       if (!G.villeBoxHits && G.villeAt && G.villeAt(cx, cy, side / 2)) return false;
       if (decorBoxHitsBuildings(state, b.x, b.y, b.w, b.h, 6)) return false;
-      if (G.aabbHitsWalls && G.aabbHitsWalls(b.x, b.y, b.w, b.h, true)) return false;
+      // Muraille avec marge : le débord VISUEL du PNG (élévation vers le
+      // nord) ne doit pas non plus chevaucher la palissade.
+      if (boxHitsWallPad(b.x, b.y, b.w, b.h, 60)) return false;
       if (worldBoxHitsAny(b.x, b.y, b.w, b.h, 6)) return false;
       var candRect = buildingVisRect(b);
       if (visRectHitsAny(candRect)) return false;
@@ -1014,6 +1039,12 @@
   G.buildWorld = function () {
     var state = G.state;
     var c = G.WORLD / 2;
+    // NOUVELLE PARTIE = NOUVELLE CARTE : le latch des positions des villes
+    // PNG (G._villeRng, tire une fois par partie) est libéré à chaque
+    // reconstruction du monde. Sans ça, un restart serveur rejeta la même
+    // carte (villes aux mêmes positions) alors que le reste (décors,
+    // forêts, maisons) était déjà régénéré.
+    G._villeRng = null;
     // Villes decoratives PNG : posees en premier pour que la generation
     // (maisons, forets, objets) les evite (villeAt) et que les grilles de
     // collision soient pretes avant tout placement.
