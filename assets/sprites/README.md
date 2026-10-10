@@ -188,6 +188,33 @@ conventions ne se chevauchent jamais (`foret1-0.png` ≠ `foret1s0.png`).
 base. Les états ne sont pas déclarés dans le manifeste : ils sont détectés
 automatiquement par `probeForetStages` (voir `src/assets.js`).
 
+## Éléments de décor (`elementdecord/`)
+
+Décors PNG de campagne, en 3 sous-dossiers qui correspondent aux **modes de
+collision** (déclarés dans `DECOR_SPECS`, `src/world.js`) :
+
+| Dossier | Mode | Collision | Exemples |
+|---------|------|-----------|----------|
+| `bloquant/` | `bloquant` | AABB (zone opaque, `shrinkToOpaque`) | montagne, moulin, églises |
+| `nonbloquant/` | `nonbloquant` | aucune (le joueur passe dessus) | buissons, champs, Totoro |
+| `Dessous/` | `dessous` | aucune, dessiné APRÈS le joueur | éolienne, cerf géant |
+
+**Miroir vertical (pluralité pixel art) — `nonbloquant/` et `Dessous/` :**
+chaque décor non bloquant est tiré **50/50 en miroir** à la pose (`decorFlip`,
+décidé dans `makeDecor`, `src/world.js`) et rendu retourné horizontalement via
+`ctx.scale(-1,1)` (`src/render.js`). Symétrie d'axe vertical = pixels carrés
+préservés, aucun lissage — le seul transform fidèle au style isométrique
+pixelisé (pas de rotation ni d'échelle non entière, qui déchirent la grille
+de pixels). Le flip est **mémorisé sur l'objet** et **sérialisé** dans le
+snapshot serveur (`decorFlip`, `server/game.js`) : chaque client voit le
+même miroir. Les décors `bloquant/` ne sont PAS retournés : leur hitbox est
+calée sur le PNG d'origine et le miroir ne doit pas la décaler.
+
+Un PNG asymétrique produit donc **deux apparences** sans aucun asset
+supplémentaire. Si un sprite porte un éclairage latéral marqué (ombre
+unilatérale), son miroir peut sembler incohérent — dessiner l'ombre plutôt
+vers le bas, ou déplacer le sprite vers `bloquant/` pour l'exclure du flip.
+
 ## Manifeste
 
 `assets/manifest.json` decrit les frames de base. Les frames d'animation (`-N`) ne

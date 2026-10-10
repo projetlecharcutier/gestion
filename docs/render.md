@@ -21,6 +21,15 @@ Dessine tout (sol, objets, arbres, bâtiments, murs, zombies, joueur, projectile
 - `PLAYER_SPRITE`/`PAL` et `ZOMBIE_SPRITE`/`ZPAL` ont été déplacés vers `G.TEXTURES.player` et `G.TEXTURES.zombie` (`src/textures/`). Voir `docs/textures.md`.
 - Rendu pixelisé : `cell = zoom*0.5`, `imageSmoothingEnabled=false`.
 
+## Sprites de décors & miroir
+
+Les décors PNG (`elementdecord`) suivent l'ancrage commun bas-centre du losange.
+Décors `nonbloquant`/`dessous` avec `decorFlip` : rendus en **miroir vertical**
+(`ctx.scale(-1,1)` autour du centre du sprite) — transform entier, pixels carrés
+préservés (style pixel art iso). Le flip est décidé à la pose (`src/world.js`,
+`makeDecor`) et arrive via le snapshot serveur ; les décors `bloquant` ne sont
+jamais retournés (hitbox calée sur le PNG d'origine).
+
 ## Culling
 Arbres et zombies hors de `visibleWorldBounds()` ne sont pas dessinés (perf).
 

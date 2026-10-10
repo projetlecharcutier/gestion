@@ -1409,6 +1409,9 @@
           decorSpriteName: b.decorSpriteName || null,
           decorPassable: b.decorPassable || false,
           decorSous: b.decorSous || false,
+          // Miroir vertical (pluralité pixel art, nonbloquant/dessous) :
+          // tiré 50/50 à la pose, le rendu client applique ctx.scale(-1,1).
+          decorFlip: b.decorFlip || false,
           // Hitbox de collision retrainee (montagne : PNG plein cadre, l'AABB
           // visuelle depasse le massif). Synchronisee pour que la collision
           // client (aabbHitsBuildings) matche celle du serveur.

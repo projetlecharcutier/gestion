@@ -536,7 +536,19 @@ G.drawGround = function () {
           scImg = scFrames[fi2];
         }
       }
-      ctx.drawImage(scImg, cx - dw / 2, groundY - dh + opaqueDrop, dw, dh);
+      // Miroir vertical (pluralité pixel art, décors nonbloquant/dessous) :
+      // symétrie d'axe vertical autour du centre du sprite. ctx.scale(-1,1)
+      // à un instant entier : chaque pixel reste un pixel carré, aucun
+      // lissage — le seul transform fidèle au style isométrique pixelisé.
+      if (b.isDecor && b.decorFlip && scImg) {
+        ctx.save();
+        ctx.translate(cx, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(scImg, cx - dw / 2, groundY - dh + opaqueDrop, dw, dh);
+        ctx.restore();
+      } else {
+        ctx.drawImage(scImg, cx - dw / 2, groundY - dh + opaqueDrop, dw, dh);
+      }
       // Barre de vie de la mairie au-dessus du sprite (uniquement si endommagée).
       if (b.isMairie && b.hp < b.maxHp) {
         var ratio = b.hp / b.maxHp;

@@ -158,6 +158,13 @@
     } else {
       b.decorPassable = true;
       if (mode === "dessous") b.decorSous = true;
+      // Pluralité pixel art : miroir vertical (flip) tiré 50/50 à la pose
+      // et mémorisé sur l'objet. Symétrie d'axe vertical = ctx.scale(-1,1)
+      // à un pixel près, aucun lissage : le seul transform fidèle au style
+      // isométrique pixelisé (pas de rotation ni d'échelle non entière).
+      // Réservé au mode nonbloquant/dessous : les décors bloquants ont une
+      // hitbox calée sur le PNG d'origine, le miroir ne doit pas la décaler.
+      b.decorFlip = Math.random() < 0.5;
     }
     return b;
   };
