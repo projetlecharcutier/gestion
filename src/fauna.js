@@ -32,8 +32,12 @@
       x = G.rand(50, G.WORLD - 50);
       y = G.rand(50, G.WORLD - 50);
       guard++;
-    } while (Math.abs(x - G.WORLD / 2) < G.TOWN + 200 &&
-             Math.abs(y - G.WORLD / 2) < G.TOWN + 200 && guard < 40);
+    } while ((Math.abs(x - G.WORLD / 2) < G.TOWN + 200 &&
+             Math.abs(y - G.WORLD / 2) < G.TOWN + 200) && guard < 40 ||
+             // Villes PNG : ne spawne pas dans un batiment solide d'une
+             // ville (l'animal y serait prisonnier : collision desormais
+             // active, cf. faunaBlocked).
+             (G.aabbHitsVillesCenter && G.aabbHitsVillesCenter(x, y, 10) && guard < 40));
     // Direction initiale aleatoire.
     var ang = Math.random() * Math.PI * 2;
     return {
@@ -64,12 +68,37 @@
       a.vy = Math.sin(ang) * spd;
       a.wanderT = G.rand(2, 8);
     }
-    a.x += a.vx * dt;
-    a.y += a.vy * dt;
+    // Collisions avec les structures, comme le joueur et les zombies :
+    // l'animal se hurte aux memes obstacles (batiments solides, forets,
+    // villes PNG, palissades, tours de siege) au lieu de les traverser.
+    // Axes separes (glissement le long de l'obstacle) + demi-tour sur
+    // l'axe bloque, comme le rebond des bords de carte.
+    var def2 = G.FAUNA_TYPES[a.type] || {};
+    var half = (def2.w || 12) / 2;
+    var nx = a.x + a.vx * dt;
+    var ny = a.y + a.vy * dt;
+    if (faunaBlocked(nx, a.y, half)) { a.vx = -a.vx; nx = a.x; }
+    if (faunaBlocked(a.x, ny, half)) { a.vy = -a.vy; ny = a.y; }
+    if (faunaBlocked(nx, ny, half) && (nx !== a.x || ny !== a.y)) {
+      a.vx = -a.vx; a.vy = -a.vy; nx = a.x; ny = a.y;
+    }
+    a.x = nx; a.y = ny;
     if (a.x < 20) { a.x = 20; a.vx = Math.abs(a.vx); }
     else if (a.x > G.WORLD - 20) { a.x = G.WORLD - 20; a.vx = -Math.abs(a.vx); }
     if (a.y < 20) { a.y = 20; a.vy = Math.abs(a.vy); }
     else if (a.y > G.WORLD - 20) { a.y = G.WORLD - 20; a.vy = -Math.abs(a.vy); }
+  }
+  // Un animal de demi-cote `half` centre en (x, y) heurte-t-il une
+  // structure ? Meme selection d'obstacles que le mouvement zombie :
+  // batiments solides (hitbox), forets, villes PNG, palissades posees,
+  // tours de siege. Les decors nonbloquant/dessous restent traversables.
+  function faunaBlocked(x, y, half) {
+    if (G.aabbHitsBuildingsBox && G.aabbHitsBuildingsBox(x - half, y - half, half * 2, half * 2)) return true;
+    if (G.aabbHitsWalls && G.aabbHitsWalls(x - half, y - half, half * 2, half * 2)) return true;
+    if (G.aabbHitsForets && G.aabbHitsForets(x, y, half)) return true;
+    if (G.aabbHitsVillesCenter && G.aabbHitsVillesCenter(x, y, half)) return true;
+    if (G.hitsSiegeFoot && G.hitsSiegeFoot(x - half, y - half, half * 2, half * 2)) return true;
+    return false;
   }
 
   // Met a jour tous les animaux (deplacement libre).

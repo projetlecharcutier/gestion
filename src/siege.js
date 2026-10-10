@@ -266,7 +266,15 @@
     for (var i = 0; i < buildings.length; i++) {
       var b = buildings[i];
       if (b.isForet) continue;
-      if (G.diamondHitsBox(d, b.x, b.y, b.w, b.h)) return true;
+      // Decors traversables (nonbloquant/dessous) : le joueur et les
+      // zombies passent a travers, la tour aussi -- sinon les buissons
+      // et champs figeaient la tour des le spawn.
+      if (b.decorPassable) continue;
+      // Decors bloquants : utilise la hitbox PNG ancree au sol quand
+      // elle existe (b.hit), pas l'emprise render x2 (montagne etc.)
+      // qui depasse largement le sprite visible.
+      var hb = b.hit || b;
+      if (G.diamondHitsBox(d, hb.x, hb.y, hb.w, hb.h)) return true;
     }
     return false;
   }
@@ -289,6 +297,10 @@
     for (var i = 0; i < sieges.length; i++) {
       var o = sieges[i];
       if (o === self || o.hp <= 0) continue;
+      // Une tour OUVERTE (collee au mur, immobile, libere ses zombies)
+      // ne bloque plus les autres : sinon les tours suivantes se
+      // collent a ELLE au lieu d'atteindre le mur a cote.
+      if (o.state === "open") continue;
       if (G.diamondHitsDiamond(d, G.siegeDiamond(o))) return true;
     }
     return false;
@@ -348,9 +360,25 @@
           s.detour = -s.detour;
           s.stuck = (s.stuck || 0) + inc;
         }
+        // Interblocage entre tours (deux tours face a face se pincent
+        // mutuellement en coin) : le contournement perpendiculaire ne
+        // peut jamais les separer car chacune bloque l'axe de l'autre.
+        // Apres SIEGE_UNSTUCK_TIME px de cul-de-sac cumules, la tour
+        // s'ecarte lateralement de l'axe cible pour debloquer la paire ;
+        // le cumul retombe a zero des qu'elle avance normalement.
+        if (s.stuck > (G.SIEGE_UNSTUCK_TIME || 120)) {
+          s.detour = -s.detour;
+          s.stuck = 0;
+          var ux = -dy / len, uy = dx / len;
+          var ex = s.x + ux * s.detour * inc * 4;
+          var ey = s.y + uy * s.detour * inc * 4;
+          if (diamondFree(ex, s.y, s)) s.x = ex;
+          if (diamondFree(s.x, ey, s)) s.y = ey;
+        }
       } else {
         blocked = false;
         s.detour = s.detour || 0;
+        s.stuck = 0;
       }
       if (siegeTouchingWall(s, target)) return true;
     }

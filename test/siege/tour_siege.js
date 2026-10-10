@@ -62,17 +62,17 @@ console.log("spawn nuit 2 OK : 1 tour, dir=" + tw.dir);
 s.walls = [];
 s.buildings = [];
 s.sieges = [];
-var st = G.makeSiegeTower(10000, 10300, G.SIEGE_DIRS[0]);
+var st = G.makeSiegeTower(10000, 11000, G.SIEGE_DIRS[0]);
 s.sieges.push(st);
-for (var v = 0; v < 50; v++) step(0.1); // 5 s de jeu
-var moved = Math.abs(st.y - 10300) + Math.abs(st.x - 10000);
+for (var v = 0; v < 50; v++) step(0.1); // 5 s de jeu (1000 px dispo, 360 px attendus)
+var moved = Math.abs(st.y - 11000) + Math.abs(st.x - 10000);
 var zomDist = G.ZOMBIE_SPEED * 5; // distance d'un zombie en 5 s
-if (moved < 0.4 * zomDist || moved > 0.6 * zomDist) {
-  console.log("FAIL: distance parcourue " + moved.toFixed(1) + " px en 5 s (zombie: " + zomDist + ", attendu ~moitie)");
+if (moved < 0.7 * zomDist || moved > 0.9 * zomDist) {
+  console.log("FAIL: distance parcourue " + moved.toFixed(1) + " px en 5 s (zombie: " + zomDist + ", attendu ~0.8x)");
   process.exit(1);
 }
 if (st.state === "open" || st.open) { console.log("FAIL: tour ouverte sans mur (cible centre-ville)"); process.exit(1); }
-console.log("vitesse OK : " + moved.toFixed(1) + " px en 5 s (zombie " + zomDist + " px, ~moitie)");
+console.log("vitesse OK : " + moved.toFixed(1) + " px en 5 s (zombie " + zomDist + " px, ~0.8x)");
 
 // --- Contact mur : arret + ouverture + liberation de 100 zombies ---
 // Restaure le monde (batiments + muraille) pour le contact et la suite.
@@ -199,8 +199,8 @@ if (maison) {
 
 // --- Resistance : 100 PV (100x un zombie) ---
 if (G.SIEGE_HP !== 100) { console.log("FAIL: SIEGE_HP attendu 100, got " + G.SIEGE_HP); process.exit(1); }
-if (G.SIEGE_HP !== G.ZOMBIE_HP * 100) { console.log("FAIL: SIEGE_HP doit valoir 100 x ZOMBIE_HP"); process.exit(1); }
-console.log("resistance OK : 100 PV (100x un zombie a " + G.ZOMBIE_HP + " PV)");
+if (G.SIEGE_HP !== G.ZOMBIE_HP * 50) { console.log("FAIL: SIEGE_HP doit valoir 50 x ZOMBIE_HP"); process.exit(1); }
+console.log("resistance OK : 100 PV (50x un zombie a " + G.ZOMBIE_HP + " PV)");
 
 // --- Destruction : trace au sol, plus de collision ---
 s.sieges = [];

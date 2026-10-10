@@ -100,10 +100,9 @@ for (t = 0; t < 40; t += 0.05) {
 assert(chefUnstick, "chef bloque loin de la ville declenche la maneuvre");
 assert(chefBack, "chef : phase opposee au blocage vue");
 
-// --- 2) Repartition : les groupes visent des murs differents ---
-// Simule l'assignation d'une vague multi-bordes : les navSide doivent
-// repartir les groupes sur les 4 murs, pas seulement le plus proche.
-var sidesSeen = {};
+// --- 2) Repartition : chaque groupe attaque le mur de son bord d'origine ---
+// La vague concentre l'assaut (moins de dispersion) : navSide = spawnSide,
+// meme quand la vague arrive par plusieurs bords. Un bord cible un seul mur.
 st.zombies = []; st.zombieGroups = [];
 st.pendingWave = { sides: [0, 1, 2, 3], count: 32, rawCount: 32 };
 G.spawnWave();
@@ -111,10 +110,8 @@ assert(st.zombieGroups.length === 4, "4 groupes pour 32 zombies");
 for (var gi = 0; gi < st.zombieGroups.length; gi++) {
   var g = st.zombieGroups[gi];
   assert(g.navSide !== undefined && g.navSide >= 0 && g.navSide <= 3, "groupe " + gi + " a un mur assigne (navSide " + g.navSide + ")");
-  sidesSeen[g.navSide] = true;
+  assert(g.navSide === g.spawnSide, "groupe " + gi + " attaque le mur de son bord (navSide " + g.navSide + " = spawnSide " + g.spawnSide + ")");
 }
-assert(sidesSeen[0] && sidesSeen[1] && sidesSeen[2] && sidesSeen[3],
-  "les 4 murs sont assignes aux groupes (" + JSON.stringify(sidesSeen) + ")");
 
 // --- 3) Le chef vise le point de son mur, pas le coin de la ville ---
 // Groupe diagonal (sud-ouest) : le point navTargetOf doit etre sur un mur

@@ -113,9 +113,9 @@
     if (G.ZOMBIE_WAVE_MAX && raw > G.ZOMBIE_WAVE_MAX) raw = G.ZOMBIE_WAVE_MAX;
     var scheme = Math.random();
     var sides;
-    if (scheme < 1 / 3) {
+    if (scheme < 0.60) {
       sides = [Math.floor(Math.random() * 4)];
-    } else if (scheme < 2 / 3) {
+    } else if (scheme < 0.90) {
       var s1 = Math.floor(Math.random() * 4);
       var s2 = (s1 + 1 + Math.floor(Math.random() * 3)) % 4;
       sides = [s1, s2];
@@ -180,7 +180,7 @@
                   formation: Math.floor(Math.random() * 4),
                   formPhase: Math.random() * Math.PI * 2,
                   isHorde: false, retreat: false, hordeMsgShown: false,
-                  navSide: (sides.length > 1 ? g % 4 : Math.floor(Math.random() * 4)),
+                  navSide: side,
                   navT: Math.random() };
       state.zombieGroups.push(grp);
       var n = Math.min(G.GROUP_SIZE, count - g * G.GROUP_SIZE);

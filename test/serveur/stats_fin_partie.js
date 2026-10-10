@@ -25,7 +25,7 @@ assert(p.stats && p.stats.shots >= 3, "tir compte (shots=" + (p.stats ? p.stats.
 st.zombies = [{ x: 4100, y: 4000, hp: 1, speedFactor: 0, group: 0, vx: 0, vy: 0 }];
 var kills0 = p.stats.kills;
 p._fireLatch = true;
-for (var t2 = 0; t2 < 5; t2++) srv.tick(0.05);
+for (var t2 = 0; t2 < 40; t2++) srv.tick(0.05);
 assert(p.stats.kills > kills0, "kill attribue au joueur (kills=" + p.stats.kills + ")");
 assert(st.globalStats && st.globalStats.playerKills > 0, "playerKills global > 0");
 

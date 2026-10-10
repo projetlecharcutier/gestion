@@ -3,6 +3,42 @@
   "use strict";
   var G = window.GAME = window.GAME || {};
 
+  // Test AABB generique (boite libre) contre les batiments solides :
+  // serve de collision aux entites non-joueur (animaux...). Meme logique
+  // que aabbHitsBuildings (grille spatiale + repli lineaire).
+  G.aabbHitsBuildingsBox = function (bx, by, bw, bh) {
+    var grid = G.buildingGrid, cell = G.BUILDING_CELL;
+    if (!grid || !cell) {
+      for (var i = 0; i < G.state.buildings.length; i++) {
+        var b0 = G.state.buildings[i];
+        if (b0.decorPassable) continue;
+        if (b0.isForet && G.foretDepleted(b0)) continue;
+        var h0 = b0.hit || b0;
+        if (bx < h0.x + h0.w && bx + bw > h0.x && by < h0.y + h0.h && by + bh > h0.y) {
+          return true;
+        }
+      }
+      return false;
+    }
+    var minCx = Math.floor(bx / cell), maxCx = Math.floor((bx + bw) / cell);
+    var minCy = Math.floor(by / cell), maxCy = Math.floor((by + bh) / cell);
+    for (var cx = minCx; cx <= maxCx; cx++) {
+      for (var cy = minCy; cy <= maxCy; cy++) {
+        var arr = grid[cx + "," + cy];
+        if (!arr) continue;
+        for (var n = 0; n < arr.length; n++) {
+          var b = arr[n];
+          if (b.decorPassable) continue;
+          if (b.isForet && G.foretDepleted(b)) continue;
+          var hb = b.hit || b;
+          if (bx < hb.x + hb.w && bx + bw > hb.x && by < hb.y + hb.h && by + bh > hb.y) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
   G.aabbHitsBuildings = function (x, y) {
     var bx = x - G.PLAYER_HALF, by = y - G.PLAYER_HALF;
     var bw = G.PLAYER_W, bh = G.PLAYER_W;

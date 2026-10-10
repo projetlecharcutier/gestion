@@ -292,7 +292,7 @@
   // Mairie : emprise sol 1.4x plus grande que l'emprise brute du PNG
   // (makeBuilding, src/world.js). Les autres batiments gardent le facteur x2.
   G.MAIRIE_SCALE = 1.4;
-  G.ZOMBIE_HP = 1;
+  G.ZOMBIE_HP = 2;
   G.ZOMBIE_ATTACK_CD = 1.0;
   G.WALL_PLANKS = 2;
   G.WALL_BUILD_RANGE = 180;
@@ -358,7 +358,7 @@
   // difficulté monte autrement — chaque nuit passée au plafond augmente les
   // dégâts/s, les PV et la vitesse des zombies de ZOMBIE_RAMP_STEP (capés à
   // ZOMBIE_RAMP_MAX = +50%).
-  G.ZOMBIE_WAVE_MAX = 5000;
+  G.ZOMBIE_WAVE_MAX = 2000;
   G.ZOMBIE_RAMP_STEP = 0.10; // +10% par nuit au plafond
   G.ZOMBIE_RAMP_MAX = 0.50;  // cap a +50%
   G.BIRD_SPEED = 220;
@@ -508,16 +508,16 @@
   G.GROUP_SIZE = 8;
 
   // Tour de siège (cf. docs/siege.md) : vitesse (moitié d'un zombie),
-  // PV (100 x plus résistante qu'un zombie, qui a ZOMBIE_HP = 1 PV),
+  // PV (50 x plus résistante qu'un zombie, qui a ZOMBIE_HP = 2 PV),
   // nombre de zombies libérés au contact d'un mur, emprise de
   // collision (losange de base inséré dans les 5 % les plus bas du
   // PNG, cf. siege.js), plafond du nombre de tours,
   // taille de repli sans PNG.
-  G.SIEGE_SPEED = G.ZOMBIE_SPEED * 0.5;
+  G.SIEGE_SPEED = G.ZOMBIE_SPEED * 0.8;
   // Rayon de detection des palissades pour la tour de siege (findWallTarget) :
   // assez large pour trouver un mur avant de le percuter a SIEGE_SPEED.
   G.SIEGE_WALL_SENSE = 600;
-  G.SIEGE_HP = 100;
+  G.SIEGE_HP = 100; // 50x un zombie (2 PV) : reste un objectif de groupe
   G.SIEGE_RELEASE_COUNT = 100;
   G.SIEGE_COLLIDE_BOTTOM = 0.05;
   G.SIEGE_MAX_TOWERS = 10;
@@ -525,7 +525,10 @@
   // Distance (px) sous laquelle une tour est consideree collee au mur
   // cible : le contact AABB (mur fin) ne bloque jamais les deux axes, on
   // mesure donc l'ecart entre l'emprise de la tour et le mur vise.
-  G.SIEGE_CONTACT_GAP = 4;
+  G.SIEGE_CONTACT_GAP = 8;
+  // Cumul de cul-de-sac (px) au-dela duquel une tour bloquee force un
+  // degagement lateral (interblocage entre deux tours face a face).
+  G.SIEGE_UNSTUCK_TIME = 120;
 
   G.GROUP_FORMATION = 90;
   G.GROUP_MERGE_DIST = 320;

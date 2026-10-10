@@ -25,31 +25,31 @@ G.state = { time: 0, clock: 12, day: 0, waveActive: true, zombieMode: "attack", 
             items: [], birds: [], groupMergeTimer: 0 };
 
 // --- 1) Plafond de vague a 5000 ---
-assert(G.ZOMBIE_WAVE_MAX === 5000, "ZOMBIE_WAVE_MAX = 5000");
-// jour 7 : 50 * 2^7 = 6400 -> capé a 5000
+assert(G.ZOMBIE_WAVE_MAX === 2000, "ZOMBIE_WAVE_MAX = 2000");
+// jour 7 : 50 * 2^7 = 6400 -> capé a 2000
 var w = G.rollWave(7);
-assert(w.count === 5000, "vague jour 7 capée a 5000 (obtenu " + w.count + ")");
+assert(w.count === 2000, "vague jour 7 capée a 2000 (obtenu " + w.count + ")");
 assert(w.rawCount === 6400, "rawCount conserve 6400 (obtenu " + w.rawCount + ")");
 // jour 3 : 50 * 8 = 400 -> pas de cap
 var w2 = G.rollWave(3);
 assert(w2.count === 400 && w2.rawCount === 400, "vague jour 3 non capée (400)");
-// jour 17 : 50 * 131072 = 6553600 -> capé 5000, ramp = nuits de dépassement
+// jour 17 : 50 * 131072 = 6553600 -> capé 2000, ramp = nuits de dépassement
 var w3 = G.rollWave(17);
-assert(w3.count === 5000, "vague jour 17 capée (obtenu " + w3.count + ")");
+assert(w3.count === 2000, "vague jour 17 capée (obtenu " + w3.count + ")");
 
 // --- 2) Ramp de difficulté ---
-// jour 7 (dépasse 5000 pour la 1re fois) : ramp = 1.10
+// jour 7 : 6400 demande, cap 2000 -> (6400-2000)/2000 = 2.2 -> 3 nuits de depassement -> ramp = 1.30
 G.state.pendingWave = w;
 G.spawnWave();
-assert(G.state.zombieRamp === 1.10, "ramp 1re nuit au plafond = 1.10 (obtenu " + G.state.zombieRamp + ")");
-assert(G.state.waveCount === 5000, "waveCount = 5000");
+assert(G.state.zombieRamp === 1.30, "ramp jour 7 au plafond = 1.30 (obtenu " + G.state.zombieRamp + ")");
+assert(G.state.waveCount === 2000, "waveCount = 2000");
 // jour 17 : (6553600-5000)/5000 = 1310 nuits de dépassement -> capé a 5 nuits = 1.50
 G.state.zombies = []; G.state.zombieGroups = [];
 G.state.pendingWave = w3;
 G.spawnWave();
 assert(G.state.zombieRamp === 1.50, "ramp capé a 1.50 (obtenu " + G.state.zombieRamp + ")");
 // PV des zombies montent avec le ramp
-assert(G.state.zombies.length === 5000, "5000 zombies spawnés");
+assert(G.state.zombies.length === 2000, "2000 zombies spawnés");
 var hp = G.state.zombies[0].hp;
 assert(hp === Math.max(1, Math.round(G.ZOMBIE_HP * 1.5)), "PV zombie scales avec le ramp (obtenu " + hp + ")");
 // degats joueur scales avec le ramp

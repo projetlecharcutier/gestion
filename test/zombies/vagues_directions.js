@@ -61,6 +61,8 @@ for (var w = 0; w < 600; w++) {
   }
 }
 console.log("schemas: 1 dir=" + seen1 + ", 2 dir=" + seen2 + ", 4 dir=" + seen4 + " (600 vagues)");
-assert(seen1 > 120 && seen2 > 120 && seen4 > 120, "les 3 schemas sortent (~1/3 chacun)");
+assert(seen1 > 300, "1 bord majoritaire (~60%) (obtenu " + seen1 + ")");
+assert(seen2 > 100, "2 bords sortent (~30%) (obtenu " + seen2 + ")");
+assert(seen4 > 20 && seen4 < 100, "4 bords minoritaires (~10%) (obtenu " + seen4 + ")");
 console.log(fails === 0 ? "ALL_OK" : "FAILURES: " + fails);
 process.exit(fails === 0 ? 0 : 1);
