@@ -641,10 +641,15 @@
         var img = new Image();
         img.onload = function () {
           if (img.naturalWidth > 0) {
-            G.SPRITES.elementdecord[frame] =
+            var sprite =
               { img: img, w: img.naturalWidth, h: img.naturalHeight };
-          }
-          done();
+            G.SPRITES.elementdecord[frame] = sprite;
+            var slash = frame.lastIndexOf('/');
+            var dir = "assets/sprites/elementdecord/" +
+                      frame.slice(0, slash + 1);
+            var base = frame.slice(slash + 1);
+            probeAnimFrames(sprite, dir, base, function () { done(); });
+          } else done();
         };
         img.onerror = function () { done(); };
         imgSetSrc(img, "assets/sprites/elementdecord/" + frame + ".png");
