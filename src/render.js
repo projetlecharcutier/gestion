@@ -537,14 +537,17 @@ G.drawGround = function () {
         }
       }
       // Miroir vertical (pluralité pixel art, décors nonbloquant/dessous) :
-      // symétrie d'axe vertical autour du centre du sprite. ctx.scale(-1,1)
-      // à un instant entier : chaque pixel reste un pixel carré, aucun
-      // lissage — le seul transform fidèle au style isométrique pixelisé.
+      // symétrie d'axe vertical autour du centre du sprite (cx). Après
+      // translate(cx,0) + scale(-1,1), l'axe X local est centré sur cx et
+      // inversé : le sprite doit être dessiné en coordonnées LOCALES
+      // [-dw/2, +dw/2] (pas aux coordonnées écran), sinon il se projette
+      // autour de x=0 — collé au bord gauche de l'écran. Transform entier :
+      // pixels carrés préservés, aucun lissage, fidèle au pixel art iso.
       if (b.isDecor && b.decorFlip && scImg) {
         ctx.save();
         ctx.translate(cx, 0);
         ctx.scale(-1, 1);
-        ctx.drawImage(scImg, cx - dw / 2, groundY - dh + opaqueDrop, dw, dh);
+        ctx.drawImage(scImg, -dw / 2, groundY - dh + opaqueDrop, dw, dh);
         ctx.restore();
       } else {
         ctx.drawImage(scImg, cx - dw / 2, groundY - dh + opaqueDrop, dw, dh);

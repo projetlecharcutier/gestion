@@ -54,6 +54,13 @@ assert(/decorFlip:\s*b\.decorFlip\s*\|\|\s*false/.test(src),
 var rsrc = fs.readFileSync(path.join(REPO, "src", "render.js"), "utf8");
 assert(/b\.isDecor && b\.decorFlip/.test(rsrc),
   "src/render.js applique ctx.scale(-1,1) pour isDecor && decorFlip");
+// Régression : le drawImage flippé doit être en coordonnées LOCALES (-dw/2),
+// pas écran (cx - dw/2) -- sinon le sprite se projette autour de x=0 et
+// se colle au bord de l'écran.
+assert(/ctx\.drawImage\(scImg, -dw \/ 2,/.test(rsrc),
+  "drawImage flippé dessiné aux coordonnées locales -dw/2");
+assert(!/ctx\.scale\(-1, 1\);\s*\n\s*ctx\.drawImage\(scImg, cx - dw/.test(rsrc),
+  "drawImage flippé en coordonnées locales -dw/2 (pas cx - dw/2)");
 
 console.log("----------------------------------------");
 console.log(fails ? "PASS: -  FAIL: " + fails : "PASS: all  FAIL: 0");
