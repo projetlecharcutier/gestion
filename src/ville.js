@@ -246,6 +246,7 @@
       }
       v.vx0 = Math.min.apply(null, pW); v.vx1 = Math.max.apply(null, pW);
       v.vy0 = Math.min.apply(null, pH); v.vy1 = Math.max.apply(null, pH);
+      v.opaq = villeOpacityGrid(v, sp);
       out.push(v);
     }
     st.villes = out;
@@ -253,13 +254,75 @@
     return out;
   };
 
-  // Une BOITE monde (bx, by, bw, bh) chevauche-t-elle une ville ? Test
-  // boite-contre-boite (pas juste le centre) sur la bbox VISUELLE du PNG
-  // (emprise sol + debord d'elevation vers le nord/ouest/est), plus pad.
-  // Sert a ecarter la generation (forets, maisons, objets) des villes : une
-  // foret centree juste hors de l'emprise avait auparavant la moitie de son
-  // AABB DANS la ville, et le haut du PNG ville deborde loin au nord sans
-  // qu'aucune emprise sol ne le couvre.
+  // Carte d'opacite condensee d'une ville : pour chaque cellule monde de
+  // VILLE_OPAQ_CELL px de cote couverte par le PNG projete, 1 si le pixel
+  // du masque a cet endroit est PEINT (rouge ou vert : opaque), 0 s'il est
+  // TRANSPARENT. La generation (decors, forets, maisons) n'ecarte plus la
+  // bbox VISUELLE PLEINE mais seulement les zones reellement dessinees :
+  // un decor peut recouvrir la partie transparente du PNG ville (les
+  // coins vides du losange, le ciel autour des tours) sans jamais chevaucher
+  // un batiment/facade peint. La grille reutilise la projection EXACTE du
+  // rendu (meme formule que villeGridFromPixels, zoom 1).
+  G.VILLE_OPAQ_CELL = 16;
+  function villeOpacityGrid(v, sp) {
+    var cell = G.VILLE_OPAQ_CELL;
+    var iw = sp.w, ih = sp.h;
+    var losangeW0 = v.w;
+    var cx0 = (v.x - v.y) / 2;
+    var groundY0 = (v.x + v.y + 2 * v.w) / 4;
+    var drawnH0 = losangeW0 * ih / iw;
+    var cols = Math.ceil((v.vx1 - v.vx0) / cell) + 1;
+    var rows = Math.ceil((v.vy1 - v.vy0) / cell) + 1;
+    if (cols <= 0 || rows <= 0 || cols * rows > 2 * 1024 * 1024) return null;
+    var mask = null;
+    // Cote client : pixel data du masque via getImageData (deja utilise par
+    // buildVilleGrids). Cote serveur : grilles RLE chargees de
+    // ville-grids.json (1 = rouge, 2 = vert, 0 = transparent).
+    var rg = (G.villeGrids && G.villeGrids[v.sprite]) || null;
+    if (rg && rg.data) {
+      mask = function (wx, wy) {
+        var gx = Math.floor(wx - rg.ox), gy = Math.floor(wy - rg.oy);
+        if (gx < 0 || gy < 0 || gx >= rg.cols || gy >= rg.rows) return 0;
+        return rg.data[gy * rg.cols + gx] ? 1 : 0;
+      };
+    } else if (typeof document !== "undefined" && document.createElement) {
+      var msp = G.SPRITES.ville[v.sprite + "_mask"];
+      if (msp && msp.img && msp.img.width) {
+        var mc = document.createElement("canvas");
+        mc.width = msp.img.width; mc.height = msp.img.height;
+        var mctx = mc.getContext("2d");
+        mctx.drawImage(msp.img, 0, 0);
+        var md = mctx.getImageData(0, 0, mc.width, mc.height).data;
+        mask = function (wx, wy) {
+          var sx = (wx - wy) * 0.5;
+          var sy = (wx + wy) * 0.25;
+          var fx = (sx - (cx0 - losangeW0 / 2)) / losangeW0 * iw;
+          var fy = (sy - (groundY0 - drawnH0)) / drawnH0 * ih;
+          var px = Math.floor(fx), py = Math.floor(fy);
+          if (px < 0 || py < 0 || px >= iw || py >= ih) return 0;
+          return md[(py * iw + px) * 4 + 3] >= 128 ? 1 : 0;
+        };
+      }
+    }
+    if (!mask) return null;
+    var grid = new Uint8Array(cols * rows);
+    for (var cy = 0; cy < rows; cy++) {
+      for (var cx = 0; cx < cols; cx++) {
+        var wx = v.vx0 + cx * cell + cell / 2;
+        var wy = v.vy0 + cy * cell + cell / 2;
+        grid[cy * cols + cx] = mask(wx, wy) ? 1 : 0;
+      }
+    }
+    return { cell: cell, cols: cols, rows: rows, data: grid };
+  }
+
+  // Une BOITE monde (bx, by, bw, bh) chevauche-t-elle le PNG PEINT d'une
+  // ville ? Test boite-contre-boite sur la bbox visuelle pour le rejet
+  // rapide, puis, si une carte d'opacite existe, seulement les cellules
+  // OPAQUES (pixel du masque peint) : la partie TRANSPARENTE du PNG
+  // (coins du losange, ciel autour des tours) accepte le recouvrement
+  // avec les elements de decor -- jamais avec les facades/batiments.
+  // Sert a ecarter la generation (forets, maisons, objets) des villes.
   G.villeBoxHits = function (bx, by, bw, bh, pad) {
     var villes = (G.state && G.state.villes) || [];
     var m = pad || 0;
@@ -269,7 +332,20 @@
       var vx1 = (v.vx1 != null) ? v.vx1 : v.x2;
       var vy0 = (v.vy0 != null) ? v.vy0 : v.y;
       var vy1 = (v.vy1 != null) ? v.vy1 : v.y2;
-      if (bx < vx1 + m && bx + bw > vx0 - m && by < vy1 + m && by + bh > vy0 - m) return true;
+      if (!(bx < vx1 + m && bx + bw > vx0 - m && by < vy1 + m && by + bh > vy0 - m)) continue;
+      // Bbox visuelle touche : rejet FIN par la carte d'opacite -- sans elle
+      // (ville sans grille ni canvas), l'ancien comportement bbox pleine.
+      if (!v.opaq) return true;
+      var oc = v.opaq.cell;
+      var c0 = Math.max(0, Math.floor((bx - m - v.vx0) / oc));
+      var c1 = Math.min(v.opaq.cols - 1, Math.floor((bx + bw + m - v.vx0) / oc));
+      var r0 = Math.max(0, Math.floor((by - m - v.vy0) / oc));
+      var r1 = Math.min(v.opaq.rows - 1, Math.floor((by + bh + m - v.vy0) / oc));
+      for (var cy = r0; cy <= r1; cy++) {
+        for (var cx = c0; cx <= c1; cx++) {
+          if (v.opaq.data[cy * v.opaq.cols + cx]) return true;
+        }
+      }
     }
     return false;
   };
