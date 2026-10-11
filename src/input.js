@@ -256,6 +256,10 @@
 
   window.addEventListener("keydown", function (e) {
     var state = G.state;
+    // Saisie de chat : aucune touche ne doit atteindre le jeu (ni mouvement,
+    // ni Z, ni Échap). Le champ a deja stoppe la propagation ; ce garde
+    // couvre le cas d'un focus manage par le navigateur (autofocus etc.).
+    if (state.chatTyping) return;
     state.keys[e.code] = true;
     if (e.code === "Space") {
       e.preventDefault();
@@ -453,6 +457,7 @@
       state.camera.x = p.x; state.camera.y = p.y;
       G.updateHud();
       state.started = true;
+      if (G.chatSetVisible) G.chatSetVisible(true);
     }
     if (G.assetsReady()) doBuild();
     else G.loadAssets(doBuild);

@@ -121,6 +121,7 @@
     equipped: null,
     projectiles: [],
     keys: {},
+    chatTyping: false,
     actionHeld: false,
     shootCd: 0,
     buildMode: false,

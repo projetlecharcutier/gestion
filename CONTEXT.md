@@ -45,6 +45,7 @@ Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fo
 | 20 | `src/render.js` | Tout le dessin + `render()` (dont `drawTower`, flèche orientée, brouillard multi-sources) | `drawGround/Item/Tree/Building/Player/Wall/Zombie/Projectiles/Fog/Crosshair/DeadTraces`, `drawTower`, `fillPoly`, `roundRect`, `render` |
 | 21 | `src/input.js` | Entrées (souris, molette, clavier) + formulaire démarrage | resize interne, listeners |
 | 22 | `src/sound.js` | Sons (mp3 dans `assets/sounds/`, repli silencieux) | `playSound` |
+| 21b | `src/chat.js` | Chat multijoueur : bande étroite superposée à droite (240px/18vw), Entrée ouvre le champ, Entrée envoie, Échap annule ; saisie isolée des touches du jeu (`state.chatTyping`) ; serveur diffuse à tous (troncature 120, anti-flood 500 ms, test `loopback/chat.js`) | `chatInit`, `chatSetVisible`, `addChatMessage` |
 | 22b | `src/admin.js` | Panneau admin (login mot de passe, status, logs, restart + mise à jour git main) | `adminFetch`, bindings DOM |
 | 23 | `src/main.js` | Logique par frame `update(dt)` + `loop()` | `update`, `loop` |
 

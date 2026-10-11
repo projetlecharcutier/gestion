@@ -619,6 +619,19 @@
       if (msg.type === "input") {
         game.applyInput(id, msg);
       }
+      // Chat : message court diffuse a tous les joueurs connectes.
+      // Validation serveur : texte tronque, vide rejete, rythme limite.
+      if (msg.type === "chat") {
+        var c2 = clients[id];
+        if (c2 && c2.joined) {
+          var text = String(msg.text || "").slice(0, 120).trim();
+          var now2 = Date.now();
+          if (text && now2 - (c2.lastChatAt || 0) >= 500) {
+            c2.lastChatAt = now2;
+            broadcast({ type: "chat", from: c2.name || id, text: text });
+          }
+        }
+      }
 
       if (msg.type === "leave") {
         cleanup(id);

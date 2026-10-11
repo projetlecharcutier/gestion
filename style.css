@@ -339,6 +339,51 @@ canvas#game {
 }
 .playerlist__names li.is-dead { color: #f87171; }
 .playerlist__names li.is-me { font-weight: 700; }
+/* Chat : bande étroite superposée à droite de l'écran, sous la liste des
+   joueurs. Toujours visible pendant la partie ; hauteur volontairement
+   limitée pour ne pas empiéter sur le terrain. */
+.chat {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  width: 240px;
+  max-width: 18vw;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+.chat[hidden] { display: none; }
+.chat__log {
+  display: flex;
+  flex-direction: column;
+  max-height: 30vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+  word-break: break-word;
+}
+.chat__line { margin: 1px 0; }
+.chat__line b { margin-right: 4px; color: #93c5fd; }
+.chat__input {
+  margin-top: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(2, 6, 23, 0.8);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+  padding: 3px 6px;
+  outline: none;
+}
+.chat__input::placeholder { color: rgba(148, 163, 184, 0.7); }
+.chat__input:focus { border-color: var(--accent, #60a5fa); }
 .sound-btn:hover { background: var(--accent-soft); }
 /* Fenetre de vote en bas de l'ecran : visible par chaque joueur connecte
    quand un vote est en cours, avec compte a rebours et boutons Pour/Contre. */

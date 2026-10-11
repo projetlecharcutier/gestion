@@ -344,6 +344,7 @@
         if (G.startScreen) G.startScreen.hidden = true;
         if (G.loadingScreen) G.loadingScreen.hidden = true;
         if (G.hud) G.hud.hidden = false;
+        if (G.chatSetVisible) G.chatSetVisible(true);
         var lobbyEl = document.getElementById("lobbyInfo");
         if (lobbyEl) lobbyEl.hidden = true;
         // Démarre le rendu du jeu (le serveur pilote la simulation).
@@ -402,8 +403,11 @@
       if (G.startScreen) G.startScreen.hidden = true;
       if (G.loadingScreen) G.loadingScreen.hidden = true;
       if (G.hud) G.hud.hidden = false;
+      if (G.chatSetVisible) G.chatSetVisible(true);
       var lobbyEl2 = document.getElementById("lobbyInfo");
       if (lobbyEl2) lobbyEl2.hidden = true;
+    } else if (msg.type === "chat") {
+      if (G.addChatMessage) G.addChatMessage(msg.from, msg.text);
     } else if (msg.type === "full") {
       alert("Partie complète (20/20 joueurs). Réessayez plus tard.");
       // Retour au menu : l'ecran de chargement ne doit pas rester bloque.
