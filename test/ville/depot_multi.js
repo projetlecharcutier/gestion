@@ -84,10 +84,10 @@ var r = require(path.join(TMP, "server", "ville-sync")).sync();
 assert(r.names.indexOf("est") >= 0, "ville est toujours presente");
 assert(r.names.indexOf("dup_exact") === -1 && r.names.indexOf("dup_renomme") === -1,
   "doublons (meme contenu PNG) ignores, jamais deux fois la meme ville");
-// 8 villes uniques deposees par CE test + saintdenisdauthou (copiee avec le
-// repo, sans def manuelle -> elle aussi placee automatiquement).
-var extraAuto = 1; // saintdenisdauthou (uploade sans entree VILLE_DEFS)
-assert(r.placed === 8 + extraAuto, "8 villes uniques placees automatiquement + saintdenisdauthou (obtenu " + r.placed + ")");
+// 8 villes uniques deposees par CE test + les villes uploadees sans def
+// manuelle dans le repo (placees automatiquement elles aussi).
+var extraAuto = 2; // saintdenisdauthou + motte
+assert(r.placed === 8 + extraAuto, "8 villes uniques + 2 auto (saintdenisdauthou, motte) placees automatiquement (obtenu " + r.placed + ")");
 // Villes configurees au repo (VILLE_DEFS : est, laputa, minas) : elles ne
 // font pas partie des 8 villes UNIQUES deposees par ce test.
 // Villes configurees/manuelle du repo (VILLE_DEFS) + villes posees
@@ -129,8 +129,8 @@ for (var i2 = 0; i2 < boxes.length; i2++) {
 }
 // 2 par diagonale pour les 8 uniques ; saintdenisdauthou s'ajoute sur une
 // diagonale (placement auto = ordre SE, NE, SO, NO, anneaux proches d'abord).
-assert(dirs.ES + dirs.EN + dirs.OS + dirs.ON === 9,
-  "9 villes placees dont 8 reparties 2 par diagonale (obtenu " + JSON.stringify(dirs) + ")");
+assert(dirs.ES + dirs.EN + dirs.OS + dirs.ON === 10,
+  "10 villes placees dont 8 reparties 2 par diagonale (obtenu " + JSON.stringify(dirs) + ")");
 
 // 4. Grilles + manifeste regeneres pour toutes les villes posees.
 var grids = JSON.parse(fs.readFileSync(path.join(TMP, "server", "ville-grids.json"), "utf8"));
