@@ -536,10 +536,11 @@
   // Construit les grilles des villes actives (client : depuis les masques).
   // Les grilles deja presentes (serveur : stash JSON) sont conservees.
   G.buildVilleGrids = function () {
+    if (!G.villeGrids) G.villeGrids = {};
     var villes = (G.state && G.state.villes) || [];
     for (var i = 0; i < villes.length; i++) {
       var v = villes[i];
-      if (G.villeGrids && G.villeGrids[v.sprite]) continue;
+      if (G.villeGrids[v.sprite]) continue;
       var grid = G.villeExtractGrid(v.sprite);
       if (grid) G.setVilleGrid(v.sprite, grid);
     }
@@ -576,9 +577,23 @@
   //           ville par rapport au joueur : sans cela, la bande basse le
   //           cachait aussi sur les zones transparentes du masque.
   G.villeCellInfo = function (x, y) {
+    var villes = (G.state && G.state.villes) || [];
+    // Grille manquante (masque pas encore charge au premier villeSetup,
+    // join serveur plus rapide que loadAssets) : re-tente la construction --
+    // le masque peut etre pret maintenant. Sans cela, l'occlusion ne
+    // s'appliquait JAMAIS et le joueur restait visible par-dessus le PNG de
+    // toutes les villes.
+    if (!G.villeGrids || !villes.length) {
+      if (villes.length) G.buildVilleGrids();
+    } else {
+      var missing = false;
+      for (var vi = 0; vi < villes.length; vi++) {
+        if (!G.villeGrids[villes[vi].sprite]) { missing = true; break; }
+      }
+      if (missing) G.buildVilleGrids();
+    }
     var grids = G.villeGrids;
     if (!grids) return null;
-    var villes = (G.state && G.state.villes) || [];
     for (var i = 0; i < villes.length; i++) {
       var v = villes[i];
       var g = grids[v.sprite];
