@@ -123,6 +123,9 @@
     nlog("connexion tentée n°" + connectAttempts + " vers " + serverUrl());
     ws.onopen = function () {
       connected = true;
+      // Chat visible des la connexion au serveur, avant meme le join : le
+      // joueur voit tout de suite la bande et les messages serveur.
+      if (G.chatSetVisible) G.chatSetVisible(true);
       recoDelayMs = RECO_MIN_MS; // connexion ouverte : le backoff repart a zero
       nlog("connexion ouverte (tentative " + connectAttempts + ")");
       if (playerId) {

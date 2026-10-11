@@ -96,7 +96,15 @@
   };
 
   G.chatSetVisible = function (visible) {
-    if (rootEl) rootEl.hidden = !visible;
+    if (!rootEl) return;
+    rootEl.hidden = !visible;
+    // A la premiere apparition, une ligne d'aide rend le raccourci
+    // decouvrible et prouve que le panneau est vivant (meme avant tout
+    // message serveur).
+    if (visible && !rootEl._chatHinted) {
+      rootEl._chatHinted = true;
+      addChatMessage("Chat", "Entrée pour écrire, Entrée pour envoyer");
+    }
   };
   G.addChatMessage = addChatMessage;
 
