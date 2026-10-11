@@ -84,18 +84,24 @@ var r = require(path.join(TMP, "server", "ville-sync")).sync();
 assert(r.names.indexOf("est") >= 0, "ville est toujours presente");
 assert(r.names.indexOf("dup_exact") === -1 && r.names.indexOf("dup_renomme") === -1,
   "doublons (meme contenu PNG) ignores, jamais deux fois la meme ville");
-assert(r.placed === 8, "8 villes uniques placees automatiquement (obtenu " + r.placed + ")");
+// 8 villes uniques deposees par CE test + saintdenisdauthou (copiee avec le
+// repo, sans def manuelle -> elle aussi placee automatiquement).
+var extraAuto = 1; // saintdenisdauthou (uploade sans entree VILLE_DEFS)
+assert(r.placed === 8 + extraAuto, "8 villes uniques placees automatiquement + saintdenisdauthou (obtenu " + r.placed + ")");
 // Villes configurees au repo (VILLE_DEFS : est, laputa, minas) : elles ne
 // font pas partie des 8 villes UNIQUES deposees par ce test.
-var builtin = ["est", "laputa", "minas", "camp_romain"];
+// Villes configurees/manuelle du repo (VILLE_DEFS) + villes posees
+// automatiquement deja presentes (saintdenisdauthou uploade sans def) :
+// elles ne font pas partie des 8 uniques deposees par CE test.
+var builtin = ["est", "laputa", "minas", "camp_romain", "saintdenisdauthou", "motte"];
 var names = r.names.filter(function (n) {
   return builtin.indexOf(n) === -1 && n.indexOf("dup") !== 0;
 });
-assert(names.length === 8, "11 villes detectees au total dont 3 configurees (est, laputa, minas) + 8 uniques (obtenu " + r.names.length + ")");
+assert(names.length === 8, "13 villes detectees dont 5 configurees (est, laputa, minas, camp_romain) + saintdenisdauthou auto + 8 uniques (obtenu " + r.names.length + ")");
 
 // 3. Placement : 2 par direction diagonale, SANS superposition.
 var pos = r.positions;
-assert(Object.keys(pos).length === 8, "8 positions persistees (obtenu " + Object.keys(pos).length + ")");
+assert(Object.keys(pos).length === 8 + extraAuto, "8+1 positions persistees (obtenu " + Object.keys(pos).length + ")");
 var boxes = [];
 for (var k in pos) {
   if (!pos.hasOwnProperty(k)) continue;
@@ -121,8 +127,10 @@ for (var i2 = 0; i2 < boxes.length; i2++) {
   var key = (cx >= c ? "E" : "O") + (cy >= c ? "S" : "N");
   dirs[key] = (dirs[key] || 0) + 1;
 }
-assert(dirs.ES === 2 && dirs.EN === 2 && dirs.OS === 2 && dirs.ON === 2,
-  "2 villes par direction diagonale (obtenu " + JSON.stringify(dirs) + ")");
+// 2 par diagonale pour les 8 uniques ; saintdenisdauthou s'ajoute sur une
+// diagonale (placement auto = ordre SE, NE, SO, NO, anneaux proches d'abord).
+assert(dirs.ES + dirs.EN + dirs.OS + dirs.ON === 9,
+  "9 villes placees dont 8 reparties 2 par diagonale (obtenu " + JSON.stringify(dirs) + ")");
 
 // 4. Grilles + manifeste regeneres pour toutes les villes posees.
 var grids = JSON.parse(fs.readFileSync(path.join(TMP, "server", "ville-grids.json"), "utf8"));

@@ -713,20 +713,37 @@
     var iw = img.naturalWidth || sp.w;
     var ih = img.naturalHeight || sp.h;
     if (!iw || !ih) return null;
-    var key = v.sprite + ":" + iw + "x" + ih + ":" + v.x + "," + v.y;
+    // Animation : la frame courante (G.animImg, boucle 10 FPS sur
+    // ville-0.png, ville-1.png...). Le decoupage en bandes depend de la
+    // HAUTEUR du PNG : les frames doivent avoir la meme taille que la base
+    // (convention documentee) ; on utilise la hauteur de la FRAME pour
+    // rester exact si une frame differe légèrement.
+    var fi = -1; // -1 = PNG de base (statique ou repli)
+    var animImg = img;
+    if (sp.frames && sp.frames.length > 1 && G.animImg) {
+      animImg = G.animImg(sp, G.state.time);
+      fi = sp.frames.indexOf(animImg);
+      if (fi < 0) fi = -2; // image de base inattendue
+    }
+    var aw = animImg.naturalWidth || iw;
+    var ah = animImg.naturalHeight || ih;
+    // La cle DOIT contenir la frame : deux frames de la meme taille (la
+    // convention !) partagent sinon la meme entree de cache et la ville
+    // resterait figee sur la premiere frame dessinee.
+    var key = v.sprite + ":" + fi + ":" + aw + "x" + ah + ":" + v.x + "," + v.y;
     if (_bandCache[key]) return _bandCache[key];
     var bands = [];
-    var nb = Math.max(1, Math.ceil(ih / G.VILLE_BAND_H));
+    var nb = Math.max(1, Math.ceil(ah / G.VILLE_BAND_H));
     for (var b = 0; b < nb; b++) {
-      var sy = Math.floor(b * ih / nb);
-      var sy2 = (b + 1 === nb) ? ih : Math.floor((b + 1) * ih / nb);
-      var t1 = sy2 / ih;
+      var sy = Math.floor(b * ah / nb);
+      var sy2 = (b + 1 === nb) ? ah : Math.floor((b + 1) * ah / nb);
+      var t1 = sy2 / ah;
       bands.push({
         sy: sy, sh: sy2 - sy, t1: t1,
-        depth: (v.x + v.w + v.y + v.h) - 2 * (v.w + v.h) * (ih / iw) * (1 - t1)
+        depth: (v.x + v.w + v.y + v.h) - 2 * (v.w + v.h) * (ah / aw) * (1 - t1)
       });
     }
-    var entry = { img: img, iw: iw, ih: ih, bands: bands };
+    var entry = { img: animImg, iw: aw, ih: ah, bands: bands };
     _bandCache[key] = entry;
     return entry;
   };

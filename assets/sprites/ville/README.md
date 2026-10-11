@@ -36,6 +36,21 @@ le bord sud de son losange d'emprise sol, et l'emprise vaut
 position (coin nord-ouest du losange) est definie dans `G.VILLE_DEFS`
 (`src/config.js`).
 
+## Animer une ville (optionnel)
+
+Deposez des frames `ville-0.png`, `ville-1.png`, ... dans le dossier de la
+ville (meme convention que le reste du jeu). Le visuel boucle a 10 FPS.
+Regles :
+
+- **Meme taille au pixel pres** que `ville.png` (le rendu decoupe le PNG en
+  bandes selon sa hauteur : une frame de taille differente serait deformee).
+- **Masque UNIQUE** : `ville_mask.png` n'est JAMAIS anime. La collision,
+  l'occlusion et la carte d'opacite restent calculees sur ce masque fixe --
+  n'animez que ce qui ne deplace pas les zones solides (fumee, drapeaux,
+  reflets d'eau, lumieres, oiseaux...), jamais les batiments/murs.
+- `ville.png` reste obligatoire : c'est la reference (emprise, fallback
+  statique si les frames echouent a charger).
+
 ## Deposer des villes
 
 Vous pouvez deposer **autant de villes que vous voulez** : chacune est un

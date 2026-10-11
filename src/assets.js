@@ -591,7 +591,18 @@
       var img = new Image();
       img.onload = function () {
         if (img.naturalWidth > 0) {
-          G.SPRITES.ville[job.key] = { img: img, w: img.naturalWidth, h: img.naturalHeight };
+          var sprite = { img: img, w: img.naturalWidth, h: img.naturalHeight };
+          G.SPRITES.ville[job.key] = sprite;
+          // Animation de ville : convention <base>-N.png du jeu (ville-0.png,
+          // ville-1.png...). Le PNG de base reste la reference (taille du
+          // losange, masque de collision UNIQUE -- les zones solides ne
+          // bougent pas, seul le visuel s'anime) ; les frames doivent avoir
+          // la MEME TAILLE au pixel pres que la base, sinon le rendu en
+          // bandes les deformerait. Le masque n'est JAMAIS anime.
+          if (job.key.indexOf("_mask") === -1) {
+            probeAnimFrames(sprite, job.dir, job.base, function () { done(); });
+            return;
+          }
         }
         done();
       };
