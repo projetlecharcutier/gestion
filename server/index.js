@@ -454,6 +454,7 @@
         clock: game.getState().clock,
         map: game.mapSnapshot()
       });
+      broadcast({ type: "chat", from: "Serveur", text: "Partie démarrée — bon courage !" });
       log("Partie démarrée : nouvelle carte diffusée à tous les joueurs.");
     }
 
@@ -613,6 +614,9 @@
         // (remplacee par un "restart" au lancement : le client garde son
         // ecran de chargement jusqu'a ce "restart").
         ws.send(JSON.stringify({ type: "joined", playerId: id, started: game.getState().started, map: game.mapSnapshot(), clock: game.getState().clock }));
+        // Message de bienvenue dans le chat : visible par tous, sert aussi
+        // de confirmation que le canal chat est vivant.
+        broadcast({ type: "chat", from: "Serveur", text: "bonjour " + name });
         log("[ws] connexion " + id + " (" + name + ") a rejoint. " + game.getState().players.length + "/" + game.MAX_PLAYERS);
       }
 

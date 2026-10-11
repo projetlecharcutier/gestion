@@ -297,6 +297,10 @@
       try { window.location.reload(); } catch (e) {}
     } else if (msg.type === "joined") {
       playerId = msg.playerId;
+      // Chat visible des le join (ecran de chargement inclus) : les
+      // messages serveur (bonjour, partie demarree) doivent etre visibles
+      // meme avant la premiere frame de jeu.
+      if (G.chatSetVisible) G.chatSetVisible(true);
       // Reconnexion aboutie : le bandeau de coupure disparait et un
       // floater confirme la reprise (le personnage a ete restaure).
       hideNetBanner();
