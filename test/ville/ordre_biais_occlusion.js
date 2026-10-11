@@ -60,6 +60,15 @@ assert(codeNoComments.indexOf("vCellBand === 0") !== -1 &&
        codeNoComments.indexOf("state.player.x + state.player.y - 1") !== -1,
   "bande transparente : derriere le joueur (profondeur joueur - 1)");
 
+// 5bis) Pieds sur zone VERTE (mode 1) : TOUTES les bandes couvrantes passent
+//      devant le joueur. Dans le haut d une grande ville (Minas), les bandes
+//      couvrant son corps echantillonnent du TRANSPARENT a l ecran (ciel
+//      au-dessus de lui) : le sampling par bande seul le laissait DEVANT le
+//      PNG, visible par-dessus la ville, alors que le masque des PIEDS dit
+//      qu il est derriere. Le mode des pieds (1) fait foi, comme le mode 2.
+assert(codeNoComments.indexOf("villePinfo.mode === 1") !== -1 &&
+       codeNoComments.indexOf("vbDepth = state.player.x + state.player.y + 1") !== -1,
+  "mode 1 (pieds verts) : toutes les bandes couvrantes devant le joueur");
 // 6) Le mode ne depend plus du sol (emprise) : villeCellInfo s'applique
 //    partout, y compris les cellules d'elevation (nord de l'emprise)
 assert(codeNoCommentsV.indexOf("if (cell === 2) mode = 1") !== -1 &&

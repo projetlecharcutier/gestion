@@ -1706,7 +1706,19 @@ G.drawGround = function () {
             // (cell 0) reste DERRIERE.
             if (vTopY < vBandY1 && vBase[1] > vBandY0) {
               if (villePinfo && villePinfo.mode === 2) {
+                // Pieds du joueur sur zone TRANSPARENTE : il est DEVANT la
+                // ville, aucune bande ne doit le recouvrir.
                 vbDepth = state.player.x + state.player.y - 1;
+              } else if (villePinfo && villePinfo.mode === 1) {
+                // Pieds du joueur sur zone VERTE : le sol est DERRIERE le
+                // PNG, la ville doit le recouvrir ENTIEREMENT. Dans le haut
+                // d'une grande ville (Minas), les bandes qui couvrent son
+                // corps echantillonnent du TRANSPARENT a l'ecran (ciel au
+                // dessus de lui) -- le departage par bande le laissait alors
+                // DEVANT le PNG, visible par-dessus la ville. Le masque des
+                // PIEDS (mode 1) fait foi : toutes les bandes couvrantes
+                // passent devant lui.
+                vbDepth = state.player.x + state.player.y + 1;
               } else {
                 var vCellBand = G.villeCellAtScreen(vv, vAxisX, (Math.max(vBandY0, vTopY) + Math.min(vBandY1, vBase[1])) / 2);
                 if (vCellBand === 1 || vCellBand === 2) vbDepth = state.player.x + state.player.y + 1;
