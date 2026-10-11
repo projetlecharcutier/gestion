@@ -599,8 +599,22 @@
           // bougent pas, seul le visuel s'anime) ; les frames doivent avoir
           // la MEME TAILLE au pixel pres que la base, sinon le rendu en
           // bandes les deformerait. Le masque n'est JAMAIS anime.
+          // Tolerant : une serie peut commencer a 0 OU a 1 (les exports
+          // d'outils numerotent souvent depuis 1 -- probeAnimFramesStd
+          // s'arrete au premier numero manquant, ville-1..7 sans ville-0
+          // restait vide et la ville figee sur la base).
           if (job.key.indexOf("_mask") === -1) {
-            probeAnimFrames(sprite, job.dir, job.base, function () { done(); });
+            probeAnimFrames(sprite, job.dir, job.base, function (frames) {
+              // Serie commençant a 1 (export d'outil) : reprise depuis 1.
+              if (!frames || !frames.length) {
+                probeAnimFramesStd(sprite, job.dir, job.base, 1, function (alt) {
+                  if (alt && alt.length) sprite.frames = alt;
+                  done();
+                });
+                return;
+              }
+              done();
+            });
             return;
           }
         }

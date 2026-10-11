@@ -31,6 +31,25 @@ var basePng = fs.readFileSync(path.join(estDir, "ville.png"));
 for (var i = 0; i < 4; i++) {
   fs.writeFileSync(path.join(estDir, "ville-" + i + ".png"), basePng);
 }
+// Serie commençant a 1 (export d'outil, ex. la vraie ville motte) : la sonde
+// doit rester TOLERANTE -- sans ville-0.png, l'ancienne sonde s'arretait au
+// premier numero manquant et la ville restait figee sur le PNG de base.
+var motteDir = path.join(TMP, "assets", "sprites", "ville", "motte");
+if (fs.existsSync(path.join(motteDir, "ville.png"))) {
+  var motteBase = fs.readFileSync(path.join(motteDir, "ville.png"));
+  for (var m = 1; m <= 3; m++) {
+    fs.writeFileSync(path.join(motteDir, "ville-" + m + ".png"), motteBase);
+  }
+  var motteMask = fs.readFileSync(path.join(motteDir, "ville_mask.png"));
+  // le manifeste TMP doit declarer motte pour que probeVilles la charge
+  try {
+    var vjs = fs.readFileSync(path.join(TMP, "assets", "sprites", "ville", "villes.js"), "utf8");
+    if (vjs.indexOf('"motte"') < 0) {
+      vjs = vjs.replace("];", '  {"name":"motte","sprite":"motte","x":11608,"y":11608},\n];');
+      fs.writeFileSync(path.join(TMP, "assets", "sprites", "ville", "villes.js"), vjs);
+    }
+  } catch (e) {}
+}
 
 // --- Stubs DOM (meme modele que test/buildings/anim_tour_tailles.js) ---
 global.window = global;
@@ -60,6 +79,11 @@ global.XMLHttpRequest = function () { this.readyState = 4; this.status = 404; th
 global.XMLHttpRequest.prototype.open = function () {};
 global.XMLHttpRequest.prototype.send = function () { var self = this; setTimeout(function () { if (self.onreadystatechange) self.onreadystatechange(); }, 0); };
 
+// Manifeste client d'abord (comme index.html : script statique avant les
+// modules) pour que mergeManifest connaisse les villes auto-placees.
+try {
+  (0, eval)(fs.readFileSync(path.join(TMP, "assets", "sprites", "ville", "villes.js"), "utf8"));
+} catch (e) {}
 function load(f) { (0, eval)(fs.readFileSync(path.join(TMP, "src", f), "utf8")); }
 ["config.js", "projection.js", "world.js", "ville.js"].forEach(load);
 var G = global.GAME;
@@ -81,6 +105,26 @@ G.loadAssets(function () {
   // Masque UNIQUE : pas de frames sur le masque, une seule image.
   var msk = G.SPRITES.ville["est_mask"];
   assert(msk && (!msk.frames || !msk.frames.length), "masque statique (jamais anime)");
+
+  // Serie commencant a 1 (motte, VRAIES frames 1..7 du repo) : toleree.
+  // Le dossier copie contient deja ville-1..7 sans ville-0 : la sonde doit
+  // les charger (l'ancienne s'arretait au 0 manquant -> ville figee).
+  var spM = G.SPRITES.ville.motte;
+  if (spM) {
+    var nM = spM.frames ? spM.frames.length : 0;
+    assert(nM >= 3,
+      "motte : serie sans ville-0 toleree (obtenu " + nM + " frames)");
+    if (nM > 0) {
+      assert(G.animImg(spM, 0) === spM.frames[0], "motte : animImg(0) = frame index 0");
+      var lastIdx = nM - 1;
+      assert(G.animImg(spM, lastIdx * 0.1) === spM.frames[lastIdx],
+        "motte : animImg(" + (lastIdx * 0.1) + ") = frame index " + lastIdx);
+      assert(G.animImg(spM, nM * 0.1) === spM.frames[0],
+        "motte : boucle complete sur frame 0");
+    }
+  } else {
+    console.log("SKIP motte : dossier absent du repo");
+  }
 
   // Rendu en bandes : villeBands suit la frame courante.
   G.state = { time: 0, zoom: 1, villes: [] };

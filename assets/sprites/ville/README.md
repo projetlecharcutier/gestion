@@ -44,6 +44,9 @@ Regles :
 
 - **Meme taille au pixel pres** que `ville.png` (le rendu decoupe le PNG en
   bandes selon sa hauteur : une frame de taille differente serait deformee).
+- La serie peut commencer a `ville-0.png` OU a `ville-1.png` (les exports
+  d'outils numerotent souvent depuis 1) : la premiere frame chargee devient
+  l'index 0 de la boucle.
 - **Masque UNIQUE** : `ville_mask.png` n'est JAMAIS anime. La collision,
   l'occlusion et la carte d'opacite restent calculees sur ce masque fixe --
   n'animez que ce qui ne deplace pas les zones solides (fumee, drapeaux,
