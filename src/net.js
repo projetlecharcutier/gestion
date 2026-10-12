@@ -415,6 +415,12 @@
       if (lobbyEl2) lobbyEl2.hidden = true;
     } else if (msg.type === "chat") {
       if (G.addChatMessage) G.addChatMessage(msg.from, msg.text);
+    } else if (msg.type === "chatHistory") {
+      // Historique persistant : les 30 derniers messages du serveur,
+      // charges au demarrage (le contenu survit aux mises a jour).
+      if (G.chatLoadHistory) G.chatLoadHistory(msg.messages);
+    } else if (msg.type === "chatNeedPseudo") {
+      if (G.addChatMessage) G.addChatMessage("Chat", "Choisissez un pseudo pour écrire 🙅");
     } else if (msg.type === "full") {
       alert("Partie complète (20/20 joueurs). Réessayez plus tard.");
       // Retour au menu : l'ecran de chargement ne doit pas rester bloque.

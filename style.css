@@ -384,6 +384,40 @@ canvas#game {
 }
 .chat__input::placeholder { color: rgba(148, 163, 184, 0.7); }
 .chat__input:focus { border-color: var(--accent, #60a5fa); }
+/* Palette d'emoticones : ligne cliquable au-dessus du champ de saisie. */
+.chat__bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 4px;
+}
+.chat__emoji {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: inherit;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 2px 3px;
+  cursor: pointer;
+}
+.chat__emoji:hover { background: rgba(96, 165, 250, 0.25); }
+/* Pseudo obligatoire avant d'ecrire dans le chat. */
+.chat__pseudo {
+  margin-top: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(2, 6, 23, 0.8);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+  padding: 3px 6px;
+  outline: none;
+}
+.chat__pseudo::placeholder { color: rgba(148, 163, 184, 0.7); }
+.chat__pseudo:focus { border-color: var(--accent, #60a5fa); }
 .sound-btn:hover { background: var(--accent-soft); }
 /* Fenetre de vote en bas de l'ecran : visible par chaque joueur connecte
    quand un vote est en cours, avec compte a rebours et boutons Pour/Contre. */

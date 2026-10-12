@@ -45,6 +45,39 @@
     console.error("[ville-sync] erreur (le serveur demarre sans villes) :", e.message);
   }
   var game = require("./game");
+  var chatStore = require("./chat-store");
+  var CHAT_MSG_MAX = 50;    // limite par message joueur (Serveur : 200)
+
+  // Diffuse un message de chat et l'enregistre dans l'historique
+  // persistant : le contenu survit aux redemarrages et aux mises a jour.
+  function chatBroadcast(from, text) {
+    var msg = { type: "chat", from: from, text: text };
+    broadcast(msg);
+    chatStore.push(from, text);
+  }
+
+  // Faits marquants : deces d'un joueur annonce dans le chat avec les
+  // stats du defunt (jour, zombies tues, constructions). Compare le
+  // drapeau alive avant/apres le tick (game.js ne peut pas emettre).
+  var aliveFlags = {};
+  function announceDeaths(st) {
+    for (var i = 0; i < st.players.length; i++) {
+      var p = st.players[i];
+      var was = aliveFlags[p.id];
+      aliveFlags[p.id] = p.alive;
+      if (was === true && !p.alive) {
+        chatBroadcast("Serveur", chatStore.deathLine(p, st.day));
+      }
+    }
+  }
+
+  // Resume de fin de partie diffuse dans le chat (et persiste) : qui a
+  // joue et quand, destinee de chaque joueur, bilan global et stats
+  // marantes. Les lignes sont construites dans chat-store.js (testables).
+  function emitGameSummary() {
+    var lines = chatStore.gameSummaryLines(game.getState());
+    for (var i = 0; i < lines.length; i++) chatBroadcast("Serveur", lines[i]);
+  }
 
   var PORT = process.env.PORT || 8080;
   var TICK_HZ = 20;
@@ -444,6 +477,7 @@
     } catch (e) {
       log("[tick] ERREUR crash de simulation :", e.stack || e.message);
     }
+    announceDeaths(game.getState());
     // La partie vient de démarrer (START_DELAY écoulé) : le monde a été
     // RÉGÉNÉRÉ aléatoirement par startGame(). Les clients ont reçu l'ancienne
     // carte au join — sans la nouvelle, leurs collisions locales divergeaient
@@ -454,7 +488,7 @@
         clock: game.getState().clock,
         map: game.mapSnapshot()
       });
-      broadcast({ type: "chat", from: "Serveur", text: "Partie démarrée — bon courage !" });
+      chatBroadcast("Serveur", "Partie démarrée — bon courage !");
       log("Partie démarrée : nouvelle carte diffusée à tous les joueurs.");
     }
 
@@ -614,9 +648,15 @@
         // (remplacee par un "restart" au lancement : le client garde son
         // ecran de chargement jusqu'a ce "restart").
         ws.send(JSON.stringify({ type: "joined", playerId: id, started: game.getState().started, map: game.mapSnapshot(), clock: game.getState().clock }));
+        // Historique du chat au chargement de la page : les 30 derniers
+        // messages (persistes, ils survivent aux mises a jour du serveur).
+        var hist = chatStore.last();
+        if (hist.length) {
+          ws.send(JSON.stringify({ type: "chatHistory", messages: hist }));
+        }
         // Message de bienvenue dans le chat : visible par tous, sert aussi
         // de confirmation que le canal chat est vivant.
-        broadcast({ type: "chat", from: "Serveur", text: "bonjour " + name });
+        chatBroadcast("Serveur", "bonjour " + name);
         log("[ws] connexion " + id + " (" + name + ") a rejoint. " + game.getState().players.length + "/" + game.MAX_PLAYERS);
       }
 
@@ -626,13 +666,21 @@
       // Chat : message court diffuse a tous les joueurs connectes.
       // Validation serveur : texte tronque, vide rejete, rythme limite.
       if (msg.type === "chat") {
+        // Ouvert des l'ecran d'accueil (client pas encore "joined") : il
+        // faut juste un pseudo. Priorite au pseudo explicite du client,
+        // sinon le nom de jeu (join), sinon le serveur redemande un pseudo.
         var c2 = clients[id];
-        if (c2 && c2.joined) {
-          var text = String(msg.text || "").slice(0, 120).trim();
-          var now2 = Date.now();
-          if (text && now2 - (c2.lastChatAt || 0) >= 500) {
-            c2.lastChatAt = now2;
-            broadcast({ type: "chat", from: c2.name || id, text: text });
+        if (c2) {
+          var pname = String(msg.pseudo || "").trim().slice(0, 20) || c2.name;
+          if (!pname) {
+            ws.send(JSON.stringify({ type: "chatNeedPseudo" }));
+          } else {
+            var text = String(msg.text || "").slice(0, CHAT_MSG_MAX).trim();
+            var now2 = Date.now();
+            if (text && now2 - (c2.lastChatAt || 0) >= 500) {
+              c2.lastChatAt = now2;
+              chatBroadcast(pname, text);
+            }
           }
         }
       }
@@ -718,6 +766,9 @@
       prevGameOver = true;
       restartTimer = 10;
       restartErrLogged = false;
+      try { emitGameSummary(); } catch (e) {
+        log("[chat] échec du résumé de fin de partie :", e.message);
+      }
     }
     if (prevGameOver) {
       restartTimer -= 0.5;

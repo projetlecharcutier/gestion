@@ -123,6 +123,13 @@ function pressEnter() {
   if (stopped) return;
   windowListeners.forEach(function (l) { if (l.ev === "keydown") l.fn(ev); });
 }
+function pressEscape() {
+  var ev = { code: "Escape", key: "Escape",
+    preventDefault: function () {}, stopPropagation: function () {} };
+  var focused = Object.keys(elements).map(function (k) { return elements[k]; })
+    .filter(function (e) { return e.focused; })[0];
+  if (focused && focused._ev && focused._ev.keydown) focused._ev.keydown(ev);
+}
 function chatLines() {
   return (elements.chatLog ? elements.chatLog.children : []).map(function (c) {
     return c.children.map(function (x) { return x.textContent; }).join(" ");
@@ -158,8 +165,23 @@ setTimeout(function () {
       var lines = chatLines();
       var hasHello = lines.some(function (t) { return t.indexOf("bonjour Testeur") >= 0; });
       check(hasHello, "message de bienvenue affiche, lignes=" + JSON.stringify(lines));
-      // Simule une partie demarree (le jeu n'autorise le chat qu'en partie).
+      // Pseudo obligatoire : sans pseudo, l'envoi est refuse avec une
+      // ligne d'aide et le champ reste ouvert.
       G.state.started = true;
+      elements.chatPseudo.value = "";
+      try { delete global.localStorage; } catch (e) {}
+      global.localStorage = { getItem: function () { return ""; }, setItem: function () {} };
+      G.state.playerName = "";
+      pressEnter();
+      check(G.state.chatTyping === true, "Entree ouvre la saisie (chatTyping=" + G.state.chatTyping + ")");
+      elements.chatInput.value = "sans pseudo";
+      pressEnter();
+      check(G.state.chatTyping === true, "sans pseudo : envoie refuse, saisie encore ouverte");
+      var refused = chatLines().some(function (t) { return t.indexOf("Indiquez un pseudo") >= 0; });
+      check(refused, "sans pseudo : message d'aide affiche");
+      // Annule la saisie (Echap) puis reouvre avec un pseudo valide.
+      pressEscape();
+      elements.chatPseudo.value = "Testeur";
       pressEnter();
       check(G.state.chatTyping === true, "Entree ouvre la saisie (chatTyping=" + G.state.chatTyping + ")");
       check(elements.chatInput.focused === true, "champ chat focus");

@@ -40,8 +40,11 @@
        Entrée = ouvrir le champ / envoyer, Échap = annuler. -->
   <div class="chat" id="chat" hidden>
     <div class="chat__log" id="chatLog"></div>
-    <input class="chat__input" id="chatInput" type="text" maxlength="120"
-           placeholder="Entrée pour écrire, Entrée pour envoyer" autocomplete="off" />
+    <div class="chat__bar" id="chatEmojis"></div>
+    <input class="chat__input" id="chatInput" type="text" maxlength="50"
+           placeholder="Entrée pour écrire (50 car.)" autocomplete="off" />
+    <input class="chat__pseudo" id="chatPseudo" type="text" maxlength="20"
+           placeholder="Votre pseudo" autocomplete="off" />
   </div>
   <!-- Liste des joueurs connectés (côté droit, mode serveur uniquement) -->
   <div class="playerlist" id="playerList" hidden>

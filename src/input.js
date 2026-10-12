@@ -383,7 +383,7 @@
   G.startForm.addEventListener("submit", function (e) {
     e.preventDefault();
     var v = G.nameInput.value.trim();
-    if (!v) v = "Habitant";
+    if (!v) v = (G.currentChatPseudo && G.currentChatPseudo()) || "Habitant";
     var state = G.state;
     state.playerName = v;
     // Mode serveur : l'ecran de menu reste affiche (avec le lobby) jusqu'a la
