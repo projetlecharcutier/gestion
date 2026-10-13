@@ -240,6 +240,10 @@
     G.updateHud();
     G.updateMusic();
   }
+  // Controles tactiles : rafraichit la visibilite des boutons virtuels
+  // selon l'etat de jeu (partie, pause, mort, mode construction).
+  var _rawUpdate = update;
+  update = function (dt) { if (G.touchUpdate) G.touchUpdate(); _rawUpdate(dt); };
   G.update = update;
 
   var last = performance.now();

@@ -419,6 +419,119 @@ canvas#game {
 .chat__pseudo::placeholder { color: rgba(148, 163, 184, 0.7); }
 .chat__pseudo:focus { border-color: var(--accent, #60a5fa); }
 .sound-btn:hover { background: var(--accent-soft); }
+
+/* ===== Mode mobile / tactile (active via le bouton "Mobile") ===== */
+/* Racine des controles tactiles : couvre l'ecran mais ne capte PAS les
+   evenements (pointer-events: none) — seuls les boutons et la zone de
+   tir sont interactifs, le reste laisse passer les touches. */
+.touch-ui {
+  position: fixed;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.touch-ui[hidden] { display: none; }
+
+/* Joystick flottant : la base apparait ou le pouce se pose. */
+.touch-stick {
+  position: fixed;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.35);
+  border: 2px solid rgba(148, 163, 184, 0.5);
+  z-index: 8;
+  pointer-events: none;
+}
+.touch-stick[hidden] { display: none; }
+.touch-stick__knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  border-radius: 50%;
+  background: rgba(96, 165, 250, 0.75);
+  border: 2px solid rgba(219, 234, 254, 0.9);
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.5);
+}
+
+/* Zone de tir : moitie droite de l'ecran (sous les boutons). */
+.touch-fire {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  z-index: 5;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+/* Action bar : boutons en bas a droite. */
+.touch-bar {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  z-index: 9;
+  pointer-events: auto;
+}
+.touch-btn {
+  min-width: 52px;
+  min-height: 52px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--panel-border);
+  background: rgba(15, 23, 42, 0.82);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.touch-btn[hidden] { display: none; }
+.touch-btn:active { background: rgba(96, 165, 250, 0.45); }
+
+/* Bouton fantome (apres la mort du joueur local). */
+.touch-btn--ghost {
+  position: fixed;
+  left: 50%;
+  top: 55%;
+  transform: translateX(-50%);
+  min-width: 180px;
+  min-height: 56px;
+  z-index: 9;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.6);
+}
+
+/* Boutons contextuels (entrer / coffre / marchE) : bas-centre, gros. */
+.touch-ctx {
+  position: fixed;
+  left: 50%;
+  bottom: 76px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 9;
+  pointer-events: auto;
+}
+.touch-ctx[hidden] { display: none; }
+.touch-btn--ctx {
+  min-width: 130px;
+  min-height: 60px;
+  font-size: 0.95rem;
+  background: rgba(96, 165, 250, 0.85);
+  border-color: rgba(219, 234, 254, 0.9);
+}
 /* Fenetre de vote en bas de l'ecran : visible par chaque joueur connecte
    quand un vote est en cours, avec compte a rebours et boutons Pour/Contre. */
 .votebar {
