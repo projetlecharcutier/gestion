@@ -127,6 +127,15 @@
     return advanced;
   };
 
+  G.posBlocked = function (x, y) {
+    if (!G.aabbHitsBuildings) return false;
+    if (G.aabbHitsBuildings(x, y)) return true;
+    if (G.aabbHitsVilles && G.aabbHitsVilles(x - G.PLAYER_HALF, y - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W)) return true;
+    if (G.aabbHitsWalls && G.aabbHitsWalls(x - G.PLAYER_HALF, y - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true)) return true;
+    if (G.aabbHitsSieges && G.aabbHitsSieges(x, y)) return true;
+    return false;
+  };
+
   G.clampPlayer = function () {
     var p = G.state.player;
     p.x = G.clamp(p.x, G.PLAYER_HALF, G.WORLD - G.PLAYER_HALF);

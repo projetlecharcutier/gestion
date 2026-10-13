@@ -201,6 +201,33 @@
   // (equip, build, placeBuild...) passent toujours immediatement.
   var lastMoveSentAt = 0;
   var moveSendInterval = 1000 / 20; // 20 Hz, aligne sur TICK_HZ serveur
+  // Correction de position serveur -> client, COLLISION-AWARE : le lerp brut
+  // traversait les obstacles (bâtiments, villes, murs) : sous latence, la
+  // trajectoire serveur diverge de la prédiction locale autour d'un coin,
+  // le lerp tirait le joueur PAR-DESSUS l'obstacle puis la prédiction locale
+  // le re-bloquait au frame suivant -> effet élastique visible (rollback).
+  // On avance donc la correction avec les MÊmes collisions que tryMove : le
+  // joueur glisse le long de l'obstacle au lieu de le traverser, et reste
+  // bloqué si le serveur est derrière un mur que la prédiction a déjà
+  // contourné. Téléport (respawn, rejoin, monde régénéré) : snap direct.
+  G.netCorrectPos = function (tx, ty) {
+    var p = G.state.player;
+    var dx = tx - p.x, dy = ty - p.y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist <= 0.0001) return;
+    if (dist > (G.NET_SNAP_FULL_PX || 60)) {
+      p.x = tx;
+      p.y = ty;
+      return;
+    }
+    if (dist <= G.NET_SNAP_PX) return;
+    var t = G.NET_SNAP_LERP || 0.25;
+    var mx = p.x + dx * t, my = p.y + dy * t;
+    // Axe par axe (même esprit que _stepMove) : le glissement garde un
+    // mouvement naturel le long des murs et évite le blocage total.
+    if (!G.posBlocked(mx, p.y)) p.x = mx;
+    if (!G.posBlocked(p.x, my)) p.y = my;
+  };
 
   G.netInput = function (input) {
     var nowMs = (typeof performance !== "undefined" ? performance.now() : Date.now());
@@ -796,16 +823,7 @@
           // (téléport, monde régénéré), repositionnement exact : un lerp
           // seul ne résorbe jamais l'écart et le re-déclenche à chaque
           // snapshot (élastique permanent).
-          var pdx2 = p.x - state.player.x;
-          var pdy2 = p.y - state.player.y;
-          var pdist2 = Math.sqrt(pdx2 * pdx2 + pdy2 * pdy2);
-          if (pdist2 > (G.NET_SNAP_FULL_PX || 60)) {
-            state.player.x = p.x;
-            state.player.y = p.y;
-          } else if (pdist2 > G.NET_SNAP_PX) {
-            state.player.x += pdx2 * G.NET_SNAP_LERP;
-            state.player.y += pdy2 * G.NET_SNAP_LERP;
-          }
+          G.netCorrectPos(p.x, p.y);
           state.player.hp = p.hp;
           state.player.face = p.face;
           state.player.moving = p.moving;
