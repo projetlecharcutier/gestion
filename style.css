@@ -348,7 +348,10 @@ canvas#game {
   bottom: 12px;
   width: 240px;
   max-width: 18vw;
-  z-index: 6;
+  /* Au-dessus des .overlay (z-index 10, backdrop-filter: blur) : le chat
+     est visible des la connexion WS, meme sur l'ecran d'accueil -- sous
+     l'overlay, la bande etait floutee par le backdrop-filter. */
+  z-index: 11;
   display: flex;
   flex-direction: column;
   background: rgba(15, 23, 42, 0.72);
@@ -460,10 +463,10 @@ canvas#game {
   box-shadow: 0 0 12px rgba(96, 165, 250, 0.5);
 }
 
-/* Zone de tir : moitie droite de l'ecran (sous les boutons). */
+/* Zone de tir : moitie GAUCHE de l'ecran (le joystick vit a droite). */
 .touch-fire {
   position: fixed;
-  right: 0;
+  left: 0;
   top: 0;
   bottom: 0;
   width: 50%;

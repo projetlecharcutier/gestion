@@ -395,6 +395,21 @@
     for (var mi0 = 0; mi0 < state.buildings.length; mi0++) {
       if (state.buildings[mi0].isMairie) { mairie = state.buildings[mi0]; break; }
     }
+    // Meneur de la horde : le zombie vivant le plus proche de la mairie.
+    // Les groupes prennent sa position comme point de marche (cf. cible du
+    // groupe) : toute la horde essaie de suivre son element le plus avance
+    // vers la mairie — une breche ouverte dans la palissade est exploitee
+    // par tous, la concentration se fait sur l'avancee reelle.
+    var frontZ = null, frontD = Infinity;
+    if (mairie) {
+      var fCx = mairie.x + mairie.w / 2, fCy = mairie.y + mairie.h / 2;
+      for (var fzi = 0; fzi < state.zombies.length; fzi++) {
+        var fz = state.zombies[fzi];
+        var fdx = fz.x - fCx, fdy = fz.y - fCy;
+        var fd = fdx * fdx + fdy * fdy;
+        if (fd < frontD) { frontD = fd; frontZ = fz; }
+      }
+    }
     // Grille spatiale temporaire pour la séparation entre zombies (O(1)).
     var zGrid = null;
     var zCell = 32;
@@ -550,6 +565,7 @@
           var mCx = mairie.x + mairie.w / 2, mCy = mairie.y + mairie.h / 2;
           var mdx2 = mCx - grp.x, mdy2 = mCy - grp.y;
           mairieD = Math.sqrt(mdx2 * mdx2 + mdy2 * mdy2);
+          var grpToMairieD = mairieD;
           if (best && bestD < 40 && bestD <= mairieD) {
             cible = { x: bestPt.x, y: bestPt.y, isPlayer: false, wall: best };
           } else {
@@ -582,7 +598,18 @@
             var npd = Math.sqrt((navPt.x - grp.x) * (navPt.x - grp.x) + (navPt.y - grp.y) * (navPt.y - grp.y));
             navOk = npd > 30;
           }
-          if (navOk) {
+          // Marche : la horde suit son meneur -- le zombie (d'UN AUTRE
+          // groupe) le plus proche de la mairie (cf. frontZ). Suivre son
+          // propre membre gelerait le groupe sur sa propre formation ; le
+          // meneur externe presse le mur et ouvre la breche, les autres
+          // groupes convergent vers lui. Un meneur deja DEDANS la ville ne
+          // sert plus de point de marche (le mur est passe) : repli sur le
+          // point de mur assigne, puis la mairie.
+          var frontOutside = frontZ && !G.inTown(frontZ.x, frontZ.y) &&
+                             frontD < grpToMairieD * 0.5;
+          if (frontOutside) {
+            cible = raiderCible || { x: frontZ.x, y: frontZ.y, isPlayer: false, town: true };
+          } else if (navOk) {
             cible = raiderCible || { x: navPt.x, y: navPt.y, isPlayer: false, town: true };
           } else {
             cible = raiderCible || { x: mairie.x + mairie.w / 2, y: mairie.y + mairie.h / 2, isPlayer: false, mairie: mairie };
@@ -825,6 +852,45 @@
           // escouade divergente qui harcèle le joueur pendant que le reste du
           // groupe fonce sur la mairie/murs).
           var zcible = cible;
+          // Zombie A L'INTERIEUR de la ville (a passe le mur / la breche) :
+          // il choisit SA cible finale une seule fois (memorisee) -- 50 %
+          // la mairie, 30 % une tour a proximite, 20 % le joueur le plus
+          // proche. Tant qu'il est dehors, la cible du groupe s'applique.
+          var zInside = mairie ? G.inTown(z.x, z.y) : false;
+          // Detection de FRANCHISSEMENT : etait dehors au tick precedent,
+          // est dedans maintenant (breche, planche detruite, tour de
+          // siege). Les zombies nes dedans (siege release) et les tests
+          // ne declenchent PAS le tirage -- il faut avoir passe le mur.
+          if (zInside && !z._wasInside && !z.breachTarget) {
+            var roll = Math.random();
+            if (roll < 0.50) {
+              z.breachTarget = { kind: "mairie" };
+            } else if (roll < 0.80) {
+              z.breachTarget = { kind: "tour" };
+            } else {
+              z.breachTarget = { kind: "joueur" };
+            }
+          }
+          if (!zInside) z._wasInside = false;
+          else z._wasInside = true;
+          if (z.breachTarget) {
+            if (z.breachTarget.kind === "mairie" && mairie) {
+              zcible = { x: mairie.x + mairie.w / 2, y: mairie.y + mairie.h / 2, isPlayer: false, mairie: mairie };
+            } else if (z.breachTarget.kind === "tour" && state.towers && state.towers.length > 0) {
+              var btBest = null, btD = Infinity, btPt = null;
+              for (var bti = 0; bti < state.towers.length; bti++) {
+                var btw = state.towers[bti];
+                var blx = Math.max(btw.x, Math.min(z.x, btw.x + btw.w));
+                var bly = Math.max(btw.y, Math.min(z.y, btw.y + btw.h));
+                var btd = (blx - z.x) * (blx - z.x) + (bly - z.y) * (bly - z.y);
+                if (btd < btD) { btD = btd; btBest = btw; btPt = { x: blx, y: bly }; }
+              }
+              if (btBest) zcible = { x: btPt.x, y: btPt.y, isPlayer: false, tower: btBest };
+            } else if (z.breachTarget.kind === "joueur") {
+              var btPrey = nearestPrey(z.x, z.y);
+              zcible = { x: btPrey.x, y: btPrey.y, isPlayer: true, prey: btPrey };
+            }
+          }
           if (z.harasser) {
             var preyH = nearestPrey(z.x, z.y);
             var hpdx = preyH.x - z.x, hpdy = preyH.y - z.y;

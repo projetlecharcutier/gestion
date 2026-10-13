@@ -476,7 +476,8 @@
     function afterCiel() { probeVilles(finish); }
     function afterDecor() { probeCiel(afterCiel); }
     function afterSiege() { probeElementDecor(afterDecor); }
-    function afterTraces() { probeDeadTraces(afterSiege); }
+    function afterTraces() { probeDeadTraces(afterSiegeProbe); }
+    function afterSiegeProbe() { probeSiege(afterSiege); }
     function afterHouses() { probeForets(afterTraces); }
     function afterTours() { probeHouses(afterHouses); }
     function afterPlayer() { probeTours(afterTours); }

@@ -1625,6 +1625,11 @@ G.drawGround = function () {
           /^nonbloquant\/(champ|CHAMP|herbebotte|CIMETIERE)/.test(bld.decorSpriteName)) {
         depth -= 400000;
       }
+      // Panneaux solaires : le joueur ne passe que DEVANT la texture
+      // (même règle que les champs : toujours derrière le joueur).
+      if (bld.decorSpriteName === "nonbloquant/Panneaux solaires") {
+        depth -= 400000;
+      }
       drawables.push({ depth: depth, type: "building", ref: bld });
     }
     for (var wi = 0; wi < state.walls.length; wi++) {

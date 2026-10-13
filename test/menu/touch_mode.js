@@ -4,9 +4,9 @@
 // tir, pinch = zoom) et verifie :
 //   1. par defaut le mode mobile est OFF (controles absents/caches)
 //   2. le bouton active les controles (joystick repond au touch)
-//   3. le joystick traduit un touch gauche en deplacement (keys.space +
-//      direction souris monde coherente)
-//   4. un tap moitie droite arme actionHeld (tir) et pose la cible
+//   3. le joystick (base fixe bas-droite) traduit un touch DROITE en
+//      deplacement (keys.space + direction souris monde coherente)
+//   4. un tap moitie gauche arme actionHeld (tir) et pose la cible
 //   5. re-bascule : retour au mode souris+clavier intact
 var fs = require("fs"), path = require("path");
 var ROOT = path.join(__dirname, "..", "..");
@@ -131,7 +131,7 @@ Object.keys(elements).forEach(function (k) {
 check(!!touchRoot, "panneau tactile construit");
 check(touchRoot.hidden === false, "panneau tactile visible apres activation");
 
-// Simule un touchstart moitie gauche (joystick).
+// Simule un touchstart moitie droite (joystick, base bas-droite).
 function fire(type, touches, target) {
   documentListeners.forEach(function (l) {
     if (l.ev === type) {
@@ -146,16 +146,16 @@ function fire(type, touches, target) {
 }
 G.state.mouse = { sx: 0, sy: 0, wx: 0, wy: 0, inside: false };
 G.state.keys = {};
-var t1 = { identifier: 1, clientX: 100, clientY: 300 };
+var t1 = { identifier: 1, clientX: 700, clientY: 300 };
 fire("touchstart", [t1]);
 // Le simple poser du doigt ancre le joystick : le deplacement ne demarre
 // qu'au glisse (touchmove), comme un vrai stick.
-var t1a = { identifier: 1, clientX: 100, clientY: 260 };
+var t1a = { identifier: 1, clientX: 700, clientY: 260 };
 fire("touchmove", [t1a]);
-check(G.state.keys.space === true, "touch gauche + glisse : le joueur avance (keys.space)");
+check(G.state.keys.space === true, "touch droite + glisse : le joueur avance (keys.space)");
 // Direction : le stick pointe vers le haut (300 -> 200) : la cible monde
 // doit etre COHERENTE (nx=0, ny=-1 -> wx/wy convertis ecran->monde).
-var t1m = { identifier: 1, clientX: 100, clientY: 200 };
+var t1m = { identifier: 1, clientX: 700, clientY: 200 };
 fire("touchmove", [t1m]);
 var px = G.state.player.x, py = G.state.player.y;
 check(Math.abs(G.state.mouse.wx - px) > 50 || Math.abs(G.state.mouse.wy - py) > 50,
@@ -163,12 +163,12 @@ check(Math.abs(G.state.mouse.wx - px) > 50 || Math.abs(G.state.mouse.wy - py) > 
 fire("touchend", [{ identifier: 1 }], []);
 check(G.state.keys.space === false, "touchend : le joueur s'arrete");
 
-// 4. Tap moitie droite : tir arme + cible visee.
+// 4. Tap moitie gauche : tir arme + cible visee.
 G.unproj = G.unproj || function (sx, sy) { return [sx, sy]; };
-var t2 = { identifier: 2, clientX: 600, clientY: 150 };
+var t2 = { identifier: 2, clientX: 100, clientY: 150 };
 fire("touchstart", [t2]);
-check(G.state.actionHeld === true, "tap droite : action armee (tir/hache)");
-check(G.state.mouse.inside === true, "tap droite : souris (viser) activee");
+check(G.state.actionHeld === true, "tap gauche : action armee (tir/hache)");
+check(G.state.mouse.inside === true, "tap gauche : souris (viser) activee");
 fire("touchend", [{ identifier: 2 }], []);
 check(G.state.actionHeld === false, "relache : tir coupe");
 
@@ -192,6 +192,6 @@ check(G.state.keys.space === false && G.state.actionHeld === false,
   "desactivation : espace et actionHeld remis a zero");
 check(touchRoot.hidden === true, "panneau tactile cache apres desactivation");
 
-console.log(fails === 0 ? "OK: mode mobile (desactive par defaut, bouton, joystick, tir, pinch, desactivation)"
+console.log(fails === 0 ? "OK: mode mobile (desactive par defaut, bouton, joystick bas-droite, tir, pinch, desactivation)"
                        : "MODE MOBILE ECHEC (" + fails + ")");
 process.exit(fails === 0 ? 0 : 1);

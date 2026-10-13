@@ -3,9 +3,10 @@
 // bouton son) l'active/desactive. En mode souris+clavier, rien ne change.
 //
 // Layout (paysage) :
-//   - moitie GAUCHE de l'ecran : joystick flottant (la base apparait ou le
-//     pouce se pose) = deplacement, remplace Espace+souris.
-//   - moitie DROITE (hors boutons) : tap maintenu = viser + tirer vers ce
+//   - joystick FIXE en bas a droite (au-dessus de la barre d'actions) :
+//     toucher n'importe ou a droite de l'ecran le pilote (la base reste
+//     ancre bas-droite), remplace Espace+souris.
+//   - moitie GAUCHE (hors boutons) : tap maintenu = viser + tirer vers ce
 //     point ; en mode construction, tap = poser.
 //   - action bar bas-droite : hache (toggle), construire (menu/pause du
 //     mode planche), sac, rotation (visible en mode planche), zoom +/-.
@@ -26,7 +27,7 @@
   var root = null;       // conteneur des controls tactiles
   var stickBase = null;  // base du joystick (div)
   var stickKnob = null;  // pouce (div)
-  var actionFire = null; // zone de tir (moitie droite)
+  var actionFire = null; // zone de tir (moitie gauche)
   var btnAxe = null, btnBuild = null, btnBag = null, btnRotate = null;
   var btnZoomIn = null, btnZoomOut = null, btnGhost = null, btnPause = null;
   var ctxBar = null;     // boutons contextuels (entrer batiment / coffre...)
@@ -115,11 +116,14 @@
   function stickStart(id, x, y) {
     stick.active = true;
     stick.id = id;
-    stick.cx = x; stick.cy = y;
+    // Base FIXE en bas a droite (au-dessus de la barre d'actions) : le
+    // joystick n'apparait plus sous le pouce ni en haut a gauche.
+    stick.cx = window.innerWidth - STICK_RADIUS - 24;
+    stick.cy = window.innerHeight - STICK_RADIUS - 110;
     stick.dx = 0; stick.dy = 0;
     stickBase.hidden = false;
-    stickBase.style.left = (x - STICK_RADIUS) + "px";
-    stickBase.style.top = (y - STICK_RADIUS) + "px";
+    stickBase.style.left = (stick.cx - STICK_RADIUS) + "px";
+    stickBase.style.top = (stick.cy - STICK_RADIUS) + "px";
     stickKnob.style.transform = "translate(0px, 0px)";
   }
   function stickMove(x, y) {
@@ -155,7 +159,7 @@
     stickBase.hidden = true;
   }
 
-  // --- Zone de tir (moitie droite) ---------------------------------------
+  // --- Zone de tir (moitie gauche) --------------------------------------
   function fireStart(id, x, y) {
     var s = G.state;
     fireTouch.active = true;
@@ -220,7 +224,7 @@
     stickBase.appendChild(stickKnob);
     root.appendChild(stickBase);
 
-    // Zone de tir : moitie droite, sous les boutons.
+    // Zone de tir : moitie gauche (le joystick vit a droite).
     actionFire = document.createElement("div");
     actionFire.className = "touch-fire";
     actionFire.style.display = "none";
@@ -326,13 +330,13 @@
         if (t.target && t.target.closest && t.target.closest(".touch-ui .touch-btn, .chat, .hud, .sound-btn")) continue;
         if (t.target && t.target.closest && t.target.closest(".touch-ui .touch-stick")) continue;
         if (t.clientX < window.innerWidth / 2) {
-          // Moitie gauche : joystick.
-          if (!stick.active) {
-            stickStart(t.identifier, t.clientX, t.clientY);
+          // Moitie gauche : tir (le joystick vit en bas a droite).
+          if (!fireTouch.active && !pinch.active) {
+            fireStart(t.identifier, t.clientX, t.clientY);
             e.preventDefault();
           }
         } else {
-          // Moitie droite : tir. Deux doigts = pinch (zoom).
+          // Moitie droite : joystick. Deux doigts = pinch (zoom).
           var rightTouches = [];
           for (var j = 0; j < e.touches.length; j++) {
             if (e.touches[j].clientX >= window.innerWidth / 2) rightTouches.push(e.touches[j]);
@@ -341,8 +345,8 @@
             fireEnd();
             pinch.active = true;
             pinch.dist = pinchDist(rightTouches[0], rightTouches[1]);
-          } else if (!fireTouch.active && !pinch.active) {
-            fireStart(t.identifier, t.clientX, t.clientY);
+          } else if (!stick.active) {
+            stickStart(t.identifier, t.clientX, t.clientY);
           }
           e.preventDefault();
         }
