@@ -236,7 +236,8 @@
     ctx.textAlign = "center";
     var by = Math.min(A[1], B[1]);
     ctx.fillText(label + (ok ? "" : " (emplacement ou ressources invalides)") +
-      " · Z = menu · Clic droit = annuler", (A[0] + C[0]) / 2, by - 8);
+      " · Z = menu · Clic droit = annuler" +
+      (G.keyboardEnabled && G.keyboardEnabled() ? " · R = rotation" : ""), (A[0] + C[0]) / 2, by - 8);
     ctx.restore();
   };
 

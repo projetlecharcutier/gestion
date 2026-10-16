@@ -47,6 +47,7 @@ Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fo
 | 22 | `src/sound.js` | Sons (mp3 dans `assets/sounds/`, repli silencieux) | `playSound` |
 | 21b | `src/chat.js` | Chat multijoueur : bande étroite superposée à droite (240px/18vw), Entrée ouvre le champ, Entrée envoie, Échap annule ; saisie isolée des touches du jeu (`state.chatTyping`) ; serveur diffuse à tous (troncature 120, anti-flood 500 ms, test `loopback/chat.js`) | `chatInit`, `chatSetVisible`, `addChatMessage` |
 | 22b | `src/admin.js` | Panneau admin (login mot de passe, status, logs, restart + mise à jour git main) | `adminFetch`, bindings DOM |
+| 22c | `src/keyboard.js` | Mode clavier ZQSD optionnel (bouton « Clavier » à côté de « Mobile », désactivé par défaut) : déplacement direct ZQSD/flèches, Espace = tir, B = mode planche, R = rotation, les touches pilotent la pose en mode build, aide des commandes mise à jour | `keyboardEnabled`, `setKeyboardMode`, `toggleKeyboardMode`, `keyboardUpdate` |
 | 23 | `src/main.js` | Logique par frame `update(dt)` + `loop()` | `update`, `loop` |
 
 ## État global : `G.state`

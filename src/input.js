@@ -278,6 +278,9 @@
         return;
       }
       // Espace = avancer (vers la souris), y compris en mode build.
+      // En mode clavier ZQSD, Espace est le TIR : le deplacement est porte
+      // par les touches ZQSD (src/keyboard.js gere actionHeld).
+      if (G.keyboardEnabled && G.keyboardEnabled()) return;
       state.keys.space = true;
     }
     if (e.code === "Escape") {
@@ -302,9 +305,33 @@
       if (state.started && state.buildMode) { state.buildMode = false; state.buildSel = null; return; }
       if (state.started) G.togglePause();
     }
+    // R : rotation de la planche en mode pose (equivalent clavier de la
+    // molette, utile en mode clavier ZQSD ou au trackpad).
+    if (e.code === "KeyR") {
+      if (state.started && state.buildMode && !state.paused && !state.inBuilding && !state.gameOver) {
+        G.rotatePlank();
+        if (G.netConnected && G.netConnected()) G.netInput({ rotate: state.plankRotation });
+      }
+    }
+    // B : menu de construction quand le mode clavier ZQSD est actif (Z y
+    // sert a MONTER, il ne peut plus basculer le mode planche).
+    if (e.code === "KeyB" && G.keyboardEnabled && G.keyboardEnabled()) {
+      if (state.started && !state.paused && !state.inBuilding && !state.bag.open && !state.gameOver) {
+        if (state.buildSel && state.buildMode) {
+          state.buildMode = false;
+        } else if (state.buildSel) {
+          state.buildMode = true;
+        } else {
+          G.openBuildMenu();
+        }
+      }
+      return;
+    }
     // Z : ouvre le menu de construction (liste des bâtiments). Si un
     // bâtiment est déjà sélectionné, Z bascule simplement le mode pose.
+    // Ignoré en mode clavier ZQSD : Z y sert à MONTER.
     if (e.code === "KeyZ" || e.key === "z" || e.key === "Z" || e.key === "w" || e.key === "W") {
+      if (G.keyboardEnabled && G.keyboardEnabled()) return;
       if (state.started && !state.paused && !state.inBuilding && !state.bag.open && !state.gameOver) {
         if (state.buildSel && state.buildMode) {
           state.buildMode = false;

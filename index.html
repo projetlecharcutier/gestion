@@ -29,7 +29,7 @@
       <span>Arme : <b id="hudWeapon">Mains nues</b></span>
       <span>Hache : <b id="hudAxe">non</b></span>
     </div>
-    <div class="hud__hint-block">
+    <div class="hud__hint-block" id="hudHintBlock">
       <div class="hud__hint-line">Espace = avancer · Clic gauche = action (tir / hache)</div>
       <div class="hud__hint-line">Clic droit = sac (annule le mode planche) · Z = Mode planche</div>
       <div class="hud__hint-line">Molette = rotation (mode planche) / zoom · Mairie = coffre · Échap = pause</div>
@@ -55,6 +55,7 @@
   <button class="sound-btn" id="soundBtn" type="button" title="Activer/couper le son">Son : OFF</button>
   <button class="sound-btn" id="sfxBtn" type="button" title="Activer/couper les effets sonores">Effets : ON</button>
   <button class="sound-btn" id="touchModeBtn" type="button" title="Activer les contrôles tactiles (mobile/tablette)">📱 Mobile : OFF</button>
+  <button class="sound-btn" id="keyboardModeBtn" type="button" title="Activer les déplacements clavier ZQSD (Espace = tir / poser)">⌨️ Clavier : OFF</button>
 
   <!-- Lecteurs SoundCloud invisibles (jour / nuit) -->
   <iframe class="sc-hidden" id="scDay"
@@ -331,6 +332,7 @@
   <script src="src/chat.js"></script>
   <script src="src/render.js"></script>
   <script src="src/input.js"></script>
+  <script src="src/keyboard.js"></script>
   <script src="src/touch.js"></script>
   <script src="src/sound.js"></script>
   <script src="src/admin.js"></script>

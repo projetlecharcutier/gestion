@@ -23,6 +23,7 @@ Ouvrez `index.html` dans un navigateur récent (Chrome, Firefox, Edge, Safari).
 - Vous apparaissez au centre d'une carte de **10 000 × 10 000 px**.
 - Au centre se trouve une **ville de 1 000 × 1 000 px** (bâtiments plus petits).
 - **Déplacement** : le personnage suit la souris, mais s'arrête quand la souris est sur lui (hover).
+- **Mode clavier ZQSD (optionnel, bouton « ⌨️ Clavier » en haut à droite)** : **ZQSD/flèches** = déplacement direct (immobile si aucune touche), **Espace** = tir vers la souris, **B** = mode planche, **R** = rotation de la planche ; en mode construction les touches de déplacement pilotent aussi l'emplacement de pose et Espace pose. L'aide des commandes (HUD haut gauche) se met à jour. Utile au trackpad.
 - **Tir** : appuyez sur **Espace** (le tir va vers la souris). Désactivé en mode pose de planche.
 - **Sac** : appuyez sur **A** pour ouvrir/fermer le sac. Les **objets, outils et armes** ramassés au sol y sont rangés.
 - **Rappel des touches (HUD haut gauche)** : `A : Ouvrir le sac`, `Z : Poser une planche / Entrer en mode pose de planche`.
