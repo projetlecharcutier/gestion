@@ -311,6 +311,8 @@
       axeEquipped: false,
       bag: { contents: [] },
       shootCd: 0,
+      // Teleport explicite (spawn) : envoye une fois au client concerne.
+      _teleported: true,
       planks: 0,
       inventory: 0,
       gold: 0,
@@ -375,6 +377,9 @@
       var p = state.players[i];
       var spawn = findSpawn(placed);
       p.x = spawn.x; p.y = spawn.y;
+      // Teleport explicite : le client repositionne exactement (pas de lerp
+      // -- sinon l'elastique percu comme rollback a chaque snapshot).
+      p._teleported = true;
       placed.push(p);
       p.hp = G.PLAYER_MAX_HP; p.alive = true;
       p.equipped = null; p.axeEquipped = false;
@@ -811,6 +816,7 @@
     for (var i = 0; i < state.players.length; i++) {
       var p = state.players[i];
       if (!p.alive) continue;
+      var pxBefore = p.x, pyBefore = p.y;
       if (p._dx !== undefined && p._dy !== undefined) {
         var dx = p._dx, dy = p._dy;
         var dist = Math.sqrt(dx * dx + dy * dy);
@@ -886,6 +892,9 @@
         if (p.shootCd > 0) pushEvent(null, { t: "shoot", x: Math.round(p.x), y: Math.round(p.y) });
       }
       if (p.shootCd > 0) p.shootCd -= dt;
+      // Vitesse effective pour le snapshot (extrapolation client).
+      p._pvx = (p.x - pxBefore) / dt;
+      p._pvy = (p.y - pyBefore) / dt;
       // Pose de planche.
       if (p._buildWall) {
         var nWallsBefore = state.walls.length;
@@ -1187,6 +1196,12 @@
       players: state.players.map(function (p) {
         return {
           id: p.id, name: p.name, x: Math.round(p.x), y: Math.round(p.y),
+          // Vitesse effective (px/s, mesuree au tick precedent) : le client
+          // EXTRAPOLE la position entre snapshots et, surtout, pour la
+          // cible de correction du joueur local -- sinon, sous latence,
+          // l'ecart structurel serveur-en-retard etait corrige a tort
+          // (rollbacks / rubber-banding).
+          vx: +((p._pvx || 0)).toFixed(0), vy: +((p._pvy || 0)).toFixed(0),
           hp: p.hp, alive: p.alive, face: p.face, moving: p.moving,
           equipped: p.equipped, axeEquipped: p.axeEquipped,
           lastDx: p.lastDx || 0, lastDy: p.lastDy || 0,
@@ -1208,9 +1223,15 @@
           stats: p.stats ? {
             gold: p.stats.gold, planks: p.stats.planks,
             built: p.stats.built, kills: p.stats.kills, shots: p.stats.shots
-          } : undefined
+          } : undefined,
+          // Teleport explicite (spawn, restart) pour LE joueur concerne :
+          // le client snappe exactement au lieu de deviner par la distance
+          // (l'heuristique confondait teleport reel et derive de latence).
+          tp: (p.id === forPlayerId && p._teleported) ? 1 : undefined
         };
       }),
+      // Le flag est consomme au premier snapshot envoye au joueur concerne.
+      teleported: me ? !!me._teleported : false,
       // Zombies en format compact [x, y, hp, lunge, ldx, ldy, leader, vx, vy] :
       // a 3000+ zombies la nuit, le format objet domine la bande passante
       // (200 Ko/s -> ~60 Ko/s a 10 Hz). vx/vy = velocite effective (px/s)
@@ -1340,6 +1361,9 @@
     };
     lastWallsRevSent[forPlayerId] = wallsRev;
     lastItemsRevSent[forPlayerId] = itemsRev;
+    // Le flag teleport est consomme au premier snapshot ENVOYE au joueur
+    // concerne (snapshot personnalise) : le prochain snapshot ne le porte plus.
+    if (me) me._teleported = false;
     return snapObj;
   }
 

@@ -201,33 +201,6 @@
   // (equip, build, placeBuild...) passent toujours immediatement.
   var lastMoveSentAt = 0;
   var moveSendInterval = 1000 / 20; // 20 Hz, aligne sur TICK_HZ serveur
-  // Correction de position serveur -> client, COLLISION-AWARE : le lerp brut
-  // traversait les obstacles (bâtiments, villes, murs) : sous latence, la
-  // trajectoire serveur diverge de la prédiction locale autour d'un coin,
-  // le lerp tirait le joueur PAR-DESSUS l'obstacle puis la prédiction locale
-  // le re-bloquait au frame suivant -> effet élastique visible (rollback).
-  // On avance donc la correction avec les MÊmes collisions que tryMove : le
-  // joueur glisse le long de l'obstacle au lieu de le traverser, et reste
-  // bloqué si le serveur est derrière un mur que la prédiction a déjà
-  // contourné. Téléport (respawn, rejoin, monde régénéré) : snap direct.
-  G.netCorrectPos = function (tx, ty) {
-    var p = G.state.player;
-    var dx = tx - p.x, dy = ty - p.y;
-    var dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist <= 0.0001) return;
-    if (dist > (G.NET_SNAP_FULL_PX || 60)) {
-      p.x = tx;
-      p.y = ty;
-      return;
-    }
-    if (dist <= G.NET_SNAP_PX) return;
-    var t = G.NET_SNAP_LERP || 0.25;
-    var mx = p.x + dx * t, my = p.y + dy * t;
-    // Axe par axe (même esprit que _stepMove) : le glissement garde un
-    // mouvement naturel le long des murs et évite le blocage total.
-    if (!G.posBlocked(mx, p.y)) p.x = mx;
-    if (!G.posBlocked(p.x, my)) p.y = my;
-  };
 
   G.netInput = function (input) {
     var nowMs = (typeof performance !== "undefined" ? performance.now() : Date.now());
@@ -236,6 +209,8 @@
       input.toggleAxe === undefined;
     if (isMoveOnly && nowMs - lastMoveSentAt < moveSendInterval) return;
     if (isMoveOnly) lastMoveSentAt = nowMs;
+    // Mesure RTT pour la zone morte de correction (auto-limite par ping).
+    if (connected) pumpPing();
     // Marque le debut de la fenetre de reconciliation pour equip/toggleAxe.
     if (input.equip !== undefined) {
       equipSentAt = (typeof performance !== "undefined" ? performance.now() : Date.now());
@@ -247,6 +222,81 @@
     }
     input.type = "input";
     G.netSend(input);
+  };
+    // Mesure du RTT (aller-retour reseau) : ping HTTP-like sur la WS, toutes les
+  // NET_PING_MS. Le RTT alimente la zone morte de netCorrectPos : sous
+  // latence, l'ecart POSITION SERVEUR vs PREDICTION LOCALE est attendu (le
+  // serveur parle du passe) et ne doit PAS etre corrige -- c'est la cause
+  // premiere des rollbacks (rubber-banding) remontes par les joueurs.
+  // EMA (moyenne exponentielle, alpha 0.3) : robuste aux variations de charge
+  // sans tableau de samples. La valeur exposee G.netRtt est en SECONDES.
+  var rttEmaSec = null;
+  var lastPingSentAt = 0;
+  function pumpPing() {
+    var now = (typeof performance !== "undefined" ? performance.now() : Date.now());
+    var interval = G.NET_PING_MS || 1000;
+    if (now - lastPingSentAt < interval) return;
+    lastPingSentAt = now;
+    G.netSend({ type: "ping", t: now });
+  }
+  G.netRtt = function () { return rttEmaSec || 0; };
+  // Cible de la correction temps-reel : position serveur du DERNIER snapshot
+  // extrapolee par sa vitesse (vx/vy serveur) jusqu'a maintenant. Extrapoler
+  // supprime l'ecart STRUCTUREL du a la latence (le serveur decrit la
+  // position d'il y a RTT/2 + 1 tick) : seule la VRAIE divergence (collision
+  // manquee, mur pose par un tiers) reste a corriger.
+  var corrTarget = null; // { x, y, sentAt }
+  var corrVel = { x: 0, y: 0 };
+  var corrStaleAt = 0;
+  G.netSetCorrection = function (sx, sy, vx, vy) {
+    var now = (typeof performance !== "undefined" ? performance.now() : Date.now());
+    corrTarget = { x: sx, y: sy, sentAt: now };
+    // Vitesses en px/s, cap au SPEED du jeu : un serveur maleve ou un glitch
+    // ne doit pas faire diverger l'extrapolation vers l'infini.
+    var vmax = G.SPEED || 260;
+    var vlen = Math.sqrt((vx || 0) * (vx || 0) + (vy || 0) * (vy || 0));
+    if (vlen > vmax) { vx = (vx || 0) * vmax / vlen; vy = (vy || 0) * vmax / vlen; }
+    corrVel.x = vx || 0; corrVel.y = vy || 0;
+    corrStaleAt = now + (G.NET_STALE_MS || 100);
+  };
+  // Avance la correction a chaque frame (appele depuis main.js) : lissage
+  // exponentiel (1 - exp(-dt/tau)) vers la cible extrapolee, COLLISION-AWARE
+  // (glissement le long des obstacles, axe par axe, meme esprit que
+  // _stepMove). Zone morte ADAPTATIVE : NET_SNAP_PX + distance parcourue
+  // pendant le RTT -- c'est l'ecart EXPECTE sous latence, la prediction
+  // locale doit gagner (fluidite client). Divergence reel seulement au-dela.
+  // Gros ecart (> FULL_PX + zone morte) : snap, c'est un vrai desync.
+  G.netCorrectionAdvance = function (dt) {
+    var p = G.state.player;
+    var now = (typeof performance !== "undefined" ? performance.now() : Date.now());
+    if (!corrTarget || now > corrStaleAt) return;
+    var age = (now - corrTarget.sentAt) / 1000;
+    if (age < 0) age = 0;
+    var tx = corrTarget.x + corrVel.x * age;
+    var ty = corrTarget.y + corrVel.y * age;
+    var dx = tx - p.x, dy = ty - p.y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    var rtt = Math.min(G.netRtt() || 0, G.NET_RTT_CAP || 0.5);
+    // Ecart attendu sous latence : le serveur decrit la position d'il y a
+    // RTT/2 (+ une demi-periode de snapshot pour le jitter d'envoi). La
+    // cible est deja EXTRAPOLEE par la vitesse, ce terme couvre la derive
+    // residuelle (changement de direction entre snapshot et extrapole).
+    var slack = (G.NET_SNAP_PX || 30) + (G.SPEED || 260) * (rtt / 2 + 0.05);
+    if (dist <= slack) return;
+    var t = 1 - Math.exp(-dt / (G.NET_SNAP_TAU || 0.12));
+    if (dist > (G.NET_SNAP_FULL_PX || 60) + slack) t = 1;
+    var mx = p.x + dx * t, my = p.y + dy * t;
+    if (!G.posBlocked(mx, p.y)) p.x = mx;
+    if (!G.posBlocked(p.x, my)) p.y = my;
+  };
+  // Snap exact demande par le serveur (flag tp du snapshot : spawn, restart,
+  // respawn) : la distance n'est plus une heuristique de teleport (sous
+  // latence, la derive atteignait NET_SNAP_FULL_PX et declenchait un snap
+  // errone -> gros rollback visible).
+  G.netTeleport = function (tx, ty) {
+    var p = G.state.player;
+    p.x = tx; p.y = ty;
+    corrTarget = null;
   };
 
   // Gère les messages reçus du serveur.
@@ -385,6 +435,13 @@
         G.state.started = true;
         G.state.gameOver = false;
       }
+    } else if (msg.type === "pong") {
+      // Reponse du ping : RTT = maintenant - horodatage de l'aller. EMA
+      // (alpha 0.3) pour lisser la gigue ; G.netRtt() (secondes) alimente la
+      // zone morte de netCorrectionAdvance.
+      var nowP = (typeof performance !== "undefined" ? performance.now() : Date.now());
+      var rtt = Math.max(0, (nowP - (msg.t || nowP))) / 1000;
+      rttEmaSec = (rttEmaSec === null) ? rtt : (rttEmaSec * 0.7 + rtt * 0.3);
     } else if (msg.type === "state") {
       G.remoteState = msg;
       G.applyRemoteState(msg);
@@ -816,14 +873,20 @@
           // Mort du joueur local (serveur autoritaire) : affiche l'ecran de
           // fin individuel sans arreter la partie des autres survivants.
           if (p.alive === false) meDead = true;
-          // Prédiction client : le déplacement est simulé localement chaque
-          // frame (main.js). On ne réaligne que si l'écart avec le serveur
-          // dépasse NET_SNAP_PX (collision, téléport, dérive) : petit lerp
-          // doux, invisible en jeu normal. Au-delà de NET_SNAP_FULL_PX
-          // (téléport, monde régénéré), repositionnement exact : un lerp
-          // seul ne résorbe jamais l'écart et le re-déclenche à chaque
-          // snapshot (élastique permanent).
-          G.netCorrectPos(p.x, p.y);
+          // Prediction client : le deplacement est simule localement chaque
+          // frame (main.js). Ici on ne TOUCHE PAS a la position : on pose la
+          // cible de correction (position + vitesse serveur). La correction
+          // elle-meme avance chaque frame (netCorrectionAdvance, appele par
+          // main.js) avec une zone morte adaptative au RTT : sous latence,
+          // l'ecart attendu (le serveur decrit le passe) ne declenche AUCUN
+          // rattrapage -- c'est ce qui supprime les rollbacks.
+          // Teleport explicite (spawn, restart : flag tp du snapshot) : snap
+          // direct, la distance n'est plus une heuristique fiable.
+          if (p.tp) {
+            G.netTeleport(p.x, p.y);
+          } else {
+            G.netSetCorrection(p.x, p.y, p.vx || 0, p.vy || 0);
+          }
           state.player.hp = p.hp;
           state.player.face = p.face;
           state.player.moving = p.moving;

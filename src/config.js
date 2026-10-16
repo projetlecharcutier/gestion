@@ -30,6 +30,21 @@
   // Delai serveur avant de lancer la partie apres l'arrivee du 1er joueur (s).
   G.START_DELAY = 3;
   G.NET_SNAP_LERP = 0.25;
+  // Correction de position temps-reel : constante de lissage exponentiel (s).
+  // La correction vers la cible extrapolee avance a CHAQUE FRAME avec le dt
+  // reel (1 - exp(-dt/tau)) au lieu d'un facteur fixe par snapshot 10 Hz :
+  // douceur independante de la frequence de snapshot et de la latence.
+  G.NET_SNAP_TAU = 0.12;
+  // RTT max pris en compte dans la zone morte de correction (s). Au-dela
+  // (connexion tres degradee), la zone morte est plafonnee pour ne jamais
+  // laisser un tricheur s'eloigner indefiniment du serveur.
+  G.NET_RTT_CAP = 0.5;
+  // Delai d'une interpolation de secours si le serveur n'envoie pas vx/vy
+  // (compatibilite anciens serveurs) : une periode de snapshot 10 Hz.
+  G.NET_STALE_MS = 1000 / 10;
+  // Pings de mesure RTT : toutes les NET_PING_MS, la reponse pond fait
+  // l'EMA du RTT (exponentielle, pas de tableau de samples : O(1)).
+  G.NET_PING_MS = 1000;
   // Capacite de la partie serveur (affichage du compteur de joueurs du HUD).
   G.MAX_PLAYERS = 20;
   G.FOG_RADIUS = 200;

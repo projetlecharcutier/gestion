@@ -54,6 +54,12 @@
     // pour un rendu fluide. applyRemoteState (net.js) ne réaligne la position
     // qu'en cas d'écart réel avec le serveur (seuil NET_SNAP_PX).
     var online = sendNetInput(dt);
+    // Correction de position temps-reel (multi) : avance a CHAQUE FRAME vers
+    // la cible extrapolee (position + vitesse serveur du dernier snapshot)
+    // avec une zone morte adaptative au RTT. Sous latence, la prediction
+    // locale gagne (fluidite) ; seules les vraies divergences sont rattrapees
+    // en douceur (netCorrectionAdvance dans net.js).
+    if (online && G.netCorrectionAdvance) G.netCorrectionAdvance(dt);
 
     if (!online) {
       if (!state.paused && !state.gameOver) {

@@ -663,6 +663,16 @@
       if (msg.type === "input") {
         game.applyInput(id, msg);
       }
+      // Mesure de latence client/serveur : le ping est un echo serveur, le
+      // RTT est mesure COTE CLIENT (performance.now) -- pas d'horloge commune
+      // a trust. Le RTT alimente la zone morte de la correction de position
+      // (netCorrectPos) : sous latence, l'ecart attendu entre prediction
+      // locale et position serveur grandit avec le RTT et ne doit PAS etre
+      // corrige (c'etait la cause des rollbacks).
+      if (msg.type === "ping") {
+        var pong = JSON.stringify({ type: "pong", t: msg.t });
+        try { ws.send(pong); } catch (e) {}
+      }
       // Chat : message court diffuse a tous les joueurs connectes.
       // Validation serveur : texte tronque, vide rejete, rythme limite.
       if (msg.type === "chat") {
