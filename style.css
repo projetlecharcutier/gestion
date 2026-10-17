@@ -373,6 +373,7 @@ canvas#game {
 }
 .chat__line { margin: 1px 0; }
 .chat__line b { margin-right: 4px; color: #93c5fd; }
+.chat__time { margin-right: 4px; color: #6b7280; font-size: 0.85em; }
 .chat__input {
   margin-top: 4px;
   width: 100%;

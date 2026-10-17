@@ -51,9 +51,10 @@
   // Diffuse un message de chat et l'enregistre dans l'historique
   // persistant : le contenu survit aux redemarrages et aux mises a jour.
   function chatBroadcast(from, text) {
-    var msg = { type: "chat", from: from, text: text };
-    broadcast(msg);
-    chatStore.push(from, text);
+    // L'horodatage (at) vient du chat-store : diffuse ET persiste la
+    // meme valeur, celle-ci survit aux redemarrages (fichier JSONL).
+    var stored = chatStore.push(from, text);
+    broadcast({ type: "chat", from: from, text: text, at: stored.at });
   }
 
   // Faits marquants : deces d'un joueur annonce dans le chat avec les

@@ -49,10 +49,24 @@
     }
   }
 
-  function addChatMessage(from, text) {
+  // Horodatage affiche : jour + heure (JJ/MM HH:MM, heure locale).
+  function chatTimeStamp(at) {
+    var d = new Date(at);
+    function p2(n) { return (n < 10 ? "0" : "") + n; }
+    return p2(d.getDate()) + "/" + p2(d.getMonth() + 1) +
+      " " + p2(d.getHours()) + ":" + p2(d.getMinutes());
+  }
+
+  function addChatMessage(from, text, at) {
     if (!logEl) return;
     var line = document.createElement("div");
     line.className = "chat__line";
+    if (at) {
+      var time = document.createElement("time");
+      time.className = "chat__time";
+      time.textContent = chatTimeStamp(at);
+      line.appendChild(time);
+    }
     var name = document.createElement("b");
     name.textContent = String(from || "?").slice(0, 20);
     var txt = document.createElement("span");
@@ -209,7 +223,7 @@
     while (logEl.firstChild) logEl.removeChild(logEl.firstChild);
     for (var i = 0; i < messages.length; i++) {
       var m = messages[i];
-      addChatMessage(m.from, m.text);
+      addChatMessage(m.from, m.text, m.at);
     }
   };
 

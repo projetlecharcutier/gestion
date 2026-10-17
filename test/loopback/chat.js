@@ -68,6 +68,8 @@ setTimeout(function () {
                     "message 1 mal valide : " + JSON.stringify(receivedA[2]));
               check(receivedA[3] && receivedA[3].text.length === 50,
                     "troncature 50 attendue, recue " + (receivedA[3] ? receivedA[3].text.length : "?"));
+              check(typeof receivedA[2].at === "number" && receivedA[2].at > 0,
+                    "horodatage (at) attendu sur le message diffuse, recu " + JSON.stringify(receivedA[2]));
               // wsC n'a recu AUCUN message chat (pas de pseudo -> refuse).
               check(historyC.length === 0 || true, ""); // historique vide au depart
               // Redemarre le serveur : l'historique doit survivre.
@@ -96,8 +98,10 @@ setTimeout(function () {
                           return m2.from === "Alice" && m2.text === "bonjour le monde";
                         });
                         check(hasMine, "le message d'Alice a survecu au redemarrage : " + JSON.stringify(gotHistory));
+                        var hasTime = gotHistory.every(function (m2) { return typeof m2.at === "number" && m2.at > 0; });
+                        check(hasTime, "historique horodate (at present sur chaque message) : " + JSON.stringify(gotHistory));
                       }
-                      console.log(ok ? "OK: chat bienvenue + broadcast + troncature 50 + anti-flood + persistance historique"
+                      console.log(ok ? "OK: chat bienvenue + broadcast + troncature 50 + anti-flood + horodatage + persistance historique"
                                      : "CHAT ECHEC");
                       try { srv2.kill(); } catch (e) {}
                       cleanup(ok ? 0 : 1);

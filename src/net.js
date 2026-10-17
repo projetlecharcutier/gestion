@@ -498,7 +498,7 @@
       var lobbyEl2 = document.getElementById("lobbyInfo");
       if (lobbyEl2) lobbyEl2.hidden = true;
     } else if (msg.type === "chat") {
-      if (G.addChatMessage) G.addChatMessage(msg.from, msg.text);
+      if (G.addChatMessage) G.addChatMessage(msg.from, msg.text, msg.at);
     } else if (msg.type === "chatHistory") {
       // Historique persistant : les 30 derniers messages du serveur,
       // charges au demarrage (le contenu survit aux mises a jour).
