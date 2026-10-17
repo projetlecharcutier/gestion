@@ -2,11 +2,11 @@
 // DESACTIVE PAR DEFAUT : un bouton "Mobile" en haut a droite (a cote du
 // bouton son) l'active/desactive. En mode souris+clavier, rien ne change.
 //
-// Layout (paysage) :
-//   - joystick FIXE en bas a droite (au-dessus de la barre d'actions) :
-//     toucher n'importe ou a droite de l'ecran le pilote (la base reste
-//     ancre bas-droite), remplace Espace+souris.
-//   - moitie GAUCHE (hors boutons) : tap maintenu = viser + tirer vers ce
+// Layout (paysage OU portrait) :
+//   - joystick FIXE en bas a GAUCHE : toucher n'importe ou a gauche de
+//     l'ecran le pilote (la base reste ancre bas-gauche), remplace
+//     Espace+souris pour le deplacement.
+//   - moitie DROITE (hors boutons) : tap maintenu = viser + tirer vers ce
 //     point ; en mode construction, tap = poser.
 //   - action bar bas-droite : hache (toggle), construire (menu/pause du
 //     mode planche), sac, rotation (visible en mode planche), zoom +/-.
@@ -116,10 +116,10 @@
   function stickStart(id, x, y) {
     stick.active = true;
     stick.id = id;
-    // Base FIXE en bas a droite (au-dessus de la barre d'actions) : le
-    // joystick n'apparait plus sous le pouce ni en haut a gauche.
-    stick.cx = window.innerWidth - STICK_RADIUS - 24;
-    stick.cy = window.innerHeight - STICK_RADIUS - 110;
+    // Base FIXE en bas a GAUCHE : pouce gauche = deplacement, cote droit
+    // = viser/tirer (moitie droite de l'ecran).
+    stick.cx = STICK_RADIUS + 24;
+    stick.cy = window.innerHeight - STICK_RADIUS - 24;
     stick.dx = 0; stick.dy = 0;
     stickBase.hidden = false;
     stickBase.style.left = (stick.cx - STICK_RADIUS) + "px";
@@ -224,7 +224,7 @@
     stickBase.appendChild(stickKnob);
     root.appendChild(stickBase);
 
-    // Zone de tir : moitie gauche (le joystick vit a droite).
+    // Zone de tir : moitie DROITE (le joystick vit a gauche).
     actionFire = document.createElement("div");
     actionFire.className = "touch-fire";
     actionFire.style.display = "none";
@@ -329,22 +329,22 @@
         // Bouton DOM sous le doigt : il gere son propre click.
         if (t.target && t.target.closest && t.target.closest(".touch-ui .touch-btn, .chat, .hud, .sound-btn")) continue;
         if (t.target && t.target.closest && t.target.closest(".touch-ui .touch-stick")) continue;
-        if (t.clientX < window.innerWidth / 2) {
-          // Moitie gauche : tir (le joystick vit en bas a droite).
+        if (t.clientX >= window.innerWidth / 2) {
+          // Moitie droite : tir (le joystick vit en bas a gauche).
           if (!fireTouch.active && !pinch.active) {
             fireStart(t.identifier, t.clientX, t.clientY);
             e.preventDefault();
           }
         } else {
-          // Moitie droite : joystick. Deux doigts = pinch (zoom).
-          var rightTouches = [];
+          // Moitie gauche : joystick. Deux doigts = pinch (zoom).
+          var leftTouches = [];
           for (var j = 0; j < e.touches.length; j++) {
-            if (e.touches[j].clientX >= window.innerWidth / 2) rightTouches.push(e.touches[j]);
+            if (e.touches[j].clientX < window.innerWidth / 2) leftTouches.push(e.touches[j]);
           }
-          if (rightTouches.length >= 2) {
+          if (leftTouches.length >= 2) {
             fireEnd();
             pinch.active = true;
-            pinch.dist = pinchDist(rightTouches[0], rightTouches[1]);
+            pinch.dist = pinchDist(leftTouches[0], leftTouches[1]);
           } else if (!stick.active) {
             stickStart(t.identifier, t.clientX, t.clientY);
           }
@@ -366,12 +366,12 @@
         }
       }
       if (pinch.active) {
-        var rightTouches = [];
+        var leftTouches = [];
         for (var j = 0; j < e.touches.length; j++) {
-          if (e.touches[j].clientX >= window.innerWidth / 2) rightTouches.push(e.touches[j]);
+          if (e.touches[j].clientX < window.innerWidth / 2) leftTouches.push(e.touches[j]);
         }
-        if (rightTouches.length >= 2) {
-          var d = pinchDist(rightTouches[0], rightTouches[1]);
+        if (leftTouches.length >= 2) {
+          var d = pinchDist(leftTouches[0], leftTouches[1]);
           if (pinch.dist > 0) zoomBy(d / pinch.dist);
           pinch.dist = d;
           e.preventDefault();
@@ -386,11 +386,11 @@
         if (fireTouch.active && t.identifier === fireTouch.id) fireEnd();
       }
       if (pinch.active) {
-        var right = 0;
+        var left = 0;
         for (var j = 0; j < e.touches.length; j++) {
-          if (e.touches[j].clientX >= window.innerWidth / 2) right++;
+          if (e.touches[j].clientX < window.innerWidth / 2) left++;
         }
-        if (right < 2) pinch.active = false;
+        if (left < 2) pinch.active = false;
       }
     }
     document.addEventListener("touchend", endTouch);
@@ -401,6 +401,9 @@
   G.touchEnabled = function () { return enabled; };
   G.setTouchMode = function (on) {
     enabled = !!on;
+    // Trois modes de controle exclusifs : activer le mobile coupe le
+    // mode clavier (et vice-versa dans keyboard.js).
+    if (enabled && G.keyboardEnabled && G.keyboardEnabled()) G.setKeyboardMode(false);
     build();
     if (!enabled) {
       stickEnd();

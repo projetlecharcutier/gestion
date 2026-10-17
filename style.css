@@ -339,6 +339,29 @@ canvas#game {
 }
 .playerlist__names li.is-dead { color: #f87171; }
 .playerlist__names li.is-me { font-weight: 700; }
+/* Responsive : petits ecrans / mobile -- le chat devient une bande
+   discrete en haut a droite (il ne recouvre plus les controles
+   tactiles ni la minimap), la liste des joueurs se serre. */
+@media (max-width: 700px) {
+  .chat {
+    top: 88px;
+    bottom: auto;
+    right: 8px;
+    width: 46vw;
+    max-width: 46vw;
+    font-size: 0.72rem;
+    padding: 4px 6px;
+  }
+  .chat__log { max-height: 14vh; }
+  .playerlist { right: 8px; top: 8px; font-size: 0.7rem; padding: 6px 8px; }
+  .sound-btn { font-size: 0.7rem; padding: 4px 8px; }
+  .hud { font-size: 0.7rem; }
+  .hud__hint-block { display: none; }
+  .touch-bar { gap: 5px; right: 6px; bottom: 6px; }
+  .touch-btn { min-width: 44px; min-height: 44px; padding: 6px 8px; font-size: 0.75rem; }
+  .touch-ctx { bottom: 58px; }
+}
+
 /* Chat : bande étroite superposée à droite de l'écran, sous la liste des
    joueurs. Toujours visible pendant la partie ; hauteur volontairement
    limitée pour ne pas empiéter sur le terrain. */
@@ -464,10 +487,10 @@ canvas#game {
   box-shadow: 0 0 12px rgba(96, 165, 250, 0.5);
 }
 
-/* Zone de tir : moitie GAUCHE de l'ecran (le joystick vit a droite). */
+/* Zone de tir : moitie DROITE de l'ecran (le joystick vit a gauche). */
 .touch-fire {
   position: fixed;
-  left: 0;
+  right: 0;
   top: 0;
   bottom: 0;
   width: 50%;

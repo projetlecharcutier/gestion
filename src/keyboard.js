@@ -121,6 +121,9 @@
   G.keyboardEnabled = function () { return enabled; };
   G.setKeyboardMode = function (on) {
     enabled = !!on;
+    // Trois modes de controle exclusifs : activer le clavier coupe le
+    // mode mobile (et vice-versa dans touch.js).
+    if (enabled && G.touchEnabled && G.touchEnabled()) G.setTouchMode(false);
     var s = G.state;
     if (!enabled) {
       s.actionHeld = false;

@@ -1435,10 +1435,10 @@ G.drawGround = function () {
     var mx = mairie.x + mairie.w / 2, my = mairie.y + mairie.h / 2;
     var dx = mx - p.x, dy = my - p.y;
     var ang = Math.atan2(dy, dx);
-    // A gauche de la minimap agrandie (792x396, pointe droite a W-40) :
+    // A gauche de la minimap (largeur adaptative, voir minimapWidth) :
     // la boussole reste en bas a droite mais hors du losange, sinon elle
     // est recouverte par la carte.
-    var cx = W - 40 - 792 - 56, cy = H - 56;
+    var cx = W - 40 - minimapWidth(W) - 56, cy = H - 56;
     var r = 32;
     ctx.save();
     // Fond de la boussole.
@@ -1479,6 +1479,13 @@ G.drawGround = function () {
     ctx.restore();
   };
 
+  // Largeur de la minimap : adaptative a l'ecran (792 px max sur grand
+  // ecran, ~42% de la largeur sinon) pour rester lisible sans recouvrir le
+  // jeu sur petit ecran / mobile.
+  function minimapWidth(W) {
+    return Math.min(792, Math.max(150, W * 0.42));
+  }
+
   // Mini-carte globale : losange en bas a droite, a gauche de la boussole.
   // Vue de dessus (plan monde) en VERITABLE projection iso (comme le jeu :
   // sx = (x-y)/2, sy = (x+y)/4) : le monde ENTIER [0,WORLD]^2 tient
@@ -1495,10 +1502,11 @@ G.drawGround = function () {
     // 4x plus grande (132x66 -> 528x264) pour distinguer les villes PNG
     // (Laputa/Minas). Ancree en bas a droite : pointe droite et pointe bas
     // a 40 px des bords de l'ecran.
-    // 2x plus grand qu'avant (528 -> 792 px de large) pour lire les villes
-    // PNG (Laputa, Minas, Camp romain). Le losange iso fait exactement
+    // 2x plus grand qu'avant (528 -> 792 px de large sur grand ecran) pour
+    // lire les villes PNG (Laputa, Minas, Camp romain). La largeur est
+    // adaptative (minimapWidth). Le losange iso fait exactement
     // mw x mw/2 : hauteur = largeur / 2.
-    var mw = 792, mh = mw / 2;
+    var mw = minimapWidth(W), mh = mw / 2;
     var cx = W - 40 - mw / 2, cy = H - 40 - mh / 2;
     var w0 = cx - mw / 2, h0 = cy - mh / 2;
     // Projection iso monde -> minimap : le monde ENTIER tient dans le
