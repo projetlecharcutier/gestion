@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ville Isométrique</title>
+  <title>Flex — La réserve du Perche</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -68,11 +68,12 @@
 
   <div class="overlay" id="startScreen">
     <div class="panel panel--menu">
-      <h1>Flex</h1>
-      <p class="panel__intro">Vous êtes un habitant de la ville de Flex. Tous les jours, quand la nuit tombe, la horde de zombies s'attaque à votre ville. Essayez de survivre tout en gardant votre flex.</p>
+      <h1 class="menu-title">Flex</h1>
+      <p class="menu-tagline">La réserve du Perche</p>
+      <p class="panel__intro">Bienvenue dans la réserve du Perche. De jour, la forêt est à vous : hachez, bâtissez, commercez entre les petites maisons. De nuit, la horde sort des bois et s'attaque au village. Survivez, et gardez votre flex.</p>
       <div class="lobby" id="lobbyInfo" hidden>Connexion au serveur…</div>
       <form id="startForm">
-        <input id="nameInput" type="text" maxlength="18" placeholder="Votre nom (facultatif)" autocomplete="off" />
+        <input id="nameInput" type="text" maxlength="18" placeholder="Votre nom d'habitant (facultatif)" autocomplete="off" />
         <div class="mode-choice" id="modeChoice">
           <label class="mode-choice__opt">
             <input type="radio" name="playMode" value="server" checked />
@@ -83,10 +84,10 @@
             <span>Solo (local)</span>
           </label>
         </div>
-        <button class="btn btn--primary" type="submit">Lancer une partie</button>
+        <button class="btn btn--primary" type="submit">Jouer</button>
       </form>
       <div class="admin-zone">
-        <button class="btn btn--admin" id="adminBtn" type="button">Admin</button>
+        <button class="btn btn--admin" id="adminBtn" type="button">Garde de la réserve</button>
       </div>
       <div class="guide" id="menuGuide">
         <div class="guide__section">
@@ -160,20 +161,28 @@
             <div class="guide__card guide__card--wide">
               <img src="assets/sprites/siege/nord-ouest-vers-sud-est/ferme.png" alt="Tour de siège" />
               <b>Tour de siège</b>
-              <p>À partir de la 2ᵉ nuit, ces tours avancent lentement sur la ville. Elles écrasent les forêts sur leur passage, se collent à votre palissade et s'ouvrent pour libérer 100 zombies à l'intérieur. Détruisez-les à distance avant le contact (100 PV).</p>
+              <p>À partir de la 2ᵉ nuit, ces tours avancent lentement sur le village. Elles écrasent les forêts sur leur passage, se collent à votre palissade et s'ouvrent pour libérer 100 zombies à l'intérieur. Détruisez-les à distance avant le contact (100 PV).</p>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+    <div class="menu-runner" id="menuRunner" aria-hidden="true">
+      <div class="menu-runner__ground"></div>
+      <div class="menu-runner__flag"></div>
+      <div class="menu-runner__actor" id="menuRunnerActor">
+        <div class="menu-runner__shadow"></div>
+        <img class="menu-runner__sprite" id="menuRunnerSprite" alt="" draggable="false" />
       </div>
     </div>
   </div>
 
   <div class="overlay" id="adminScreen" hidden>
     <div class="panel panel--admin">
-      <h2>Panneau admin</h2>
+      <h2>Console de la réserve</h2>
       <div id="adminLogin" class="admin-login">
-        <p class="admin-hint">Ce menu est réservé à l'administration du serveur.</p>
-        <input id="adminPassword" type="password" placeholder="Mot de passe" autocomplete="off" />
+        <p class="admin-hint">Ce panneau est réservé aux gardes de la réserve (administration du serveur).</p>
+        <input id="adminPassword" type="password" placeholder="Mot de passe du garde" autocomplete="off" />
         <button class="btn btn--primary" id="adminLoginBtn" type="button">Entrer</button>
         <p class="admin-error" id="adminError" hidden>Mot de passe incorrect.</p>
       </div>
@@ -185,23 +194,23 @@
           <button class="btn" id="adminClose" type="button">Fermer</button>
         </div>
         <p class="admin-hint" id="adminRestartNote" hidden>Redémarrage en cours… la page se rechargera automatiquement.</p>
-        <h3>Logs du serveur</h3>
+        <h3>Journal de la réserve</h3>
         <pre class="admin-logs" id="adminLogs">—</pre>
       </div>
-      <button class="btn" id="adminBack" type="button">Retour</button>
+      <button class="btn" id="adminBack" type="button">Retour au village</button>
     </div>
   </div>
   <div class="overlay" id="loadingScreen" hidden>
     <div class="loading">
       <div class="loading__logo"></div>
-      <p class="loading__label">Chargement de la carte…</p>
-      <button class="btn" id="loadingBackBtn" type="button">Retour au menu</button>
+      <p class="loading__label">La réserve se réveille…</p>
+      <button class="btn" id="loadingBackBtn" type="button">Retour au village</button>
     </div>
   </div>
   <div class="overlay" id="pauseScreen" hidden>
     <div class="panel">
       <h2>Pause</h2>
-      <p class="panel__sub">Appuyez sur Échap pour reprendre.</p>
+      <p class="panel__sub">La forêt vous attend — appuyez sur Échap pour reprendre.</p>
       <button class="btn btn--primary" id="resumeBtn" type="button">Reprendre</button>
     </div>
   </div>
@@ -216,16 +225,16 @@
 
   <div class="overlay" id="chestScreen" hidden>
     <div class="panel panel--mairie">
-      <h2>🏛️ Mairie</h2>
+      <h2>🏛️ Mairie du village</h2>
       <p class="panel__sub">Or du coffre : <b id="chestGold">0</b></p>
       <div class="mairie__cols">
         <div class="mairie__col mairie__col--tech">
           <h3 class="mairie__title">🔧 Technologies</h3>
-          <p class="panel__sub">Débloquez de nouveaux bâtiments pour la ville (vote en multijoueur).</p>
+          <p class="panel__sub">Débloquez de nouveaux bâtiments pour le village (vote entre habitants).</p>
           <div class="chest__vault" id="chestTech"></div>
         </div>
         <div class="mairie__col mairie__col--coffre">
-          <h3 class="mairie__title">🧩 Coffre commun</h3>
+          <h3 class="mairie__title">🧩 Coffre du village</h3>
           <p class="panel__sub">Cliquez sur un objet du sac pour le déposer, ou sur un objet du coffre pour le récupérer.</p>
           <div class="chest__vault" id="chestVault">Coffre vide</div>
           <div class="chest__bag" id="chestBag"></div>
@@ -237,8 +246,8 @@
 
   <div class="overlay" id="buildMenuScreen" hidden>
     <div class="panel">
-      <h2>Scierie — Construction</h2>
-      <p class="panel__sub">Choisissez un bâtiment, puis appuyez sur Z et cliquez sur la carte pour le poser.</p>
+      <h2>Scierie — Atelier de défense</h2>
+      <p class="panel__sub">Choisissez une construction, puis appuyez sur Z et cliquez sur la carte pour la poser.</p>
       <div class="chest__vault" id="buildMenuList"></div>
       <button class="btn btn--primary" id="closeBuildMenuBtn" type="button">Fermer</button>
     </div>
@@ -247,7 +256,7 @@
   <div class="overlay" id="universiteScreen" hidden>
     <div class="panel">
       <h2>🎓 Université</h2>
-      <p class="panel__sub">Améliorations déblocables par le même système de vote que la mairie. L'or vient du coffre commun ; un Parchemin rend l'amélioration gratuite. Or du coffre : <b id="universiteGold">0</b></p>
+      <p class="panel__sub">Améliorations déblocables par le même vote qu'à la mairie. L'or vient du coffre du village ; un Parchemin rend l'amélioration gratuite. Or du coffre : <b id="universiteGold">0</b></p>
       <div class="chest__vault" id="universiteInfo"></div>
       <button class="btn btn--primary" id="closeUniversiteBtn" type="button">Fermer</button>
     </div>
@@ -255,7 +264,7 @@
   <div class="overlay" id="marcheScreen" hidden>
     <div class="panel">
       <h2>🛖 Marché</h2>
-      <p class="panel__sub">Armes et objets payés avec l'or du coffre de la mairie, livrés dans votre sac. Or du coffre : <b id="marcheGold">0</b></p>
+      <p class="panel__sub">Armes et objets payés avec l'or du coffre du village, livrés dans votre sac. Or du coffre : <b id="marcheGold">0</b></p>
       <div class="chest__vault" id="marcheList"></div>
       <button class="btn btn--primary" id="closeMarcheBtn" type="button">Fermer</button>
     </div>
@@ -264,7 +273,7 @@
   <div class="overlay" id="churchScreen" hidden>
     <div class="panel">
       <h2>⛪ Eglise</h2>
-      <p class="panel__sub">Déposez une relique pour gagner 100 pièces d'or. Cliquez sur une relique du sac pour la vendre.</p>
+      <p class="panel__sub">Déposez une relique trouvée dans les bois pour gagner 100 pièces d'or. Cliquez sur une relique du sac pour la vendre.</p>
       <p class="panel__sub">Or : <b id="churchGold">0</b></p>
       <div class="chest__vault" id="churchVault">Aucune relique</div>
       <div class="chest__bag" id="churchBag"></div>
@@ -274,7 +283,7 @@
 
   <div class="votebar" id="voteBar" hidden>
     <div class="votebar__info">
-      <b id="voteBarText">Vote en cours</b>
+      <b id="voteBarText">Le village se rassemble…</b>
       <span id="voteBarTimer">15</span>
     </div>
     <div class="votebar__actions">
@@ -285,7 +294,7 @@
   <div class="overlay" id="potenceScreen" hidden>
     <div class="panel">
       <h2>Potence</h2>
-      <p class="panel__sub">Cliquez sur un joueur pour proposer sa pendaison. En cas d'égalité des voix, la cible est sauvée.</p>
+      <p class="panel__sub">Cliquez sur un habitant pour proposer sa pendaison. En cas d'égalité des voix, la cible est sauvée.</p>
       <div class="chest__vault" id="potenceList"></div>
       <button class="btn btn--primary" id="closePotenceBtn" type="button">Fermer</button>
     </div>
@@ -335,6 +344,7 @@
   <script src="src/keyboard.js"></script>
   <script src="src/touch.js"></script>
   <script src="src/sound.js"></script>
+  <script src="src/menu.js"></script>
   <script src="src/admin.js"></script>
   <script src="src/main.js"></script>
 </body>

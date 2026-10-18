@@ -1,11 +1,17 @@
 :root {
-  --bg: #0f172a;
-  --panel: #1e293b;
-  --panel-border: #334155;
-  --accent: #6366f1;
-  --accent-soft: #818cf8;
-  --text: #f1f5f9;
-  --text-muted: #94a3b8;
+  --bg: #1d2b1f;
+  --panel: #2e4030;
+  --panel-deep: #141a14;
+  --panel-border: #8a6f4d;
+  --panel-border-soft: #5a4632;
+  --accent: #d1495b;
+  --accent-soft: #e8e0c8;
+  --gold: #e0a92e;
+  --good: #7fb069;
+  --bad: #c0392b;
+  --text: #e8e0c8;
+  --text-muted: #9aa88f;
+  --ink: #0c0f0c;
 }
 
 * { box-sizing: border-box; }
@@ -18,9 +24,9 @@ html, body {
 }
 
 body {
-  background: #0b1020;
+  background: var(--bg);
   color: var(--text);
-  font-family: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+  font-family: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "Courier New", monospace;
 }
 
 canvas#game {
@@ -30,17 +36,19 @@ canvas#game {
   width: 100%;
   height: 100%;
   cursor: crosshair;
-  background: #0e1a30;
+  background: #16241a;
 }
 
+/* ===== HUD ===== */
 .hud {
   position: fixed;
   top: 12px;
   left: 12px;
   z-index: 5;
-  background: rgba(15, 23, 42, 0.78);
-  border: 1px solid var(--panel-border);
-  border-radius: 12px;
+  background: rgba(20, 26, 20, 0.88);
+  border: 3px solid var(--panel-border-soft);
+  border-radius: 4px;
+  box-shadow: 4px 4px 0 rgba(12, 15, 12, 0.5);
   padding: 10px 14px;
   font-size: 0.9rem;
   line-height: 1.5;
@@ -48,6 +56,8 @@ canvas#game {
   min-width: 220px;
   max-width: 340px;
 }
+
+.hud b { color: var(--text); }
 
 .hud__row {
   display: flex;
@@ -58,7 +68,8 @@ canvas#game {
 .hud__name {
   font-weight: 700;
   font-size: 1.05rem;
-  color: var(--accent-soft);
+  color: var(--gold);
+  text-shadow: 2px 2px 0 var(--ink);
 }
 
 .hud__hint {
@@ -68,7 +79,7 @@ canvas#game {
 .hud__hint-block {
   margin-top: 8px;
   padding-top: 6px;
-  border-top: 1px solid rgba(148, 163, 184, 0.25);
+  border-top: 2px solid var(--panel-border-soft);
 }
 .hud__hint-line {
   color: var(--text-muted);
@@ -78,31 +89,87 @@ canvas#game {
 
 .hud[hidden] { display: none; }
 
+/* ===== Overlays : fond "carte au tresor" (grille 16px + vignette) ===== */
 .overlay {
   position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(2, 6, 23, 0.75);
-  backdrop-filter: blur(3px);
   z-index: 10;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(46, 64, 48, 0.25) 0%, rgba(12, 15, 12, 0.88) 78%),
+    linear-gradient(rgba(127, 176, 105, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(127, 176, 105, 0.06) 1px, transparent 1px),
+    var(--bg);
+  background-size: 100% 100%, 16px 16px, 16px 16px, auto;
 }
 
 .overlay[hidden] { display: none; }
 
+/* Lucioles sur l'ecran d'accueil (derriere le panneau). */
+#startScreen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle 2px at 12% 22%, rgba(224, 169, 46, 0.9) 98%, transparent),
+    radial-gradient(circle 2px at 78% 15%, rgba(224, 169, 46, 0.7) 98%, transparent),
+    radial-gradient(circle 2px at 88% 62%, rgba(127, 176, 105, 0.8) 98%, transparent),
+    radial-gradient(circle 2px at 22% 74%, rgba(224, 169, 46, 0.6) 98%, transparent),
+    radial-gradient(circle 2px at 55% 85%, rgba(127, 176, 105, 0.7) 98%, transparent);
+  animation: menu-lucioles 4s ease-in-out infinite alternate;
+}
+@keyframes menu-lucioles {
+  from { opacity: 0.35; }
+  to { opacity: 0.85; }
+}
+
 .panel {
+  position: relative;
+  z-index: 1;
   background: var(--panel);
-  border: 1px solid var(--panel-border);
-  border-radius: 18px;
+  border: 3px solid var(--panel-border);
+  border-radius: 4px;
   padding: 28px 30px;
   text-align: center;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  box-shadow: 8px 8px 0 rgba(12, 15, 12, 0.55);
   width: min(420px, 92vw);
 }
 
-.panel h1 { margin: 0 0 8px; font-size: 1.8rem; color: var(--accent-soft); }
-.panel h2 { margin: 0 0 8px; font-size: 1.4rem; color: var(--accent-soft); }
+.panel h1 {
+  margin: 0 0 8px;
+  font-size: 1.8rem;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  text-shadow: 3px 3px 0 var(--ink);
+}
+.panel h1.menu-title {
+  font-size: 2.6rem;
+  letter-spacing: 0.18em;
+  text-align: center;
+  margin-bottom: 4px;
+}
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 1.3rem;
+  color: var(--accent-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-shadow: 2px 2px 0 var(--ink);
+}
+
+.menu-tagline {
+  margin: 0 0 14px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
 
 .panel__sub {
   margin: 0 0 18px;
@@ -117,11 +184,23 @@ canvas#game {
   text-align: left;
 }
 
-.loading {  text-align: center;}.loading__logo {  width: 54px;  height: 54px;  margin: 0 auto 18px;  border-radius: 50%;  border: 5px solid rgba(129, 140, 248, 0.18);  border-top-color: var(--accent-soft);  animation: loading-spin 0.9s linear infinite;}.loading__label {  margin: 0;  color: var(--text-muted);  font-size: 0.95rem;}@keyframes loading-spin {  to { transform: rotate(360deg); } }
+.loading { text-align: center; }
+.loading__logo {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  border: 5px solid rgba(224, 169, 46, 0.2);
+  border-top-color: var(--gold);
+  animation: loading-spin 0.9s linear infinite;
+}
+.loading__label { margin: 0; color: var(--text-muted); font-size: 0.95rem; }
+@keyframes loading-spin { to { transform: rotate(360deg); } }
+
 .lobby {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
+  background: rgba(20, 26, 20, 0.7);
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 4px;
   padding: 12px 14px;
   margin: 0 0 14px;
   font-size: 0.9rem;
@@ -130,41 +209,62 @@ canvas#game {
   min-height: 40px;
 }
 .lobby__info b { color: var(--text); }
-.lobby__status { color: var(--accent-soft); margin-top: 4px; }
+.lobby__status { color: var(--gold); margin-top: 4px; }
 .lobby__names { margin-top: 6px; font-size: 0.82rem; opacity: 0.85; }
 .lobby__updated { margin-top: 6px; font-size: 0.78rem; opacity: 0.7; }
+.lobby__version { margin-top: 6px; font-size: 0.78rem; opacity: 0.7; }
 
 #nameInput {
   width: 100%;
   padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid var(--panel-border);
-  background: #0f172a;
+  border-radius: 4px;
+  border: 3px solid var(--panel-border-soft);
+  background: var(--panel-deep);
   color: var(--text);
+  font-family: inherit;
   font-size: 1rem;
   margin-bottom: 14px;
 }
 
 #nameInput:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(224, 169, 46, 0.25);
 }
 
+/* ===== Boutons : style "slot retro" (bordure 3px + ombre dure) ===== */
 .btn {
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
+  font-family: inherit;
+  border: 3px solid var(--ink);
+  border-radius: 4px;
   padding: 10px 20px;
   font-size: 0.98rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   cursor: pointer;
   background: var(--panel);
   color: var(--text);
-  transition: transform 0.1s ease, background 0.2s ease;
+  box-shadow: 0 4px 0 var(--ink);
+  transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.15s ease;
 }
+.btn:hover { background: #3a5240; }
+.btn:active { transform: translateY(4px); box-shadow: 0 0 0 var(--ink); }
 
-.btn--primary { background: var(--accent); border-color: var(--accent); }
-.btn--primary:hover { background: var(--accent-soft); transform: translateY(-1px); }
+.btn--primary {
+  background: var(--accent);
+  border-color: #7e2733;
+  box-shadow: 0 4px 0 #7e2733;
+  color: #fdf3e0;
+}
+.btn--primary:hover { background: #e0685f; }
+.btn--primary:active { box-shadow: 0 0 0 #7e2733; }
+
+.btn:focus-visible,
+input:focus-visible,
+.chat__emoji:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
 
 .mode-choice {
   display: flex;
@@ -177,26 +277,27 @@ canvas#game {
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
-  background: #0f172a;
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 4px;
+  background: var(--panel-deep);
   cursor: pointer;
   font-size: 0.92rem;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
-.mode-choice__opt input { accent-color: var(--accent); margin: 0; }
+.mode-choice__opt input { accent-color: var(--gold); margin: 0; }
 .mode-choice__opt:has(input:checked) {
-  border-color: var(--accent);
-  background: rgba(99, 102, 241, 0.15);
+  border-color: var(--gold);
+  background: rgba(224, 169, 46, 0.15);
 }
 
-/* ---- Menu d'accueil : guide des mécanismes ---- */
+/* ---- Menu d'accueil : guide des mecaniques ---- */
 .panel--menu {
   width: min(680px, 94vw);
-  max-height: 92vh;
+  max-height: calc(100vh - 130px);
   overflow-y: auto;
   text-align: left;
 }
+.panel--menu form { text-align: center; }
 
 .guide { margin-top: 18px; }
 
@@ -204,10 +305,12 @@ canvas#game {
 
 .guide__section h3 {
   margin: 0 0 10px;
+  padding-bottom: 6px;
   font-size: 0.95rem;
-  color: var(--accent-soft);
+  color: var(--gold);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  border-bottom: 2px solid var(--panel-border-soft);
 }
 
 .guide__grid {
@@ -222,10 +325,15 @@ canvas#game {
   align-items: center;
   gap: 4px;
   padding: 12px 10px;
-  background: #0f172a;
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
+  background: var(--panel-deep);
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 4px;
   text-align: center;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+.guide__card:hover {
+  border-color: var(--accent-soft);
+  transform: translateY(-2px);
 }
 
 .guide__card img,
@@ -250,17 +358,32 @@ canvas#game {
 .guide__card--wide { text-align: center; }
 .guide__card--wide p { text-align: left; }
 
-.chest__vault { margin: 10px 0; padding: 8px 10px; background: #0f172a; border: 1px solid var(--panel-border); border-radius: 6px; font-size: 0.95rem; color: #cbd5e1; min-height: 2.4em; }
+.chest__vault {
+  margin: 10px 0;
+  padding: 8px 10px;
+  background: var(--panel-deep);
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 4px;
+  font-size: 0.95rem;
+  color: #c9b18a;
+  min-height: 2.4em;
+}
 
 /* Mairie : fenetre a deux colonnes — technologies a gauche, coffre a droite. */
 .panel--mairie { max-width: 720px; }
 .mairie__cols { display: flex; gap: 14px; align-items: flex-start; }
 .mairie__col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
-.mairie__col--tech { border-right: 1px solid var(--panel-border); padding-right: 14px; }
-.mairie__title { margin: 0 0 6px; font-size: 1.05rem; color: var(--accent-soft); }
+.mairie__col--tech { border-right: 2px solid var(--panel-border-soft); padding-right: 14px; }
+.mairie__title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
 @media (max-width: 640px) {
   .mairie__cols { flex-direction: column; }
-  .mairie__col--tech { border-right: none; padding-right: 0; border-bottom: 1px solid var(--panel-border); padding-bottom: 10px; }
+  .mairie__col--tech { border-right: none; padding-right: 0; border-bottom: 2px solid var(--panel-border-soft); padding-bottom: 10px; }
 }
 
 /* Marche : petite animation d'achat — le bouton pulse et passe au vert,
@@ -272,48 +395,54 @@ canvas#game {
 }
 .btn.marche__bought {
   animation: marche-buy-pop 0.45s ease-out;
-  border-color: #22c55e;
-  color: #22c55e;
+  border-color: var(--good);
+  color: #a5d18a;
 }
 
 /* Ligne de livraison : "→ Fusil livré dans votre sac" apres un achat. */
 .marche__delivery {
   margin: 8px 0 0;
   padding: 6px 10px;
-  background: #22c55e1f;
-  border: 1px solid #22c55e;
-  border-radius: 6px;
-  color: #4ade80;
+  background: rgba(127, 176, 105, 0.15);
+  border: 2px solid var(--good);
+  border-radius: 4px;
+  color: #a5d18a;
   font-size: 0.95rem;
 }
 .chest__bag { margin: 8px 0; }
 .chest__list { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; }
-.chest__list p { color: #64748b; text-align: center; }
+.chest__list p { color: var(--text-muted); text-align: center; }
 .chest__item { text-align: left; }
+
 .sound-btn {
   position: fixed;
   top: 10px;
   z-index: 50;
   padding: 6px 12px;
+  font-family: inherit;
   font-size: 0.85rem;
-  font-weight: 600;
-  border: 1px solid var(--panel-border);
-  border-radius: 8px;
+  font-weight: 700;
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 4px;
   background: var(--panel);
   color: var(--text);
+  box-shadow: 0 3px 0 var(--ink);
   cursor: pointer;
 }
 #soundBtn { right: 12px; }
 #sfxBtn { right: 96px; }
-/* Liste des joueurs connectés (droite, sous l'horloge/jour et les boutons son) */
+.sound-btn:hover { background: #3a5240; }
+
+/* Liste des joueurs connectes (droite, sous l'horloge/jour et les boutons son) */
 .playerlist {
   position: fixed;
   top: 130px;
   right: 12px;
   z-index: 5;
-  background: rgba(15, 23, 42, 0.78);
-  border: 1px solid var(--panel-border);
-  border-radius: 12px;
+  background: rgba(20, 26, 20, 0.88);
+  border: 3px solid var(--panel-border-soft);
+  border-radius: 4px;
+  box-shadow: 4px 4px 0 rgba(12, 15, 12, 0.5);
   padding: 8px 12px;
   font-size: 0.85rem;
   line-height: 1.5;
@@ -324,8 +453,9 @@ canvas#game {
 .playerlist__title {
   font-weight: 600;
   margin-bottom: 4px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  border-bottom: 2px solid var(--panel-border-soft);
   padding-bottom: 4px;
+  color: var(--gold);
 }
 .playerlist__names {
   list-style: none;
@@ -337,9 +467,10 @@ canvas#game {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.playerlist__names li.is-dead { color: #f87171; }
+.playerlist__names li.is-dead { color: #e07a6a; }
 .playerlist__names li.is-me { font-weight: 700; }
-/* Responsive : petits ecrans / mobile -- le chat devient une bande
+
+/* Responsive : petits ecrans / mobile — le chat devient une bande
    discrete en haut a droite (il ne recouvre plus les controles
    tactiles ni la minimap), la liste des joueurs se serre. */
 @media (max-width: 700px) {
@@ -360,26 +491,27 @@ canvas#game {
   .touch-bar { gap: 5px; right: 6px; bottom: 6px; }
   .touch-btn { min-width: 44px; min-height: 44px; padding: 6px 8px; font-size: 0.75rem; }
   .touch-ctx { bottom: 58px; }
+  .menu-runner { display: none; }
 }
 
-/* Chat : bande étroite superposée à droite de l'écran, sous la liste des
+/* Chat : bande etroite superposee a droite de l'ecran, sous la liste des
    joueurs. Toujours visible pendant la partie ; hauteur volontairement
-   limitée pour ne pas empiéter sur le terrain. */
+   limitee pour ne pas empiéter sur le terrain. */
 .chat {
   position: fixed;
   right: 12px;
   bottom: 12px;
   width: 240px;
   max-width: 18vw;
-  /* Au-dessus des .overlay (z-index 10, backdrop-filter: blur) : le chat
-     est visible des la connexion WS, meme sur l'ecran d'accueil -- sous
-     l'overlay, la bande etait floutee par le backdrop-filter. */
+  /* Au-dessus des .overlay (z-index 10) : le chat est visible des la
+     connexion WS, meme sur l'ecran d'accueil. */
   z-index: 11;
   display: flex;
   flex-direction: column;
-  background: rgba(15, 23, 42, 0.72);
-  border: 1px solid var(--panel-border);
-  border-radius: 12px;
+  background: rgba(20, 26, 20, 0.85);
+  border: 3px solid var(--panel-border-soft);
+  border-radius: 4px;
+  box-shadow: 4px 4px 0 rgba(12, 15, 12, 0.5);
   padding: 6px 8px;
   font-size: 0.8rem;
   line-height: 1.4;
@@ -395,22 +527,22 @@ canvas#game {
   word-break: break-word;
 }
 .chat__line { margin: 1px 0; }
-.chat__line b { margin-right: 4px; color: #93c5fd; }
-.chat__time { margin-right: 4px; color: #6b7280; font-size: 0.85em; }
+.chat__line b { margin-right: 4px; color: var(--gold); }
+.chat__time { margin-right: 4px; color: var(--text-muted); font-size: 0.85em; }
 .chat__input {
   margin-top: 4px;
   width: 100%;
   box-sizing: border-box;
-  background: rgba(2, 6, 23, 0.8);
-  border: 1px solid var(--panel-border);
-  border-radius: 8px;
+  background: var(--panel-deep);
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 4px;
   color: inherit;
   font: inherit;
   padding: 3px 6px;
   outline: none;
 }
-.chat__input::placeholder { color: rgba(148, 163, 184, 0.7); }
-.chat__input:focus { border-color: var(--accent, #60a5fa); }
+.chat__input::placeholder { color: var(--text-muted); }
+.chat__input:focus { border-color: var(--gold); }
 /* Palette d'emoticones : ligne cliquable au-dessus du champ de saisie. */
 .chat__bar {
   display: flex;
@@ -421,7 +553,7 @@ canvas#game {
 .chat__emoji {
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   color: inherit;
   font: inherit;
   font-size: 0.95rem;
@@ -429,23 +561,22 @@ canvas#game {
   padding: 2px 3px;
   cursor: pointer;
 }
-.chat__emoji:hover { background: rgba(96, 165, 250, 0.25); }
+.chat__emoji:hover { background: rgba(224, 169, 46, 0.25); }
 /* Pseudo obligatoire avant d'ecrire dans le chat. */
 .chat__pseudo {
   margin-top: 4px;
   width: 100%;
   box-sizing: border-box;
-  background: rgba(2, 6, 23, 0.8);
-  border: 1px solid var(--panel-border);
-  border-radius: 8px;
+  background: var(--panel-deep);
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 4px;
   color: inherit;
   font: inherit;
   padding: 3px 6px;
   outline: none;
 }
-.chat__pseudo::placeholder { color: rgba(148, 163, 184, 0.7); }
-.chat__pseudo:focus { border-color: var(--accent, #60a5fa); }
-.sound-btn:hover { background: var(--accent-soft); }
+.chat__pseudo::placeholder { color: var(--text-muted); }
+.chat__pseudo:focus { border-color: var(--gold); }
 
 /* ===== Mode mobile / tactile (active via le bouton "Mobile") ===== */
 /* Racine des controles tactiles : couvre l'ecran mais ne capte PAS les
@@ -468,8 +599,8 @@ canvas#game {
   width: 112px;
   height: 112px;
   border-radius: 50%;
-  background: rgba(15, 23, 42, 0.35);
-  border: 2px solid rgba(148, 163, 184, 0.5);
+  background: rgba(20, 26, 20, 0.5);
+  border: 2px solid rgba(232, 224, 200, 0.5);
   z-index: 8;
   pointer-events: none;
 }
@@ -482,9 +613,9 @@ canvas#game {
   height: 48px;
   margin: -24px 0 0 -24px;
   border-radius: 50%;
-  background: rgba(96, 165, 250, 0.75);
-  border: 2px solid rgba(219, 234, 254, 0.9);
-  box-shadow: 0 0 12px rgba(96, 165, 250, 0.5);
+  background: rgba(209, 73, 91, 0.85);
+  border: 2px solid #f5e9c8;
+  box-shadow: 0 0 12px rgba(209, 73, 91, 0.5);
 }
 
 /* Zone de tir : moitie DROITE de l'ecran (le joystick vit a gauche). */
@@ -514,9 +645,9 @@ canvas#game {
   min-width: 52px;
   min-height: 52px;
   padding: 8px 12px;
-  border-radius: 14px;
-  border: 1px solid var(--panel-border);
-  background: rgba(15, 23, 42, 0.82);
+  border-radius: 4px;
+  border: 2px solid var(--panel-border-soft);
+  background: rgba(20, 26, 20, 0.9);
   color: var(--text);
   font: inherit;
   font-size: 0.85rem;
@@ -525,7 +656,7 @@ canvas#game {
   touch-action: manipulation;
 }
 .touch-btn[hidden] { display: none; }
-.touch-btn:active { background: rgba(96, 165, 250, 0.45); }
+.touch-btn:active { background: rgba(209, 73, 91, 0.5); }
 
 /* Bouton fantome (apres la mort du joueur local). */
 .touch-btn--ghost {
@@ -536,11 +667,11 @@ canvas#game {
   min-width: 180px;
   min-height: 56px;
   z-index: 9;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(20, 26, 20, 0.95);
+  border: 2px solid var(--panel-border);
 }
 
-/* Boutons contextuels (entrer / coffre / marchE) : bas-centre, gros. */
+/* Boutons contextuels (entrer / coffre / marche) : bas-centre, gros. */
 .touch-ctx {
   position: fixed;
   left: 50%;
@@ -556,8 +687,8 @@ canvas#game {
   min-width: 130px;
   min-height: 60px;
   font-size: 0.95rem;
-  background: rgba(96, 165, 250, 0.85);
-  border-color: rgba(219, 234, 254, 0.9);
+  background: rgba(209, 73, 91, 0.9);
+  border-color: #f5e9c8;
 }
 /* Fenetre de vote en bas de l'ecran : visible par chaque joueur connecte
    quand un vote est en cours, avec compte a rebours et boutons Pour/Contre. */
@@ -571,10 +702,10 @@ canvas#game {
   align-items: center;
   gap: 14px;
   padding: 10px 16px;
-  background: rgba(15, 23, 42, 0.92);
-  border: 1px solid var(--panel-border);
-  border-radius: 12px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  background: var(--bg);
+  border: 3px solid var(--gold);
+  border-radius: 4px;
+  box-shadow: 0 6px 0 rgba(12, 15, 12, 0.6);
 }
 .votebar[hidden] { display: none; }
 .votebar__info {
@@ -590,7 +721,7 @@ canvas#game {
 .votebar__timer, #voteBarTimer {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  color: #fbbf24;
+  color: var(--gold);
   font-size: 0.9rem;
 }
 .votebar__actions {
@@ -609,15 +740,127 @@ canvas#game {
   border: 0;
 }
 
-/* ===== Panneau admin ===== */
+/* ===== Panneau admin : console de la reserve ===== */
 .admin-zone { margin-top: 18px; text-align: right; }
 .btn--admin { font-size: 0.85rem; padding: 6px 14px; opacity: 0.75; }
 .btn--admin:hover { opacity: 1; }
-.panel--admin { width: min(560px, 92vw); text-align: left; }
+.panel--admin { width: min(560px, 92vw); text-align: left; background: var(--panel-deep); }
 .admin-login { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
-.admin-login input { background: rgba(0,0,0,0.35); border: 1px solid var(--panel-border); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 1rem; }
-.admin-hint { margin: 4px 0; font-size: 0.85rem; opacity: 0.7; }
-.admin-error { color: #f87171; font-size: 0.85rem; margin: 0; }
+.admin-login input {
+  background: var(--ink);
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 4px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 1rem;
+}
+.admin-login input:focus { outline: none; border-color: var(--gold); }
+.admin-hint { margin: 4px 0; font-size: 0.85rem; color: var(--text-muted); }
+.admin-error { color: #e07a6a; font-size: 0.85rem; margin: 0; }
 .admin-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-.admin-status { font-size: 0.88rem; line-height: 1.6; background: rgba(0,0,0,0.25); border-radius: 8px; padding: 8px 10px; margin: 8px 0; }
-.admin-logs { max-height: 300px; overflow: auto; background: rgba(0,0,0,0.4); border-radius: 8px; padding: 10px; margin: 8px 0 4px; font: 11px/1.5 monospace; white-space: pre-wrap; word-break: break-all; }
+.admin-status {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  background: rgba(12, 15, 12, 0.6);
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin: 8px 0;
+}
+.admin-logs {
+  max-height: 300px;
+  overflow: auto;
+  background: #0c0f0c;
+  color: var(--good);
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 4px;
+  padding: 10px;
+  margin: 8px 0 4px;
+  font: 11px/1.5 monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ===== Menu d'accueil : habitant anime en bas de l'ecran ===== */
+/* Bande de sol pixel defilante + petit joueur qui court en boucle
+   (frames PNG existantes, aucune retouche). Purement decoratif. */
+.menu-runner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 84px;
+  z-index: 12;
+  overflow: hidden;
+  pointer-events: none;
+}
+.menu-runner__ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 12px;
+  background-image: repeating-linear-gradient(90deg,
+    #7fb069 0 8px, #5c8a4a 8px 16px, #7fb069 16px 24px, #4a6e3a 24px 32px);
+  animation: menu-runner-scroll 1s linear infinite;
+}
+@keyframes menu-runner-scroll {
+  to { background-position: -96px 0; }
+}
+.menu-runner__flag {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 4px;
+  height: 46px;
+  background: var(--panel-border);
+}
+.menu-runner__flag::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 0;
+  border-top: 9px solid var(--accent);
+  border-bottom: 9px solid var(--accent);
+  border-right: 16px solid transparent;
+  transform-origin: left center;
+  animation: menu-runner-flag 1.2s ease-in-out infinite alternate;
+}
+@keyframes menu-runner-flag {
+  from { transform: skewY(-4deg); }
+  to { transform: skewY(4deg); }
+}
+.menu-runner__actor {
+  position: absolute;
+  left: 0;
+  bottom: 12px;
+  width: 45px;
+  height: 60px;
+  will-change: transform;
+}
+.menu-runner__sprite {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 45px;
+  height: 60px;
+  image-rendering: pixelated;
+}
+.menu-runner__shadow {
+  position: absolute;
+  left: 7px;
+  bottom: -5px;
+  width: 30px;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-runner__ground,
+  .menu-runner__flag::after,
+  #startScreen::after { animation: none; }
+  .loading__logo { animation-duration: 2.5s; }
+}
