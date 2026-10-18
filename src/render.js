@@ -1670,16 +1670,23 @@ G.drawGround = function () {
     // ecran verticale de la bande entiere du PNG est trop large pour servir
     // de rejet : on teste la bbox ecran approximee de la bande).
     if (state.villes && G.villeBands) {
-      // Occlusion : tri naturel pour toutes les bandes, PLUS un departage
-      // pour les bandes qui chevauchent le CORPS du joueur a l'ecran.
+      // Occlusion : le PIXEL SOUS LES PIEDS du joueur tranche pour TOUTES
+      // les bandes qui chevauchent son corps a l'ecran : vert (2) ou rouge
+      // (1) = le personnage est DERRIERE le PNG, toutes les bandes couvrantes
+      // passent devant lui (jamais masque que sur la partie verte) ;
+      // transparent (0) = il est DEVANT la ville, aucune bande ne le recouvre.
       // Le tri naturel seul est insuffisant pour l'ELEVATION : une facade
       // haute (tour) couvre a l'ecran des cellules au NORD de son emprise
       // sol -- un joueur debout la est DEVANT la facade a l'ecran mais
       // derriere au tri (profondeur de sol de la bande plus petite).
-      // Le masque tranchait : cellule VERTE sous les pieds = le sol y est
-      // DERRIERE le PNG -> les bandes couvrantes passent devant lui ;
-      // cellule TRANSPARENTE = il est devant la ville -> derriere lui.
+      // Le masque du point sous les pieds (villeCellInfo, ou directement
+      // villeMaskAtFoot) est la source de verite : sa cellule tranche pour
+      // toutes les bandes couvrantes (vFoot ci-dessous).
       var villePinfo = (G.villeCellInfo && state.started) ? G.villeCellInfo(state.player.x, state.player.y) : null;
+      if (!villePinfo && G.villeMaskAtFoot && state.started) {
+        var vFootCell = G.villeMaskAtFoot(state.player.x, state.player.y);
+        if (vFootCell >= 0) villePinfo = { cell: vFootCell, mode: vFootCell === 0 ? 2 : 1, sprite: null };
+      }
       var villeV = null;
       if (villePinfo) {
         for (var vmi = 0; vmi < state.villes.length; vmi++) {
@@ -1722,24 +1729,22 @@ G.drawGround = function () {
             // 1 ou 2) passe DEVANT le joueur ; une bande TRANSPARENTE
             // (cell 0) reste DERRIERE.
             if (vTopY < vBandY1 && vBase[1] > vBandY0) {
-              if (villePinfo && villePinfo.mode === 2) {
-                // Pieds du joueur sur zone TRANSPARENTE : il est DEVANT la
-                // ville, aucune bande ne doit le recouvrir.
-                vbDepth = state.player.x + state.player.y - 1;
-              } else if (villePinfo && villePinfo.mode === 1) {
-                // Pieds du joueur sur zone VERTE : le sol est DERRIERE le
-                // PNG, la ville doit le recouvrir ENTIEREMENT. Dans le haut
-                // d'une grande ville (Minas), les bandes qui couvrent son
-                // corps echantillonnent du TRANSPARENT a l'ecran (ciel au
-                // dessus de lui) -- le departage par bande le laissait alors
-                // DEVANT le PNG, visible par-dessus la ville. Le masque des
-                // PIEDS (mode 1) fait foi : toutes les bandes couvrantes
-                // passent devant lui.
+              // Le masque des PIEDS tranche (villeMaskAtFoot) : vert ou
+              // rouge = derriere le PNG (toutes les bandes couvrantes
+              // passent devant), transparent = devant la ville (aucune
+              // bande ne le recouvre). Hors de toute grille (null), le
+              // masque est echantillonne a la hauteur de CETTE bande : une
+              // bande verte/rouge passe devant le joueur, une bande
+              // transparente reste derriere.
+              var vFoot = villePinfo ? villePinfo.cell : null;
+              if (vFoot === 2 || vFoot === 1) {
                 vbDepth = state.player.x + state.player.y + 1;
+              } else if (vFoot === 0) {
+                vbDepth = state.player.x + state.player.y - 1;
               } else {
                 var vCellBand = G.villeCellAtScreen(vv, vAxisX, (Math.max(vBandY0, vTopY) + Math.min(vBandY1, vBase[1])) / 2);
                 if (vCellBand === 1 || vCellBand === 2) vbDepth = state.player.x + state.player.y + 1;
-                else if (vCellBand === 0) vbDepth = state.player.x + state.player.y - 1;
+                else vbDepth = state.player.x + state.player.y - 1;
               }
             }
           }

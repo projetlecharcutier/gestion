@@ -47,20 +47,28 @@
     return G.aabbHitsBuildingsBox(x - G.PLAYER_HALF, y - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W);
   };
 
+  // Collision du JOUEUR contre les villes PNG : un SEUL pixel fait foi, le
+  // point sous les pieds (x, y) — jamais la boite PLAYER_W x PLAYER_W. Le
+  // rouge bloque toujours ; le vert et le transparent laissent passer (le
+  // vert place seulement le joueur DERRIERE le PNG au rendu). C'est le meme
+  // point qui decide de l'occlusion (villeCellInfo) : collision et masquage
+  // ne peuvent pas diverger. Les autres obstacles (batiments, murs, sieges)
+  // gardent leur test AABB plein.
+  G.playerHitsVilles = function (x, y) {
+    if (!G.aabbHitsVilles) return false;
+    return G.aabbHitsVilles(x, y, 0, 0, { point: true });
+  };
+
   G.tryMove = function (nx, ny) {
     var p = G.state.player;
     var moved = false;
     // Sous-pas : on avance vers (nx,ny) par incrément ≤ STEP px pour ne pas
-    // traverser une planche fine en un seul grand pas. STEP adaptatif :
-    // dans une ville PNG (masque 1 px, murs rouges/verts fins), un pas de
-    // 8 px peut "sauter par-dessus" une cellule solide entre deux echantillons
-    // (tunneling). STEP_VILLE = 2 px reduit le risque a un mur de 2 px minimum.
+    // traverser une planche fine en un seul grand pas. Le joueur etant
+    // represente par un POINT unique contre les villes (pixel sous les
+    // pieds), le sous-pas fin STEP_VILLE n'est plus necessaire : un pas de
+    // 8 px ne peut pas sauter une cellule solide (le point est teste a
+    // chaque sous-pas, et la grille ville est a la resolution du masque).
     var STEP = 8;
-    var STEP_VILLE = 2;
-    if (G.aabbHitsVilles && G.villeCellInfo) {
-      var vi = G.villeCellInfo(p.x, p.y);
-      if (vi) STEP = STEP_VILLE;
-    }
     var targetX = nx, targetY = ny;
     while (p.x !== targetX || p.y !== targetY) {
       var px = p.x, py = p.y;
@@ -84,7 +92,7 @@
     var advanced = false;
     var testX = p.x;
     var testY = ny;
-    var hitVilleY = G.aabbHitsVilles && G.aabbHitsVilles(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W);
+    var hitVilleY = G.playerHitsVilles(testX, testY);
     if (!G.aabbHitsBuildings(testX, testY) && !hitVilleY && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true) && !G.aabbHitsSieges(testX, testY) &&
         testX >= G.PLAYER_HALF && testX <= G.WORLD - G.PLAYER_HALF &&
         testY >= G.PLAYER_HALF && testY <= G.WORLD - G.PLAYER_HALF) {
@@ -93,7 +101,7 @@
     }
     testY = p.y;
     testX = nx;
-    var hitVilleX = G.aabbHitsVilles && G.aabbHitsVilles(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W);
+    var hitVilleX = G.playerHitsVilles(testX, testY);
     if (!G.aabbHitsBuildings(testX, testY) && !hitVilleX && !G.aabbHitsWalls(testX - G.PLAYER_HALF, testY - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true) && !G.aabbHitsSieges(testX, testY) &&
         testX >= G.PLAYER_HALF && testX <= G.WORLD - G.PLAYER_HALF &&
         testY >= G.PLAYER_HALF && testY <= G.WORLD - G.PLAYER_HALF) {
@@ -106,7 +114,7 @@
   G.posBlocked = function (x, y) {
     if (!G.aabbHitsBuildings) return false;
     if (G.aabbHitsBuildings(x, y)) return true;
-    if (G.aabbHitsVilles && G.aabbHitsVilles(x - G.PLAYER_HALF, y - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W)) return true;
+    if (G.playerHitsVilles(x, y)) return true;
     if (G.aabbHitsWalls && G.aabbHitsWalls(x - G.PLAYER_HALF, y - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true)) return true;
     if (G.aabbHitsSieges && G.aabbHitsSieges(x, y)) return true;
     return false;
@@ -139,7 +147,7 @@
         if (cy < G.PLAYER_HALF || cy > G.WORLD - G.PLAYER_HALF) continue;
         if (inTown && !G.inTown(cx, cy)) continue;
         if (G.aabbHitsBuildings(cx, cy)) continue;
-        if (G.aabbHitsVilles && G.aabbHitsVilles(cx - G.PLAYER_HALF, cy - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W)) continue;
+        if (G.playerHitsVilles(cx, cy)) continue;
         if (G.aabbHitsWalls(cx - G.PLAYER_HALF, cy - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W, true)) continue;
         return { x: cx, y: cy };
       }

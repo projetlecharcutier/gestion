@@ -2,8 +2,8 @@
 // pieds sur une cellule VERTE du masque (elevation nord), corps a l'ecran
 // echantillonne du TRANSPARENT (ciel au-dessus de lui dans le PNG).
 // Le sampling PAR BANDE seul le laissait DEVANT le PNG, visible par-dessus
-// la ville. Le mode des PIEDS (villeCellInfo = 1, derriere) doit faire foi :
-// toutes les bandes couvrantes passent devant lui -> joueur CACHE.
+// la ville. Le masque des PIEDS (villeCellInfo : cellule verte OU rouge)
+// doit faire foi : toutes les bandes couvrantes passent devant -> CACHE.
 var game = require("../../server/game.js");
 var G = game.G;
 game.startGame();
@@ -38,17 +38,18 @@ if (vert) {
   // 4) Le BUG : a l'ecran, le CORPS du joueur (au-dessus des pieds)
   //    echantillonne du TRANSPARENT -> les bandes couvrantes qui
   //    echantillonnent 0 passaient DERRIERE lui (visible par-dessus la
-  //    ville). Verifie le code : le mode 1 force TOUTE bande couvrante
-  //    devant le joueur AVANT le sampling par bande.
+  //    ville). Verifie le code : le masque des PIEDS (cellule verte OU rouge,
+  //    lu via villeCellInfo) force TOUTE bande couvrante devant le joueur
+  //    AVANT le sampling par bande.
   var fs = require("fs");
   var code = fs.readFileSync(require("path").join(__dirname, "..", "..", "src", "render.js"), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
-  var iMode1 = code.indexOf("villePinfo.mode === 1");
+  var iMode1 = code.indexOf("vFoot === 2 || vFoot === 1");
   var iSample = code.indexOf("G.villeCellAtScreen(vv, vAxisX,");
-  assert(iMode1 !== -1, "departage mode 1 (pieds verts) present");
-  assert(iSample !== -1, "sampling par bande present");
+  assert(iMode1 !== -1, "departage pieds verts OU rouges (vFoot) present");
+  assert(iSample !== -1, "sampling par bande present (repli hors grille)");
   if (iMode1 !== -1 && iSample !== -1) {
-    assert(iMode1 < iSample, "le mode 1 des pieds precede le sampling par bande (il fait foi)");
+    assert(iMode1 < iSample, "le masque des pieds precede le sampling par bande (il fait foi)");
   }
 
   // 5) Numeriquement : le corps du joueur au-dessus de ses pieds echantillonne

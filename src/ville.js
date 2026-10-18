@@ -565,17 +565,21 @@
   };
 
   // Info d'occlusion du joueur par les villes : { sprite, cell, ground, mode }
-  // ou null si (x, y) n'est dans la bbox d'aucune grille de ville.
+  // ou null si (x, y) n'est dans la bbox d'aucune grille de ville. Le point
+  // teste est le PIXEL SOUS LES PIEDS du personnage (un seul point fait foi
+  // pour le joueur, jamais sa boite).
   //   cell  : valeur de la cellule (0 libre, 1 solide, 2 derriere) ;
   //   ground: vrai si le point est dans le losange de SOL de la ville — la
   //           bande basse du PNG. Les cellules hors losange viennent du
   //           contenu en elevation (haut du PNG) : le joueur y est deja
   //           naturellement derriere la ville au tri par profondeur ;
-  //   mode  : 0 = tri naturel, 1 = joueur DERRIERE le PNG (cellule verte
-  //           au sol), 2 = joueur DEVANT le PNG (cellule transparente au
-  //           sol). Utilise par render() pour reordonner les bandes de la
-  //           ville par rapport au joueur : sans cela, la bande basse le
-  //           cachait aussi sur les zones transparentes du masque.
+  //   mode  : 1 = joueur DERRIERE le PNG (cellule verte OU ROUGE sous les
+  //           pieds : vert = passage derriere, rouge = solide toujours
+  //           bloquant, jamais traversant ni "devant"), 2 = joueur DEVANT
+  //           le PNG (cellule transparente sous les pieds). Utilise par
+  //           render() pour reordonner les bandes de la ville par rapport
+  //           au joueur : sans cela, la bande basse le cachait aussi sur les
+  //           zones transparentes du masque.
   G.villeCellInfo = function (x, y) {
     var villes = (G.state && G.state.villes) || [];
     // Grille manquante (masque pas encore charge au premier villeSetup,
@@ -610,8 +614,12 @@
       // L'ancien test ground (carre d'emprise seul) ignorait la moitie
       // haute : le joueur au pied d'une facade haute etait en mode 0
       // (tri naturel) et apparaissait SUR le PNG.
+      // Le masque des PIEDS fait foi : vert (2) = derriere le PNG, rouge
+      // (1) = solide (le point bloque la collision ; pour le rendu le
+      // personnage ne doit jamais apparaitre DEVANT une facade rouge),
+      // transparent (0) = devant le PNG.
       var mode = 0;
-      if (cell === 2) mode = 1;
+      if (cell === 2 || cell === 1) mode = 1;
       else if (cell === 0) mode = 2;
       return { sprite: v.sprite, cell: cell, ground: ground, mode: mode };
     }
@@ -659,13 +667,26 @@
   // Test AABB contre les cellules solides des villes : la boite monde
   // (bx, by, bw, bh) touche-t-elle une cellule rouge ? Meme esprit que
   // aabbHitsBuildings, sur la grille ville.
-  G.aabbHitsVilles = function (bx, by, bw, bh) {
+  // opts.point : le test porte sur le POINT (bx, by) seul (le pixel sous les
+  // pieds du personnage), pas sur la boite. C'est le contrat du JOUEUR contre
+  // les villes : un seul pixel fait foi pour la collision (rouge = bloque),
+  // quelle que soit la largeur du corps du sprite. Les autres entites
+  // (zombies, tours, planches, soldats, faune) gardent le test AABB plein.
+  G.aabbHitsVilles = function (bx, by, bw, bh, opts) {
     var grids = G.villeGrids;
     if (!grids) return false;
+    var point = !!(opts && opts.point);
     var villes = (G.state && G.state.villes) || [];
     for (var i = 0; i < villes.length; i++) {
       var g = grids[villes[i].sprite];
       if (!g) continue;
+      if (point) {
+        var px = Math.floor((bx - g.ox) / g.cell);
+        var py = Math.floor((by - g.oy) / g.cell);
+        if (px < 0 || py < 0 || px >= g.cols || py >= g.rows) continue;
+        if (g.data[py * g.cols + px] === 1) return true;
+        continue;
+      }
       if (bx + bw <= g.ox || bx >= g.ox + g.cols * g.cell) continue;
       if (by + bh <= g.oy || by >= g.oy + g.rows * g.cell) continue;
       var cell = g.cell;
@@ -681,6 +702,27 @@
       }
     }
     return false;
+  };
+
+  // Valeur du masque de ville au POINT monde (x, y) -- le pixel sous les
+  // pieds du personnage : 1 = rouge (solide, bloque), 2 = vert (libre, le
+  // personnage passe DERRIERE le PNG), 0 = transparent (libre, devant),
+  // -1 = hors de toute grille de ville. C'est la SEULE source de verite
+  // pour la collision ET l'occlusion du joueur contre les villes : le
+  // personnage est represente par ce point unique, jamais par sa boite.
+  G.villeMaskAtFoot = function (x, y) {
+    var grids = G.villeGrids;
+    if (!grids) return -1;
+    var villes = (G.state && G.state.villes) || [];
+    for (var i = 0; i < villes.length; i++) {
+      var g = grids[villes[i].sprite];
+      if (!g) continue;
+      var gx = Math.floor((x - g.ox) / g.cell);
+      var gy = Math.floor((y - g.oy) / g.cell);
+      if (gx < 0 || gy < 0 || gx >= g.cols || gy >= g.rows) continue;
+      return g.data[gy * g.cols + gx];
+    }
+    return -1;
   };
 
   // Variante centree (meme contrat que aabbHitsForets : demi-cote half).

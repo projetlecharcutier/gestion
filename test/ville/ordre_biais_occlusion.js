@@ -1,4 +1,4 @@
-// Test: villes PNG - occlusion du joueur par la ville, mecanisme v5.
+// Test: villes PNG - occlusion du joueur par la ville, mecanisme v6.
 // Historique : v1 = biais +/-1e6 sur toutes les bandes (ville entiere qui
 // saute), v2 = departage des bandes chevauchant le corps, v3 = tri naturel
 // uniquement (trop grossier : le joueur marchait sur le PNG en zone verte
@@ -9,6 +9,10 @@
 // sur l axe ecran du joueur -> seule la partie VERTE du PNG passe devant
 // lui, la partie transparente reste derriere (le joueur ne disparait
 // plus entierement sous le PNG quand ses pieds touchent une zone verte).
+// v6 = le PIXEL SOUS LES PIEDS tranche pour TOUTES les bandes couvrantes :
+// vert OU rouge = le personnage est DERRIERE le PNG (toutes les bandes
+// couvrantes passent devant), transparent = il est DEVANT (aucune bande ne
+// le recouvre). Le sampling par bande n'est plus qu'un repli hors grille.
 var fs = require("fs");
 var path = require("path");
 var REPO = path.join(__dirname, "..", "..");
@@ -34,7 +38,8 @@ if (m2) {
   assert(bh === 1, "VILLE_BAND_H = 1 px image (obtenu " + bh + ")");
 }
 
-// 3) Le mode du joueur est echantillonne via villeCellInfo (grille + ville)
+// 3) Le masque du joueur est lu via villeCellInfo (grille + ville), au POINT
+//    sous les pieds (x, y)
 assert(codeNoComments.indexOf("G.villeCellInfo(state.player.x, state.player.y)") !== -1,
   "ville du joueur identifiee via villeCellInfo(x, y)");
 
@@ -49,31 +54,33 @@ if (iOverlap !== -1 && iSample !== -1) {
   assert(iOverlap < iSample, "le chevauchement precede le sampling par bande");
 }
 
-// 5) Profondeur par bande : cellule VERTE (1) ou ROUGE (2... cell 1=solide,
-//    2=derriere) -> bande DEVANT le joueur ; cellule TRANSPARENTE (0) ->
-//    bande DERRIERE -> la partie transparente du PNG ne recouvre jamais le
-//    joueur, seule la partie peinte passe au-dessus.
+// 5) Profondeur par bande (REPLI hors grille) : cellule VERTE (2) ou ROUGE
+//    (1... cell 1=solide, 2=derriere) -> bande DEVANT le joueur ; cellule
+//    TRANSPARENTE (0) -> bande DERRIERE.
 assert(codeNoComments.indexOf("vCellBand === 1 || vCellBand === 2") !== -1 &&
        codeNoComments.indexOf("state.player.x + state.player.y + 1") !== -1,
   "bande verte/rouge : devant le joueur (profondeur joueur + 1)");
-assert(codeNoComments.indexOf("vCellBand === 0") !== -1 &&
-       codeNoComments.indexOf("state.player.x + state.player.y - 1") !== -1,
-  "bande transparente : derriere le joueur (profondeur joueur - 1)");
+assert(codeNoComments.indexOf("else vbDepth = state.player.x + state.player.y - 1") !== -1,
+  "bande transparente (repli) : derriere le joueur (profondeur joueur - 1)");
+assert(codeNoComments.indexOf("vFoot === 0") !== -1,
+  "pieds sur transparent : toutes les bandes couvrantes derriere le joueur");
 
-// 5bis) Pieds sur zone VERTE (mode 1) : TOUTES les bandes couvrantes passent
-//      devant le joueur. Dans le haut d une grande ville (Minas), les bandes
-//      couvrant son corps echantillonnent du TRANSPARENT a l ecran (ciel
-//      au-dessus de lui) : le sampling par bande seul le laissait DEVANT le
-//      PNG, visible par-dessus la ville, alors que le masque des PIEDS dit
-//      qu il est derriere. Le mode des pieds (1) fait foi, comme le mode 2.
-assert(codeNoComments.indexOf("villePinfo.mode === 1") !== -1 &&
+// 5bis) Pieds sur zone VERTE ou ROUGE (mode 1) : TOUTES les bandes couvrantes
+//      passent devant le joueur. Dans le haut d une grande ville (Minas), les
+//      bandes couvrant son corps echantillonnent du TRANSPARENT a l ecran
+//      (ciel au-dessus de lui) : le sampling par bande seul le laissait
+//      DEVANT le PNG, visible par-dessus la ville, alors que le masque des
+//      PIEDS dit qu il est derriere. Le masque des pieds (vert OU rouge)
+//      fait foi, comme le transparent (mode 2).
+assert(codeNoComments.indexOf("vFoot === 2 || vFoot === 1") !== -1 &&
        codeNoComments.indexOf("vbDepth = state.player.x + state.player.y + 1") !== -1,
-  "mode 1 (pieds verts) : toutes les bandes couvrantes devant le joueur");
+  "mode 1 (pieds verts OU rouges) : toutes les bandes couvrantes devant le joueur");
 // 6) Le mode ne depend plus du sol (emprise) : villeCellInfo s'applique
-//    partout, y compris les cellules d'elevation (nord de l'emprise)
-assert(codeNoCommentsV.indexOf("if (cell === 2) mode = 1") !== -1 &&
+//    partout, y compris les cellules d'elevation (nord de l'emprise).
+//    Vert OU rouge -> mode 1 (derriere), transparent -> mode 2 (devant).
+assert(codeNoCommentsV.indexOf("if (cell === 2 || cell === 1) mode = 1") !== -1 &&
        codeNoCommentsV.indexOf("else if (cell === 0) mode = 2") !== -1,
-  "villeCellInfo : mode applique sans restriction d'emprise");
+  "villeCellInfo : vert OU rouge -> derriere, transparent -> devant, sans restriction d'emprise");
 
 // 7) Le joueur est ancre sur sa zone OPAQUE (spriteBoundsOf) : les pieds ne
 //    flottent plus au-dessus de la marge transparente du PNG

@@ -28,7 +28,8 @@ Un pixel du masque correspond au point de sol situe sous lui a l'ecran
 |---|---|
 | `villeSetup(state)` | pose les villes de `VILLE_DEFS` dans `state.villes` + construit les grilles. Appele par `buildWorld` (world.js) et net.js (mode serveur, apres reception de la carte) |
 | `villeGridFromPixels(iw, ih, rgba, x, y, side, cell)` | PURE : masque RGBA -> grille monde `Uint8Array` (0 libre, 1 solide, 2 derriere). Utilisee par le client (canvas) ET gen-sprite-meta.js (Node) -> parite exacte |
-| `aabbHitsVilles(bx, by, bw, bh)` / `aabbHitsVillesCenter(x, y, half)` | test AABB contre les cellules solides (1). Branches dans `_stepMove` (player.js), les collisions zombies (zombies.js `hitsObstacle`), la pose de planches (walls.js) et de tours (towers.js `towerSpotFree`) |
+| `aabbHitsVilles(bx, by, bw, bh [, opts])` / `aabbHitsVillesCenter(x, y, half)` | test AABB contre les cellules solides (1). `opts.point` teste le POINT (bx, by) seul. Branches dans `_stepMove` (player.js, via `playerHitsVilles` en mode point), les collisions zombies (zombies.js `hitsObstacle`), la pose de planches (walls.js) et de tours (towers.js `towerSpotFree`) |
+| `villeMaskAtFoot(x, y)` | valeur du masque au point monde sous les pieds du personnage : 1 rouge (bloque), 2 vert (derriere), 0 transparent (devant), -1 hors ville. Source de verite unique pour la collision ET l'occlusion du joueur |
 | `villeBlockNav(blocked, cols, rows, cell)` | marque les cellules solides dans la grille nav 32 px (appele par `rebuildNavGrid`, flowfield.js) |
 | `villeAt(x, y, pad)` | position dans l'emprise d'une ville -> la generation (forets, maisons, items) evite les villes |
 | `villeEscape(x, y)` | direction du bord le plus proche (zombie pie dans une cellule solide) |
@@ -77,11 +78,19 @@ G.VILLE_DEFS = [
 
 - Le masque doit etre exporte en PNG **8-bit RGBA non entrelace**
   (standard Aseprite/GIMP) pour le decodeur serveur.
+- **Joueur = un point sous les pieds.** Pour le JOUEUR, collision et
+  occlusion contre les villes ne considerent qu'un seul pixel : la position
+  (x, y), projetee au sol (les pieds du sprite). Jamais la boite
+  PLAYER_W x PLAYER_W. Le rouge bloque toujours (le personnage s'arrete a
+  la limite du rouge) ; le vert et le transparent laissent passer (le vert
+  place seulement le joueur DERRIERE le PNG au rendu). Le personnage est
+  masque des que ce point tombe sur du vert OU du rouge ; il est devant la
+  ville quand le point est sur du transparent (ou hors de toute grille).
+  Les autres entites (zombies, tours, planches, soldats, faune) gardent le
+  test AABB plein contre les cellules rouges.
 - Le canal vert (derriere) ne bloque pas : au sol, il place le joueur
   DERRIERE le PNG au rendu (les bandes de la ville passent devant lui) ;
-  le transparent au sol le laisse DEVANT. L'ELEVATION (moitie haute du
-  PNG, au-dessus de l'horizon) ne produit AUCUNE collision : seuls les
-  pixels du masque projetes dans le losange de sol comptent.
+  le transparent au sol le laisse DEVANT.
 - Les villes ne remplacent pas la ville principale : mairie, eglise,
   bâtiments interactifs restent des objets reels. Les villes PNG sont du
   decor + collisions (comme les maisons `isDecor`).
