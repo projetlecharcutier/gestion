@@ -41,15 +41,52 @@
     return { x: G.CAMP_ROMAIN_POS.x, y: G.CAMP_ROMAIN_POS.y };
   }
 
+  // Emplacement franchissable pour un soldat (meme hitbox que le joueur) :
+  // dans le monde, hors batiments (forets comprises), hors villes PNG et
+  // hors murailles. Partage par le spawn et tryMoveSoldat.
+  function spotLibre(x, y) {
+    // Meme demi-cote que le joueur (PLAYER_HALF = PLAYER_W / 2 = 3).
+    var HALF = G.PLAYER_HALF || (G.PLAYER_W || 6) / 2;
+    if (x < HALF || y < HALF || x > G.WORLD - HALF || y > G.WORLD - HALF) return false;
+    if (G.aabbHitsBuildings && G.aabbHitsBuildings(x, y)) return false;
+    if (G.aabbHitsVilles && G.aabbHitsVilles(x - HALF, y - HALF, HALF * 2, HALF * 2)) return false;
+    if (G.aabbHitsWalls && G.aabbHitsWalls(x - HALF, y - HALF, HALF * 2, HALF * 2, false)) return false;
+    return true;
+  }
+
   // Position d'un soldat d'une patrouille : la patrouille tourne autour du
   // camp en cercle (angle commun qui avance), chaque soldat garde son slot.
   function spawnSoldat(state, patIdx, slotIdx, angBase) {
     var c = campCentre(state);
     var rayon = G.SOLDATS_RAYON * (0.75 + 0.25 * ((patIdx % 3) / 2));
     var ang = angBase + (slotIdx / G.SOLDATS_PAR_PATROUILLE) * Math.PI * 2;
+    var x = c.x + Math.cos(ang) * rayon;
+    var y = c.y + Math.sin(ang) * rayon;
+    // Le cercle de patrouille peut tomber dans une foret (les forets sont
+    // generees sans tenir compte du camp) ou sur une cellule solide d'une
+    // ville : un soldat spawn la y serait bloque a vie (les deux axes
+    // refuses par tryMoveSoldat). Spirale autour du point du cercle jusqu'au
+    // premier emplacement libre, comme pour le lance-flammes de depart.
+    // Marge de securite : on exige un corridor libre de 24 px dans les 4
+    // directions (un point libre entoure de forets bloque le 1er pas vers
+    // l'exterieur : tryMoveSoldat teste le point d'arrivee, pas le trajet).
+    function spotSpawnable(px, py) {
+      return spotLibre(px, py) && spotLibre(px + 24, py) &&
+             spotLibre(px - 24, py) && spotLibre(px, py + 24) &&
+             spotLibre(px, py - 24);
+    }
+    if (!spotSpawnable(x, y)) {
+      for (var r = 24; r <= 288 && !spotSpawnable(x, y); r += 24) {
+        for (var a = 0; a < Math.PI * 2; a += Math.PI / 8) {
+          var nx = c.x + Math.cos(ang) * rayon + Math.cos(a) * r;
+          var ny = c.y + Math.sin(ang) * rayon + Math.sin(a) * r;
+          if (spotSpawnable(nx, ny)) { x = nx; y = ny; break; }
+        }
+      }
+    }
     return {
-      x: c.x + Math.cos(ang) * rayon,
-      y: c.y + Math.sin(ang) * rayon,
+      x: x,
+      y: y,
       hp: G.SOLDATS_HP,
       pat: patIdx,            // index de patrouille (0..4)
       slot: slotIdx,          // position dans la patrouille (0..9)
@@ -132,10 +169,18 @@
     if (s.atkCd > 0) s.atkCd -= dt;
     if (s.hitFlash > 0) s.hitFlash -= dt;
 
-    // Poursuite d'un intrus deja acquis ?
+    // Poursuite d'un intrus deja acquis ? La cible memorise la position au
+    // moment de l'acquisition : on la rafraichit a chaque tick depuis
+    // l'entite vivante (le joueur bouge, la cible statique le ferait
+    // courir vers un fantome et le manquer a coup sur).
     var encore = s.cible && s.cible.ent && s.cible.ent.alive !== false &&
-                 distCamp(st, s.cible.x, s.cible.y) < G.SOLDATS_RAYON_MAX;
-    if (s.cible && !encore) s.cible = null;
+                 distCamp(st, s.cible.ent.x, s.cible.ent.y) < G.SOLDATS_RAYON_MAX;
+    if (s.cible && encore) {
+      s.cible.x = s.cible.ent.x;
+      s.cible.y = s.cible.ent.y;
+    } else {
+      s.cible = null;
+    }
 
     // Detection d'un nouvel intrus (uniquement si le soldat patrouille).
     if (!s.cible) {
@@ -237,20 +282,12 @@
   // par axe avec glisse. Reutilise les grilles existantes ; taille de
   // collision equivalente au joueur.
   G.tryMoveSoldat = function (s, nx, ny) {
-    // Meme demi-cote que le joueur (PLAYER_HALF = PLAYER_W / 2 = 3).
-    // Le fallback || 20 etait un residu d'avant PLAYER_W=6 : il donnait
-    // HALF=10 (hitbox 20x20) si PLAYER_W n'etait pas encore defini.
-    var HALF = G.PLAYER_HALF || (G.PLAYER_W || 6) / 2;
-    function libre(x, y) {
-      if (x < HALF || y < HALF || x > G.WORLD - HALF || y > G.WORLD - HALF) return false;
-      if (G.aabbHitsBuildings && G.aabbHitsBuildings(x, y)) return false;
-      if (G.aabbHitsVilles && G.aabbHitsVilles(x - HALF, y - HALF, HALF * 2, HALF * 2)) return false;
-      if (G.aabbHitsWalls && G.aabbHitsWalls(x - HALF, y - HALF, HALF * 2, HALF * 2, false)) return false;
-      return true;
-    }
+    // Meme demi-cote que le joueur (spotLibre : PLAYER_HALF = PLAYER_W / 2
+    // = 3). Le fallback || 20 etait un residu d'avant PLAYER_W=6 : il
+    // donnait HALF=10 (hitbox 20x20) si PLAYER_W n'etait pas defini.
     var moved = false;
-    if (libre(nx, s.y)) { s.x = nx; moved = true; }
-    if (libre(s.x, ny)) { s.y = ny; moved = true; }
+    if (spotLibre(nx, s.y)) { s.x = nx; moved = true; }
+    if (spotLibre(s.x, ny)) { s.y = ny; moved = true; }
     return moved;
   };
 

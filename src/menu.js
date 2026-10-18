@@ -35,16 +35,18 @@
       if (!usable) return; // frames manquantes : le runner reste invisible
       start(screen, actor, img, frames);
     }
-    var i, im;
+    var i;
     for (i = 0; i < FRAMES; i++) {
-      im = new Image();
-      im.onload = function (k) { return function () { frames.right[k] = im; done(); }; }(i);
-      im.onerror = done;
-      im.src = DIR + "perso_droite-" + i + ".png";
-      im = new Image();
-      im.onload = function (k) { return function () { frames.left[k] = im; done(); }; }(i);
-      im.onerror = done;
-      im.src = DIR + "perso_gauche-" + i + ".png";
+      (function (k) {
+        var imR = new Image();
+        imR.onload = function () { frames.right[k] = imR; done(); };
+        imR.onerror = done;
+        imR.src = DIR + "perso_droite-" + k + ".png";
+        var imL = new Image();
+        imL.onload = function () { frames.left[k] = imL; done(); };
+        imL.onerror = done;
+        imL.src = DIR + "perso_gauche-" + k + ".png";
+      })(i);
     }
     return true;
   }
@@ -104,9 +106,39 @@
     raf(tick);
   }
 
+  // Journal du serveur dans le menu : les 50 derniers messages publics
+  // (/server-log.json, sans mot de passe admin). Rafraichi toutes les 15 s
+  // tant que le menu est ouvert. Echec silencieux (solo/offline : le bloc
+  // reste sur son placeholder).
+  function refreshServerLog() {
+    if (typeof fetch !== "function") return;
+    var el = document.getElementById("serverLogLines");
+    if (!el) return;
+    fetch("/server-log.json", { cache: "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error("http " + r.status);
+      return r.json();
+    }).then(function (data) {
+      var lines = (data && data.lines) || [];
+      el.textContent = lines.length ? lines.join("\n") : "(aucun message)";
+      el.scrollTop = el.scrollHeight;
+    }).catch(function () {
+      if (!el.textContent || el.textContent.indexOf("Connexion") === 0) {
+        el.textContent = "(serveur injoignable)";
+      }
+    });
+  }
+
+  G.refreshServerLog = refreshServerLog;
+
   G.initMenuRunner = initMenuRunner;
 
-  function boot() { try { initMenuRunner(); } catch (e) { /* decoratif : jamais bloquant */ } }
+  function boot() {
+    try { initMenuRunner(); } catch (e) { /* decoratif : jamais bloquant */ }
+    try {
+      refreshServerLog();
+      if (typeof setInterval === "function") setInterval(refreshServerLog, 15000);
+    } catch (e) { /* log serveur indisponible : jamais bloquant */ }
+  }
   if (typeof document !== "undefined" && document.readyState === "loading" && document.addEventListener) {
     document.addEventListener("DOMContentLoaded", boot);
   } else {

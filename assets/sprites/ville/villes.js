@@ -8,5 +8,6 @@ window.VILLE_MANIFEST = [
   {"name":"Laputa","sprite":"laputa","x":4500,"y":4500},
   {"name":"Minas","sprite":"minas","x":15500,"y":15500},
   {"name":"motte","sprite":"motte","x":11608,"y":11608},
+  {"name":"nogent","sprite":"nogent","x":11394,"y":7576},
   {"name":"saintdenisdauthou","sprite":"saintdenisdauthou","x":10955,"y":10955},
 ];

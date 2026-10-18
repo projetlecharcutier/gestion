@@ -864,3 +864,44 @@ input:focus-visible,
   #startScreen::after { animation: none; }
   .loading__logo { animation-duration: 2.5s; }
 }
+
+/* ===== Menu d'accueil : journal des 50 derniers messages serveur ===== */
+.serverlog {
+  margin-top: 18px;
+  text-align: left;
+  background: var(--panel-deep);
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+.serverlog__title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+.serverlog__hint {
+  color: var(--text-muted);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.72rem;
+}
+.serverlog__lines {
+  margin: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  font: 10px/1.5 monospace;
+  color: var(--good);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.serverlog__lines:empty::after {
+  content: "(aucun message)";
+  color: var(--text-muted);
+}
+@media (max-width: 700px) {
+  .serverlog__lines { max-height: 100px; font-size: 9px; }
+}

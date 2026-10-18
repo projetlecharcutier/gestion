@@ -217,6 +217,15 @@
       res.end(JSON.stringify({ lines: logBuffer }));
       return;
     }
+    // 50 derniers messages serveur, PUBLICS (sans mot de passe admin) :
+    // affiches dans le menu d'accueil pour que les joueurs voient l'activite
+    // recente (connexions, vagues, deces, redemarrages...). Le buffer est
+    // borne (LOG_BUFFER_MAX) et tronque ici aux 50 dernieres lignes.
+    if (url === "/server-log.json") {
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-cache" });
+      res.end(JSON.stringify({ lines: logBuffer.slice(-50) }));
+      return;
+    }
     if (url === "/admin/status") {
       if (!adminAuthorized(req)) { adminUnauthorized(res); return; }
       var stA = game.getState();
