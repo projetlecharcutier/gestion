@@ -1436,6 +1436,9 @@
           // Élément de décor PNG (elementdecord) : le client retrouve le PNG
           // par decorSpriteName (G.SPRITES.elementdecord[...]).
           decorSpriteName: b.decorSpriteName || null,
+          // Echelle de rendu du decor (makeDecor renderScale) : le client
+          // l'applique dans drawBuilding pour la parite visuelle.
+          decorRenderScale: b.decorRenderScale || 1,
           decorPassable: b.decorPassable || false,
           decorSous: b.decorSous || false,
           // Miroir vertical (pluralité pixel art, nonbloquant/dessous) :

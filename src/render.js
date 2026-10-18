@@ -501,7 +501,11 @@ G.drawGround = function () {
     }
     else if (G.hasSprite("building", "generic")) { sprite = G.SPRITES.building.generic; spriteEnt = "building"; spriteKey = "generic"; }
     if (sprite) {
-      var losangeW = (b.w + b.h) * 0.5 * z;
+      // Echelle de rendu optionnelle (decorRenderScale, cf. makeDecor) :
+      // le PNG est dessine plus grand/petit que l'emprise sol, ancre en
+      // bas-centre comme toujours (le bas du rendu reste sur le sol).
+      var rScale = b.decorRenderScale || 1;
+      var losangeW = (b.w + b.h) * 0.5 * z * rScale;
       var dw = losangeW;
       var dh = dw * sprite.h / sprite.w;
       var groundY = Math.max(C[1], D[1]);

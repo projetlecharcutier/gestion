@@ -133,13 +133,22 @@
   //   mode "dessous"     : decorPassable ET decorSous -> le joueur passe SOUS
   //                        la texture : dessiné après le joueur (depth max).
   // Le PNG donne la taille (largeur * 2), comme pour les maisons/forêts.
-  G.makeDecor = function (x, y, frame, mode) {
+  // `renderScale` (optionnel, defaut 1) : echelle du RENDU uniquement. Le PNG
+  // est dessine a (sprite.w * 2 * renderScale) sur le losange, mais l'emprise
+  // sol (collision + placement) reste calculee sur la taille reelle du PNG
+  // (sprite.w * 2) : un decor peut etre rendu plus grand que sa hitbox sans
+  // deborder visuellement sur ses voisins ni fausser le placement. Utilise
+  // pour les eglises-decor : meme taille d'emprise que les autres decors
+  // bloquants, rendu a l'echelle des amas de maisons.
+  G.makeDecor = function (x, y, frame, mode, renderScale) {
     var sp = (G.SPRITES && G.SPRITES.elementdecord && G.SPRITES.elementdecord[frame]) || null;
     var side = sp ? sp.w * 2 : 96;
+    var rs = renderScale || 1;
     var b = {
       x: x - side / 2, y: y - side / 2, w: side, h: side,
       name: "Décor", msg: "", height: sp ? sp.h : 64,
       isDecor: true, decorSpriteName: frame,
+      decorRenderScale: rs,
       door: { x: x, y: y + side / 2 }
     };
     if (mode === "bloquant") {
@@ -174,6 +183,14 @@
     }
     return b;
   };
+  // Echelle de RENDU de l'eglise-decor "Lisieux- eglise saint jacque"
+  // (PNG 400x400, emprise sol 800). Les maisons des amas ont des PNG de
+  // 16-30 px (emprise 32-60) ; sans mise a l'echelle, l'eglise etait dessinee
+  // 13-25x plus grande qu'elles et paraissait "plus petite" en densite dans
+  // les villages. 0.4 ramene son rendu visuel a ~320 px de large, du meme
+  // ordre que les autres decors bloquants (moulin 60, fermepomme 138,
+  // poulailler 166, deuxmaison 106) tout en gardant sa hitbox reelle.
+  G.LISIEUX_RENDER_SCALE = 0.4;
   // Table de génération des éléments de décor : [dossier/nom PNG, mode, nombre].
   // bloquant = collision ; nonbloquant = traversable, trié par profondeur ;
   // dessous = traversable, le joueur passe sous la texture (éolienne, cerf).
@@ -191,7 +208,12 @@
     ["bloquant/eglise brevedent", "bloquant", 4],
     ["bloquant/fermepomme", "bloquant", 8],
     ["bloquant/LE BOULAY", "bloquant", 2],
-    ["bloquant/Lisieux- eglise saint jacque", "bloquant", 4],
+    // Eglise de Lisieux : PNG 400x400 (4x plus gros que les autres decors
+    // bloquants). Quota 2 (x4 = 8 poses sur la carte) et rendu mis a l'echelle
+    // des amas de maisons via G.LISIEUX_RENDER_SCALE : l'emprise sol et la
+    // hitbox restent sur la taille reelle du PNG (cf. makeDecor), l'eglise
+    // apparait dans les groupes mixtes au lieu d'etre un ilot geant isole.
+    ["bloquant/Lisieux- eglise saint jacque", "bloquant", 2],
     ["bloquant/deuxmaison", "bloquant", 2],
     ["bloquant/maison de la serre", "bloquant", 2],
     ["nonbloquant/buisson1", "nonbloquant", 90],
@@ -429,26 +451,48 @@
     }
     // Pose un decor (frame/mode/sp/side donnes) en (cx, cy). Sans effet de
     // bord : renvoie false sans rien ecrire si un filtre refuse.
-    function placeDecorAt(frame, mode, sp, side, cx, cy) {
+    function placeDecorAt(frame, mode, sp, side, cx, cy, renderScale) {
+      // On arrondit le centre pour que le losange (bx, by) soit aligne sur
+      // la grille monde entiere : la hitbox shrinked (fractions de side)
+      // peut commencer 1 cellule d'opacite plus tot qu'un losange non
+      // arrondi (ex: by=10574 -> cellule 66, mais by=10573.8 -> cellule 65).
+      cx = Math.round(cx); cy = Math.round(cy);
       var bx = Math.round(cx - side / 2), by = Math.round(cy - side / 2);
       if (!canPlace(bx, by, side, mode, sp, visRects, worldBoxes)) return false;
       pushVisRect(decorVisRect(bx, by, side, sp));
       pushWorldBox(bx, by, side, side);
       recordName(frame, cx, cy);
-      state.buildings.push(G.makeDecor(cx, cy, frame, mode));
+      state.buildings.push(G.makeDecor(cx, cy, frame, mode, renderScale));
       return true;
     }
     // Gros elements (eglise, montagne...) : pose isolee sur la box shrinkee
     // a l opaque, tous les filtres habituels, plus l espacement par type.
-    function placeBigAt(frame, mode, sp, side, cx, cy) {
-      var b = G.makeDecor(cx, cy, frame, mode);
+    function placeBigAt(frame, mode, sp, side, cx, cy, renderScale) {
+      // Calcul des bornes SANS creer l'objet (makeDecor couteux en appels) :
+      // on verifie d'abord les filtres sur la hitbox shrunked estimee, puis
+      // on ne cree l'objet que si tous les filtres passent.
+      var bd = G.spriteBounds("elementdecord", frame);
+      var bw0 = side, bh0 = side;
+      if (bd) {
+        var fw = bd.x1 - bd.x0, fh = bd.y1 - bd.y0;
+        if (fw > 0 && fh > 0 && fw < 1 && fh < 1) { bw0 = side * fw; bh0 = side * fh; }
+      }
+      var bx0 = Math.round(cx - bw0 / 2), by0 = Math.round(cy - bh0 / 2);
+      if (bx0 < 60 || by0 < 60 || bx0 + bw0 > G.WORLD - 60 || by0 + bh0 > G.WORLD - 60) return false;
+      var b = G.makeDecor(cx, cy, frame, mode, renderScale);
       var bx = Math.round(cx - side / 2), by = Math.round(cy - side / 2);
       if (b.x < 60 || b.y < 60 || b.x + b.w > G.WORLD - 60 || b.y + b.h > G.WORLD - 60) return false;
-      if (G.inTown && (G.inTown(b.x, b.y) || G.inTown(b.x + b.w, b.y) ||
-                        G.inTown(b.x, b.y + b.h) || G.inTown(b.x + b.w, b.y + b.h) ||
-                        G.inTown(b.x + b.w / 2, b.y + b.h / 2))) return false;
-      if (G.villeBoxHits && G.villeBoxHits(b.x, b.y, b.w, b.h)) return false;
+      // Filtres sur le LOSANGE (side x side) : un decor ne doit jamais avoir
+      // son emprise au sol (meme transparente) dans une ville ou la ville
+      // principale. La hitbox shrinked peut etre hors ville alors que le
+      // losange y penetre (les bords transparents du PNG debordent).
+      if (G.inTown && (G.inTown(bx, by) || G.inTown(bx + side, by) ||
+                       G.inTown(bx, by + side) || G.inTown(bx + side, by + side) ||
+                       G.inTown(bx + side / 2, by + side / 2))) return false;
+      if (G.villeBoxHits && G.villeBoxHits(bx, by, side, side)) return false;
       if (!G.villeBoxHits && G.villeAt && G.villeAt(cx, cy, side / 2)) return false;
+      // Filtres sur la HITBOX shrinked (collision reelle) : un decor bloquant
+      // ne doit pas avoir sa zone solide dans un batiment ou une foret.
       if (decorBoxHitsBuildings(state, b.x, b.y, b.w, b.h, 6)) return false;
       // Muraille avec marge : le débord VISUEL du PNG (élévation vers le
       // nord) ne doit pas non plus chevaucher la palissade.
@@ -470,28 +514,43 @@
       if (!sp) continue;
       var entry = { frame: frame, mode: mode, sp: sp, side: sp.w * 2,
                     want: total * MULT, left: total * MULT, scale: 1,
+                    renderScale: (frame === "bloquant/Lisieux- eglise saint jacque")
+                                 ? (G.LISIEUX_RENDER_SCALE || 1) : 1,
                     minD: idealMinD(total * MULT) };
+      // Gros elements isoles : seuil 480 (montagne 484, eglise Lisieux 800).
+      // L'eglise de Lisieux (side 800) en est EXCLUE juste apres (splice) :
+      // elle est regroupee aux amas en phase 3b. Seule la montagne (484)
+      // reste en pose isolee ici. Panneaux solaires (350) et les autres
+      // (<= 240) rejoignent les groupes mixtes.
       if (entry.side >= 480) bigList.push(entry); else small.push(entry);
     }
-    // Phase 1 : gros elements isoles, du plus grand au plus petit. minD se
-    // relache par palais apres une serie d echecs (carte trop chargee),
-    // sans jamais descendre sous 600.
+    // Phase 1 : gros elements isoles (side >= 480 : montagne 484 seule,
+    // Lisieux 800 en est exclu juste apres), du plus grand au plus petit.
     bigList.sort(function (a, b) { return b.side - a.side; });
+    // L'eglise de Lisieux (side 800) est EXCLUE de la pose isolee : elle est
+    // regrouppee aux amas de decors en phase 3b (rendu reduit, cf. renderScale).
+    var lisieuxIdx = -1;
+    for (var li0 = 0; li0 < bigList.length; li0++) {
+      if (bigList[li0].frame === "bloquant/Lisieux- eglise saint jacque") { lisieuxIdx = li0; break; }
+    }
+    var lisieuxEntry = lisieuxIdx >= 0 ? bigList.splice(lisieuxIdx, 1)[0] : null;
     for (var bi2 = 0; bi2 < bigList.length; bi2++) {
       var be = bigList[bi2];
       var minD = be.minD, fails = 0;
-      var guard = 0, maxGuard = be.want * (400 + be.side * 2) * 4 + 6400;
+      // Guard x40 (meme formule que la phase 3, facteur 40) : la carte est
+      // tres dense (3000 decors + 7020 forets) ; le guard original x4 epuisait
+      // ses essais avant d'atteindre le quota (montagne 0/16, Lisieux 0/8).
+      var guard = 0, maxGuard = be.want * (200 + be.side * 2) * 40 + 6400;
       while (be.left > 0 && guard < maxGuard) {
         guard++;
         var gx = G.rand(80, G.WORLD - 80), gy = G.rand(80, G.WORLD - 80);
         var inTownRect = gx > G.TOWN_MIN - townPad - be.side / 2 && gx < G.TOWN_MAX + townPad + be.side / 2 &&
                          gy > G.TOWN_MIN - townPad - be.side / 2 && gy < G.TOWN_MAX + townPad + be.side / 2;
         if (inTownRect) continue;
-        if (placeBigAt(be.frame, be.mode, be.sp, be.side, gx, gy)) {
+        if (placeBigAt(be.frame, be.mode, be.sp, be.side, gx, gy, be.renderScale)) {
           be.left--; fails = 0;
         } else {
           fails++;
-          if (fails >= 40) { minD = Math.max(600, minD * 0.85); fails = 0; }
         }
       }
     }
@@ -502,15 +561,19 @@
     function pickGroupMembers() {
       var avail = small.filter(function (e) { return e.left > 0; });
       if (avail.length === 0) return avail;
-      // Ancre : le plus GRAND sprite restant (les gros elements ont besoin
-      // de zones libres que les petits saturent : gros d abord, comme pour
-      // la pose isolee). Les voisins de groupe sont de taille comparable
-      // (facteur <= 2) pour ne pas gaspiller la cellule du plus grand.
       avail.sort(function (a, b) { return b.side - a.side || b.left - a.left; });
-      var anchor = avail[0];
+      // Ancre de taille MEDIANE (40-360 px) : couvre les decors de taille
+      // moyenne (champs 130-240, Panneaux solaires 350) pour qu'ils soient
+      // poses en groupes mixtes. Les tres gros (>= 480 : montagne, Lisieux)
+      // sont en phase 1/3b.
+      var mid = avail.filter(function (e) { return e.side >= 40 && e.side <= 360; });
+      var anchor = (mid.length > 0 ? mid : avail)[Math.min((mid.length > 0 ? mid : avail).length - 1, G.randi(0, 2))];
       var near = [];
-      for (var i = 1; i < avail.length; i++) {
-        if (avail[i].side >= anchor.side / 2 && avail[i].side <= anchor.side * 2) near.push(avail[i]);
+      for (var i = 0; i < avail.length; i++) {
+        if (avail[i] === anchor) continue;
+        // Voisinage assoupli (facteur 4) : l'eglise de Lisieux (side 800)
+        // doit pouvoir etre groupee avec des decors de 200-400 px.
+        if (avail[i].side >= anchor.side / 4 && avail[i].side <= anchor.side * 4) near.push(avail[i]);
       }
       near.sort(function (a, b) { return b.left - a.left; });
       var pool = [anchor].concat(near.slice(0, 3));
@@ -551,6 +614,7 @@
           var idx = r * 2 + c;
           if (idx >= order4.length) continue;
           var me = order4[idx];
+          if (me.left <= 0) return 0;
           var cx = gx0 + c * cellSide + cellSide / 2;
           var cy = gy0 + r * cellSide + cellSide / 2;
           if (!nameFarEnough(me.frame, cx, cy, me.minD * me.scale)) return 0;
@@ -566,7 +630,7 @@
         pushVisRect(decorVisRect(cands[ci].bx, cands[ci].by, m.side, m.sp));
         pushWorldBox(cands[ci].bx, cands[ci].by, m.side, m.side);
         recordName(m.frame, cands[ci].cx, cands[ci].cy);
-        state.buildings.push(G.makeDecor(cands[ci].cx, cands[ci].cy, m.frame, m.mode));
+        state.buildings.push(G.makeDecor(cands[ci].cx, cands[ci].cy, m.frame, m.mode, m.renderScale));
         m.left--;
       }
       return cands.length;
@@ -606,9 +670,50 @@
           : G.rand(G.TOWN_MAX + townPad, G.WORLD - 80);
         var gy3 = G.rand(80, G.WORLD - 80);
         if (!nameFarEnough(e3.frame, gx3, gy3, minD3)) { fails3++; }
-        else if (placeDecorAt(e3.frame, e3.mode, e3.sp, e3.side, gx3, gy3)) { e3.left--; fails3 = 0; continue; }
+        else if (placeDecorAt(e3.frame, e3.mode, e3.sp, e3.side, gx3, gy3, e3.renderScale)) { e3.left--; fails3 = 0; continue; }
         else { fails3++; }
         if (fails3 >= 40) { minD3 = Math.max(60, minD3 * 0.7); fails3 = 0; }
+      }
+    }
+    // Phase 3b : eglises de Lisieux (exclues de la phase 1) : on les colle
+    // a un amas de decors existant, comme les maisons des villages. Chaque
+    // candidat est teste avec placeBigAt sur sa VRAIE hitbox (shrinkee a
+    // l'opaque, ~192x172 monde) : jamais de chevauchement. Les ancres sont
+    // TOUS les decors (bloquants OU passables) pour maximiser les chances de
+    // trouver une position adjacente a un groupe existant.
+    var lisieux = lisieuxEntry;
+    if (lisieux && lisieux.left > 0) {
+      var anchors = [];
+      for (var ai = 0; ai < state.buildings.length; ai++) {
+        var ab = state.buildings[ai];
+        if (ab.decorSpriteName && ab.decorSpriteName !== lisieux.frame) anchors.push(ab);
+      }
+      // Spirale autour de l'ancre avec pas fin (25 px) et rayons larges
+      // (jusqu'a 600 px) : la carte est tres dense (3000 decors + 7000
+      // forets), une spirale trop grossiere ne tombe presque jamais sur une
+      // position libre proche d'un voisin. 24 rayons x 8 directions = 192
+      // positions par essai, 20 ancres differentes par eglise restante.
+      var guardL = 0, maxGuardL = lisieux.left * 40000 + 40000;
+      while (lisieux.left > 0 && guardL < maxGuardL) {
+        guardL++;
+        if (!anchors.length) break;
+        var placed = false;
+        for (var tryAnchor = 0; tryAnchor < 20 && !placed; tryAnchor++) {
+          var an = anchors[G.randi(0, anchors.length - 1)];
+          for (var ray = 1; ray <= 24 && !placed; ray++) {
+            var reach = ray * 25;
+            for (var a8 = 0; a8 < 8 && !placed; a8++) {
+              var ang = a8 * Math.PI / 4;
+              var lx = an.door.x + Math.cos(ang) * reach;
+              var ly = an.door.y + Math.sin(ang) * reach;
+              if (placeBigAt(lisieux.frame, lisieux.mode, lisieux.sp, lisieux.side, lx, ly, lisieux.renderScale)) {
+                lisieux.left--;
+                anchors.push(state.buildings[state.buildings.length - 1]);
+                placed = true;
+              }
+            }
+          }
+        }
       }
     }
   };
