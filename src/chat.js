@@ -207,6 +207,9 @@
   G.chatSetVisible = function (visible) {
     if (!rootEl) return;
     rootEl.hidden = !visible;
+    // Si le chat est replie via le bouton (src/menu.js), on memorise qu'il
+    // etait visible pour pouvoir le rouvrir au depliage.
+    if (visible && rootEl._collapsedByUser) rootEl.hidden = true;
     // A la premiere apparition, une ligne d'aide rend le raccourci
     // decouvrible et prouve que le panneau est vivant (meme avant tout
     // message serveur).

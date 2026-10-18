@@ -113,15 +113,11 @@ G.playMode = "local";
 
 // 1. Par defaut : mode mobile DESACTIVE.
 check(G.touchEnabled() === false, "mode mobile OFF par defaut");
-var btn = elements.touchModeBtn;
-check(!!btn, "bouton Mobile present (a cote du son)");
 
-// 2. Activation : les controles apparaissent (le texte du bouton change).
-var btnClick = btn && btn._ev && btn._ev.click;
-check(!!btnClick, "bouton Mobile cliquable");
-btnClick();
-check(G.touchEnabled() === true, "clic sur Mobile : mode active");
-check(btn.textContent.indexOf("ON") >= 0, "bouton affiche ON : " + btn.textContent);
+// 2. Activation via G.setTouchMode (le menu deroulant "Commandes" de
+//    src/menu.js appelle cette fonction ; l'ancien bouton est retire).
+G.setTouchMode(true);
+check(G.touchEnabled() === true, "setTouchMode(true) : mode active");
 
 // 3. Le touch-ui est construit et visible en partie.
 var touchRoot = null;
@@ -186,8 +182,8 @@ check(z2 > z1, "pinch ecarte : zoom in (" + z1 + " -> " + z2 + ")");
 fire("touchend", [{ identifier: 3 }, { identifier: 4 }], []);
 
 // 6. Desactivation : retour au mode clavier/souris, inputs remis a zero.
-btnClick();
-check(G.touchEnabled() === false, "re-clic : mode mobile desactive");
+G.setTouchMode(false);
+check(G.touchEnabled() === false, "setTouchMode(false) : mode mobile desactive");
 check(G.state.keys.space === false && G.state.actionHeld === false,
   "desactivation : espace et actionHeld remis a zero");
 check(touchRoot.hidden === true, "panneau tactile cache apres desactivation");

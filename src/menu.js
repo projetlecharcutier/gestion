@@ -132,8 +132,155 @@
 
   G.initMenuRunner = initMenuRunner;
 
+  // --- Menu deroulant "Commandes" (remplace les 2 anciens boutons
+  //     Clavier/Mobile qui se chevauchaient en haut a droite) ------------
+  // Trois modes exclusifs : default (souris+clavier), keyboard (ZQSD),
+  // touch (mobile). Le bouton affiche le mode actif ; clic = deplier la
+  // liste ; clic sur une option = appliquer + replier. Ferme aussi au clic
+  // ailleurs ou sur Echap.
+  var CONTROLS_LABELS = {
+    default: "\u2328\ufe0f Commandes : Souris + clavier",
+    keyboard: "\u2328\ufe0f Commandes : Clavier (ZQSD)",
+    touch: "\U0001f4f1 Commandes : Mobile"
+  };
+  function currentControlMode() {
+    if (G.touchEnabled && G.touchEnabled()) return "touch";
+    if (G.keyboardEnabled && G.keyboardEnabled()) return "keyboard";
+    return "default";
+  }
+  function applyControlMode(mode) {
+    if (mode === "keyboard" && G.setKeyboardMode) G.setKeyboardMode(true);
+    else if (mode === "touch" && G.setTouchMode) G.setTouchMode(true);
+    else {
+      if (G.setKeyboardMode) G.setKeyboardMode(false);
+      if (G.setTouchMode) G.setTouchMode(false);
+    }
+    refreshControlsBtn();
+  }
+  function refreshControlsBtn() {
+    var btn = document.getElementById("controlsBtn");
+    if (!btn) return;
+    var mode = currentControlMode();
+    btn.textContent = CONTROLS_LABELS[mode] || CONTROLS_LABELS.default;
+    var list = document.getElementById("controlsList");
+    if (!list) return;
+    var opts = list.querySelectorAll ? list.querySelectorAll("[data-mode]") : [];
+    for (var i = 0; i < opts.length; i++) {
+      var active = opts[i].getAttribute("data-mode") === mode;
+      if (opts[i].classList) {
+        if (active) opts[i].classList.add("controls-menu__opt--active");
+        else opts[i].classList.remove("controls-menu__opt--active");
+      }
+    }
+  }
+  function initControlsMenu() {
+    if (typeof document === "undefined" || !document.getElementById) return;
+    var btn = document.getElementById("controlsBtn");
+    var list = document.getElementById("controlsList");
+    if (!btn || !list) return;
+    btn.addEventListener("click", function (e) {
+      if (e && e.stopPropagation) e.stopPropagation();
+      var open = list.hidden;
+      list.hidden = !open;
+      if (btn.setAttribute) btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    var opts = list.querySelectorAll ? list.querySelectorAll("[data-mode]") : [];
+    for (var i = 0; i < opts.length; i++) {
+      (function (opt) {
+        opt.addEventListener("click", function (e) {
+          if (e && e.stopPropagation) e.stopPropagation();
+          var mode = opt.getAttribute("data-mode");
+          applyControlMode(mode);
+          list.hidden = true;
+          if (btn.setAttribute) btn.setAttribute("aria-expanded", "false");
+        });
+      })(opts[i]);
+    }
+    // Ferme la liste au clic ailleurs.
+    if (document.addEventListener) {
+      document.addEventListener("click", function (e) {
+        if (list.hidden) return;
+        var t = e && e.target;
+        if (t && list.contains && list.contains(t)) return;
+        if (t === btn) return;
+        list.hidden = true;
+        if (btn.setAttribute) btn.setAttribute("aria-expanded", "false");
+      });
+    }
+    refreshControlsBtn();
+  }
+  G.initControlsMenu = initControlsMenu;
+  G.refreshControlsBtn = refreshControlsBtn;
+
+  // --- Bouton retracter/deplier le chat --------------------------------
+  // Le chat est visible par defaut (mode serveur). Le bouton permet de le
+  // replier (seul le bouton reste, clic = reouvrir). L'etat est persiste
+  // dans localStorage. G.chatSetVisible (chat.js) gere la visibilite reelle
+  // du panneau ; ici on ne fait que basculer l'etat et rafraichir le bouton.
+  var CHAT_COLLAPSED_KEY = "flexChatCollapsed";
+  function chatCollapsed() {
+    try { return window.localStorage.getItem(CHAT_COLLAPSED_KEY) === "1"; } catch (e) { return false; }
+  }
+  function setChatCollapsed(collapsed) {
+    try { window.localStorage.setItem(CHAT_COLLAPSED_KEY, collapsed ? "1" : "0"); } catch (e) {}
+    var chat = document.getElementById("chat");
+    var btn = document.getElementById("chatToggle");
+    if (chat) {
+      // Ne masque que si le chat etait visible (ne force pas l'ouverture
+      // si le jeu ne l'a pas encore affiche).
+      if (collapsed && !chat.hidden) {
+        chat._wasVisible = true;
+        chat._collapsedByUser = true;
+        chat.hidden = true;
+      } else if (!collapsed && chat._wasVisible) {
+        chat.hidden = false;
+        chat._wasVisible = false;
+        chat._collapsedByUser = false;
+      }
+      if (chat.classList) {
+        if (collapsed) chat.classList.add("chat--collapsed");
+        else chat.classList.remove("chat--collapsed");
+      }
+    }
+    if (btn) {
+      btn.textContent = collapsed ? "\U0001f4ac Chat \u25b6" : "\U0001f4ac Chat \u25bc";
+      if (btn.setAttribute) btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    }
+  }
+  function initChatToggle() {
+    if (typeof document === "undefined" || !document.getElementById) return;
+    var btn = document.getElementById("chatToggle");
+    if (!btn) return;
+    // Etat initial : repli si sauvegarde, mais seulement apres que le chat
+    // soit rendu visible par le jeu (net.js appelle chatSetVisible(true)).
+    var wasCollapsed = chatCollapsed();
+    btn.addEventListener("click", function () {
+      setChatCollapsed(!chatCollapsed());
+    });
+    // Applique l'etat sauvegarde des que le chat devient visible.
+    var chat = document.getElementById("chat");
+    if (chat && typeof MutationObserver === "function") {
+      new MutationObserver(function () {
+        if (!chat.hidden && chatCollapsed()) {
+          chat._wasVisible = true;
+          chat._collapsedByUser = true;
+          chat.hidden = true;
+          if (chat.classList) chat.classList.add("chat--collapsed");
+          if (btn.setAttribute) btn.setAttribute("aria-expanded", "false");
+          btn.textContent = "\U0001f4ac Chat \u25b6";
+        }
+      }).observe(chat, { attributes: true, attributeFilter: ["hidden"] });
+    }
+    if (wasCollapsed && btn.setAttribute) btn.setAttribute("aria-expanded", "false");
+    if (wasCollapsed) btn.textContent = "\U0001f4ac Chat \u25b6";
+  }
+  G.initChatToggle = initChatToggle;
+  G.setChatCollapsed = setChatCollapsed;
+
   function boot() {
     try { initMenuRunner(); } catch (e) { /* decoratif : jamais bloquant */ }
+    try { initControlsMenu(); } catch (e) { /* jamais bloquant */ }
+    try { initChatToggle(); } catch (e) { /* jamais bloquant */ }
     try {
       refreshServerLog();
       if (typeof setInterval === "function") setInterval(refreshServerLog, 15000);

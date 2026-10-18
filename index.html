@@ -38,6 +38,7 @@
 
   <!-- Chat : bande étroite superposée à droite, toujours visible en jeu.
        Entrée = ouvrir le champ / envoyer, Échap = annuler. -->
+  <button class="chat-toggle" id="chatToggle" type="button" title="Afficher/masquer le chat" aria-expanded="true">💬 Chat ▼</button>
   <div class="chat" id="chat" hidden>
     <div class="chat__log" id="chatLog"></div>
     <div class="chat__bar" id="chatEmojis"></div>
@@ -54,8 +55,14 @@
   <!-- Bouton son (haut à droite) -->
   <button class="sound-btn" id="soundBtn" type="button" title="Activer/couper le son">Son : OFF</button>
   <button class="sound-btn" id="sfxBtn" type="button" title="Activer/couper les effets sonores">Effets : ON</button>
-  <button class="sound-btn" id="touchModeBtn" type="button" title="Activer les contrôles tactiles (mobile/tablette)">📱 Mobile : OFF</button>
-  <button class="sound-btn" id="keyboardModeBtn" type="button" title="Activer les déplacements clavier ZQSD (Espace = tir / poser)">⌨️ Clavier : OFF</button>
+  <div class="controls-menu" id="controlsMenu">
+    <button class="sound-btn controls-menu__btn" id="controlsBtn" type="button" title="Choisir le mode de commandes" aria-haspopup="true" aria-expanded="false">⌨️ Commandes : Souris + clavier</button>
+    <div class="controls-menu__list" id="controlsList" hidden>
+      <button type="button" class="controls-menu__opt" data-mode="default">🖱️ Souris + clavier <span class="controls-menu__default">(par défaut)</span></button>
+      <button type="button" class="controls-menu__opt" data-mode="keyboard">⌨️ Clavier (ZQSD + Espace)</button>
+      <button type="button" class="controls-menu__opt" data-mode="touch">📱 Mobile (tactile)</button>
+    </div>
+  </div>
 
   <!-- Lecteurs SoundCloud invisibles (jour / nuit) -->
   <iframe class="sc-hidden" id="scDay"

@@ -117,17 +117,13 @@ G.playMode = "local";
 
 // 1. Par defaut : mode clavier DESACTIVE.
 check(G.keyboardEnabled() === false, "mode clavier OFF par defaut");
-var btn = elements.keyboardModeBtn;
-check(!!btn, "bouton Clavier present (a cote de Mobile)");
 var hintBlock = el("hudHintBlock");
 check(hintBlock.children.length === 0, "avant activation : aide par defaut (HTML statique) intacte");
 
-// 2. Activation : le texte du bouton change ET l'aide des commandes change.
-var btnClick = btn && btn._ev && btn._ev.click;
-check(!!btnClick, "bouton Clavier cliquable");
-btnClick();
-check(G.keyboardEnabled() === true, "clic sur Clavier : mode active");
-check(btn.textContent.indexOf("ON") >= 0, "bouton affiche ON : " + btn.textContent);
+// 2. Activation via G.setKeyboardMode (le menu deroulant "Commandes" de
+//    src/menu.js appelle cette fonction ; l'ancien bouton est retire).
+G.setKeyboardMode(true);
+check(G.keyboardEnabled() === true, "setKeyboardMode(true) : mode active");
 var hintsKb = hintBlock.children.map(function (c) { return c.textContent; });
 check(hintsKb.length === 3 && hintsKb[0].indexOf("ZQSD") >= 0 && hintsKb[0].indexOf("Espace = tir") >= 0 &&
   hintsKb[1].indexOf("B = menu") >= 0 && hintsKb[1].indexOf("R = rotation") >= 0,
@@ -195,8 +191,8 @@ delete G.state.keys.Space;
 G.state.buildMode = false;
 
 // 7. Desactivation : retour au mode par defaut, inputs remis a zero.
-btnClick();
-check(G.keyboardEnabled() === false, "re-clic : mode clavier desactive");
+G.setKeyboardMode(false);
+check(G.keyboardEnabled() === false, "setKeyboardMode(false) : mode clavier desactive");
 check(G.state.actionHeld === false, "desactivation : actionHeld coupe");
 var hintsAfter = hintBlock.children.map(function (c) { return c.textContent; });
 check(hintsAfter.length === 3 && hintsAfter[0].indexOf("Espace = avancer") >= 0,

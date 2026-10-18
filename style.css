@@ -293,7 +293,7 @@ input:focus-visible,
 /* ---- Menu d'accueil : guide des mecaniques ---- */
 .panel--menu {
   width: min(680px, 94vw);
-  max-height: calc(100vh - 130px);
+  max-height: calc(100vh - 60px);
   overflow-y: auto;
   text-align: left;
 }
@@ -433,6 +433,80 @@ input:focus-visible,
 #sfxBtn { right: 96px; }
 .sound-btn:hover { background: #3a5240; }
 
+/* ===== Menu deroulant "Commandes" (remplace les 2 anciens boutons
+   Clavier/Mobile qui se recouvraient en haut a droite) ===== */
+.controls-menu {
+  position: fixed;
+  top: 10px;
+  right: 180px;
+  z-index: 50;
+}
+.controls-menu__btn { position: static; }
+.controls-menu__list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--panel);
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 4px;
+  box-shadow: 0 3px 0 var(--ink), 4px 4px 0 rgba(12, 15, 12, 0.5);
+  padding: 4px;
+}
+.controls-menu__list[hidden] { display: none; }
+.controls-menu__opt {
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: left;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.controls-menu__opt:hover { background: #3a5240; }
+.controls-menu__opt--active {
+  background: rgba(224, 169, 46, 0.18);
+  color: var(--gold);
+}
+.controls-menu__opt--active::after { content: " \2713"; }
+.controls-menu__default {
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* ===== Bouton retracter/deplier le chat ===== */
+.chat-toggle {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 12;
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 3px 0 var(--ink);
+  cursor: pointer;
+}
+.chat-toggle:hover { background: #3a5240; }
+/* Quand le chat est deplie, le bouton se place au-dessus du panneau. */
+.chat:not([hidden]) ~ .chat-toggle,
+.chat-toggle.chat-toggle--above {
+  bottom: auto;
+  top: auto;
+}
+
 /* Liste des joueurs connectes (droite, sous l'horloge/jour et les boutons son) */
 .playerlist {
   position: fixed;
@@ -486,6 +560,9 @@ input:focus-visible,
   .chat__log { max-height: 14vh; }
   .playerlist { right: 8px; top: 8px; font-size: 0.7rem; padding: 6px 8px; }
   .sound-btn { font-size: 0.7rem; padding: 4px 8px; }
+  .controls-menu { right: 84px; }
+  .controls-menu__list { min-width: 160px; }
+  .controls-menu__opt { font-size: 0.7rem; padding: 4px 6px; }
   .hud { font-size: 0.7rem; }
   .hud__hint-block { display: none; }
   .touch-bar { gap: 5px; right: 6px; bottom: 6px; }
@@ -500,7 +577,7 @@ input:focus-visible,
 .chat {
   position: fixed;
   right: 12px;
-  bottom: 12px;
+  bottom: 44px;
   width: 240px;
   max-width: 18vw;
   /* Au-dessus des .overlay (z-index 10) : le chat est visible des la
@@ -891,7 +968,7 @@ input:focus-visible,
 }
 .serverlog__lines {
   margin: 0;
-  max-height: 180px;
+  max-height: 120px;
   overflow-y: auto;
   font: 10px/1.5 monospace;
   color: var(--good);

@@ -130,11 +130,8 @@
       if (!s.keys || !s.keys.Space) s.keys.space = false;
     }
     refreshHints();
-    var btn = document.getElementById("keyboardModeBtn");
-    if (btn) {
-      btn.textContent = enabled ? "\u2328\uFE0F Clavier : ON" : "\u2328\uFE0F Clavier : OFF";
-      if (btn.setAttribute) btn.setAttribute("aria-pressed", enabled ? "true" : "false");
-    }
+    // Le bouton "Commandes" (menu deroulant) reflete le mode actif.
+    if (G.refreshControlsBtn) G.refreshControlsBtn();
     try { window.localStorage.setItem("flexKeyboardMode", enabled ? "1" : "0"); } catch (e) {}
   };
   G.toggleKeyboardMode = function () { G.setKeyboardMode(!enabled); };
@@ -165,8 +162,8 @@
   }
 
   function init() {
-    var btn = document.getElementById("keyboardModeBtn");
-    if (btn) btn.addEventListener("click", G.toggleKeyboardMode);
+    // Le bouton d'activation est gere par le menu deroulant "Commandes"
+    // (src/menu.js) : on restaure juste la preference sauvegardee.
     var saved = null;
     try { saved = window.localStorage.getItem("flexKeyboardMode"); } catch (e) {}
     if (saved === "1") G.setKeyboardMode(true);

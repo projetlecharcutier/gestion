@@ -411,11 +411,8 @@
       G.state.keys.space = false;
     }
     refresh();
-    var btn = document.getElementById("touchModeBtn");
-    if (btn) {
-      btn.textContent = enabled ? "\uD83D\uDCF1 Mobile : ON" : "\uD83D\uDCF1 Mobile : OFF";
-      if (btn.setAttribute) btn.setAttribute("aria-pressed", enabled ? "true" : "false");
-    }
+    // Le bouton "Commandes" (menu deroulant) reflete le mode actif.
+    if (G.refreshControlsBtn) G.refreshControlsBtn();
     try { window.localStorage.setItem("flexTouchMode", enabled ? "1" : "0"); } catch (e) {}
   };
   G.toggleTouchMode = function () { G.setTouchMode(!enabled); };
@@ -441,8 +438,8 @@
 
   // Bouton du menu (a cote du son) : activation/desactivation.
   function init() {
-    var btn = document.getElementById("touchModeBtn");
-    if (btn) btn.addEventListener("click", G.toggleTouchMode);
+    // Le bouton d'activation est gere par le menu deroulant "Commandes"
+    // (src/menu.js) : on restaure juste la preference sauvegardee.
     // Desactive par defaut, MEME si le terminal est tactile : le mode
     // souris+clavier reste la reference tant que le joueur ne demande
     // pas explicitement le mode mobile.
