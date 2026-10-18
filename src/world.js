@@ -695,7 +695,10 @@
         if ((b.foretStage || 0) < (G.FORET_STAGES - 1)) regrowSolid = true;
       }
     }
-    if (regrowSolid && G.rebuildBuildingGrid) G.rebuildBuildingGrid();
+    if (regrowSolid) {
+      if (G.markBuildingGridDirty) G.markBuildingGridDirty();
+      else if (G.rebuildBuildingGrid) G.rebuildBuildingGrid();
+    }
     if (regrowSolid && G.ensureForetConnectivity) G.ensureForetConnectivity();
   };
 
@@ -719,8 +722,20 @@
   // Grille spatiale des bâtiments (forêts + maisons + mairie) pour des
   // collisions en O(1) avec plusieurs milliers de forêts. Construite après
   // buildWorld() via rebuildBuildingGrid().
+  // Dirty flag : plusieurs sources appellent rebuildBuildingGrid dans la
+  // meme frame (siege qui ecrase des forets, chop, regen matinale) : on
+  // marque la grille "dirty" et on ne reconstruit qu'UNE fois par frame via
+  // flushBuildingGridDirty (appele depuis update/tick). evite N rebuilds
+  // complets O(7700) + N BFS navGrid dans la meme frame.
   G.buildingGrid = null;
   G.BUILDING_CELL = 256;
+  var buildingGridDirty = false;
+  G.markBuildingGridDirty = function () { buildingGridDirty = true; };
+  G.flushBuildingGridDirty = function () {
+    if (!buildingGridDirty) return;
+    buildingGridDirty = false;
+    G.rebuildBuildingGrid();
+  };
   G.rebuildBuildingGrid = function () {
     var cell = G.BUILDING_CELL;
     var grid = {};

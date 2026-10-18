@@ -103,7 +103,10 @@
         if (G.statsAddPlanks) G.statsAddPlanks(G.FORET_PLANKS_PER_CHOP);
         cible.foretStage = (cible.foretStage || 0) + 1;
         if (G.refitForet) G.refitForet(cible);
-        if (G.foretDepleted(cible) && G.buildingGrid) G.rebuildBuildingGrid();
+        if (G.foretDepleted(cible)) {
+          if (G.markBuildingGridDirty) G.markBuildingGridDirty();
+          else if (G.buildingGrid) G.rebuildBuildingGrid();
+        }
       }
       state.chopTarget = null;
       state.chopWall = null;

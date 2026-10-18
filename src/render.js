@@ -1642,6 +1642,10 @@ G.drawGround = function () {
     }
     for (var wi = 0; wi < state.walls.length; wi++) {
       var m = state.walls[wi];
+      // Culling : ignore les palissades hors ecran (marge 40 px pour le
+      // debord visuel du PNG au nord de l'emprise sol).
+      if (m.x + m.w < bnds.minX - 40 || m.x > bnds.maxX + 40 ||
+          m.y + m.h < bnds.minY - 40 || m.y > bnds.maxY + 40) continue;
       drawables.push({ depth: m.x + m.y, type: "wall", ref: m });
     }
     for (var ti = 0; ti < (state.towers || []).length; ti++) {
@@ -1745,6 +1749,9 @@ G.drawGround = function () {
     }
     for (var bi2 = 0; bi2 < state.birds.length; bi2++) {
       var bd = state.birds[bi2];
+      // Culling : ignore les oiseaux hors ecran (marge 60 px, ils volent haut).
+      if (bd.x < bnds.minX - 60 || bd.x > bnds.maxX + 60 ||
+          bd.y < bnds.minY - 60 || bd.y > bnds.maxY + 60) continue;
       drawables.push({ depth: bd.x + bd.y + 100000, type: "bird", ref: bd });
     }
     // Animaux sauvages : tries comme les autres entites au sol.
@@ -1752,6 +1759,8 @@ G.drawGround = function () {
       for (var fai = 0; fai < state.fauna.length; fai++) {
         var fa = state.fauna[fai];
         if (fa.hp <= 0) continue;
+        // Culling : ignore les animaux hors ecran.
+        if (fa.x < bnds.minX || fa.x > bnds.maxX || fa.y < bnds.minY || fa.y > bnds.maxY) continue;
         drawables.push({ depth: fa.x + fa.y, type: "fauna", ref: fa });
       }
     }
@@ -1760,6 +1769,8 @@ G.drawGround = function () {
       for (var soi = 0; soi < state.soldats.length; soi++) {
         var so = state.soldats[soi];
         if (so.hp <= 0) continue;
+        // Culling : ignore les soldats hors ecran.
+        if (so.x < bnds.minX || so.x > bnds.maxX || so.y < bnds.minY || so.y > bnds.maxY) continue;
         drawables.push({ depth: so.x + so.y, type: "soldat", ref: so });
       }
     }
@@ -1767,6 +1778,8 @@ G.drawGround = function () {
     if (state.remotePlayers) {
       for (var rpi = 0; rpi < state.remotePlayers.length; rpi++) {
         var rp = state.remotePlayers[rpi];
+        // Culling : ignore les joueurs distants hors ecran.
+        if (rp.x < bnds.minX || rp.x > bnds.maxX || rp.y < bnds.minY || rp.y > bnds.maxY) continue;
         drawables.push({ depth: rp.x + rp.y, type: "player", ref: rp });
       }
     }

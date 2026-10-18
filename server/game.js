@@ -1141,6 +1141,11 @@
       }
     }
 
+    // Flush differe des rebuilds de grille marques dirty (foret coupee,
+    // ecrasee par un siege) : un seul rebuild par tick serveur meme si
+    // plusieurs sources ont marque la grille dirty dans ce tick.
+    if (G.flushBuildingGridDirty) G.flushBuildingGridDirty();
+
     // Game over si mairie détruite.
     var mairie = null;
     for (var b = 0; b < state.buildings.length; b++) {

@@ -237,7 +237,10 @@
   // par axe avec glisse. Reutilise les grilles existantes ; taille de
   // collision equivalente au joueur.
   G.tryMoveSoldat = function (s, nx, ny) {
-    var HALF = (G.PLAYER_W || 20) / 2;
+    // Meme demi-cote que le joueur (PLAYER_HALF = PLAYER_W / 2 = 3).
+    // Le fallback || 20 etait un residu d'avant PLAYER_W=6 : il donnait
+    // HALF=10 (hitbox 20x20) si PLAYER_W n'etait pas encore defini.
+    var HALF = G.PLAYER_HALF || (G.PLAYER_W || 6) / 2;
     function libre(x, y) {
       if (x < HALF || y < HALF || x > G.WORLD - HALF || y > G.WORLD - HALF) return false;
       if (G.aabbHitsBuildings && G.aabbHitsBuildings(x, y)) return false;

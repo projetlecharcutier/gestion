@@ -95,14 +95,56 @@
     return true;
   };
 
-  // Teste si une boîte (cx,cy,cw,ch) chevauche le losange de base d'une
-  // tour de siège. Utilisé par les zombies ET le joueur.
-  function hitsSiegeFoot(cx, cy, cw, ch) {
+  // Index spatial des tours de siege (grille 256 px, reconstruit paresseusement
+  // quand le nombre de tours change). Les tours sont mobiles mais PEU nombreuses
+  // (max 10) et lentes : un index grossier suffit a rejeter 90% des tests sans
+  // toucher au losange exact. evite le scan lineaire O(n_sieges) appele par
+  // chaque zombie a chaque sous-pas (2000 zombies x 4 sous-pas x 2 axes).
+  var SIEGE_CELL = 256;
+  var siegeGrid = null;
+  var siegeGridCount = -1;
+  function siegeGridSync() {
     var sieges = G.state.sieges || [];
+    if (siegeGrid && siegeGridCount === sieges.length) return;
+    siegeGrid = {};
+    siegeGridCount = sieges.length;
     for (var i = 0; i < sieges.length; i++) {
       var s = sieges[i];
       if (s.hp <= 0) continue;
-      if (G.diamondHitsBox(G.siegeDiamond(s), cx, cy, cw, ch)) return s;
+      var fp = G.siegeFootprint(s);
+      var cx0 = Math.floor(fp.x / SIEGE_CELL), cx1 = Math.floor((fp.x + fp.w) / SIEGE_CELL);
+      var cy0 = Math.floor(fp.y / SIEGE_CELL), cy1 = Math.floor((fp.y + fp.h) / SIEGE_CELL);
+      for (var gx = cx0; gx <= cx1; gx++) {
+        for (var gy = cy0; gy <= cy1; gy++) {
+          var k = gx + "," + gy;
+          if (!siegeGrid[k]) siegeGrid[k] = [];
+          siegeGrid[k].push(s);
+        }
+      }
+    }
+  }
+  G.rebuildSiegeGrid = function () { siegeGridCount = -1; siegeGridSync(); };
+
+  // Teste si une boîte (cx,cy,cw,ch) chevauche le losange de base d'une
+  // tour de siège. Utilisé par les zombies ET le joueur. Broad-phase :
+  // requete la grille spatiale (cellules 256 px) puis narrow-phase losange
+  // exact sur les candidats proches.
+  function hitsSiegeFoot(cx, cy, cw, ch) {
+    var sieges = G.state.sieges || [];
+    if (!sieges.length) return null;
+    siegeGridSync();
+    var x0 = Math.floor(cx / SIEGE_CELL), x1 = Math.floor((cx + cw) / SIEGE_CELL);
+    var y0 = Math.floor(cy / SIEGE_CELL), y1 = Math.floor((cy + ch) / SIEGE_CELL);
+    for (var gx = x0; gx <= x1; gx++) {
+      for (var gy = y0; gy <= y1; gy++) {
+        var arr = siegeGrid[gx + "," + gy];
+        if (!arr) continue;
+        for (var n = 0; n < arr.length; n++) {
+          var s = arr[n];
+          if (s.hp <= 0) continue;
+          if (G.diamondHitsBox(G.siegeDiamond(s), cx, cy, cw, ch)) return s;
+        }
+      }
     }
     return null;
   }
@@ -112,10 +154,20 @@
   // position libre quand le joueur est repoussé hors d'une tour.
   G.hitsSiegeFootExcluding = function (cx, cy, cw, ch, excl) {
     var sieges = G.state.sieges || [];
-    for (var i = 0; i < sieges.length; i++) {
-      var s = sieges[i];
-      if (s === excl || s.hp <= 0) continue;
-      if (G.diamondHitsBox(G.siegeDiamond(s), cx, cy, cw, ch)) return s;
+    if (!sieges.length) return null;
+    siegeGridSync();
+    var x0 = Math.floor(cx / SIEGE_CELL), x1 = Math.floor((cx + cw) / SIEGE_CELL);
+    var y0 = Math.floor(cy / SIEGE_CELL), y1 = Math.floor((cy + ch) / SIEGE_CELL);
+    for (var gx = x0; gx <= x1; gx++) {
+      for (var gy = y0; gy <= y1; gy++) {
+        var arr = siegeGrid[gx + "," + gy];
+        if (!arr) continue;
+        for (var n = 0; n < arr.length; n++) {
+          var s = arr[n];
+          if (s === excl || s.hp <= 0) continue;
+          if (G.diamondHitsBox(G.siegeDiamond(s), cx, cy, cw, ch)) return s;
+        }
+      }
     }
     return null;
   };
@@ -405,7 +457,8 @@
       flattened = true;
     }
     if (flattened) {
-      if (G.rebuildBuildingGrid) G.rebuildBuildingGrid();
+      if (G.markBuildingGridDirty) G.markBuildingGridDirty();
+      else if (G.rebuildBuildingGrid) G.rebuildBuildingGrid();
       if (G.playSfx) G.playSfx("chop");
     }
   }
@@ -447,6 +500,7 @@
       state.siegeSpawnedForDay = true;
       var n = G.spawnSieges();
       if (n > 0) {
+        siegeGridCount = -1;
         state.siegeMsgTimer = 8;
         if (G.addFloater) G.addFloater("Siege : " + n + " tour(s) de siège approchent !");
       }
@@ -505,8 +559,10 @@
   // (PNG destruction, non-collisionnable) et un son de destruction.
   G.cleanupSieges = function () {
     var state = G.state;
+    var removed = false;
     for (var i = state.sieges.length - 1; i >= 0; i--) {
       if (state.sieges[i].hp <= 0) {
+        removed = true;
         var s = state.sieges[i];
         state.siegeTraces.push({
           x: Math.round(s.x), y: Math.round(s.y),
@@ -518,5 +574,6 @@
         }
       }
     }
+    if (removed) siegeGridCount = -1;
   };
 })();

@@ -39,52 +39,28 @@
     }
     return false;
   };
+  // Collision joueur contre les batiments : delegue a aabbHitsBuildingsBox
+  // (meme implementation, grille spatiale + repli lineaire). Le joueur est
+  // un carre PLAYER_W x PLAYER_W centre sur (x, y) : le bas du sprite ne
+  // participe PAS a la collision.
   G.aabbHitsBuildings = function (x, y) {
-    var bx = x - G.PLAYER_HALF, by = y - G.PLAYER_HALF;
-    var bw = G.PLAYER_W, bh = G.PLAYER_W;
-    // Grille spatiale des batiments (construite par rebuildBuildingGrid) :
-    // le scan lineaire de TOUS les batiments (~7700 avec les forets) etait
-    // le hot spot du tick serveur (50 legionnaires -> libre -> ici, 20 Hz).
-    // Repli sur le scan lineaire si la grille n'est pas encore batie.
-    var grid = G.buildingGrid, cell = G.BUILDING_CELL;
-    if (!grid || !cell) {
-      for (var i = 0; i < G.state.buildings.length; i++) {
-        var b0 = G.state.buildings[i];
-        if (b0.decorPassable) continue;
-        if (b0.isForet && G.foretDepleted(b0)) continue;
-        var h0 = b0.hit || b0;
-        if (bx < h0.x + h0.w && bx + bw > h0.x && by < h0.y + h0.h && by + bh > h0.y) {
-          return true;
-        }
-      }
-      return false;
-    }
-    var minCx = Math.floor(bx / cell), maxCx = Math.floor((bx + bw) / cell);
-    var minCy = Math.floor(by / cell), maxCy = Math.floor((by + bh) / cell);
-    for (var cx = minCx; cx <= maxCx; cx++) {
-      for (var cy = minCy; cy <= maxCy; cy++) {
-        var arr = grid[cx + "," + cy];
-        if (!arr) continue;
-        for (var n = 0; n < arr.length; n++) {
-          var b = arr[n];
-          if (b.decorPassable) continue;
-          if (b.isForet && G.foretDepleted(b)) continue;
-          var hb = b.hit || b;
-          if (bx < hb.x + hb.w && bx + bw > hb.x && by < hb.y + hb.h && by + bh > hb.y) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
+    return G.aabbHitsBuildingsBox(x - G.PLAYER_HALF, y - G.PLAYER_HALF, G.PLAYER_W, G.PLAYER_W);
   };
 
   G.tryMove = function (nx, ny) {
     var p = G.state.player;
     var moved = false;
     // Sous-pas : on avance vers (nx,ny) par incrément ≤ STEP px pour ne pas
-    // traverser une planche fine en un seul grand pas.
+    // traverser une planche fine en un seul grand pas. STEP adaptatif :
+    // dans une ville PNG (masque 1 px, murs rouges/verts fins), un pas de
+    // 8 px peut "sauter par-dessus" une cellule solide entre deux echantillons
+    // (tunneling). STEP_VILLE = 2 px reduit le risque a un mur de 2 px minimum.
     var STEP = 8;
+    var STEP_VILLE = 2;
+    if (G.aabbHitsVilles && G.villeCellInfo) {
+      var vi = G.villeCellInfo(p.x, p.y);
+      if (vi) STEP = STEP_VILLE;
+    }
     var targetX = nx, targetY = ny;
     while (p.x !== targetX || p.y !== targetY) {
       var px = p.x, py = p.y;

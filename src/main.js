@@ -109,6 +109,10 @@
       G.updateChop(dt);
       G.updateFloaters(dt);
       if (G.updateAnneauPoeme) G.updateAnneauPoeme(dt);
+      // Flush differe des rebuilds de grille marques dirty (foret coupee,
+      // ecrasee par un siege) : un seul rebuild par frame meme si plusieurs
+      // sources ont marque la grille dirty dans cette frame.
+      if (G.flushBuildingGridDirty) G.flushBuildingGridDirty();
     } else {
       // Hors-ligne les floaters/chop ne tournent pas ; en ligne ils restent côté serveur.
       G.updateFloaters(dt);

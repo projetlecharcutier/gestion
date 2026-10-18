@@ -202,9 +202,59 @@
             }
         }
     };
+    // Grille spatiale des entites mobiles pour les collisions projectiles.
+    // Cellule 64 px : assez grande pour couvrir le deplacement max d'un
+    // projectile entre deux frames (vitesse 600 px/s * 0.016 s = ~10 px),
+    // assez petite pour filtrer 99% des entites lointaines. Reconstruite
+    // UNE fois par frame dans updateProjectiles (les entites bougent, la
+    // grille est jetee a la fin). evite le scan O(n_projectiles * n_zombies)
+    // qui coutait ~620k tests/frame en pleine charge (120 projectiles x
+    // 5000 zombies la nuit).
+    var PROJ_CELL = 64;
+    var projEntityGrid = null;
+    var projEntityGridFrame = -1;
+    function buildProjEntityGrid(state) {
+        var grid = {};
+        function addEnt(ent, kind) {
+            if (!ent || ent.hp <= 0) return;
+            var cx = Math.floor(ent.x / PROJ_CELL), cy = Math.floor(ent.y / PROJ_CELL);
+            var k = cx + "," + cy;
+            if (!grid[k]) grid[k] = [];
+            grid[k].push({ ent: ent, kind: kind });
+        }
+        var zs = state.zombies || [];
+        for (var i = 0; i < zs.length; i++) addEnt(zs[i], "zombie");
+        var bs = state.birds || [];
+        for (var bi = 0; bi < bs.length; bi++) addEnt(bs[bi], "bird");
+        var ss = state.soldats || [];
+        for (var si = 0; si < ss.length; si++) addEnt(ss[si], "soldat");
+        var fs = state.fauna || [];
+        for (var fi = 0; fi < fs.length; fi++) addEnt(fs[fi], "fauna");
+        var ps = state.players || [];
+        for (var pi = 0; pi < ps.length; pi++) if (ps[pi].alive) addEnt(ps[pi], "player");
+        return grid;
+    }
+    function projEntitiesNear(grid, x, y, radius) {
+        var out = [];
+        var r = radius || 16;
+        var cx0 = Math.floor((x - r) / PROJ_CELL), cx1 = Math.floor((x + r) / PROJ_CELL);
+        var cy0 = Math.floor((y - r) / PROJ_CELL), cy1 = Math.floor((y + r) / PROJ_CELL);
+        for (var gx = cx0; gx <= cx1; gx++) {
+            for (var gy = cy0; gy <= cy1; gy++) {
+                var arr = grid[gx + "," + gy];
+                if (!arr) continue;
+                for (var n = 0; n < arr.length; n++) out.push(arr[n]);
+            }
+        }
+        return out;
+    }
+
     // Déplacement des projectiles + collisions avec zombies et oiseaux. Appelé depuis update().
     G.updateProjectiles = function (dt) {
         var state = G.state;
+        // Construit la grille spatiale des entites UNE fois par frame (les
+        // projectiles partagent la meme grille pour toutes leurs collisions).
+        var grid = buildProjEntityGrid(state);
         for (var i = state.projectiles.length - 1; i >= 0; i--) {
             var pr = state.projectiles[i];
             pr.trail.push([pr.x, pr.y]);
@@ -224,18 +274,26 @@
                 state.projectiles.splice(i, 1);
                 continue;
             }
-            // 1. Collisions avec les Zombies
-            for (var zi = 0; zi < state.zombies.length; zi++) {
-                var z = state.zombies[zi];
-
-                // Vérifier si ce projectile a déjà touché ce zombie précis
+            // 1. Collisions avec les entites proches (grille spatiale) :
+            // zombies, oiseaux, soldats, faune, joueurs. Un seul balayage des
+            // cellules voisines du projectile remplace 5 scans lineaires.
+            var nearEnts = projEntitiesNear(grid, pr.x, pr.y, 16);
+            for (var ei = 0; ei < nearEnts.length && !shouldDestroy; ei++) {
+                var ne = nearEnts[ei];
+                var z = ne.ent;
                 if (pr.hitEntities.indexOf(z) !== -1) continue;
-
+                var isZombie = ne.kind === "zombie";
+                var isBird = ne.kind === "bird";
+                var isSoldat = ne.kind === "soldat";
+                var isFauna = ne.kind === "fauna";
+                var isPlayer = ne.kind === "player";
+                // Les fleches de tour ignorent oiseaux/soldats/faune/joueurs.
+                if (pr.owner === "tour" && !isZombie) continue;
+                // Friendly fire : jamais le proprietaire, jamais les tours.
+                if (isPlayer && pr.owner && (pr.owner === "tour" || pr.owner === "local" || z.id === pr.owner)) continue;
+                var hitR = isBird ? G.BIRD_HIT_R : (isFauna ? G.FAUNA_HIT_R : (isPlayer ? 12 : 14));
                 var zdx = pr.x - z.x, zdy = pr.y - z.y;
-                if (Math.sqrt(zdx * zdx + zdy * zdy) < 14) {
-                    // Projectile explosif : la collision declenche l'explosion
-                    // en zone (tous les zombies dans le rayon) et le projectile
-                    // disparait immediatement.
+                if (Math.sqrt(zdx * zdx + zdy * zdy) < hitR) {
                     if (pr.blast) {
                         G.blastAt(pr, pr.x, pr.y);
                         shouldDestroy = true;
@@ -243,31 +301,34 @@
                     }
                     var wasAliveZ = z.hp > 0;
                     z.hp -= pr.dmg;
-                    // Kill attribue au proprietaire du projectile (stats fin
-                    // de partie). Sans owner = tir local (solo).
-                    if (wasAliveZ && z.hp <= 0) {
-                        if (pr.owner === "tour") {
-                            if (G.statsAddTowerKill) G.statsAddTowerKill();
-                        } else if (!pr.owner || pr.owner === "local") {
-                            if (G.statsAddKill) G.statsAddKill();
-                        } else {
-                            z.killedBy = pr.owner;
+                    if (isZombie) {
+                        if (wasAliveZ && z.hp <= 0) {
+                            if (pr.owner === "tour") {
+                                if (G.statsAddTowerKill) G.statsAddTowerKill();
+                            } else if (!pr.owner || pr.owner === "local") {
+                                if (G.statsAddKill) G.statsAddKill();
+                            } else {
+                                z.killedBy = pr.owner;
+                            }
                         }
+                    } else if (isBird) {
+                        if (z.hp <= 0) G.birdDrop(z.x, z.y);
+                    } else if (isSoldat) {
+                        z.hitFlash = 0.25;
+                    } else if (isFauna) {
+                        if (z.hp <= 0) G.faunaDrop(z);
+                    } else if (isPlayer) {
+                        if (z.hp <= 0) killPlayerFriendly(z, state);
                     }
                     pr.hitEntities.push(z);
-
                     if (pr.piercing && pr.pierceCount > 0) {
                         pr.pierceCount--;
-                        if (pr.pierceCount <= 0) {
-                            shouldDestroy = true;
-                        }
+                        if (pr.pierceCount <= 0) shouldDestroy = true;
                     } else {
                         shouldDestroy = true;
                     }
-                    break;
                 }
             }
-
             // 1b. Collisions avec les tours de siège (losange de base dans
             // les 5 % bas du PNG, cf. siege.js) : tout projectile les
             // endommage. La tour est solide pour les projectiles : pas de
@@ -281,104 +342,6 @@
                 }
             }
 
-            // 1c. Dégâts alliés (friendly fire) : les projectiles des
-            // joueurs touchent aussi les AUTRES joueurs (jamais leur
-            // propriétaire, jamais les flèches des tours). Le joueur touché
-            // meurt comme face aux zombies : alive = false, la partie
-            // continue pour les survivants.
-            if (!shouldDestroy && state.players && pr.owner && pr.owner !== "tour" && pr.owner !== "local") {
-              for (var ffi = 0; ffi < state.players.length; ffi++) {
-                var fp = state.players[ffi];
-                if (!fp.alive || fp.id === pr.owner) continue;
-                if (pr.hitEntities.indexOf(fp) !== -1) continue;
-                var ffdx2 = pr.x - fp.x, ffdy2 = pr.y - fp.y;
-                if (Math.sqrt(ffdx2 * ffdx2 + ffdy2 * ffdy2) < 12) {
-                  fp.hp -= pr.dmg;
-                  pr.hitEntities.push(fp);
-                  if (fp.hp <= 0) killPlayerFriendly(fp, state);
-                  if (pr.piercing && pr.pierceCount > 0) {
-                    pr.pierceCount--;
-                    if (pr.pierceCount <= 0) shouldDestroy = true;
-                  } else {
-                    shouldDestroy = true;
-                  }
-                  break;
-                }
-              }
-            }
-
-            // 2. Collisions avec les Oiseaux (si le projectile n'est pas déjà détruit)
-            // Les flèches de tour ignorent les oiseaux (cible : zombies uniquement).
-            if (!shouldDestroy && pr.owner !== "tour") {
-                for (var bi = 0; bi < state.birds.length; bi++) {
-                    var b = state.birds[bi];
-
-                    if (pr.hitEntities.indexOf(b) !== -1) continue;
-
-                    var bdx = pr.x - b.x, bdy = pr.y - b.y;
-                    if (Math.sqrt(bdx * bdx + bdy * bdy) < G.BIRD_HIT_R) {
-                        b.hp -= pr.dmg;
-                        if (b.hp <= 0) G.birdDrop(b.x, b.y);
-                        pr.hitEntities.push(b);
-
-                        if (pr.piercing && pr.pierceCount > 0) {
-                            pr.pierceCount--;
-                            if (pr.pierceCount <= 0) {
-                                shouldDestroy = true;
-                            }
-                        } else {
-                            shouldDestroy = true;
-                        }
-                        break;
-                    }
-                }
-            }
-
-            // 2c. Collisions avec les Soldats romains : fragiles, un tir
-            // au projectile suffit. Les flèches de tour les ignorent.
-            if (!shouldDestroy && pr.owner !== "tour" && state.soldats) {
-                for (var soi = 0; soi < state.soldats.length; soi++) {
-                    var so2 = state.soldats[soi];
-                    if (so2.hp <= 0 || pr.hitEntities.indexOf(so2) !== -1) continue;
-                    var sodx = pr.x - so2.x, sody = pr.y - so2.y;
-                    if (Math.sqrt(sodx * sodx + sody * sody) < 14) {
-                        so2.hp -= pr.dmg;
-                        so2.hitFlash = 0.25;
-                        pr.hitEntities.push(so2);
-                        if (pr.piercing && pr.pierceCount > 0) {
-                            pr.pierceCount--;
-                            if (pr.pierceCount <= 0) shouldDestroy = true;
-                        } else {
-                            shouldDestroy = true;
-                        }
-                        break;
-                    }
-                }
-            }
-            // 2b. Collisions avec les Animaux sauvages (cerf, cochon, vache,
-            // mouton) : tués par les projectiles, droppent de la Nourriture.
-            // Les flèches de tour les ignorent (cible : zombies uniquement).
-            if (!shouldDestroy && pr.owner !== "tour" && state.fauna) {
-                for (var fi = 0; fi < state.fauna.length; fi++) {
-                    var an = state.fauna[fi];
-                    if (an.hp <= 0 || pr.hitEntities.indexOf(an) !== -1) continue;
-                    var adx = pr.x - an.x, ady = pr.y - an.y;
-                    if (Math.sqrt(adx * adx + ady * ady) < G.FAUNA_HIT_R) {
-                        an.hp -= pr.dmg;
-                        if (an.hp <= 0) G.faunaDrop(an);
-                        pr.hitEntities.push(an);
-                        if (pr.piercing && pr.pierceCount > 0) {
-                            pr.pierceCount--;
-                            if (pr.pierceCount <= 0) {
-                                shouldDestroy = true;
-                            }
-                        } else {
-                            shouldDestroy = true;
-                        }
-                        break;
-                    }
-                }
-            }
             // Suppression si le projectile a touché sa limite de transpercement, sa vie (portée max), ou sort de la map
             if (shouldDestroy || pr.life <= 0 || pr.x < 0 || pr.x > G.WORLD || pr.y < 0 || pr.y > G.WORLD) {
                 state.projectiles.splice(i, 1);
