@@ -565,7 +565,8 @@ input:focus-visible,
   .controls-menu__opt { font-size: 0.7rem; padding: 4px 6px; }
   .hud { font-size: 0.7rem; }
   .hud__hint-block { display: none; }
-  .touch-bar { gap: 5px; right: 6px; bottom: 6px; }
+  .touch-bar { gap: 5px; left: 6px; bottom: 68px; max-width: 48vw; }
+  .touch-btn--fire { left: 10px; bottom: 10px; width: 72px; height: 72px; min-width: 72px; min-height: 72px; }
   .touch-btn { min-width: 44px; min-height: 44px; padding: 6px 8px; font-size: 0.75rem; }
   .touch-ctx { bottom: 58px; }
   .menu-runner { display: none; }
@@ -695,10 +696,11 @@ input:focus-visible,
   box-shadow: 0 0 12px rgba(209, 73, 91, 0.5);
 }
 
-/* Zone de tir : moitie DROITE de l'ecran (le joystick vit a gauche). */
+/* Zone de visee/tir : moitie GAUCHE de l'ecran (hors boutons) ; le
+   joystick vit en bas a droite. Tap maintenu = viser + tirer. */
 .touch-fire {
   position: fixed;
-  right: 0;
+  left: 0;
   top: 0;
   bottom: 0;
   width: 50%;
@@ -707,14 +709,17 @@ input:focus-visible,
   touch-action: none;
 }
 
-/* Action bar : boutons en bas a droite. */
+/* Action bar : boutons en bas a GAUCHE, au-dessus du bouton TIR
+   (joystick a droite, actions a gauche). */
 .touch-bar {
   position: fixed;
-  right: 10px;
-  bottom: 10px;
+  left: 10px;
+  bottom: 78px;
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  max-width: 46vw;
   z-index: 9;
   pointer-events: auto;
 }
@@ -734,6 +739,23 @@ input:focus-visible,
 }
 .touch-btn[hidden] { display: none; }
 .touch-btn:active { background: rgba(209, 73, 91, 0.5); }
+
+/* Bouton TIR : gros bouton rond maintenu, bas gauche (pouce gauche). */
+.touch-btn--fire {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  width: 84px;
+  height: 84px;
+  min-width: 84px;
+  min-height: 84px;
+  border-radius: 50%;
+  font-size: 1rem;
+  background: rgba(220, 38, 38, 0.85);
+  border: 2px solid rgba(254, 202, 202, 0.9);
+  z-index: 9;
+}
+.touch-btn--fire:active { background: rgba(248, 113, 113, 0.95); }
 
 /* Bouton fantome (apres la mort du joueur local). */
 .touch-btn--ghost {

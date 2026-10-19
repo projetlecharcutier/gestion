@@ -75,7 +75,42 @@
   });
   G.canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
 
-  // Clic gauche gère aussi le ramassage d'objets et la mairie (clic simple).
+  // Ramassage d'un item au sol : logique PARTAGEE entre le clic souris
+  // (ci-dessus) et le mode mobile (ramassage automatique par proximite,
+  // src/touch.js). En reseau, le serveur reste autoritaire ; en solo,
+  // l'item est pris directement. Retourne true si l'item est ramasse.
+  G.pickupItem = function (it) {
+    var state = G.state;
+    if (!it || it.taken) return false;
+    if (it.kind === "or") {
+      if (G.netConnected && G.netConnected()) {
+        G.netInput({ pickup: { x: Math.round(it.x), y: Math.round(it.y) } });
+        if (G.addFloater) G.addFloater("+1 pi\u00e8ce");
+      } else {
+        it.taken = true;
+        state.mairieGold = (state.mairieGold || 0) + 1;
+        if (G.statsAddGold) G.statsAddGold(1);
+        if (G.addFloater) G.addFloater("+1 pi\u00e8ce");
+        G.updateHud();
+      }
+      return true;
+    }
+    if (G.netConnected && G.netConnected()) {
+      G.netInput({ pickup: { x: Math.round(it.x), y: Math.round(it.y) } });
+      if (G.addFloater) G.addFloater(it.name);
+    } else {
+      it.taken = true;
+      state.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });
+      state.inventory += 1;
+      if (G.addFloater) G.addFloater(it.name);
+      G.updateHud();
+    }
+    // L'Anneau Unique declenche le poeme au ramassage (5 s, non bloquant).
+    if (it.anneau && G.showAnneauPoeme) G.showAnneauPoeme();
+    return true;
+  };
+
+  // Clic gauche gere aussi le ramassage d'objets et la mairie (clic simple).
   G.canvas.addEventListener("click", function (e) {
     var state = G.state;
     if (!state.started || state.paused || state.inBuilding || state.gameOver || state.chestOpen || state.churchOpen || state.buildMenuOpen) return;
@@ -100,37 +135,7 @@
       if (od < 70) {
         var px = p.x - it.x, py = p.y - it.y;
         if (Math.sqrt(px * px + py * py) < 120) {
-          // Pièce d'or : crédit direct au coffre de la mairie (pas de sac).
-          if (it.kind === "or") {
-            if (G.netConnected && G.netConnected()) {
-              G.netInput({ pickup: { x: Math.round(it.x), y: Math.round(it.y) } });
-              // Message optimiste : le serveur est autorite, mais l'aller-retour
-              // de confirmation n'apporte rien au joueur. Le snapshot retirera
-              // l'item de l'affichage.
-              if (G.addFloater) G.addFloater("+1 pièce");
-            } else {
-              it.taken = true;
-              state.mairieGold = (state.mairieGold || 0) + 1;
-              if (G.statsAddGold) G.statsAddGold(1);
-              if (G.addFloater) G.addFloater("+1 pièce");
-              G.updateHud();
-            }
-            return;
-          }
-          if (G.netConnected && G.netConnected()) {
-            G.netInput({ pickup: { x: Math.round(it.x), y: Math.round(it.y) } });
-            // Message optimiste (le serveur valide et retire l'item du snapshot).
-            if (G.addFloater) G.addFloater(it.name);
-            if (it.anneau && G.showAnneauPoeme) G.showAnneauPoeme();
-          } else {
-            it.taken = true;
-            state.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });
-            state.inventory += 1;
-            if (G.addFloater) G.addFloater(it.name);
-            G.updateHud();
-          }
-          // L'Anneau Unique declenche le poeme au ramassage (5 s, non bloquant).
-          if (it.anneau && G.showAnneauPoeme) G.showAnneauPoeme();
+          G.pickupItem(it);
         }
         return;
       }

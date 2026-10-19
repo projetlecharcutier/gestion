@@ -3,15 +3,17 @@
 // bouton son) l'active/desactive. En mode souris+clavier, rien ne change.
 //
 // Layout (paysage OU portrait) :
-//   - joystick FIXE en bas a GAUCHE : toucher n'importe ou a gauche de
-//     l'ecran le pilote (la base reste ancre bas-gauche), remplace
-//     Espace+souris pour le deplacement.
-//   - moitie DROITE (hors boutons) : tap maintenu = viser + tirer vers ce
-//     point ; en mode construction, tap = poser.
-//   - action bar bas-droite : hache (toggle), construire (menu/pause du
-//     mode planche), sac, rotation (visible en mode planche), zoom +/-.
-//   - boutons contextuels bas-centre : n'apparaissent que quand l'action
-//     est possible (entrer dans un batiment, coffre, eglise, fantome).
+//   - joystick FIXE en bas a droite : toucher n'importe ou a DROITE de
+//     l'ecran le pilote (la base reste ancre bas-droite).
+//   - BOUTON TIR en bas a gauche : maintenu = tir continu vers le viseur
+//     (le viseur suit le joystick ou le dernier tap de visee).
+//   - action bar bas-GAUCHE (au-dessus du bouton tir) : hache, construire,
+//     sac, rotation (mode planche), zoom +/-, pause.
+//   - moitie GAUCHE (hors boutons) : tap maintenu = viser + tirer vers ce
+//     point (equivalent clic souris) ; en mode construction, tap = poser.
+//   - RAMASSAGE AUTOMATIQUE : en mode mobile, tout item a proximite
+//     (< 70 px) est ramasse sans toucher l'ecran (G.pickupItem).
+//   - boutons contextuels bas-centre : entrer batiment / coffre / eglise.
 //
 // Integration : le module ecrit dans state.keys.space / mouse.wx/wy /
 // actionHeld comme le font le clavier et la souris — aucune autre couche
@@ -30,6 +32,7 @@
   var actionFire = null; // zone de tir (moitie gauche)
   var btnAxe = null, btnBuild = null, btnBag = null, btnRotate = null;
   var btnZoomIn = null, btnZoomOut = null, btnGhost = null, btnPause = null;
+  var btnFire = null;  // gros bouton TIR maintenu (bas gauche)
   var ctxBar = null;     // boutons contextuels (entrer batiment / coffre...)
 
   // --- Etat du joystick -------------------------------------------------
@@ -50,6 +53,7 @@
     stickBase.hidden = !play;
     actionFire.style.display = play ? "block" : "none";
     // Boutons de jeu visibles seulement en partie.
+    btnFire.hidden = !play;
     var btns = [btnAxe, btnBuild, btnBag, btnZoomIn, btnZoomOut, btnPause];
     for (var i = 0; i < btns.length; i++) btns[i].hidden = !play;
     // Rotation : uniquement en mode planche.
@@ -116,10 +120,10 @@
   function stickStart(id, x, y) {
     stick.active = true;
     stick.id = id;
-    // Base FIXE en bas a GAUCHE : pouce gauche = deplacement, cote droit
-    // = viser/tirer (moitie droite de l'ecran).
-    stick.cx = STICK_RADIUS + 24;
-    stick.cy = window.innerHeight - STICK_RADIUS - 24;
+    // Base FIXE en bas a droite (au-dessus de la barre d'actions) : le
+    // joystick n'apparait plus sous le pouce ni en haut a gauche.
+    stick.cx = window.innerWidth - STICK_RADIUS - 24;
+    stick.cy = window.innerHeight - STICK_RADIUS - 110;
     stick.dx = 0; stick.dy = 0;
     stickBase.hidden = false;
     stickBase.style.left = (stick.cx - STICK_RADIUS) + "px";
@@ -224,13 +228,43 @@
     stickBase.appendChild(stickKnob);
     root.appendChild(stickBase);
 
-    // Zone de tir : moitie DROITE (le joystick vit a gauche).
+    // Zone de tir : moitie gauche (le joystick vit a droite).
     actionFire = document.createElement("div");
     actionFire.className = "touch-fire";
     actionFire.style.display = "none";
     root.appendChild(actionFire);
 
-    // Action bar bas-droite.
+    // Bouton TIR : gros bouton maintenu en bas a GAUCHE (pouce gauche).
+    // Maintenu = actionHeld (comme le clic gauche souris) : l'arme tire
+    // vers le viseur ; en mode hache, frappe l'arbre vise.
+    btnFire = mkBtn("\uD83D\uDD2B Tir", function () {});
+    btnFire.className = "touch-btn touch-btn--fire";
+    btnFire.addEventListener("touchstart", function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (visible() && !G.state.buildMode &&
+          !G.state.bag.open && !G.state.chestOpen && !G.state.churchOpen) {
+        G.state.actionHeld = true;
+      }
+    }, { passive: false });
+    btnFire.addEventListener("touchend", function (e) {
+      e.preventDefault(); e.stopPropagation();
+      G.state.actionHeld = false;
+    }, { passive: false });
+    btnFire.addEventListener("touchcancel", function () {
+      G.state.actionHeld = false;
+    }, { passive: false });
+    // Compatibilite desktop (tests a la souris).
+    btnFire.addEventListener("mousedown", function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (visible() && !G.state.buildMode &&
+          !G.state.bag.open && !G.state.chestOpen && !G.state.churchOpen) {
+        G.state.actionHeld = true;
+      }
+    });
+    btnFire.addEventListener("mouseup", function () { G.state.actionHeld = false; });
+    root.appendChild(btnFire);
+
+    // Action bar bas-GAUCHE (au-dessus du bouton tir).
     var bar = document.createElement("div");
     bar.className = "touch-bar";
     btnAxe = mkBtn("\uD83E\uDE93 Hache", function () { toggleAxe(); });
@@ -329,22 +363,22 @@
         // Bouton DOM sous le doigt : il gere son propre click.
         if (t.target && t.target.closest && t.target.closest(".touch-ui .touch-btn, .chat, .hud, .sound-btn")) continue;
         if (t.target && t.target.closest && t.target.closest(".touch-ui .touch-stick")) continue;
-        if (t.clientX >= window.innerWidth / 2) {
-          // Moitie droite : tir (le joystick vit en bas a gauche).
+        if (t.clientX < window.innerWidth / 2) {
+          // Moitie gauche : tir (le joystick vit en bas a droite).
           if (!fireTouch.active && !pinch.active) {
             fireStart(t.identifier, t.clientX, t.clientY);
             e.preventDefault();
           }
         } else {
-          // Moitie gauche : joystick. Deux doigts = pinch (zoom).
-          var leftTouches = [];
+          // Moitie droite : joystick. Deux doigts = pinch (zoom).
+          var rightTouches = [];
           for (var j = 0; j < e.touches.length; j++) {
-            if (e.touches[j].clientX < window.innerWidth / 2) leftTouches.push(e.touches[j]);
+            if (e.touches[j].clientX >= window.innerWidth / 2) rightTouches.push(e.touches[j]);
           }
-          if (leftTouches.length >= 2) {
+          if (rightTouches.length >= 2) {
             fireEnd();
             pinch.active = true;
-            pinch.dist = pinchDist(leftTouches[0], leftTouches[1]);
+            pinch.dist = pinchDist(rightTouches[0], rightTouches[1]);
           } else if (!stick.active) {
             stickStart(t.identifier, t.clientX, t.clientY);
           }
@@ -366,12 +400,12 @@
         }
       }
       if (pinch.active) {
-        var leftTouches = [];
+        var rightTouches = [];
         for (var j = 0; j < e.touches.length; j++) {
-          if (e.touches[j].clientX < window.innerWidth / 2) leftTouches.push(e.touches[j]);
+          if (e.touches[j].clientX >= window.innerWidth / 2) rightTouches.push(e.touches[j]);
         }
-        if (leftTouches.length >= 2) {
-          var d = pinchDist(leftTouches[0], leftTouches[1]);
+        if (rightTouches.length >= 2) {
+          var d = pinchDist(rightTouches[0], rightTouches[1]);
           if (pinch.dist > 0) zoomBy(d / pinch.dist);
           pinch.dist = d;
           e.preventDefault();
@@ -386,11 +420,11 @@
         if (fireTouch.active && t.identifier === fireTouch.id) fireEnd();
       }
       if (pinch.active) {
-        var left = 0;
+        var right = 0;
         for (var j = 0; j < e.touches.length; j++) {
-          if (e.touches[j].clientX < window.innerWidth / 2) left++;
+          if (e.touches[j].clientX >= window.innerWidth / 2) right++;
         }
-        if (left < 2) pinch.active = false;
+        if (right < 2) pinch.active = false;
       }
     }
     document.addEventListener("touchend", endTouch);
@@ -417,11 +451,28 @@
   };
   G.toggleTouchMode = function () { G.setTouchMode(!enabled); };
 
+  // Ramassage automatique : en mode mobile, un item a proximite du joueur
+  // est ramasse SANS interaction (rayon 70 px monde).
+  function autoPickup() {
+    var s = G.state;
+    if (!G.pickupItem || !s.started || s.paused || s.inBuilding ||
+        s.gameOver || s.bag.open || s.chestOpen || s.churchOpen ||
+        s.buildMenuOpen || s.buildMode) return;
+    var p = s.player;
+    for (var i = 0; i < s.items.length; i++) {
+      var it = s.items[i];
+      if (it.taken) continue;
+      var dx = p.x - it.x, dy = p.y - it.y;
+      if (dx * dx + dy * dy < 70 * 70) { G.pickupItem(it); return; }
+    }
+  }
+
   // Rafraichit la visibilite des controles a chaque frame (peu couteux :
   // que des manipulations de classes/hidden quand l'etat change).
   var lastVisible = null;
   G.touchUpdate = function () {
     if (!enabled || !root) return;
+    autoPickup();
     var v = visible();
     if (v !== lastVisible || v) {
       lastVisible = v;
