@@ -23,6 +23,14 @@ les villes ; tous les autres gardent un test AABB. C'est voulu (commit
 villes, et par sa boîte contre tout le reste. Ne pas uniformiser sans relire
 `test/ville/point_pieds_joueur.js`.
 
+**Anti-tunneling obligatoire** (`tryMove`, `src/player.js`) : `_stepMove` ne
+teste que le point d'ARRIVÉE de chaque sous-pas — un sous-pas de 8 px saute
+les murs rouges fins des masques (régression 33c8cd5 : le joueur traversait
+les façades de toutes les villes). `STEP_VILLE = 1` px dès que le joueur
+approche une grille de ville (via `villeCellInfo` ou AABB 8×8 de détection) ;
+le pas standard de 8 px reste en campagne. Non-régression :
+`test/ville/antitunnel_murs_ville.js`.
+
 ## Mécanisme 1 — Éléments de décor, forêts, maisons (AABB de bâtiment)
 
 Code : `makeDecor` / `makeForet` / `makeBuilding` (`src/world.js`), testé par
@@ -126,6 +134,7 @@ Règles clés :
 | Test | Couverture |
 |---|---|
 | `test/ville/point_pieds_joueur.js` | contrat point-pieds joueur vs villes (rouge bloque, vert/transparent passent) |
+| `test/ville/antitunnel_murs_ville.js` | anti-tunneling : le joueur ne saute jamais un mur rouge continu (sous-pas 1 px près des villes) |
 | `test/ville/occlusion_masque.js`, `occlusion_haut_png.js`, `occlusion_grilles_tardives.js`, `ordre_biais_occlusion.js` | occlusion du joueur par les bandes, grille couvrant l'élévation, grilles tardives |
 | `test/ville/masque_vert_nogent.js`, `recouvrement_transparent.js`, `bords_carte.js` | masque vert, recouvrement zones transparentes, bords de carte |
 | `test/world/elements_decor.js`, `decor_hitbox_murs.js`, `decor_flip.js`, `decor_anim_frames.js`, `lisieux_groupe.js` | modes de décor, hitbox shrinked, miroir, échelle de rendu, placement |

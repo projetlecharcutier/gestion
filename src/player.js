@@ -63,12 +63,17 @@
     var p = G.state.player;
     var moved = false;
     // Sous-pas : on avance vers (nx,ny) par incrément ≤ STEP px pour ne pas
-    // traverser une planche fine en un seul grand pas. Le joueur etant
-    // represente par un POINT unique contre les villes (pixel sous les
-    // pieds), le sous-pas fin STEP_VILLE n'est plus necessaire : un pas de
-    // 8 px ne peut pas sauter une cellule solide (le point est teste a
-    // chaque sous-pas, et la grille ville est a la resolution du masque).
+    // traverser une planche fine en un seul grand pas. STEP adaptatif :
+    // contre les villes PNG le joueur est un POINT (pixel sous les pieds,
+    // playerHitsVilles) et _stepMove ne teste que le point D'ARRIVEE du
+    // sous-pas — un pas de 8 px sautait par-dessus les murs rouges fins des
+    // masques (tunneling : le joueur traversait les facades des villes).
+    // STEP_VILLE = 1 px des que le joueur approche une grille de ville :
+    // meme une ligne rouge diagonale de 1 px devient infranchissable.
     var STEP = 8;
+    var STEP_VILLE = 1;
+    if (G.villeCellInfo && G.villeCellInfo(p.x, p.y)) STEP = STEP_VILLE;
+    else if (G.aabbHitsVilles && G.aabbHitsVilles(p.x - 4, p.y - 4, 8, 8)) STEP = STEP_VILLE;
     var targetX = nx, targetY = ny;
     while (p.x !== targetX || p.y !== targetY) {
       var px = p.x, py = p.y;
