@@ -18,6 +18,7 @@ Chaque fichier ci-dessous documente un système : son contrat, ses entrées/sort
 | Zombies — déplacement & attaque (détail) | [zombies-deplacement-attaque.md](zombies-deplacement-attaque.md) | `src/zombies.js` |
 | Sac & inventaire | [bag.md](bag.md) | `src/bag.js` |
 | HUD & overlays | [hud.md](hud.md) | `src/hud.js` |
+| Transition de jour (écran « Jour N » à minuit) | [jour.md](jour.md) | `src/jour.js` |
 | Rendu | [render.md](render.md) | `src/render.js` |
 | Entrées | [input.md](input.md) | `src/input.js` |
 | Mode clavier ZQSD | [keyboard.md](keyboard.md) | `src/keyboard.js` |

@@ -1870,5 +1870,6 @@ G.drawGround = function () {
     }
 
     G.drawGameOver();
+    if (G.drawJour) G.drawJour();
   };
 })();
