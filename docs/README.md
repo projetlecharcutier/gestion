@@ -9,6 +9,7 @@ Chaque fichier ci-dessous documente un système : son contrat, ses entrées/sort
 | État global & DOM | [state.md](state.md) | `src/state.js` |
 | Projection isométrique | [projection.md](projection.md) | `src/projection.js` |
 | Monde (génération) | [world.md](world.md) | `src/world.js` |
+| **Collisions (audit global : décors/forêts AABB vs villes PNG masque)** | [collisions.md](collisions.md) | `src/player.js`, `src/world.js`, `src/ville.js`, `src/zombies.js` |
 | Joueur | [player.md](player.md) | `src/player.js` |
 | Murs & construction | [walls.md](walls.md) | `src/walls.js` |
 | Récolte de planches (hache) | [chop.md](chop.md) | `src/chop.js` |
