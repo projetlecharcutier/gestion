@@ -402,6 +402,12 @@
     { name: "Nourriture", color: "#f59e0b", kind: "objet", weight: 10 }
   ];
 
+  // Sac de depart : chaque joueur commence avec une hache dans son sac
+  // (outil de recolte de planches, cf. src/chop.js).
+  G.START_BAG = [
+    { name: "Hache", color: "#b45309", kind: "outil" }
+  ];
+
   // Scierie & tours : deplacement debloque a la mairie (cf. docs/towers.md).
   // La tech Scierie coute 100 planches + 10 or pris dans le coffre de la mairie.
   G.SCIERIE_COST = { planks: 100, gold: 10 };

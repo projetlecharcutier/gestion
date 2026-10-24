@@ -9,6 +9,7 @@ Disposition du panneau Sac, rendu du sac, clic pour équiper une arme. Dépend d
 - `drawBag()` — dessine le panneau (titre, arme équipée + stats, liste des objets)
 
 ## Contraintes
+- **Sac de départ** : chaque joueur commence avec une hache dans son sac (`G.START_BAG` dans `src/config.js`) — multi : `addPlayer`/`startGame` (`server/game.js`), solo : reset du formulaire (`src/input.js`).
 - Le clic agit sur `kind === "arme"` (équipement d'arme) et sur `kind === "outil"` `name === "Hache"` (équipement de hache) ; les autres objets sont juste affichés.
 - `maxLines` adapte le nombre d'objets affichés à la taille du panneau (scroll non géré).
 - Le sac bloque le déplacement, le tir et la récolte (testé dans `update`/`handleShooting`/`updateChop`).

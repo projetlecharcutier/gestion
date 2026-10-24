@@ -20,24 +20,26 @@ function near(p, b) { p.x = b.x + b.w / 2 + 30; p.y = b.y + b.h / 2 + 30; }
 function far(p) { p.x = 1500; p.y = 1500; }
 
 // --- 1) coffre : depot refuse a distance, accepte pres de la mairie ---
+// Le sac contient deja la hache de depart : on compare relatively.
+var bagStart = pa.bag.contents.length;
 pa.bag.contents.push({ name: "Pistolet", kind: "arme", color: "#94a3b8" });
 far(pa);
 srv.applyInput("a1", { chestDeposit: { name: "Pistolet", kind: "arme" } });
-assert(pa.bag.contents.length === 1 && st.chest.length === 0, "depot coffre refuse a distance");
+assert(pa.bag.contents.length === bagStart + 1 && st.chest.length === 0, "depot coffre refuse a distance");
 near(pa, mairie);
 srv.applyInput("a1", { chestDeposit: { name: "Pistolet", kind: "arme" } });
-assert(pa.bag.contents.length === 0 && st.chest.length === 1, "depot coffre accepte pres de la mairie");
+assert(pa.bag.contents.length === bagStart && st.chest.length === 1, "depot coffre accepte pres de la mairie");
 
 // --- 2) coffre : retrait par nom+kind (l'ancien index etait une course
 // snapshot/clic ; l'index n'est plus accepte du tout) ---
 far(pa);
 srv.applyInput("a1", { chestWithdraw: 0 });
-assert(st.chest.length === 1 && pa.bag.contents.length === 0, "retrait par index refuse (+ a distance)");
+assert(st.chest.length === 1 && pa.bag.contents.length === bagStart, "retrait par index refuse (+ a distance)");
 near(pa, mairie);
 srv.applyInput("a1", { chestWithdraw: 0 });
 assert(st.chest.length === 1, "retrait par index refuse meme pres de la mairie (format nom+kind requis)");
 srv.applyInput("a1", { chestWithdraw: { name: "Pistolet", kind: "arme" } });
-assert(pa.bag.contents.length === 1 && st.chest.length === 0, "retrait par nom+kind accepte");
+assert(pa.bag.contents.length === bagStart + 1 && st.chest.length === 0, "retrait par nom+kind accepte");
 // Plusieurs depots du meme nom+kind : chaque retrait nomme retire UN seul
 // exemplaire (le premier), jamais tout le groupe.
 srv.applyInput("a1", { chestDeposit: { name: "Pistolet", kind: "arme" } });

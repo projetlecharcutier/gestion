@@ -467,6 +467,10 @@
     state.chest = [];
     state.chestOpen = false;
     state.churchOpen = false;
+    // Sac de depart : hache de base pour chaque joueur (cf. G.START_BAG).
+    state.bag.contents = (G.START_BAG || []).map(function (it) { return { name: it.name, kind: it.kind, color: it.color }; });
+    state.bag.open = false;
+    state.inventory = state.bag.contents.length;
     // Stats de fin de partie : compteurs du joueur local + globals (vagues).
     state.localStats = G.newPlayerStats ? G.newPlayerStats() : null;
     state.globalStats = G.newGlobalStats ? G.newGlobalStats() : null;

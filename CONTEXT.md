@@ -94,6 +94,7 @@ Schéma complet dans `src/state.js`. Champs clés :
 | `SCIERIE_COST` | 100 planches + 10 or | Tech scierie à la mairie (or : coffre commun, planches : poseur) |
 | `SCIERIE_SIDE` | 64 | Taille de l'empreinte scierie (px) |
 | `GOLD_ITEMS_START` | 100 | Pièces d'or posées hors ville au démarrage |
+| `START_BAG` | Hache | Sac de départ de chaque joueur (outil de récolte) |
 | `BIRD_GOLD_CHANCE` | 0.5 | Proba qu'un oiseau tué lâche une pièce d'or |
 | `VOTE_DURATION` | 15 | Durée d'un vote tech (s) |
 | `VOTE_COOLDOWN` | 30 | Cooldown après un vote refusé (s) |

@@ -309,7 +309,7 @@
       lastDx: 0, lastDy: 0,
       equipped: null,
       axeEquipped: false,
-      bag: { contents: [] },
+      bag: { contents: (G.START_BAG || []).map(function (it) { return { name: it.name, kind: it.kind, color: it.color }; }) },
       shootCd: 0,
       // Teleport explicite (spawn) : envoye une fois au client concerne.
       _teleported: true,
@@ -331,6 +331,7 @@
     // ne peut pas la controler (input.planks, supprime, etait une faille).
     var tp = parseInt(process.env.TEST_START_PLANKS || "0", 10);
     if (tp > 0) p.planks = tp;
+    p.inventory = p.bag.contents.length;
     state.players.push(p);
     return p;
   }
@@ -383,8 +384,8 @@
       placed.push(p);
       p.hp = G.PLAYER_MAX_HP; p.alive = true;
       p.equipped = null; p.axeEquipped = false;
-      p.bag = { contents: [] };
-      p.planks = 0; p.inventory = 0;
+      p.bag = { contents: (G.START_BAG || []).map(function (it) { return { name: it.name, kind: it.kind, color: it.color }; }) };
+      p.planks = 0; p.inventory = p.bag.contents.length;
       // Aide aux tests d'integration : TEST_START_PLANKS reapplique ici car
       // le startGame (START_DELAY apres le join) remet les planches a zero.
       var tp2 = parseInt(process.env.TEST_START_PLANKS || "0", 10);

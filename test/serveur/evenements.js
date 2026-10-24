@@ -41,11 +41,17 @@ moveNear(pa, eglise);
 srv.applyInput("a1", { churchDeposit: true });
 assert(hasEv(lastEvents("a1"), "msg", "100 pièces d'or"), "eglise : message 100 pieces d'or");
 // Loin de l'eglise : depot refuse (validation serveur partie 4).
+// Le sac contient la hache de depart + la Nourriture deja consommee +
+// les reliques deposees : on compte les reliques restantes.
+var relicsBefore = pa.bag.contents.filter(function (it) { return it.name === "Relique"; }).length;
 pa.bag.contents.push({ name: "Relique", kind: "objet", color: "#daa" });
 pa.x = 2000; pa.y = 2000;
 srv.applyInput("a1", { churchDeposit: true });
-assert(pa.bag.contents.length === 1, "eglise : depot refuse a distance");
-pa.bag.contents.splice(0, 1);
+assert(pa.bag.contents.filter(function (it) { return it.name === "Relique"; }).length === relicsBefore + 1, "eglise : depot refuse a distance");
+// Retire la relique ajoutee pour revenir a l'etat precedent.
+for (var ri = pa.bag.contents.length - 1; ri >= 0; ri--) {
+  if (pa.bag.contents[ri].name === "Relique") { pa.bag.contents.splice(ri, 1); break; }
+}
 moveNear(pa, mairie);
 
 // --- 3) marche : achat reussi + echec (or insuffisant) ---
