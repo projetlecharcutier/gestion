@@ -13,7 +13,7 @@
     var netInputExtras = {};
     // Déplacement : Espace maintenu + souris dirige (autorisé en mode build).
     if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.churchOpen && !state.gameOver) {
-      if (state.keys.space && state.mouse.inside) {
+      if (state.keys.space && state.mouse.inside && !(G.tutoActive && G.tutoActive())) {
         var tx = state.mouse.wx, ty = state.mouse.wy;
         var ddx = tx - p.x, ddy = ty - p.y;
         var dist = Math.sqrt(ddx * ddx + ddy * ddy);
@@ -73,7 +73,7 @@
       if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.churchOpen && !state.gameOver) {
         var p = state.player;
         // Déplacement : Espace maintenu + souris dirige (autorisé en mode build).
-        if (state.keys.space && state.mouse.inside) {
+        if (state.keys.space && state.mouse.inside && !(G.tutoActive && G.tutoActive())) {
           var tx = state.mouse.wx, ty = state.mouse.wy;
           var dx = tx - p.x, dy = ty - p.y;
           var dist = Math.sqrt(dx * dx + dy * dy);
@@ -156,7 +156,7 @@
       // (tryMove sur la grille de collisions locale, identique au serveur).
       if (!state.inBuilding && !state.paused && !state.bag.open && !state.chestOpen && !state.churchOpen && !state.gameOver) {
         var pp = state.player;
-        if (state.keys.space && state.mouse.inside) {
+        if (state.keys.space && state.mouse.inside && !(G.tutoActive && G.tutoActive())) {
           var ptx = state.mouse.wx, pty = state.mouse.wy;
           var pdx = ptx - pp.x, pdy = pty - pp.y;
           var pdist = Math.sqrt(pdx * pdx + pdy * pdy);

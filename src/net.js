@@ -447,6 +447,8 @@
         // Démarre le rendu du jeu (le serveur pilote la simulation).
         G.state.started = true;
         G.state.gameOver = false;
+        // Tutoriel de demarrage : propose une seule fois (src/tuto.js).
+        if (G.tutoMaybeStart) G.tutoMaybeStart();
       }
     } else if (msg.type === "pong") {
       // Reponse du ping : RTT = maintenant - horodatage de l'aller. EMA
@@ -510,6 +512,7 @@
       if (G.chatSetVisible) G.chatSetVisible(true);
       var lobbyEl2 = document.getElementById("lobbyInfo");
       if (lobbyEl2) lobbyEl2.hidden = true;
+      if (G.tutoMaybeStart) G.tutoMaybeStart();
     } else if (msg.type === "chat") {
       if (G.addChatMessage) G.addChatMessage(msg.from, msg.text, msg.at);
     } else if (msg.type === "chatHistory") {

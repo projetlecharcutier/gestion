@@ -1004,3 +1004,78 @@ input:focus-visible,
 @media (max-width: 700px) {
   .serverlog__lines { max-height: 100px; font-size: 9px; }
 }
+
+/* ===== Tutoriel de demarrage : bulles BD ===== */
+/* Calque plein ecran au-dessus de tout (jeu, chat, HUD). pointer-events
+   sont neutralises sauf sur le bouton "Passer" : le tuto ne capture ni
+   les clics de jeu ni le focus. La bulle est repositionnee en JS
+   (src/tuto.js) pres de l'element qu'elle decrit, avec une queue BD
+   pointee vers lui. */
+.tuto-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+.tuto-layer[hidden] { display: none; }
+.tuto-bubble {
+  position: absolute;
+  max-width: 340px;
+  padding: 12px 14px 10px;
+  background: var(--panel);
+  border: 3px solid var(--panel-border);
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+.tuto-bubble__title {
+  font-weight: 700;
+  color: var(--good);
+  margin-bottom: 6px;
+}
+.tuto-bubble__text {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.tuto-bubble__bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 2px solid var(--panel-border-soft);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.tuto-bubble__hint { flex: 1; }
+.tuto-bubble__count { font-weight: 700; }
+.tuto-bubble__skip {
+  pointer-events: auto;
+  background: var(--panel-deep);
+  color: var(--text-muted);
+  border: 2px solid var(--panel-border-soft);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font: inherit;
+  cursor: pointer;
+}
+.tuto-bubble__skip:hover { color: var(--bad, #e07070); border-color: var(--panel-border); }
+/* Queue BD : petit triangle blanc bord sortant du bas ou du haut de la
+   bulle, pointe vers l'element decrit. Position horizontale reglee en
+   JS (tail.style.left). */
+.tuto-bubble__tail {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+}
+.tuto-bubble__tail--down {
+  border-top: 12px solid var(--panel-border);
+}
+.tuto-bubble__tail--up {
+  border-bottom: 12px solid var(--panel-border);
+}
+@media (max-width: 700px) {
+  .tuto-bubble { max-width: 78vw; font-size: 0.74rem; }
+}

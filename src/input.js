@@ -34,6 +34,8 @@
   G.canvas.addEventListener("mousedown", function (e) {
     var state = G.state;
     if (!state.started || state.paused || state.inBuilding || state.gameOver || state.chestOpen || state.churchOpen || state.buildMenuOpen) return;
+    // Tutoriel affiche : aucun clic n'agit sur le jeu.
+    if (G.tutoActive && G.tutoActive()) return;
     if (e.button === 0) {
       // Clic gauche : action.
       if (state.buildMode) {
@@ -115,6 +117,8 @@
   G.canvas.addEventListener("click", function (e) {
     var state = G.state;
     if (!state.started || state.paused || state.inBuilding || state.gameOver || state.chestOpen || state.churchOpen || state.buildMenuOpen) return;
+    // Tutoriel affiche : aucun clic n'agit sur le jeu.
+    if (G.tutoActive && G.tutoActive()) return;
     if (state.buildMode) return; // géré par mousedown
     var rect = G.canvas.getBoundingClientRect();
     var sx = e.clientX - rect.left;
@@ -262,6 +266,12 @@
 
   window.addEventListener("keydown", function (e) {
     var state = G.state;
+    // Tutoriel de demarrage : Espace avance d'une bulle, Echap sort. Aucune
+    // autre touche n'atteint le jeu tant que le tuto est affiche.
+    if (G.tutoKey && G.tutoKey(e.code)) {
+      e.preventDefault();
+      return;
+    }
     // Saisie de chat : aucune touche ne doit atteindre le jeu (ni mouvement,
     // ni Z, ni Échap). Le champ a deja stoppe la propagation ; ce garde
     // couvre le cas d'un focus manage par le navigateur (autofocus etc.).
@@ -495,6 +505,8 @@
       G.updateHud();
       state.started = true;
       if (G.chatSetVisible) G.chatSetVisible(true);
+      // Proposition du tutoriel (une seule fois, voir src/tuto.js).
+      if (G.tutoMaybeStart) G.tutoMaybeStart();
     }
     if (G.assetsReady()) doBuild();
     else G.loadAssets(doBuild);
