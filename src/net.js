@@ -942,7 +942,6 @@
             lastPlanksSeen = p.planks;
             state.planks = p.planks;
           }
-          if (p.gold !== undefined) state.gold = p.gold;
           // Torche : le serveur envoie le RESTE (s) d'effet ; le client pose
           // torcheUntil = time + reste (sa propre horloge) pour la jauge et le
           // rayon de brouillard x5. 0 = torche finie/absente.

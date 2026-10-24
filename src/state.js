@@ -76,7 +76,6 @@
     mouse: { sx: 0, sy: 0, wx: G.WORLD / 2, wy: G.WORLD / 2, inside: false },
     inventory: 0,
     planks: 0,
-    gold: 0,
     mairieGold: 0,
     scierieUnlocked: false,
     scierie: null,

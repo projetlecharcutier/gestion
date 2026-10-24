@@ -1,7 +1,7 @@
 // Vagues : la majorite des vagues viennent d'UN SEUL bord (60%), jamais
 // de dispersion 4-bords majoritaire ; chaque groupe attaque le mur de son
 // bord d'origine (navSide = spawnSide) ; PV zombie x2 des le debut ;
-// plafond 2000 (sous le seuil de bug perf ~2000 zombies).
+// plafond 500 (cap anti-lag au-dela du jour 4).
 global.window = global;
 global.Image = function () {};
 global.document = { getElementById: function () { return { style: {}, addEventListener: function () {}, appendChild: function () {}, innerHTML: "" }; } };
@@ -27,10 +27,10 @@ function assert(c, m) { if (!c) { console.log("FAIL: " + m); fails++; } }
 // --- 1) PV zombie : x2 des le debut ---
 assert(G.ZOMBIE_HP === 2, "ZOMBIE_HP = 2 (obtenu " + G.ZOMBIE_HP + ")");
 
-// --- 2) Plafond : 2000 (sous le seuil de bug) ---
-assert(G.ZOMBIE_WAVE_MAX === 2000, "ZOMBIE_WAVE_MAX = 2000 (obtenu " + G.ZOMBIE_WAVE_MAX + ")");
+// --- 2) Plafond : 500 (cap anti-lag) ---
+assert(G.ZOMBIE_WAVE_MAX === 500, "ZOMBIE_WAVE_MAX = 500 (obtenu " + G.ZOMBIE_WAVE_MAX + ")");
 var w7 = G.rollWave(7);
-assert(w7.count === 2000, "jour 7 cape a 2000 (obtenu " + w7.count + ")");
+assert(w7.count === 500, "jour 7 cape a 500 (obtenu " + w7.count + ")");
 
 // --- 3) Schema de directions : 1 bord majoritaire (~60%) ---
 var seen1 = 0, seen2 = 0, seen4 = 0, N = 3000;

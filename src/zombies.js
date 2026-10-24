@@ -106,11 +106,17 @@
     var state = G.state;
     var count = G.ZOMBIE_PER_WAVE_BASE * Math.pow(G.ZOMBIE_WAVE_GROWTH, day);
     // Plafond : le nombre de zombies par nuit est capé a ZOMBIE_WAVE_MAX.
-    // Chaque nuit ou la vague demandee depasse le plafond monte la difficulte
-    // des zombies (deja en jeu comme futurs spawns) de +10% sur degats/s, PV
-    // et vitesse, capé a +50% (cf. state.zombieRamp ci-dessous).
+    // La croissance en NOMBRE s'arrete au jour ZOMBIE_COUNT_GROWTH_DAYS :
+    // au-dela, le nombre reel est fige au plafond (cap anti-lag) et la
+    // FORCE UNITAIRE monte via le ramp (spawnWave, +10%/nuit cap ZOMBIE_RAMP_MAX).
     var raw = count;
     if (G.ZOMBIE_WAVE_MAX && raw > G.ZOMBIE_WAVE_MAX) raw = G.ZOMBIE_WAVE_MAX;
+    // rawCount reflete la "pression" demandee : apres le jour de croissance,
+    // il depasse le plafond d'un cran par nuit pour alimenter le ramp.
+    var growthDays = G.ZOMBIE_COUNT_GROWTH_DAYS;
+    if (growthDays !== undefined && day >= growthDays && G.ZOMBIE_WAVE_MAX) {
+      count = G.ZOMBIE_WAVE_MAX * (1 + (day - growthDays + 1));
+    }
     var scheme = Math.random();
     var sides;
     if (scheme < 0.60) {
@@ -135,10 +141,11 @@
     state.pendingWave = null;
     var count = pending.count;
     state.waveCount = Math.round(count);
-    // Montee en difficulte : chaque nuit ou la vague demandee depasse le
-    // plafond ZOMBIE_WAVE_MAX augmente les degats/s, les PV et la vitesse des
-    // zombies de +10% (capé a +50%). Le ramp se cumule nuit apres nuit tant
-    // que la croissance demande plus de zombies que le plafond.
+    // Montee en difficulte : le NOMBRE de zombies croit jusqu'au jour
+    // ZOMBIE_COUNT_GROWTH_DAYS (rollWave). Au-dela, le nombre est fige au
+    // plafond ZOMBIE_WAVE_MAX et la FORCE UNITAIRE monte : chaque nuit le
+    // ramp augmente les degats/s, les PV et la vitesse de +ZOMBIE_RAMP_STEP
+    // (cap ZOMBIE_RAMP_MAX). Le ramp se cumule nuit apres nuit.
     state.zombieRamp = 1;
     if (G.ZOMBIE_WAVE_MAX && (pending.rawCount || count) > G.ZOMBIE_WAVE_MAX) {
       var overNights = Math.ceil(((pending.rawCount || count) - G.ZOMBIE_WAVE_MAX) / G.ZOMBIE_WAVE_MAX);

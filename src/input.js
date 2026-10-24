@@ -105,7 +105,8 @@
       if (G.addFloater) G.addFloater(it.name);
       G.updateHud();
     }
-    // L'Anneau Unique declenche le poeme au ramassage (5 s, non bloquant).
+    // L'Anneau Unique va dans le sac comme tout objet ; le poeme se
+    // declenche au ramassage (5 s, non bloquant), pas a la vente.
     if (it.anneau && G.showAnneauPoeme) G.showAnneauPoeme();
     return true;
   };

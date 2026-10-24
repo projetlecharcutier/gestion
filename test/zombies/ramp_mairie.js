@@ -24,34 +24,40 @@ G.state = { time: 0, clock: 12, day: 0, waveActive: true, zombieMode: "attack", 
             pendingWave: null, waveCount: 0, zombieRamp: 1, lastShot: null,
             items: [], birds: [], groupMergeTimer: 0 };
 
-// --- 1) Plafond de vague a 5000 ---
-assert(G.ZOMBIE_WAVE_MAX === 2000, "ZOMBIE_WAVE_MAX = 2000");
-// jour 7 : 50 * 2^7 = 6400 -> capé a 2000
-var w = G.rollWave(7);
-assert(w.count === 2000, "vague jour 7 capée a 2000 (obtenu " + w.count + ")");
-assert(w.rawCount === 6400, "rawCount conserve 6400 (obtenu " + w.rawCount + ")");
-// jour 3 : 50 * 8 = 400 -> pas de cap
+// --- 1) Plafond de vague (cap anti-lag) + croissance nombre jusqu'a J4 ---
+assert(G.ZOMBIE_WAVE_MAX === 500, "ZOMBIE_WAVE_MAX = 500 (cap anti-lag)");
+assert(G.ZOMBIE_COUNT_GROWTH_DAYS === 4, "croissance nombre jusqu'au jour 4");
+// jour 3 : 50 * 2^3 = 400 -> sous le plafond, pas de cap
 var w2 = G.rollWave(3);
 assert(w2.count === 400 && w2.rawCount === 400, "vague jour 3 non capée (400)");
-// jour 17 : 50 * 131072 = 6553600 -> capé 2000, ramp = nuits de dépassement
+// jour 4 : 50 * 2^4 = 800 -> capé 500, rawCount = 500*(1+1) = 1000 (1 cran au-dessus)
+var w = G.rollWave(4);
+assert(w.count === 500, "vague jour 4 capée a 500 (obtenu " + w.count + ")");
+assert(w.rawCount === 1000, "rawCount jour 4 = 1000 (1 cran au-dessus du plafond, obtenu " + w.rawCount + ")");
+// jour 7 : croissance figee, rawCount = 500*(1+4) = 2500
+var w7 = G.rollWave(7);
+assert(w7.count === 500, "vague jour 7 capée a 500 (obtenu " + w7.count + ")");
+assert(w7.rawCount === 2500, "rawCount jour 7 = 2500 (obtenu " + w7.rawCount + ")");
+// jour 17 : rawCount = 500*(1+14) = 7500
 var w3 = G.rollWave(17);
-assert(w3.count === 2000, "vague jour 17 capée (obtenu " + w3.count + ")");
+assert(w3.count === 500, "vague jour 17 capée (obtenu " + w3.count + ")");
+assert(w3.rawCount === 7500, "rawCount jour 17 = 7500 (obtenu " + w3.rawCount + ")");
 
-// --- 2) Ramp de difficulté ---
-// jour 7 : 6400 demande, cap 2000 -> (6400-2000)/2000 = 2.2 -> 3 nuits de depassement -> ramp = 1.30
+// --- 2) Ramp de difficulté (force unitaire apres le jour 4) ---
+// jour 4 : rawCount 1000, cap 500 -> (1000-500)/500 = 1 -> 1 nuit de depassement -> ramp = 1.10
 G.state.pendingWave = w;
 G.spawnWave();
-assert(G.state.zombieRamp === 1.30, "ramp jour 7 au plafond = 1.30 (obtenu " + G.state.zombieRamp + ")");
-assert(G.state.waveCount === 2000, "waveCount = 2000");
-// jour 17 : (6553600-5000)/5000 = 1310 nuits de dépassement -> capé a 5 nuits = 1.50
+assert(G.state.zombieRamp === 1.10, "ramp jour 4 au plafond = 1.10 (obtenu " + G.state.zombieRamp + ")");
+assert(G.state.waveCount === 500, "waveCount = 500");
+// jour 17 : (7500-500)/500 = 14 nuits de depassement -> capé a 10 nuits (RAMP_MAX=1.00) = 2.00
 G.state.zombies = []; G.state.zombieGroups = [];
 G.state.pendingWave = w3;
 G.spawnWave();
-assert(G.state.zombieRamp === 1.50, "ramp capé a 1.50 (obtenu " + G.state.zombieRamp + ")");
+assert(G.state.zombieRamp === 2.00, "ramp capé a 2.00 (obtenu " + G.state.zombieRamp + ")");
 // PV des zombies montent avec le ramp
-assert(G.state.zombies.length === 2000, "2000 zombies spawnés");
+assert(G.state.zombies.length === 500, "500 zombies spawnés (cap anti-lag)");
 var hp = G.state.zombies[0].hp;
-assert(hp === Math.max(1, Math.round(G.ZOMBIE_HP * 1.5)), "PV zombie scales avec le ramp (obtenu " + hp + ")");
+assert(hp === Math.max(1, Math.round(G.ZOMBIE_HP * 2.0)), "PV zombie scales avec le ramp (obtenu " + hp + ")");
 // degats joueur scales avec le ramp
 var z0 = G.state.zombies[0];
 z0.atkCd = 0;

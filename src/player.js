@@ -248,8 +248,9 @@
         lines.push("Tours de siège : " + siegeN);
       }
     }
-    // Montee en difficulte : chaque nuit au plafond ZOMBIE_WAVE_MAX monte les
-    // degats/s, les PV et la vitesse de +10% (capes a +50%).
+    // Montee en difficulte : le nombre de zombies croit jusqu'au jour
+    // ZOMBIE_COUNT_GROWTH_DAYS ; au-dela, le nombre est fige au plafond et
+    // la FORCE UNITAIRE monte de +ZOMBIE_RAMP_STEP par nuit (cap ZOMBIE_RAMP_MAX).
     var rampNights = 0;
     if (G.ZOMBIE_WAVE_MAX && (pw.rawCount || pw.count) > G.ZOMBIE_WAVE_MAX) {
       var overNights = Math.ceil(((pw.rawCount || pw.count) - G.ZOMBIE_WAVE_MAX) / G.ZOMBIE_WAVE_MAX);

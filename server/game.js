@@ -315,7 +315,6 @@
       _teleported: true,
       planks: 0,
       inventory: 0,
-      gold: 0,
       chopTarget: null,
       chopWall: null,
       chopTimer: 0,
@@ -584,6 +583,8 @@
               it.taken = true;
               p.bag.contents.push({ name: it.name, kind: it.kind, color: it.color });
               p.inventory = p.bag.contents.length;
+              // L'Anneau Unique garde son flag (poeme au ramassage cote client).
+              if (it.anneau) p.bag.contents[p.bag.contents.length - 1].anneau = true;
             }
           }
           break;
@@ -1218,7 +1219,6 @@
           chopAge: p.chopStartedAt !== undefined ? +((state.time - p.chopStartedAt)).toFixed(2) : undefined,
           bag: p.bag.contents, inventory: p.bag.contents.length,
           planks: p.planks || 0,
-          gold: p.gold || 0,
           // Torche : reste (s) avant la fin de l'effet vision x5, transmis
           // en DUREE (pas d'horodatage) pour eviter tout decalage d'horloge
           // client/serveur. Le client pose torcheUntil = time + reste.
