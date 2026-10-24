@@ -204,9 +204,22 @@
 
   G.netInput = function (input) {
     var nowMs = (typeof performance !== "undefined" ? performance.now() : Date.now());
-    var isMoveOnly = input.buildWall === null && input.buildSel === undefined &&
-      input.placeBuild === undefined && input.equip === undefined &&
-      input.toggleAxe === undefined;
+    // Le throttle 20 Hz ne s'applique qu'au deplacement/tir PERSISTANT envoye
+    // chaque frame par main.js (dx, dy, fire, build, aim, buildWall : null).
+    // Les inputs PONCTUELS (pickup, torche, equip, eat, votes, achats, pose,
+    // rotation...) doivent passer TOUJOURS : l'ancienne blacklist (move-only
+    // = "tout ce qui n'est pas equip/build/placeBuild") droppait le pickup
+    // pendant la marche — l'input entrait dans la fenetre de 50 ms et etait
+    // retourne sans envoi : l'objet restait au sol et le sac ne se remplissait
+    // plus. Whitlist stricte des champs du message de deplacement.
+    var isMoveOnly = (function () {
+      for (var k in input) {
+        if (!Object.prototype.hasOwnProperty.call(input, k)) continue;
+        if (k !== "type" && k !== "dx" && k !== "dy" && k !== "fire" &&
+            k !== "build" && k !== "buildWall" && k !== "aimX" && k !== "aimY") return false;
+      }
+      return true;
+    })();
     if (isMoveOnly && nowMs - lastMoveSentAt < moveSendInterval) return;
     if (isMoveOnly) lastMoveSentAt = nowMs;
     // Mesure RTT pour la zone morte de correction (auto-limite par ping).
