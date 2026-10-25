@@ -501,13 +501,19 @@ G.drawGround = function () {
     }
     else if (G.hasSprite("building", "generic")) { sprite = G.SPRITES.building.generic; spriteEnt = "building"; spriteKey = "generic"; }
     if (sprite) {
-      // Echelle de rendu optionnelle (decorRenderScale, cf. makeDecor) :
-      // le PNG est dessine plus grand/petit que l'emprise sol, ancre en
-      // bas-centre comme toujours (le bas du rendu reste sur le sol).
+      // Echelle de pixels commune (G.SPRITE_PX) : le PNG est dessine a sa
+      // taille Aseprite reelle (image COURANTE : frame d'anim ou PNG de base),
+      // pas etire sur l'emprise sol. Les maisons/eglises/decors ont une
+      // emprise sprite.w*2 -> rendu identique a avant ; les objets dont
+      // l'emprise etait arbitraire (mairie x1.4, batiments de ville, torche,
+      // potence) reviennent a la meme echelle de pixels que le reste.
+      // decorRenderScale (cf. makeDecor) reste multiplicatif (eglise Lisieux).
       var rScale = b.decorRenderScale || 1;
-      var losangeW = (b.w + b.h) * 0.5 * z * rScale;
-      var dw = losangeW;
-      var dh = dw * sprite.h / sprite.w;
+      var scImg0 = G.animImg(sprite, G.state.time);
+      var iwPx = (scImg0 && scImg0.naturalWidth) || sprite.w;
+      var ihPx = (scImg0 && scImg0.naturalHeight) || sprite.h;
+      var dw = iwPx * G.SPRITE_PX * z * rScale;
+      var dh = dw * ihPx / iwPx;
       var groundY = Math.max(C[1], D[1]);
       // Ancrage opaque commun (forêt + bâtiment + maison) : le bas de la zone
       // opaque du sprite (pas le bas du PNG) est aligné sur le bord sud (groundY).
@@ -1031,7 +1037,12 @@ G.drawGround = function () {
     var baseKey = t.chantierDone ? "idle" : "chantier";
     var base = G.hasSprite("tour", baseKey) ? G.SPRITES.tour[baseKey] : null;
     if (!base) base = G.hasSprite("tour", "idle") ? G.SPRITES.tour.idle : null;
-    var dw = (t.w + t.h) * 0.5 * z, dh = 0, dx = cx - dw / 2, dy = groundY;
+    // Echelle de pixels commune (G.SPRITE_PX) : la tour est dessinee a la
+    // taille Aseprite de son PNG, comme les maisons/eglises/decors. Avant,
+    // le PNG etait etire sur le losange de l'emprise (towerSide = sp.w*1.4)
+    // -> pixels 30% plus petits que le reste du monde.
+    var dw = base ? base.w * G.SPRITE_PX * z : (t.w + t.h) * 0.5 * z;
+    var dh = 0, dx = cx - dw / 2, dy = groundY;
     if (base) {
       dh = dw * base.h / base.w;
       dy = groundY - dh;
@@ -1115,8 +1126,8 @@ G.drawGround = function () {
       : (key === "chantier" && hasChantier) ? G.SPRITES.montgolfiere.chantier
       : (hasIdle ? G.SPRITES.montgolfiere.idle : null);
     if (sprite) {
-      var losangeW = (b.w + b.h) * 0.5 * z;
-      var dw = losangeW;
+      // Echelle de pixels commune (G.SPRITE_PX) : le ballon est dessine a la
+      // taille Aseprite de son image courante, pas etale sur le losange.
       var img;
       if (b.chantierDone) {
         var fi = G.montgolfiereAnimFrame(b, state.time);
@@ -1135,6 +1146,7 @@ G.drawGround = function () {
       // losange et mise a l'echelle sur sa propre hauteur.
       var iw = (img && img.naturalWidth) || sprite.w;
       var ih = (img && img.naturalHeight) || sprite.h;
+      var dw = iw * G.SPRITE_PX * z;
       var dh = dw * ih / iw;
       ctx.drawImage(img, cx - dw / 2, groundY - dh, dw, dh);
       // Message d'annonce de vague : au-dessus du ballon, apres l'animation.
@@ -1170,8 +1182,10 @@ G.drawGround = function () {
     var A = G.proj(m.x, m.y), C = G.proj(m.x + m.w, m.y + m.h);
     var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
     if (sprite) {
-      var losangeW = (m.w + m.h) * 0.5 * z;
-      var dw = losangeW;
+      // Echelle de pixels commune (G.SPRITE_PX) : la palissade est dessinee a
+      // la taille Aseprite de son PNG (comme les maisons/decors) au lieu d'etre
+      // etiree sur le losange de son emprise de collision.
+      var dw = sprite.w * G.SPRITE_PX * z;
       var dh = dw * sprite.h / sprite.w;
       var B = G.proj(m.x + m.w, m.y), D = G.proj(m.x, m.y + m.h);
       var groundY = Math.max(C[1], D[1]);
@@ -1222,10 +1236,10 @@ G.drawGround = function () {
     // sprite de la direction courante (le PNG "ferme" par défaut).
     if (!sprite && G.hasSprite("siege", s.dir + "/ferme")) sprite = G.SPRITES.siege[s.dir + "/ferme"];
     if (sprite) {
-      // Échelle : le PNG est dessiné à la moitié de l'emprise monde
-      // (SIEGE_SIDE / 2), cohérent avec les palissades (~40 px) et le
-      // joueur (~6 px). Ancré bas-centre : le bas du PNG sur le sol.
-      var dw = s.w * 0.5 * z;
+      // Echelle de pixels commune (G.SPRITE_PX) : le PNG est dessine a sa
+      // taille Aseprite, comme tous les autres objets du monde. Avant : etale
+      // sur SIEGE_SIDE/2 de maniere fixe. Ancré bas-centre : le bas du PNG sur le sol.
+      var dw = sprite.w * G.SPRITE_PX * z;
       var dh = dw * sprite.h / sprite.w;
       var img = G.animImg(sprite, G.state.time);
       ctx.drawImage(img, base[0] - dw / 2, base[1] - dh, dw, dh);
@@ -1273,10 +1287,9 @@ G.drawGround = function () {
       var sp = list[tr.v % list.length];
       if (!sp || !sp.img) continue;
       var p = G.proj(tr.x, tr.y);
-      // Meme echelle que la tour vivante (drawSiegeTower : emprise SIEGE_SIDE
-      // dessinee a SIEGE_SIDE/2). Avant : sp.w * z * 0.5 avec un PNG ~20 px
-      // donnait une trace ~5x plus petite que la tour qu'elle remplace.
-      var dw = (G.SIEGE_SIDE || 100) * 0.5 * z;
+      // Meme echelle de pixels commune (G.SPRITE_PX) que la tour vivante :
+      // la trace garde la taille Aseprite de son PNG, coherente avec la tour.
+      var dw = sp.w * G.SPRITE_PX * z;
       var dh = dw * sp.h / sp.w;
       ctx.drawImage(sp.img, p[0] - dw / 2, p[1] - dh, dw, dh);
     }
@@ -1387,10 +1400,14 @@ G.drawGround = function () {
     ctx.ellipse(base[0], base[1], 8 * zoom * 0.5, 4 * zoom * 0.5, 0, 0, Math.PI * 2);
     ctx.fill();
     if (sprite) {
-      var scale = zoom * 0.5;
-      var dw = sprite.w * scale, dh = sprite.h * scale;
+      // Echelle de pixels commune (G.SPRITE_PX) : l'oiseau PNG (64px Aseprite)
+      // etait rendu a zoom*0.5, 4x plus petit que les batiments/decors.
+      var bimg = G.animImg(sprite, G.state.time);
+      var biw = (bimg && bimg.naturalWidth) || sprite.w;
+      var bih = (bimg && bimg.naturalHeight) || sprite.h;
+      var dw = biw * G.SPRITE_PX * zoom, dh = dw * bih / biw;
       // L'oiseau vole : on l'ancre en bas-centre, légèrement au-dessus du sol.
-      ctx.drawImage(G.animImg(sprite, G.state.time), base[0] - dw / 2, base[1] - dh, dw, dh);
+      ctx.drawImage(bimg, base[0] - dw / 2, base[1] - dh, dw, dh);
       ctx.restore();
       return;
     }

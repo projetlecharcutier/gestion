@@ -21,6 +21,22 @@ Dessine tout (sol, objets, arbres, bâtiments, murs, zombies, joueur, projectile
 - `PLAYER_SPRITE`/`PAL` et `ZOMBIE_SPRITE`/`ZPAL` ont été déplacés vers `G.TEXTURES.player` et `G.TEXTURES.zombie` (`src/textures/`). Voir `docs/textures.md`.
 - Rendu pixelisé : `cell = zoom*0.5`, `imageSmoothingEnabled=false`.
 
+## Échelle de pixels commune (`G.SPRITE_PX`, `src/config.js`)
+
+Tous les objets PNG du jeu (hors joueur) sont dessinés à la même échelle de
+pixels : **1 pixel Aseprite = `G.SPRITE_PX` (= 2) pixels écran au zoom 1**.
+Le PNG n'est PAS étiré sur l'emprise sol (losange iso) : il garde sa taille
+Aseprite réelle (image courante : frame d'anim ou PNG de base), ancré
+bas-centre. Référence historique = le rendu des maisons/églises/décors
+(emprise `sprite.w * 2`). `decorRenderScale` (église de Lisieux) reste
+multiplicatif. Le joueur garde son échelle propre (`z * 1.0`).
+
+Sites concernés (`src/render.js`, `src/ciel.js`) : `drawBuilding` (mairie,
+église, forêts, maisons, décors, torches, potence, bâtiments de ville),
+`drawTower`, `drawMontgolfiereTop`, `drawWall`, `drawSiegeTower`,
+`drawSiegeTraces`, `drawBird`, `drawOne` (ciel : nuages/PORCO/oiseaux).
+Les emprises de collision restent inchangées (seul le rendu change).
+
 ## Sprites de décors & miroir
 
 Les décors PNG (`elementdecord`) suivent l'ancrage commun bas-centre du losange.

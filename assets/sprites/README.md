@@ -2,6 +2,15 @@
 
 Sprites charges par `src/assets.js` au demarrage.
 
+## Echelle de pixels commune
+
+Dessine tous les sprites a la MEME echelle dans Aseprite : 1 pixel Aseprite
+s'affiche a `G.SPRITE_PX` (= 2, `src/config.js`) pixels ecran au zoom 1,
+pour TOUS les objets (le joueur seul fait exception, echelle x1). Le PNG
+n'est pas etire sur son emprise sol : il apparait a sa taille de dessin,
+ancre bas-centre. Ne laisse pas de grande marge transparente inutile
+autour du dessin : elle compte dans la taille affichee.
+
 ## Structure
 
 ```

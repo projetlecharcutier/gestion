@@ -16,6 +16,8 @@ Le code est découpé par **système**. Chaque fichier `(function(){ ... })()` e
 
 Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fonctions de dessin dans `src/textures/`, exposées sur `G.TEXTURES`. Le rendu (`src/render.js`, `src/hud.js`, `src/bag.js`) les consomme sans les définir.
 
+**Échelle de pixels commune** : tous les objets PNG (hors joueur) sont dessinés à 1 px Aseprite = `G.SPRITE_PX` (= 2, `src/config.js`) px écran au zoom 1 — le PNG garde sa taille de dessin (image courante : frame ou base), ancré bas-centre, sans être étiré sur son emprise sol (les emprises de collision ne changent pas). Sites : `drawBuilding`, `drawTower`, `drawMontgolfiereTop`, `drawWall`, `drawSiegeTower/Traces`, `drawBird` (`src/render.js`), `drawOne` (`src/ciel.js`). Détails : `docs/render.md`.
+
 ### Ordre de chargement (voir `index.html`)
 
 | # | Fichier | Rôle | Exposé sur `G` |

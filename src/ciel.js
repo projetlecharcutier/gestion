@@ -16,8 +16,6 @@
   // Marge monde hors carte avant réapparition (px monde) : les éléments
   // peuvent déborder un peu au-delà des bords de la carte.
   var MARGIN = 600;
-  // Échelle de dessin par type (les PNG du dossier ciel sont petits).
-  var SCALES = { nuage: 3, montgolfiere: 4, oiseau: 2.5, porco: 2, ciel: 3 };
   function sp(key) { return (G.SPRITES.ciel && G.SPRITES.ciel[key]) || null; }
   function rnd(a, b) { return a + Math.random() * (b - a); }
   // Cap boussole VISUEL à l'écran (0° = nord de l'écran, sens horaire,
@@ -34,6 +32,7 @@
   function mk(kind, keys, speed, dir) {
     var key = keys[Math.floor(Math.random() * keys.length)];
     var s = sp(key);
+    // Echelle des elements du ciel : G.SPRITE_PX commun (cf. drawOne).
     // Élévation : les objets du ciel volent à une altitude visuelle fixe
     // (px écran au zoom 1) au-dessus de leur position au sol projetée.
     var ALT = { nuage: 320, montgolfiere: 240, oiseau: 280, porco: 340, ciel: 300 };
@@ -42,8 +41,7 @@
       x: rnd(-MARGIN, G.WORLD + MARGIN), y: rnd(-MARGIN, G.WORLD + MARGIN),
       speed: speed, dx: dir[0], dy: dir[1],
       alt: ALT[kind] || 280,
-      w: s ? s.w : 64, h: s ? s.h : 64,
-      scale: SCALES[kind] || 2
+      w: s ? s.w : 64, h: s ? s.h : 64
     };
   }
   // Remplit state.ciel. Tolérant : sans sprites ciel (dossier absent),
@@ -101,8 +99,11 @@
     // via le monde : la taille suit le même zoom que le reste de la carte.
     var p = G.proj(c.x, c.y);
     var z = G.state.zoom;
-    var w = c.w * c.scale * z * 0.5;
-    var h = c.h * c.scale * z * 0.5;
+    // Echelle de pixels commune (G.SPRITE_PX) : les elements du ciel gardent
+    // la taille Aseprite de leur PNG (les SCALES ad hoc 2-4 donnaient des
+    // pixels 1 a 2x plus gros que le reste du monde).
+    var w = s.w * G.SPRITE_PX * z;
+    var h = w * s.h / s.w;
     G.ctx.drawImage(s.img, p[0] - w / 2, p[1] - c.alt * z * 0.25 - h / 2, w, h);
   }
   // Nuages toujours AU-DESSUS des autres éléments du ciel en cas de

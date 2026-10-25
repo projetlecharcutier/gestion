@@ -302,6 +302,11 @@
   G.FOOD_HEAL = 25;
   // PV restaurés par une Potion bue dans le sac (plus efficace que la nourriture).
   G.POTION_HEAL = 40;
+  // Echelle de pixels commune a TOUS les objets PNG (hors joueur) : un pixel
+  // Aseprite = G.SPRITE_PX pixels ecran au zoom 1. Reference = le rendu des
+  // maisons/eglises/decors (emprise sol sprite.w*2 -> losange sprite.w*2*z).
+  // Le joueur garde son echelle propre (z*1, cf. drawPlayer).
+  G.SPRITE_PX = 2;
   G.DEAD_TRACES_MAX = 500;
   // Taille des taches de sang des zombies morts (1 = taille sprite d'origine).
   G.DEAD_TRACES_SCALE = 3;
