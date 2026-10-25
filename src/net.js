@@ -551,7 +551,7 @@
         }
         if (ok && G.playSfx) G.playSfx(sfx);
       }
-      if (ev.t === "eat" && G.addFloater) G.addFloater("Nourriture (Soin)");
+      if (ev.t === "eat" && G.addFloater) G.addFloater(ev.msg || "Nourriture (Soin)");
       if (ev.t === "msg" && G.addFloater) G.addFloater(ev.msg);
       if (ev.t === "execution") {
         // Execution sur la potence (vote de pendaison abouti) : son dedie,

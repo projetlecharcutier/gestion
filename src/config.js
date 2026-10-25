@@ -300,6 +300,8 @@
   G.WALL_MAX_HP = 100;
   G.PLAYER_MAX_HP = 100;
   G.FOOD_HEAL = 25;
+  // PV restaurés par une Potion bue dans le sac (plus efficace que la nourriture).
+  G.POTION_HEAL = 40;
   G.DEAD_TRACES_MAX = 500;
   // Taille des taches de sang des zombies morts (1 = taille sprite d'origine).
   G.DEAD_TRACES_SCALE = 3;
@@ -400,8 +402,7 @@
     { name: "Bâton", color: "#7c5e3c", kind: "arme", weight: 8 },
     { name: "Hache", color: "#b45309", kind: "outil", weight: 5 },
     { name: "Relique", color: "#a855f7", kind: "objet", weight: 15 },
-    { name: "Gemme", color: "#22d3ee", kind: "objet", weight: 10 },
-    { name: "Pièce", color: "#fbbf24", kind: "objet", weight: 10 },
+    { name: "Pièce", color: "#fbbf24", kind: "or", weight: 10 },
     { name: "Potion", color: "#ef4444", kind: "objet", weight: 10 },
     { name: "Nourriture", color: "#f59e0b", kind: "objet", weight: 10 }
   ];

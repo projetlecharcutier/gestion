@@ -58,20 +58,22 @@
           if (G.netConnected && G.netConnected()) G.netInput({ equip: newEq });
           G.state.equipped = newEq;
           if (G.state.equipped) G.state.axeEquipped = false;
-        } else if (it.kind === "objet" && it.name === "Nourriture") {
+        } else if (it.kind === "objet" && (it.name === "Nourriture" || it.name === "Potion")) {
           var contents = G.state.bag.contents;
           if (G.netConnected && G.netConnected()) {
             G.netInput({ eat: true });
           } else if (G.state.player.hp < G.PLAYER_MAX_HP) {
             var fi = -1;
             for (var ci = 0; ci < contents.length; ci++) {
-              if (contents[ci].name === "Nourriture" && contents[ci].kind === "objet") { fi = ci; break; }
+              if (contents[ci].kind === "objet" && (contents[ci].name === "Nourriture" || contents[ci].name === "Potion")) { fi = ci; break; }
             }
             if (fi >= 0) {
+              var heal = contents[fi].name === "Potion" ? (G.POTION_HEAL || 40) : G.FOOD_HEAL;
+              var label = contents[fi].name === "Potion" ? "Potion (Soin)" : "Nourriture (Soin)";
               contents.splice(fi, 1);
               G.state.inventory = contents.length;
-              G.state.player.hp = Math.min(G.PLAYER_MAX_HP, G.state.player.hp + G.FOOD_HEAL);
-              if (G.addFloater) G.addFloater("Nourriture (Soin)");
+              G.state.player.hp = Math.min(G.PLAYER_MAX_HP, G.state.player.hp + heal);
+              if (G.addFloater) G.addFloater(label);
               if (G.playSfx) G.playSfx("eat");
               G.updateHud();
             }
@@ -178,7 +180,7 @@
       ctx.textAlign = "right";
       var suffix = it.kind === "arme" ? "arme (clic pour équiper)" :
                    (it.kind === "outil" && it.name === "Hache") ? "outil (clic pour équiper)" :
-                   (it.kind === "objet" && it.name === "Nourriture") ? "objet (clic pour manger)" :
+                   (it.kind === "objet" && (it.name === "Nourriture" || it.name === "Potion")) ? "objet (clic pour consommer)" :
                    it.kind;
       ctx.fillText(suffix, px + pw - 18, ly);
     }

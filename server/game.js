@@ -701,15 +701,17 @@
     if (input.eat) {
       var fi = -1;
       for (var ci2 = 0; ci2 < p.bag.contents.length; ci2++) {
-        if (p.bag.contents[ci2].name === "Nourriture" && p.bag.contents[ci2].kind === "objet") { fi = ci2; break; }
+        if (p.bag.contents[ci2].kind === "objet" && (p.bag.contents[ci2].name === "Nourriture" || p.bag.contents[ci2].name === "Potion")) { fi = ci2; break; }
       }
       if (fi >= 0 && p.hp < G.PLAYER_MAX_HP) {
+        var isPotion = p.bag.contents[fi].name === "Potion";
+        var healAmt = isPotion ? (G.POTION_HEAL || 40) : G.FOOD_HEAL;
         p.bag.contents.splice(fi, 1);
         p.inventory = p.bag.contents.length;
-        p.hp = Math.min(G.PLAYER_MAX_HP, p.hp + G.FOOD_HEAL);
+        p.hp = Math.min(G.PLAYER_MAX_HP, p.hp + healAmt);
         // Le client joue le son/floater localement en solo ; en ligne, le
         // serveur est autorite et n'envoyait rien (manger etait invisible).
-        pushEvent(p.id, { t: "eat" });
+        pushEvent(p.id, { t: "eat", msg: isPotion ? "Potion (Soin)" : "Nourriture (Soin)" });
       }
     }
   }
