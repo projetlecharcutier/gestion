@@ -362,7 +362,13 @@
     { name: "Camp romain", sprite: "camp_romain", x: 4500, y: 15500 },
     // Remalard : nord-est de la carte. PNG placeholder (transparent)
     // tant que le pixel art n'est pas pose.
-    { name: "Remalard", sprite: "remalard", x: 15500, y: 4500 }
+    { name: "Remalard", sprite: "remalard", x: 15500, y: 4500 },
+    // Comte : sud-est de la carte. PNG placeholder (transparent) tant
+    // que le pixel art n'est pas pose ; dossier assets/sprites/ville/comte/.
+    { name: "Comte", sprite: "comte", x: 9900, y: 14500 },
+    // Montligeon : nord-ouest de la carte. PNG placeholder (transparent)
+    // tant que le pixel art n'est pas pose ; dossier assets/sprites/ville/montligeon/.
+    { name: "Montligeon", sprite: "montligeon", x: 7000, y: 6500 }
   ];
   // Placement automatique des nouvelles villes DETECTEES par le serveur
   // (ville-sync.js) : distance au centre de la ville principale. Les
