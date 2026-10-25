@@ -12,6 +12,7 @@ Chaque fichier ci-dessous documente un système : son contrat, ses entrées/sort
 | **Collisions (audit global : décors/forêts AABB vs villes PNG masque)** | [collisions.md](collisions.md) | `src/player.js`, `src/world.js`, `src/ville.js`, `src/zombies.js` |
 | Joueur | [player.md](player.md) | `src/player.js` |
 | Murs & construction | [walls.md](walls.md) | `src/walls.js` |
+| **Grille de construction (snap des poses)** | [grid.md](grid.md) | `src/grid.js`, `src/config.js` |
 | Récolte de planches (hache) | [chop.md](chop.md) | `src/chop.js` |
 | Armes & projectiles | [weapons.md](weapons.md) | `src/weapons.js` |
 | Zombies | [zombies.md](zombies.md) | `src/zombies.js` |

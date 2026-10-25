@@ -137,11 +137,17 @@
   // Pose le bâtiment sélectionné dans le menu (buildSel : "palissade",
   // "tour:bois", ... "scierie"). Renvoie true si posé. Le paiement de la
   // scierie se fait au déverrouillage tech ; la tour se paie ici (coffre
-  // mairie : or commun + planches du joueur).
+  // mairie : or commun + planches du joueur). Le point clique est SNAPPE sur
+  // la grille de construction (G.BUILD_GRID, G.snapToGrid dans src/config.js)
+  // : le batiment est arrondi au centre de la cellule la plus proche, comme
+  // les palissades.
   G.placeFromBuildMenu = function (wx, wy) {
     var state = G.state;
     var sel = state.buildSel;
     if (!sel) return false;
+    // Snap grille : tout batiment pose par le joueur est centre sur sa cellule.
+    var s = G.snapToGrid ? G.snapToGrid(wx, wy) : [wx, wy];
+    wx = s[0]; wy = s[1];
 
     if (sel === "palissade") {
       // La sélection palissade reste active : on peut poser plusieurs murs

@@ -91,6 +91,12 @@ emplacement de clone.
   boot, lobby visible), zombie du guide dessine depuis G.TEXTURES.zombie, submit
   -> netJoin en mode serveur, bascule local masque le lobby.
 
+### `grid/` — grille de construction (snap des poses)
+- `snap_pose.js` : G.snapToGrid/G.buildCellAt, snap de tryBuildWall (palissade,
+  longueur = une cellule, palissades adjacentes jointives) et de
+  placeFromBuildMenu (tour, scierie), apercu drawBuildHint snappe,
+  drawBuildGrid uniquement en mode build (pointilles + cellule curseur).
+
 ### `world/` — monde et rendu
 - `brouillard.js` : brouillard multi-sources (joueur + tours), union des trous,
   pas d'ecran noir en sortant de la ville.

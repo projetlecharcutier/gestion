@@ -7,7 +7,8 @@ Met à jour le HUD DOM et dessine les overlays canvas (horloge, barre de vie jou
 - `updateHud()` — met à jour les éléments DOM : nom, zone, position, inventaire, arme, **hache**, PV, **PV Mairie**, planches
 - `drawClock()` — horloge jour/nuit ☀/🌙 en haut centre + "⚠ Vague de zombies" si vague active + "Jour N" en haut à droite + **compteur zombies** (`Zombies : vivants / total`) en haut à droite pendant une vague
 - `drawPlayerHpBar()` — barre de vie au-dessus du joueur (couleur selon ratio)
-- `drawBuildHint()` — rectangle pointillé au curseur en mode pose de planche (taille selon `plankDims()`, vert/rouge selon planches), avec indice de rotation (Espace)
+- `drawBuildHint()` — rectangle pointillé au curseur en mode pose de planche (taille selon `plankDims()`, vert/rouge selon planches), **centré sur la cellule de la grille de construction** (`G.snapToGrid`, voir [grid.md](grid.md)), avec indice de rotation (Espace)
+- `drawBuildGrid()` (`src/grid.js`) — quadrillage pointillé de la grille de construction sur la zone visible, uniquement en mode pose (Z), + contour plein de la cellule sous le curseur ; couleurs `G.TEXTURES.buildGrid`
 - `drawChopProgress()` — cercle de décompte de récolte à côté du joueur quand une hache est équipée et un arbre ciblé (ratio via `G.chopProgress()`, couleurs `G.TEXTURES.chopProgress`)
 - `drawGameOver()` — écran de fin : « La Mairie est détruite » (cause `mairie`) ou « Vous êtes mort » (cause `player`) + invite recharger
 

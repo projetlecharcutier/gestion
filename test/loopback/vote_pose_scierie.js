@@ -93,7 +93,9 @@ setTimeout(function () {
                 console.log("[3] scierieUnlocked:", snap.scierieUnlocked);
                 var spots = [];
                 var b = mapBuildings;
-                for (var x = 9550; x <= 10450; x += 20) for (var y = 9550; y <= 10450; y += 20) {
+                // Pas 120 = grille de construction : les poses sont snappees,
+                // on collecte directement les centres de cellule.
+                for (var x = 9600; x <= 10440; x += 120) for (var y = 9600; y <= 10440; y += 120) {
                   var ok = true;
                   for (var i = 0; i < b.length; i++) {
                     var bx = b[i];

@@ -12,13 +12,16 @@ var mairie = st.buildings.filter(function (b) { return b.isMairie; })[0];
 st.scierieUnlocked = true;
 st.mairieGold = 100;
 
-// Spot libre dans la ville pres de la mairie
+// Spot libre dans la ville pres de la mairie. Les centres sont alignes sur la
+// grille de construction (G.BUILD_GRID) : placeFromBuildMenu snappera le
+// point clique sur la cellule, on teste donc directement les centres.
 var spot = null;
 outer:
-for (var r = 200; r <= 2000 && !spot; r += 40) {
-  for (var a = 0; a < 32; a++) {
-    var px = mairie.x + mairie.w / 2 + Math.cos(a / 32 * Math.PI * 2) * r;
-    var py = mairie.y + mairie.h / 2 + Math.sin(a / 32 * Math.PI * 2) * r;
+for (var gx = G.BUILD_GRID; gx < G.WORLD && !spot; gx += G.BUILD_GRID) {
+  for (var gy = G.BUILD_GRID; gy < G.WORLD; gy += G.BUILD_GRID) {
+    var px = gx, py = gy;
+    var ddx = px - (mairie.x + mairie.w / 2), ddy = py - (mairie.y + mairie.h / 2);
+    if (ddx * ddx + ddy * ddy > 2000 * 2000) continue;
     if (G.inTown(px, py) && G.towerSpotFree(px - G.SCIERIE_SIDE / 2, py - G.SCIERIE_SIDE / 2, G.SCIERIE_SIDE, G.SCIERIE_SIDE)) { spot = [px, py]; break outer; }
   }
 }
@@ -52,11 +55,11 @@ assert(st.scierie.chantierDone, "chantierDone cote etat serveur");
 p._buildSel = "tour:bois";
 var tSide = G.towerSide("bois");
 var tspot = null;
-outer2: for (var r2 = 200; r2 <= 2000; r2 += 40) {
-  for (var a2 = 0; a2 < 32; a2++) {
-    var tx2 = mairie.x + mairie.w / 2 + Math.cos(a2 / 32 * Math.PI * 2) * r2;
-    var ty2 = mairie.y + mairie.h / 2 + Math.sin(a2 / 32 * Math.PI * 2) * r2;
-    if (G.towerSpotFree(tx2 - tSide / 2, ty2 - tSide / 2, tSide, tSide)) { tspot = [tx2, ty2]; break outer2; }
+outer2: for (var gx2 = G.BUILD_GRID; gx2 < G.WORLD && !tspot; gx2 += G.BUILD_GRID) {
+  for (var gy2 = G.BUILD_GRID; gy2 < G.WORLD; gy2 += G.BUILD_GRID) {
+    var dx2 = gx2 - (mairie.x + mairie.w / 2), dy2 = gy2 - (mairie.y + mairie.h / 2);
+    if (dx2 * dx2 + dy2 * dy2 > 2000 * 2000) continue;
+    if (G.towerSpotFree(gx2 - tSide / 2, gy2 - tSide / 2, tSide, tSide)) { tspot = [gx2, gy2]; break outer2; }
   }
 }
 assert(tspot, "spot libre pour la tour");

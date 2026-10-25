@@ -318,6 +318,14 @@
   G.ZOMBIE_ATTACK_CD = 1.0;
   G.WALL_PLANKS = 2;
   G.WALL_BUILD_RANGE = 180;
+  // Grille de construction : cote d'une cellule (px monde), origine (0,0).
+  // 120 = longueur nominale d'une palissade (PLANK_LONG) : une palissade
+  // occupe exactement une cellule en longueur, deux palissades posees dans
+  // des cellules adjacentes se touchent sans chevauchement ni trou. Le snap
+  // (G.snapToGrid, plus bas dans ce fichier) centre tout batiment pose par le joueur sur
+  // la cellule la plus proche : grille partagee client/serveur (constante,
+  // independante des sprites charges cote client uniquement).
+  G.BUILD_GRID = 120;
   G.TREE_CHOP_TIME = 1;
   G.AXE_RANGE = 120;
   G.WALL_AXE_DMG = 10;
@@ -603,4 +611,18 @@
   G.rand = function (min, max) { return min + Math.random() * (max - min); };
   G.randi = function (min, max) { return Math.floor(G.rand(min, max + 1)); };
   G.clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+
+  // Grille de construction (G.BUILD_GRID, origine (0,0)) : centre de la
+  // cellule contenant le point monde (snap pour toute pose de batiment).
+  G.snapToGrid = function (wx, wy) {
+    var g = G.BUILD_GRID;
+    return [Math.round(wx / g) * g, Math.round(wy / g) * g];
+  };
+  // Cellule de grille contenant le point monde :
+  // { cx, cy (centre), x, y (coin nord-ouest), w, h }.
+  G.buildCellAt = function (wx, wy) {
+    var g = G.BUILD_GRID;
+    var s = G.snapToGrid(wx, wy);
+    return { cx: s[0], cy: s[1], x: s[0] - g / 2, y: s[1] - g / 2, w: g, h: g };
+  };
 })();

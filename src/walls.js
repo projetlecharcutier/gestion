@@ -130,11 +130,15 @@
     return { w: d.longW, h: d.thick };
   };
 
-  // Pose une planche au point cliqué. Les planches peuvent se superposer.
-  // En mode build le personnage est fige : on peut poser n'importe ou sur la carte.
-  // Après la pose, si la palissade chevauche le joueur, on le repousse juste
-  // à l'extérieur de la palissade (bord le plus proche) pour éviter qu'il ne
-  // se retrouve bloqué dessus à la fin de la grace period.
+  // Pose une planche au point cliqué, SNAPPE sur la grille de construction
+  // (G.BUILD_GRID, G.snapToGrid dans src/config.js) : le point est arrondi au
+  // centre de la cellule la plus proche, la palissade occupe exactement sa
+  // cellule en longueur (deux palissades adjacentes se touchent sans trou).
+  // Les planches peuvent se superposer. En mode build le personnage est fige :
+  // on peut poser n'importe ou sur la carte. Après la pose, si la palissade
+  // chevauche le joueur, on le repousse juste à l'extérieur de la palissade
+  // (bord le plus proche) pour éviter qu'il ne se retrouve bloqué dessus
+  // à la fin de la grace period.
   G.tryBuildWall = function (wx, wy) {
     var state = G.state;
     var p = state.player;
@@ -144,6 +148,9 @@
       if (Math.sqrt(dx * dx + dy * dy) > G.WALL_BUILD_RANGE) return;
     }
     if (state.planks < G.WALL_PLANKS) return;
+    // Snap grille : toute palissade posee par le joueur est centree sur sa cellule.
+    var s = G.snapToGrid ? G.snapToGrid(wx, wy) : [wx, wy];
+    wx = s[0]; wy = s[1];
     var dims = G.plankDims();
     var w = dims.w, h = dims.h;
     var mx = wx - w / 2, my = wy - h / 2;

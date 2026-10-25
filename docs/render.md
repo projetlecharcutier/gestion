@@ -14,7 +14,7 @@ Dessine tout (sol, objets, arbres, bâtiments, murs, zombies, joueur, projectile
 2. Si non démarré → retour
 3. `drawGround` + objets au sol
 4. Drawables (bâtiments, arbres visibles, murs, zombies visibles) triés par profondeur `x+y`, joueur inséré à sa profondeur. **Forêts coupées** : une forêt à un état de coupe `foretStage > 0` reçoit un biais négatif (`FORET_DEPTH_BIAS` par étage) pour se dessiner **derrière** ses voisines pleines (s0) — le rétrécissement de son AABB par `refitForet` la faisait sinon passer devant
-5. Projectiles, brouillard, viseur, hint build, **cercle de décompte hache** (`drawChopProgress`), horloge
+5. Projectiles, brouillard, viseur, **grille de construction** (`drawBuildGrid`, `src/grid.js`, mode pose uniquement), hint build, **cercle de décompte hache** (`drawChopProgress`), horloge
 6. Sac (si ouvert), voile pause, game over
 
 ## Sprites

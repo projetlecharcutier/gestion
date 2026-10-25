@@ -31,6 +31,18 @@
     textColor: "#e2e8f0"
   };
 
+  // Grille de construction (src/grid.js) : quadrillage pointille visible en
+  // mode construction (Z), cellule = G.BUILD_GRID px monde. `line` = lignes
+  // de la grille, `cell` = contour plein de la cellule sous le curseur.
+  G.TEXTURES.buildGrid = {
+    line: "rgba(226,232,240,0.35)",
+    lineWidth: 1,
+    dash: [4, 4],
+    alpha: 1,
+    cell: "rgba(226,232,240,0.8)",
+    cellWidth: 1
+  };
+
   // Cercle de décompte de récolte (hache) à côté du joueur.
   G.TEXTURES.chopProgress = {
     bg: "rgba(2,6,23,0.6)",

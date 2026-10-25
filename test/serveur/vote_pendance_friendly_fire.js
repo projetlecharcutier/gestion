@@ -64,17 +64,22 @@ assert(st.potenceUnlocked, "potence debloquee");
 
 // 2b. Pose de la potence (flux reel : buildSel + placeBuild).
 function findSpot(side) {
-  for (var r = 150; r <= 900; r += 30) {
-    for (var a = 0; a < 24; a++) {
-      var px = mairie.x + mairie.w / 2 + Math.cos(a / 24 * Math.PI * 2) * r;
-      var py = mairie.y + mairie.h / 2 + Math.sin(a / 24 * Math.PI * 2) * r;
-      if (G.inTown(px, py) && G.towerSpotFree(px - side / 2, py - side / 2, side, side)) return [px, py];
+  // Centres alignes sur la grille de construction (G.BUILD_GRID) :
+  // placeFromBuildMenu snappera le point clique sur la cellule.
+  for (var gx = G.BUILD_GRID; gx < G.WORLD; gx += G.BUILD_GRID) {
+    for (var gy = G.BUILD_GRID; gy < G.WORLD; gy += G.BUILD_GRID) {
+      var ddx = gx - (mairie.x + mairie.w / 2), ddy = gy - (mairie.y + mairie.h / 2);
+      if (ddx * ddx + ddy * ddy > 900 * 900) continue;
+      if (G.inTown(gx, gy) && G.towerSpotFree(gx - side / 2, gy - side / 2, side, side)) return [gx, gy];
     }
   }
   return null;
 }
 var sp = findSpot(48);
 assert(sp, "spot libre pour la potence");
+// Le hangVote exige d'etre a portee de la potence (REACH_VILLE = 130 px du
+// centre) : on rapproche alice de la cellule choisie.
+pa.x = sp[0]; pa.y = sp[1];
 pa._buildSel = "potence";
 pa._placeBuild = { x: sp[0], y: sp[1] };
 srv.tick(0.05);

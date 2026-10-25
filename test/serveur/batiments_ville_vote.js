@@ -30,13 +30,15 @@ assert(st.mairieGold === 90, "or debite (obtenu " + st.mairieGold + ")");
 // 2) Pose universite en ville (flux reel) : l'emprise cherchee est celle
 // du registre (side 80 depuis le passage x2 de l'universite).
 var uSide = G.TOWN_BUILDINGS.universite.side;
+// Centres alignes sur la grille de construction (G.BUILD_GRID) :
+// placeFromBuildMenu snappera le point clique sur la cellule.
 var spot = null;
 outer:
-for (var r = 150; r <= 900 && !spot; r += 30) {
-  for (var a = 0; a < 24; a++) {
-    var px = mairie.x + mairie.w / 2 + Math.cos(a / 24 * Math.PI * 2) * r;
-    var py = mairie.y + mairie.h / 2 + Math.sin(a / 24 * Math.PI * 2) * r;
-    if (G.inTown(px, py) && G.towerSpotFree(px - uSide / 2, py - uSide / 2, uSide, uSide)) { spot = [px, py]; break outer; }
+for (var gx = G.BUILD_GRID; gx < G.WORLD && !spot; gx += G.BUILD_GRID) {
+  for (var gy = G.BUILD_GRID; gy < G.WORLD; gy += G.BUILD_GRID) {
+    var ddx = gx - (mairie.x + mairie.w / 2), ddy = gy - (mairie.y + mairie.h / 2);
+    if (ddx * ddx + ddy * ddy > 900 * 900) continue;
+    if (G.inTown(gx, gy) && G.towerSpotFree(gx - uSide / 2, gy - uSide / 2, uSide, uSide)) { spot = [gx, gy]; break outer; }
   }
 }
 assert(spot, "spot libre en ville");

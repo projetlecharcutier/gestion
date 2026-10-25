@@ -19,7 +19,10 @@ function farSpot(px, py) {
   var dims = G.plankDims();
   for (var r = 600; r < 4000; r += 40) {
     for (var a = 0; a < Math.PI * 2; a += Math.PI / 8) {
-      var wx = px + Math.cos(a) * r, wy = py + Math.sin(a) * r;
+      // Snap grille (tryBuildWall centre sur la cellule) : on teste directement
+      // les centres de cellule pour que le point teste == le point pose.
+      var sn = G.snapToGrid(px + Math.cos(a) * r, py + Math.sin(a) * r);
+      var wx = sn[0], wy = sn[1];
       var mx = wx - dims.w / 2, my = wy - dims.h / 2;
       var hit = false;
       for (var i = 0; i < st.buildings.length; i++) {
@@ -62,7 +65,8 @@ function nearSpot(px, py) {
   var dims = G.plankDims();
   for (var r = 20; r < 160; r += 10) {
     for (var a = 0; a < Math.PI * 2; a += Math.PI / 8) {
-      var wx = px + Math.cos(a) * r, wy = py + Math.sin(a) * r;
+      var sn = G.snapToGrid(px + Math.cos(a) * r, py + Math.sin(a) * r);
+      var wx = sn[0], wy = sn[1];
       var mx = wx - dims.w / 2, my = wy - dims.h / 2;
       var hit = false;
       for (var i = 0; i < st.buildings.length; i++) {
@@ -83,4 +87,19 @@ if (!near) { console.log("FAIL: aucun point proche libre trouve"); process.exit(
 p._buildWall = { x: near.x, y: near.y };
 srv.tick(0.05);
 if (st.walls.length !== base + 3) { console.log("FAIL: pose proche hors build refusee (" + st.walls.length + ")"); process.exit(1); }
+// Snap grille : la palissade posee est centree sur une cellule de BUILD_GRID.
+var wLast = st.walls[st.walls.length - 1];
+var cxw = wLast.x + wLast.w / 2, cyw = wLast.y + wLast.h / 2;
+if (cxw % G.BUILD_GRID !== 0 || cyw % G.BUILD_GRID !== 0) {
+  console.log("FAIL: palissade non centree sur la grille serveur (" + cxw + "," + cyw + ")"); process.exit(1);
+}
+// Pose a un point quelconque via input : snappee sur la cellule la plus proche.
+p.planks = 1000;
+p._buildWall = { x: near.x + 37, y: near.y - 23 };
+srv.tick(0.05);
+var wSnap = st.walls[st.walls.length - 1];
+var exp = G.snapToGrid(near.x + 37, near.y - 23);
+if (wSnap.x + wSnap.w / 2 !== exp[0] || wSnap.y + wSnap.h / 2 !== exp[1]) {
+  console.log("FAIL: snap serveur incorrect (" + (wSnap.x + wSnap.w / 2) + "," + (wSnap.y + wSnap.h / 2) + " vs " + exp.join(",") + ")"); process.exit(1);
+}
 console.log("ALL_OK");

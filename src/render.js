@@ -1872,6 +1872,7 @@ G.drawGround = function () {
     if (G.updateCiel) G.updateCiel();
     if (G.drawCiel) G.drawCiel();
     G.drawCrosshair();
+    if (G.drawBuildGrid) G.drawBuildGrid();
     G.drawBuildHint();
     G.drawChopProgress();
     G.drawClock();

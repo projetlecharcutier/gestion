@@ -117,7 +117,9 @@ setTimeout(function () {
                   console.log("[3] scierie debloquee");
                   // Collecte TOUS les spots ville candidats, essaie chacun jusqu'a pose.
                   var spots = [];
-                  for (var x = 9550; x <= 10450; x += 25) for (var y = 9550; y <= 10450; y += 25) {
+                  // Pas 120 = grille de construction : les poses sont snappees,
+                  // on collecte directement les centres de cellule.
+                  for (var x = 9600; x <= 10440; x += 120) for (var y = 9600; y <= 10440; y += 120) {
                     var ok = !overlap(mapBuildings, x, y, 90);
                     if (ok) for (var wj = 0; wj < (snap.walls || []).length; wj++) {
                       var mw = snap.walls[wj];
@@ -142,8 +144,8 @@ setTimeout(function () {
                       var obs = mapBuildings.slice();
                       if (snap.scierie) obs.push({ x: snap.scierie.x - 20, y: snap.scierie.y - 20, w: snap.scierie.w + 40, h: snap.scierie.h + 40 });
                       var tSpots = [];
-                      for (var tx2 = 5300; tx2 <= 9200; tx2 += 100) {
-                        for (var ty2 = 10800; ty2 <= 14700; ty2 += 100) {
+                      for (var tx2 = 5400; tx2 <= 9120; tx2 += 120) {
+                        for (var ty2 = 10800; ty2 <= 14640; ty2 += 120) {
                           if (overlap(obs, tx2, ty2, 90)) continue;
                           var bad = false;
                           for (var wj2 = 0; !bad && wj2 < (snap.walls || []).length; wj2++) {

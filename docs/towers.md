@@ -25,7 +25,10 @@
 - **Menu de construction** : touche **Z** → liste des bâtiments constructibles
   (palissade toujours ; bâtiments de ville débloqués et non posés ; tours si
   la scierie est construite) → clic sur un bâtiment → clic sur la carte pour le
-  poser. Clic droit / Échap annule.
+  poser. Clic droit / Échap annule. **Toute pose est snappée sur la grille de
+  construction** (`G.snapToGrid`, `BUILD_GRID` = 120, voir [grid.md](grid.md)) :
+  le bâtiment est centré sur la cellule la plus proche, et un quadrillage
+  pointillé s'affiche en mode construction.
 - **Tour en bois** : défense automatique, 2 archers (gauche/droite) qui tirent
   des flèches sur les zombies uniquement. Posable partout (ville incluse,
   hors ville incluse).

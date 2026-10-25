@@ -26,12 +26,13 @@ palette: { h: "#3b2a1a", s: "#e8b98a", ... }
 | `fog.js` | `fog` | `{ color, stops[{at,alpha}] }` |
 | `crosshair.js` | `crosshair` | `{ color, radius, gap, tick }` |
 | `projectile.js` | `projectile` | `{ defaultColor, stroke, trailAlpha, trailSize, trailSizeStep, sizeBase, sizePerDmg, trailMax }` |
-| `hud.js` | `playerHpBar`, `clock`, `buildHint`, `gameOver` | couleurs + dimensions des overlays |
+| `hud.js` | `playerHpBar`, `clock`, `buildHint`, `buildGrid`, `gameOver` | couleurs + dimensions des overlays (dont la grille de construction) |
 | `bag.js` | `bag` | couleurs du panneau + icônes |
 
 ## Consommateurs
 - `src/render.js` : player, zombie, building, wall, tree, item, ground, fog, crosshair, projectile
 - `src/hud.js` : playerHpBar, clock, buildHint, gameOver
+- `src/grid.js` : buildGrid (quadrillage de construction)
 - `src/bag.js` : bag
 
 ## Étendre

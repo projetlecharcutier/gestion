@@ -212,8 +212,12 @@
       label = "Palissade";
       ok = state.planks >= G.WALL_PLANKS;
     }
-    // Centre en coords monde.
-    var cxw = state.mouse.wx, cyw = state.mouse.wy;
+    // Centre en coords monde, SNAPPE sur la grille de construction
+    // (G.BUILD_GRID) : l'apercu dessine exactement la cellule ou le batiment
+    // sera pose (meme snap que tryBuildWall / placeFromBuildMenu).
+    var snapped = G.snapToGrid ? G.snapToGrid(state.mouse.wx, state.mouse.wy)
+                               : [state.mouse.wx, state.mouse.wy];
+    var cxw = snapped[0], cyw = snapped[1];
     // Losange iso : projette les 4 coins de l'emprise (comme drawWall).
     var A = G.proj(cxw - w / 2, cyw - h / 2),
         B = G.proj(cxw + w / 2, cyw - h / 2),
