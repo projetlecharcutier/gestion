@@ -11,5 +11,6 @@ window.VILLE_MANIFEST = [
   {"name":"Montligeon","sprite":"montligeon","x":7000,"y":6500},
   {"name":"motte","sprite":"motte","x":11608,"y":11608},
   {"name":"nogent","sprite":"nogent","x":11394,"y":7576},
+  {"name":"Remalard","sprite":"remalard","x":15500,"y":4500},
   {"name":"saintdenisdauthou","sprite":"saintdenisdauthou","x":10955,"y":10955},
 ];
