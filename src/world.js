@@ -1145,15 +1145,17 @@
     var i = 0;
     for (var x = G.TOWN_MIN; x < G.TOWN_MAX; x += seg) {
       if (i !== gapIndex) {
-        addWall({ x: x, y: G.TOWN_MIN - pad, w: seg, h: thick, hp: G.WALL_MAX_HP, orient: "h", built: true });
+        addWall({ x: x, y: G.TOWN_MIN - pad, w: seg, h: thick, hp: G.WALL_MAX_HP, orient: "h", dir: "A", built: true });
       }
-      addWall({ x: x, y: G.TOWN_MAX + pad - thick, w: seg, h: thick, hp: G.WALL_MAX_HP, orient: "h", built: true });
+      addWall({ x: x, y: G.TOWN_MAX + pad - thick, w: seg, h: thick, hp: G.WALL_MAX_HP, orient: "h", dir: "A", built: true });
       i++;
     }
     for (var y = G.TOWN_MIN; y < G.TOWN_MAX; y += seg) {
-      addWall({ x: G.TOWN_MIN - pad, y: y, w: thick, h: seg, hp: G.WALL_MAX_HP, orient: "v", built: true });
-      addWall({ x: G.TOWN_MAX + pad - thick, y: y, w: thick, h: seg, hp: G.WALL_MAX_HP, orient: "v", built: true });
+      addWall({ x: G.TOWN_MIN - pad, y: y, w: thick, h: seg, hp: G.WALL_MAX_HP, orient: "v", dir: "A", built: true });
+      addWall({ x: G.TOWN_MAX + pad - thick, y: y, w: thick, h: seg, hp: G.WALL_MAX_HP, orient: "v", dir: "A", built: true });
     }
+    // Variantes des segments du perimetre (contacts entre segments voisins).
+    if (G.refreshAllWallVariants) G.refreshAllWallVariants();
   };
 
   G.buildWorld = function () {
@@ -1213,11 +1215,15 @@
         if (G.villeBoxHits && G.villeBoxHits(hx - side / 2, hy - side / 2, side, side)) return false;
         if (!G.villeBoxHits && G.villeAt && G.villeAt(hx, hy, side / 2)) return false;
         // Distance minimale entre les bâtiments et la muraille de la ville.
+        // WALL_MARGIN couvre l'épaisseur de la palissade (le mur est posé
+        // avec un pad de 6 px à l'extérieur de la ville : sa moitié
+        // déborde de PLANK_THICK/2 + pad vers l'intérieur).
         if (inTown) {
-          if (hx - side / 2 < G.TOWN_MIN + WALL_MARGIN) return false;
-          if (hx + side / 2 > G.TOWN_MAX - WALL_MARGIN) return false;
-          if (hy - side / 2 < G.TOWN_MIN + WALL_MARGIN) return false;
-          if (hy + side / 2 > G.TOWN_MAX - WALL_MARGIN) return false;
+          var wallInset = WALL_MARGIN + (G.PLANK_THICK || 24) / 2 + 6;
+          if (hx - side / 2 < G.TOWN_MIN + wallInset) return false;
+          if (hx + side / 2 > G.TOWN_MAX - wallInset) return false;
+          if (hy - side / 2 < G.TOWN_MIN + wallInset) return false;
+          if (hy + side / 2 > G.TOWN_MAX - wallInset) return false;
         }
         for (var bi3 = 0; bi3 < state.buildings.length; bi3++) {
           var ob = state.buildings[bi3];

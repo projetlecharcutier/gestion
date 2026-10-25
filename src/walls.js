@@ -105,22 +105,18 @@
   };
 
   // Dimensions d'une planche posée. Rotation 0 = horizontale, 1 = verticale.
-  G.PLANK_LONG = 120;
+  // LA PALISSADE EST LA REFERENCE DE LA GRILLE : sa longueur = G.BUILD_GRID
+  // (une palissade occupe exactement une cellule). Le repli (sprites absents,
+  // ex. tests sans PNG) garde la grille a sa taille nominale.
+  G.PLANK_LONG = (typeof G.BUILD_GRID === "number" && G.BUILD_GRID > 0) ? G.BUILD_GRID : 120;
   G.PLANK_THICK = 24;
 
-  // Renvoie les dimensions (longW, thick) d'une palissade adaptées au PNG :
-  // longW = longueur de la palissade, thick = épaisseur, en unités monde.
-  // Repli sur les constantes si les PNG ne sont pas disponibles.
+  // Renvoie les dimensions (longW, thick) d'une palissade, en unités monde.
+  // longW = longueur = cote de la grille de construction (la palissade est la
+  // reference du losange), thick = épaisseur. Les PNG des variantes
+  // (A/B/C/H/K/X/Z) ne changent pas l'emprise : seule la longueur compte et
+  // elle est ancrée sur G.BUILD_GRID.
   G.wallSpriteDims = function () {
-    var spH = G.hasSprite("wall", "palissageNESO") ? G.SPRITES.wall.palissageNESO : null;
-    var spV = G.hasSprite("wall", "palissageNoSe") ? G.SPRITES.wall.palissageNoSe : null;
-    if (spH && spV) {
-      // 4x la taille du PNG (comme les bâtiments et arbres). Longueur = dimension
-      // la plus grande, épaisseur = dimension la plus petite (palissade fine).
-      var longW = Math.max(spH.w, spV.w, spH.h, spV.h) * 2;
-      var thick = Math.min(spH.w, spV.w, spH.h, spV.h) * 2 * 0.4;
-      return { longW: longW || G.PLANK_LONG, thick: thick || G.PLANK_THICK };
-    }
     return { longW: G.PLANK_LONG, thick: G.PLANK_THICK };
   };
   G.plankDims = function () {
@@ -128,6 +124,129 @@
     // Selon state.plankRotation (0 = horizontal, 1 = vertical).
     if (G.state.plankRotation) return { w: d.thick, h: d.longW };
     return { w: d.longW, h: d.thick };
+  };
+
+  // === Variantes de palissade par contacts de coins ===
+  // Le joueur ne choisit que la DIRECTION : "A" (NESO : monde NE<->SO,
+  // trait écran NO->SE) ou "B" (NOSE : monde NO<->SE, trait écran
+  // NE->SO). La variante (lettre du PNG) est calculee automatiquement a
+  // partir des murs presents dans les 8 cellules voisines : chaque coin du
+  // losange de la cellule teste s'il est en contact avec un mur voisin.
+  //
+  // Convention des coins (cote MONDE, losange de la cellule centree en
+  // (cx,cy), cote g = G.BUILD_GRID) :
+  //   NO = (cx-g/2, cy-g/2)   coin haut    écran (haut,  centre-x)
+  //   NE = (cx+g/2, cy-g/2)   coin droit   écran (droite, centre-y)
+  //   SE = (cx+g/2, cy+g/2)   coin bas     écran (bas,   centre-x)
+  //   SO = (cx-g/2, cy+g/2)   coin gauche  écran (gauche, centre-y)
+  // ("supérieur/inférieur" = y monde ; "droit/gauche" = x monde.)
+  //
+  // Table des variantes (cote joueur) :
+  //   A : aucun coin en contact            (mur droit, direction NESO)
+  //   B : aucun coin en contact            (mur droit, direction NOSE)
+  //   C : coins SE + NE en contact          (branchement cote droit)
+  //   H : coins SE + SO + NE en contact      (T : bas + cote droit)
+  //   K : coins NE + NO + SE en contact      (T : haut + cote droit)
+  //   X : les 4 coins en contact            (croix)
+  //   Z : coins SO + NO en contact          (branchement cote gauche, dir. B)
+  // Toute autre combinaison retombe sur la direction de base (A ou B).
+  G.WALL_VARIANTS = ["A", "B", "C", "H", "K", "X", "Z"];
+
+  // Extremites monde d'une palissade, selon sa direction (A ou B).
+  // A (NESO) joint les coins NE et SO de sa cellule.
+  // B (NOSE) joint les coins NO et SE de sa cellule.
+  G.wallEndpoints = function (m) {
+    var g = G.BUILD_GRID;
+    var cx = m.x + m.w / 2, cy = m.y + m.h / 2;
+    if (m.dir === "B") {
+      return [
+        { x: cx - g / 2, y: cy - g / 2, corner: "NO" },
+        { x: cx + g / 2, y: cy + g / 2, corner: "SE" }
+      ];
+    }
+    return [
+      { x: cx + g / 2, y: cy - g / 2, corner: "NE" },
+      { x: cx - g / 2, y: cy + g / 2, corner: "SO" }
+    ];
+  };
+
+  // Calcule la variante ("A".."Z") d'une palissade a partir des murs voisins.
+  // Chaque coin du losange de la cellule de m est teste : il est "en contact"
+  // si au moins un des DEUX extremites d'un mur voisin (built) coincide avec
+  // ce coin a la tolerance eps pres. Ainsi, un mur pose dans une cellule
+  // orthogonale ou diagonale qui aboutit sur le coin est detecte, quelle que
+  // soit sa propre direction. Les murs du perimetre de ville (non `built`)
+  // ne comptent pas comme contacts (ils sont traversables).
+  //
+  // Les palissades du PERIMETRE de ville sont alignees sur les bords de la
+  // ville (pas sur la grille de construction) : leurs extremites sont decalees
+  // d'une demi-cellule par rapport aux coins de grille. Pour eux, le contact
+  // est teste sur l'AABB elargie du voisin (un coin de la cellule de m a
+  // moins de eps d'un bord du voisin = contact) : deux segments consecutifs
+  // du perimetre se touchent en bout et changent donc de variante.
+  G.computeWallVariant = function (m, walls) {
+    var list = walls || G.state.walls;
+    var g = G.BUILD_GRID;
+    var cx = m.x + m.w / 2, cy = m.y + m.h / 2;
+    var c = { NE: false, NO: false, SE: false, SO: false };
+    var eps = g * 0.2; // tolerance de contact : un cinquieme de cellule
+    var corners = [
+      { k: "NE", x: cx + g / 2, y: cy - g / 2 },
+      { k: "NO", x: cx - g / 2, y: cy - g / 2 },
+      { k: "SE", x: cx + g / 2, y: cy + g / 2 },
+      { k: "SO", x: cx - g / 2, y: cy + g / 2 }
+    ];
+    for (var i = 0; i < list.length; i++) {
+      var o = list[i];
+      if (o === m || !o.built) continue;
+      var ends = G.wallEndpoints(o);
+      for (var e = 0; e < ends.length; e++) {
+        var ex = ends[e].x, ey = ends[e].y;
+        for (var k = 0; k < corners.length; k++) {
+          var pt = corners[k];
+          if (c[pt.k]) continue;
+          var dx = ex - pt.x, dy = ey - pt.y;
+          if (dx * dx + dy * dy <= eps * eps) c[pt.k] = true;
+        }
+      }
+      // Contact par chevauchement d'AABB elargie (perimetre de ville) :
+      // le coin de la cellule de m est a moins de eps du rectangle du voisin,
+      // MAIS seulement si ce voisin est centre sur une cellule adjacente a
+      // celle de m (les palissades posees par le joueur sont snappees sur la
+      // grille ; un coin eloigne d'une cellule non voisine ne doit pas
+      // declencher de contact, ex. coin NE d'une cellule 3 cellules plus loin
+      // dont l'AABB touche ce coin).
+      var ocx = o.x + o.w / 2, ocy = o.y + o.h / 2;
+      if (Math.abs(ocx - cx) <= g + eps && Math.abs(ocy - cy) <= g + eps) {
+        for (var k2 = 0; k2 < corners.length; k2++) {
+          var pt2 = corners[k2];
+          if (c[pt2.k]) continue;
+          var nx = Math.max(o.x - pt2.x, 0, pt2.x - (o.x + o.w));
+          var ny = Math.max(o.y - pt2.y, 0, pt2.y - (o.y + o.h));
+          if (nx * nx + ny * ny <= eps * eps) c[pt2.k] = true;
+        }
+      }
+    }
+    // Resolution par table (les regles du joueur, cote monde) :
+    if (c.SE && c.SO && c.NE && c.NO) return "X";
+    if (c.SE && c.SO && c.NE) return "H";
+    if (c.NE && c.NO && c.SE) return "K";
+    if (c.SE && c.NE) return "C";
+    if (c.SO && c.NO) return "Z";
+    return m.dir === "B" ? "B" : "A";
+  };
+
+  // Recalcule la variante d'une palissade (apres pose ou destruction d'un
+  // voisin) et la stocke sur l'objet (m.variant), serialisee dans les
+  // snapshots : tous les clients voient le meme PNG.
+  G.refreshWallVariant = function (m) {
+    if (!m || !m.built) return;
+    m.variant = G.computeWallVariant(m, G.state.walls);
+  };
+  // Recalcule les variantes de toutes les palissades (nouvelle carte, join).
+  G.refreshAllWallVariants = function () {
+    var walls = G.state.walls;
+    for (var i = 0; i < walls.length; i++) G.refreshWallVariant(walls[i]);
   };
 
   // Pose une planche au point cliqué, SNAPPE sur la grille de construction
@@ -163,9 +282,16 @@
     state.planks -= G.WALL_PLANKS;
     // Grace period : la planche ne bloque pas le joueur pendant un court delai
     // apres sa pose, pour eviter qu'il se retrouve coince dessus.
-    var wall = { x: mx, y: my, w: w, h: h, hp: G.WALL_MAX_HP, orient: w > h ? "h" : "v", built: true, noBlockUntil: state.time + G.WALL_GRACE };
+    // dir : direction choisie par le joueur ("A" = NESO, "B" = NOSE) via
+    // state.plankRotation ; la variante (PNG) est derivee des contacts.
+    var dir = state.plankRotation ? "B" : "A";
+    var wall = { x: mx, y: my, w: w, h: h, hp: G.WALL_MAX_HP, orient: w > h ? "h" : "v", dir: dir, built: true, noBlockUntil: state.time + G.WALL_GRACE };
     state.walls.push(wall);
     G.indexWall(wall);
+    // Variantes : la nouvelle palissade et ses voisins changent de PNG.
+    G.refreshWallVariant(wall);
+    var near = G.wallsNear(mx - G.BUILD_GRID, my - G.BUILD_GRID, w + 2 * G.BUILD_GRID, h + 2 * G.BUILD_GRID);
+    for (var ni = 0; ni < near.length; ni++) G.refreshWallVariant(near[ni]);
     // Stats de fin de partie : batiment construit (palissade posee).
     if (G.statsAddBuilt) G.statsAddBuilt();
     // Anti-blocage : si le joueur est à l'intérieur de la palissade, le repousser
@@ -263,8 +389,16 @@
   // Retire les murs détruits. Appelé depuis update().
   G.cleanupWalls = function () {
     var walls = G.state.walls;
+    var g = G.BUILD_GRID;
     for (var wj = walls.length - 1; wj >= 0; wj--) {
-      if (walls[wj].hp <= 0) { G.unindexWall(walls[wj]); walls.splice(wj, 1); }
+      if (walls[wj].hp <= 0) {
+        var dead = walls[wj];
+        // Les voisins du mur detruit perdent un contact : variantes a jour.
+        var near = G.wallsNear(dead.x - g, dead.y - g, dead.w + 2 * g, dead.h + 2 * g);
+        G.unindexWall(dead);
+        walls.splice(wj, 1);
+        for (var ni = 0; ni < near.length; ni++) G.refreshWallVariant(near[ni]);
+      }
     }
   };
 })();

@@ -1174,21 +1174,23 @@ G.drawGround = function () {
     var ctx = G.ctx;
     var z = G.state.zoom;
     var t = G.TEXTURES.wall;
-    // Sprite PNG si disponible : orient "h" -> palissageNESO (NE-SO),
-    // "v" -> palissageNoSe (NO-SE). Dessiné à la taille du mur (losange iso),
-    // ancré en bas-centre : la palissade correspond à sa taille de collision.
-    var frame = m.orient === "v" ? "palissageNESO" : "palissageNoSe";
+    // Sprite PNG : la variante (m.variant : "A".."Z") choisit le PNG. Elle est
+    // calculee a la pose (direction A/B choisie par le joueur) puis ajustee
+    // automatiquement selon les contacts de coins avec les murs voisins.
+    // Repli : direction seule (A/B), puis rendu vectoriel.
+    var frame = m.variant || (m.dir === "B" ? "B" : "A");
     var sprite = G.hasSprite("wall", frame) ? G.SPRITES.wall[frame] : null;
     var A = G.proj(m.x, m.y), C = G.proj(m.x + m.w, m.y + m.h);
     var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
     if (sprite) {
-      // Echelle de pixels commune (G.SPRITE_PX) : la palissade est dessinee a
-      // la taille Aseprite de son PNG (comme les maisons/decors) au lieu d'etre
-      // etiree sur le losange de son emprise de collision.
-      var dw = sprite.w * G.SPRITE_PX * z;
+      // La palissade est la reference de la grille : le PNG est etire sur
+      // l'emprise reelle du mur (losange iso de sa collision), ancre en
+      // bas-centre, pour que deux palissades adjacentes se joignent sans
+      // trou ni chevauchement visuel.
+      var B0 = G.proj(m.x + m.w, m.y), D0 = G.proj(m.x, m.y + m.h);
+      var groundY = Math.max(C[1], D0[1]);
+      var dw = Math.abs(B0[0] - D0[0]) * z;
       var dh = dw * sprite.h / sprite.w;
-      var B = G.proj(m.x + m.w, m.y), D = G.proj(m.x, m.y + m.h);
-      var groundY = Math.max(C[1], D[1]);
       ctx.drawImage(G.animImg(sprite, G.state.time), cx - dw / 2, groundY - dh, dw, dh);
       // Barre de vie au-dessus du sprite.
       G.drawWallHpBar(m, cx, groundY - dh - 6, Math.max(18, dw * 0.7));

@@ -37,6 +37,9 @@ Sites concernés (`src/render.js`, `src/ciel.js`) : `drawBuilding` (mairie,
 `drawSiegeTraces`, `drawBird`, `drawOne` (ciel : nuages/PORCO/oiseaux).
 Les emprises de collision restent inchangées (seul le rendu change).
 
+## Palissades (variantes A/B/C/H/K/X/Z)
+`drawWall(m)` choisit le PNG via `m.variant` (repli : `m.dir` "A"/"B", puis rendu vectoriel). **Le sprite est étiré sur l'emprise réelle du mur** (losange iso de sa collision), ancré bas-centre : deux palissades adjacentes se joignent visuellement sans trou ni chevauchement. La variante est calculée côté serveur (voir [walls.md § Variantes](walls.md#variantes-de-palissade-png-ahkxz)) et arrive dans les snapshots.
+
 ## Sprites de décors & miroir
 
 Les décors PNG (`elementdecord`) suivent l'ancrage commun bas-centre du losange.

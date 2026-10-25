@@ -31,7 +31,7 @@ Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fo
 | 7 | `src/world.js` | Génération : bâtiments, mur de périmètre, objets, arbres, éléments de décor (`DECOR_SPECS` : bloquant = collision, nonbloquant = traversable, dessous = le joueur passe sous la texture, ex. éolienne ×10, cerf géant ×1, moulins ×20, buissons ×50, champs ×12 chacun) | `buildWorld`, `makeBuilding`, `makeDecor`, `spawnDecor`, `nearBuilding`, `buildPerimeterWall` |
 | 8 | `src/flowfield.js` | Flow field zombies : BFS vers la ville + flèche précalculée par cellule, connectivité des forêts | `rebuildNavGrid`, `navStep`, `navAngle`, `ensureForetConnectivity` |
 | 9 | `src/player.js` | Déplacement, collisions (bâtiments + planches posées), entrée bâtiment, soin hôpital, pause | `tryMove`, `aabbHitsBuildings`, `clampPlayer`, `enterBuilding`, `leaveBuilding`, `togglePause`, `tryHealAtHospital`, `hasGoldPiece` |
-| 10 | `src/walls.js` | Construction de planches/murs (Z + clic) + rotation + collisions + nettoyage murs détruits | `tryBuildWall`, `cleanupWalls`, `plankDims`, `rotatePlank`, `aabbHitsWalls` |
+| 10 | `src/walls.js` | Construction de palissades (Z + clic) + direction A/B (rotation) + **variantes PNG A/B/C/H/K/X/Z par contacts de coins** + collisions + nettoyage | `tryBuildWall`, `cleanupWalls`, `plankDims`, `rotatePlank`, `aabbHitsWalls`, `computeWallVariant`, `refreshWallVariant`, `wallEndpoints` |
 | 11 | `src/towers.js` | Bâtiments de ville (scierie, université, montgolfière) + tours d'attaque : tech à la mairie (vote), menu de construction, chantiers, tir automatique flèches | `makeTownBuilding`, `makeScierie`, `makeTower`, `updateBuildSites`, `updateTowers`, `cleanupTowers`, `buildMenu`, `placeFromBuildMenu`, `canPayTownTech`, `unlockTownTech`, `startVote`, `castVote`, `resolveVote` |
 | 12 | `src/chop.js` | Récolte de planches à la hache (décompte près d'un arbre) | `updateChop`, `chopProgress` |
 | 13 | `src/weapons.js` | Stats arme équipée, tir, déplacement projectiles | `equippedStats`, `handleShooting`, `updateProjectiles` |
@@ -43,7 +43,7 @@ Les **textures** (sprites pixel art + palettes de couleurs) sont isolées des fo
 | 16 | `src/zombies.js` | Vagues, groupes qui fusionnent, IA zombies (priorité : palissade > tour > mairie/joueur) ; la horde suit son meneur (zombie d'un autre groupe le plus proche de la mairie, hors ville, 2x plus proche) ; un zombie qui FRANCHIT le mur choisit sa cible finale une fois : 50% mairie / 30% tour proche / 20% joueur | `spawnWave`, `mergeGroups`, `updateZombies`, `cleanupZombies` |
 | 17 | `src/bag.js` | Sac : disposition, rendu, clic équiper (armes & hache) | `bagLayout`, `handleBagClick`, `drawBag` |
 | 18 | `src/hud.js` | HUD DOM + overlays canvas (dont cercle de décompte hache) | `updateHud`, `drawClock`, `drawPlayerHpBar`, `drawBuildHint`, `drawChopProgress`, `drawGameOver` |
-| 18b | `src/grid.js` | **Grille de construction** : quadrillage pointillé en mode pose (Z), cellule `BUILD_GRID` (120 px = taille palissade). Le snap des poses (`G.snapToGrid`, `src/config.js`) est dans `tryBuildWall`/`placeFromBuildMenu` | `drawBuildGrid` |
+| 18b | `src/grid.js` | **Grille de construction** : quadrillage pointillé en mode pose (Z), cellule `BUILD_GRID` (120 px = longueur d'une palissade, référence de la grille). Le snap des poses (`G.snapToGrid`, `src/config.js`) est dans `tryBuildWall`/`placeFromBuildMenu` | `drawBuildGrid` |
 | 19 | `src/net.js` | Client WebSocket (connexion, inputs, application état serveur) | `netConnect`, `netJoin`, `netInput`, `netHandle`, `applyRemoteState` |
 | 20 | `src/render.js` | Tout le dessin + `render()` (dont `drawTower`, flèche orientée, brouillard multi-sources) | `drawGround/Item/Tree/Building/Player/Wall/Zombie/Projectiles/Fog/Crosshair/DeadTraces`, `drawTower`, `fillPoly`, `roundRect`, `render` |
 | 21 | `src/input.js` | Entrées (souris, molette, clavier) + formulaire démarrage | resize interne, listeners |
@@ -85,7 +85,7 @@ Schéma complet dans `src/state.js`. Champs clés :
 | `DEAD_TRACES_MAX` | 500 | Traces de zombies morts conservées (les plus récentes) |
 | `MAIRIE_MAX_HP` | 1000 | PV de la Mairie (game over à 0) |
 | `WALL_PLANKS` | 4 | Planches / planche posée |
-| `PLANK_LONG/THICK` | 120 / 24 | Dimensions d'une planche posée (px) |
+| `PLANK_LONG/THICK` | 120 / 24 | Dimensions d'une palissade posée (px) — `PLANK_LONG = BUILD_GRID` (la palissade est la référence de la grille) |
 | `BUILD_GRID` | 120 | Cote d'une cellule de la grille de construction (px monde) : toute pose joueur (palissade, tour, bâtiment de ville) est snappée sur le centre de sa cellule ; quadrillage pointillé visible en mode construction (Z) |
 | `TREE_CHOP_TIME` | 4 | Temps de récolte d'un arbre (s) |
 | `AXE_RANGE` | 120 | Portée de la hache (px) |
@@ -144,7 +144,7 @@ Voir `docs/textures.md` pour la spec.
 
 ## Points d'extension (où ajouter sans tout casser)
 
-- **PNG contextuels par briques adjacentes** (murs) : la grille de construction (`G.buildCellAt`, `src/config.js`) donne la cellule d'une palissade posée ; les 8 cellules voisines se lisent par `G.snapToGrid` sur les voisins. Lire `state.walls`/`state.towers`/`state.buildings` pour savoir lesquelles sont occupées, et choisir le PNG dans `drawWall` (`src/render.js`). Voir [docs/grid.md](docs/grid.md).
+- **Variantes de palissade par contacts de coins** (FAIT) : PNG `A/B/C/H/K/X/Z` dans `assets/sprites/wall/`. Le joueur choisit la direction (A = NESO, B = NOSE) ; la variante est calculée automatiquement (`computeWallVariant`, `src/walls.js`) selon les coins en contact avec les murs voisins, sérialisée dans les snapshots, rendue par `drawWall` étirée sur l'emprise. Voir [docs/walls.md](docs/walls.md#variantes-de-palissade-png-ahkxz).
 
 - **Nouvelle arme** → ajouter une entrée dans `G.WEAPON_STATS` (`src/config.js`). Aucun autre fichier à toucher : `equippedStats`, le tir et le sac la prennent en compte automatiquement.
 - **Nouvel outil** (comme la hache) → ajouter un objet `kind:"outil"` dans `buildWorld` (`src/world.js`), gérer l'équipement dans `handleBagClick` (`src/bag.js`) via un booléen dédié, et la logique métier dans un nouveau `src/<nom>.js` (modèle : `src/chop.js`).

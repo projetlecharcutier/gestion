@@ -172,7 +172,13 @@
   var itemsSum = -1;
   function trackMutations() {
     var wSum = state.walls.length;
-    for (var i = 0; i < state.walls.length; i++) wSum += state.walls[i].hp | 0;
+    for (var i = 0; i < state.walls.length; i++) {
+      wSum += state.walls[i].hp | 0;
+      // Variante : changement de PNG sans changement de hp (pose d'un voisin,
+      // destruction d'un voisin) -> le snapshot doit etre renvoye.
+      var v = state.walls[i].variant;
+      wSum += v ? v.charCodeAt(0) : 0;
+    }
     if (wSum !== wallsSum) { wallsSum = wSum; bumpWalls(); }
     var iSum = 0;
     for (var j = 0; j < state.items.length; j++) if (!state.items[j].taken) iSum++;
@@ -1268,7 +1274,7 @@
         // grace : collision divergente = rollback a chaque snapshot.
         var grace = m.noBlockUntil !== undefined ? +(m.noBlockUntil - state.time).toFixed(2) : undefined;
         if (grace !== undefined && grace < 0) grace = 0;
-        return { x: Math.round(m.x), y: Math.round(m.y), w: Math.round(m.w), h: Math.round(m.h), hp: m.hp, orient: m.orient, built: m.built, grace: grace };
+        return { x: Math.round(m.x), y: Math.round(m.y), w: Math.round(m.w), h: Math.round(m.h), hp: m.hp, orient: m.orient, dir: m.dir || (m.orient === "v" ? "B" : "A"), variant: m.variant, built: m.built, grace: grace };
       }),
       items: (lastItemsRevSent[forPlayerId] === itemsRev) ? undefined : state.items.filter(function (it) { return !it.taken; }).map(function (it) {
         return { x: Math.round(it.x), y: Math.round(it.y), name: it.name, kind: it.kind, color: it.color };
@@ -1466,7 +1472,7 @@
       // snapshot 10 Hz, et celui-ci n'est emis qu'une fois la partie
       // demarree apres START_DELAY).
       walls: state.walls.map(function (m) {
-        return { x: Math.round(m.x), y: Math.round(m.y), w: Math.round(m.w), h: Math.round(m.h), hp: m.hp, orient: m.orient, built: m.built };
+        return { x: Math.round(m.x), y: Math.round(m.y), w: Math.round(m.w), h: Math.round(m.h), hp: m.hp, orient: m.orient, dir: m.dir || (m.orient === "v" ? "B" : "A"), variant: m.variant, built: m.built };
       }),
       items: state.items.filter(function (it) { return !it.taken; }).map(function (it) {
         return { x: Math.round(it.x), y: Math.round(it.y), name: it.name, kind: it.kind, color: it.color };

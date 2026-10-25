@@ -96,6 +96,11 @@ emplacement de clone.
   longueur = une cellule, palissades adjacentes jointives) et de
   placeFromBuildMenu (tour, scierie), apercu drawBuildHint snappe,
   drawBuildGrid uniquement en mode build (pointilles + cellule curseur).
+- `variantes.js` : palissade = reference de la grille (PLANK_LONG = BUILD_GRID),
+  table des variantes A/B/C/H/K/X/Z par contacts de coins (C = SE+NE,
+  H = SE+SO+NE, K = NE+NO+SE, X = 4 coins, Z = SO+NO), repli direction,
+  rafraichi a la pose et a la destruction (cleanupWalls), drawWall choisit le
+  sprite de la variante et l'etire sur l'emprise reelle.
 
 ### `world/` — monde et rendu
 - `brouillard.js` : brouillard multi-sources (joueur + tours), union des trous,

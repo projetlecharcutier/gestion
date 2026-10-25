@@ -199,13 +199,12 @@ function setupStub() {
     return out;
   };
 
-  // Dimensions des palissades : le client déduit longueur/épaisseur des PNG
-  // (wallSpriteDims dans src/walls.js). Le serveur a les mêmes PNG -> même
-  // résultat via le même code chargé depuis src/walls.js. On n'écrase plus
-  // PLANK_LONG/PLANK_THICK : les constantes de config restent le repli.
+  // Dimensions des palissades : la palissade est la reference de la grille
+  // (longueur = G.BUILD_GRID, defini dans src/config.js charge ensuite).
+  // src/walls.js relira ces constantes apres chargement ; on ne les ecrase
+  // plus ici pour garder une seule source de verite.
   G.PLANK_LONG = 120;
   G.PLANK_THICK = 24;
-  G.wallSpriteDims = function () { return { longW: G.PLANK_LONG, thick: G.PLANK_THICK }; };
 
   // Aucune dépendance au rendu/HUD/audio côté serveur.
   G.updateHud = function () {};

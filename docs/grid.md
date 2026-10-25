@@ -8,10 +8,10 @@
 
 ## 1. Vue d'ensemble
 
-- **Cellule** : `G.BUILD_GRID` = **120 px monde**, origine (0,0). 120 = longueur
-  nominale d'une palissade (`PLANK_LONG`) : une palissade occupe exactement une
-  cellule en longueur, deux palissades dans des cellules adjacentes se touchent
-  sans trou ni chevauchement.
+- **Cellule** : `G.BUILD_GRID` = **120 px monde**, origine (0,0). **La palissade
+  est la référence de la grille** : `PLANK_LONG = BUILD_GRID`, une palissade
+  occupe exactement une cellule en longueur, deux palissades dans des cellules
+  adjacentes se touchent sans trou ni chevauchement.
 - **Snap** : `G.snapToGrid(wx, wy)` (`src/config.js`, fonction pure, **partagée
   client/serveur**) arrondit le point cliqué au **centre de la cellule la plus
   proche**. Appliqué dans `tryBuildWall` (`src/walls.js`) et
@@ -67,9 +67,10 @@ directement, ex. tests). Seules les **poses joueur** entrent dans la grille.
   multiplicatif (origine 0,0) : toute valeur divise le monde en cellules.
 - **Grille décalée** (origine ≠ 0) : ajouter un offset dans `G.snapToGrid` —
   penser à le garder identique client/serveur (constante pure).
-- **PNG contextuels (briques adjacentes)** : énumérer les cellules voisines
-  d'une palissade posée (`G.buildCellAt` sur les 8 voisins), lire
-  `state.walls`/`state.towers`/`state.buildings` pour savoir lesquelles sont
-  occupées, et choisir le PNG en fonction (rendu `drawWall`, `src/render.js`).
+- **PNG contextuels (briques adjacentes)** : **FAIT** — voir
+  [walls.md § Variantes](walls.md#variantes-de-palissade-png-ahkxz). Le système
+  de variantes A/B/C/H/K/X/Z est dans `src/walls.js` (`computeWallVariant`,
+  `refreshWallVariant`) et le rendu choisit le PNG dans `drawWall`
+  (`src/render.js`).
 - **Nouvelle texture de grille** : modifier `G.TEXTURES.buildGrid`
   (`src/textures/hud.js`) uniquement.

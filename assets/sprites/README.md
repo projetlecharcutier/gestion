@@ -23,7 +23,7 @@ assets/sprites/
   building/ mairie.png  generic.png
   church/   church.png
   house/    H1.png  H2.png ...                      # maisons (variantes, auto)
-  wall/     palissageNESO.png  palissageNoSe.png
+  wall/     A.png B.png C.png H.png K.png X.png Z.png   # palissades (variantes par contacts de coins)
   zomb/
     alive/                                      # sprites zombies vivants (reserve)
     dead/   deadzomb1.png deadzomb2.png ...    # traces de zombies morts (au sol)
