@@ -1183,13 +1183,13 @@ G.drawGround = function () {
     var A = G.proj(m.x, m.y), C = G.proj(m.x + m.w, m.y + m.h);
     var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
     if (sprite) {
-      // La palissade est la reference de la grille : le PNG est etire sur
-      // l'emprise reelle du mur (losange iso de sa collision), ancre en
-      // bas-centre, pour que deux palissades adjacentes se joignent sans
-      // trou ni chevauchement visuel.
+      // Echelle de pixels commune (G.SPRITE_PX) : la palissade est dessinee a
+      // la taille Aseprite de son PNG (comme les maisons/decors), et non
+      // etiree sur le losange de son emprise de collision (qui faisait
+      // grossir les palissades au zoom car l'emprise iso depend de z).
       var B0 = G.proj(m.x + m.w, m.y), D0 = G.proj(m.x, m.y + m.h);
       var groundY = Math.max(C[1], D0[1]);
-      var dw = Math.abs(B0[0] - D0[0]) * z;
+      var dw = sprite.w * G.SPRITE_PX * z;
       var dh = dw * sprite.h / sprite.w;
       ctx.drawImage(G.animImg(sprite, G.state.time), cx - dw / 2, groundY - dh, dw, dh);
       // Barre de vie au-dessus du sprite.

@@ -121,9 +121,12 @@
   };
   G.plankDims = function () {
     var d = G.wallSpriteDims();
-    // Selon state.plankRotation (0 = horizontal, 1 = vertical).
-    if (G.state.plankRotation) return { w: d.thick, h: d.longW };
-    return { w: d.longW, h: d.thick };
+    // Selon state.plankRotation. En projection iso, une palissade "verticale"
+    // (w=thick, h=longW, axe monde Y) dessine un trait / (NESO, PNG A) et une
+    // palissade "horizontale" (w=longW, h=thick, axe monde X) dessine un
+    // trait \ (NOSE, PNG B). Rotation 0 = direction A (NESO, trait /).
+    if (G.state.plankRotation) return { w: d.longW, h: d.thick };
+    return { w: d.thick, h: d.longW };
   };
 
   // === Variantes de palissade par contacts de coins ===

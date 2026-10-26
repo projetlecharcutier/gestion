@@ -92,10 +92,11 @@ function freeCell(px, py, w, h) {
   }
   return null;
 }
+// Palissade verticale (rotation 0, trait /) : clic decale, centre snappe.
+s.plankRotation = 0;
 var dims = G.plankDims();
 var spot = freeCell(5000, 5000, dims.w, dims.h);
 if (!spot) { console.log("FAIL: pas de cellule libre"); process.exit(1); }
-// Clic decale : la palissade est centree sur la cellule la plus proche.
 var nW = s.walls.length;
 var ok = G.tryBuildWall(spot[0] + 37, spot[1] - 23);
 check(ok === true, "tryBuildWall accepte le clic decale");
@@ -107,16 +108,31 @@ check(w1.x + w1.w / 2 === exp[0] && w1.y + w1.h / 2 === exp[1],
   (w1.x + w1.w / 2) + "," + (w1.y + w1.h / 2) + ")");
 // Une palissade occupe exactement une cellule en longueur : cote = BUILD_GRID.
 check(dims.w === g || dims.h === g, "la longueur d'une palissade = BUILD_GRID (" + dims.w + "x" + dims.h + ")");
-// Deuxieme palissade dans la cellule voisine (rotation h) : bords qui se touchent.
-s.plankRotation = 0; // horizontal
-var dimsH = G.plankDims();
-var spot2 = freeCell(exp[0] + g, exp[1], dimsH.w, dimsH.h);
-if (spot2 && spot2[0] === exp[0] + g && spot2[1] === exp[1]) {
+// Deuxieme palissade verticale dans la cellule voisine en y : bords qui se touchent.
+var dimsV = G.plankDims();
+var spot2 = freeCell(exp[0], exp[1] + g, dimsV.w, dimsV.h);
+if (spot2 && spot2[0] === exp[0] && spot2[1] === exp[1] + g) {
   G.tryBuildWall(spot2[0], spot2[1]);
   var w2 = s.walls[s.walls.length - 1];
-  var touch = Math.abs((w1.x + w1.w) - w2.x) < 0.001 || Math.abs(w1.x - (w2.x + w2.w)) < 0.001;
-  check(touch, "palissades adjacentes se touchent sans trou ni chevauchement");
+  var touch = Math.abs((w1.y + w1.h) - w2.y) < 0.001 || Math.abs(w1.y - (w2.y + w2.h)) < 0.001;
+  check(touch, "palissades verticales adjacentes se touchent sans trou ni chevauchement");
 }
+// Palissade horizontale (rotation 1, trait \) : pose + voisine en x qui se touche.
+s.plankRotation = 1;
+var dimsH = G.plankDims();
+var spotH = freeCell(exp[0], exp[1] - 2 * g, dimsH.w, dimsH.h);
+if (spotH) {
+  G.tryBuildWall(spotH[0], spotH[1]);
+  var wH = s.walls[s.walls.length - 1];
+  var spotH2 = freeCell(spotH[0] + g, spotH[1], dimsH.w, dimsH.h);
+  if (spotH2 && spotH2[0] === spotH[0] + g && spotH2[1] === spotH[1]) {
+    G.tryBuildWall(spotH2[0], spotH2[1]);
+    var wH2 = s.walls[s.walls.length - 1];
+    var touchH = Math.abs((wH.x + wH.w) - wH2.x) < 0.001 || Math.abs(wH.x - (wH2.x + wH2.w)) < 0.001;
+    check(touchH, "palissades horizontales adjacentes se touchent sans trou ni chevauchement");
+  }
+}
+s.plankRotation = 0;
 
 // --- 3. placeFromBuildMenu : snap tour + batiment de ville ---
 // La scierie est un batiment de VILLE unique : on la pose d'abord (elle rend

@@ -1133,27 +1133,53 @@
     state.walls = [];
     G.rebuildWallGrid();
     // Perimetre = barricades (memes objets que celles du joueur : built:true, bloquent joueur+zombies).
-    // Dimensions identiques aux planches du joueur : meme apparence et taille visuelle.
+    // Chaque palissade est centree sur une CELLULE de la grille de construction
+    // (G.BUILD_GRID) : les cellules adjacentes ont leurs cotes qui se touchent,
+    // formant un anneau ferme autour de la ville. Aux 4 coins, on pose les
+    // DEUX palissades (h + v) pour fermer la jonction (chevauchement THICKxTHICK).
     var wd = G.wallSpriteDims();
-    var seg = wd.longW;
+    var g = wd.longW;
     var thick = wd.thick;
-    var pad = 6;
     function addWall(w) { state.walls.push(w); G.indexWall(w); }
-    // Trou d'une palissade de largeur dans le mur nord : on omet un segment
-    // pour créer une entrée dans la ville au démarrage.
-    var gapIndex = Math.floor((G.TOWN_MAX - G.TOWN_MIN) / seg / 2);
-    var i = 0;
-    for (var x = G.TOWN_MIN; x < G.TOWN_MAX; x += seg) {
-      if (i !== gapIndex) {
-        addWall({ x: x, y: G.TOWN_MIN - pad, w: seg, h: thick, hp: G.WALL_MAX_HP, orient: "h", dir: "A", built: true });
-      }
-      addWall({ x: x, y: G.TOWN_MAX + pad - thick, w: seg, h: thick, hp: G.WALL_MAX_HP, orient: "h", dir: "A", built: true });
-      i++;
+    // Centres des cellules formant l'anneau : multiples de G les plus proches
+    // des bords de la ville.
+    var half = g / 2;
+    var cW = Math.round(G.TOWN_MIN / g) * g;
+    var cN = Math.round(G.TOWN_MIN / g) * g;
+    var cE = Math.round(G.TOWN_MAX / g) * g;
+    var cS = Math.round(G.TOWN_MAX / g) * g;
+    // Trou d'une cellule dans le mur nord (entree de la ville) : cellule
+    // dont le centre est le plus proche du centre de la ville en x.
+    var gapCx = Math.round(((G.TOWN_MIN + G.TOWN_MAX) / 2) / g) * g;
+    // Pose une palissade "h" (w=g, h=thick) centree sur la cellule (cx, cy).
+    function addH(cx, cy) {
+      addWall({ x: cx - half, y: cy - thick / 2, w: g, h: thick, hp: G.WALL_MAX_HP, orient: "h", dir: "B", built: true });
     }
-    for (var y = G.TOWN_MIN; y < G.TOWN_MAX; y += seg) {
-      addWall({ x: G.TOWN_MIN - pad, y: y, w: thick, h: seg, hp: G.WALL_MAX_HP, orient: "v", dir: "A", built: true });
-      addWall({ x: G.TOWN_MAX + pad - thick, y: y, w: thick, h: seg, hp: G.WALL_MAX_HP, orient: "v", dir: "A", built: true });
+    // Pose une palissade "v" (w=thick, h=g) centree sur la cellule (cx, cy).
+    function addV(cx, cy) {
+      addWall({ x: cx - thick / 2, y: cy - half, w: thick, h: g, hp: G.WALL_MAX_HP, orient: "v", dir: "A", built: true });
     }
+    // Cote NORD (mur h, trait \\) : cellules interieures (coins exclus, poses en double plus bas).
+    for (var nx = cW + g; nx < cE; nx += g) {
+      if (nx !== gapCx) addH(nx, cN);
+    }
+    // Cote SUD (mur h, trait \\) : cellules interieures.
+    for (var sx = cW + g; sx < cE; sx += g) {
+      addH(sx, cS);
+    }
+    // Cote OUEST (mur v, trait /) : cellules interieures.
+    for (var wy = cN + g; wy < cS; wy += g) {
+      addV(cW, wy);
+    }
+    // Cote EST (mur v, trait /) : cellules interieures.
+    for (var ey = cN + g; ey < cS; ey += g) {
+      addV(cE, ey);
+    }
+    // Coins : double palissade (h + v) pour fermer la jonction.
+    addH(cW, cN); addV(cW, cN);
+    addH(cE, cN); addV(cE, cN);
+    addH(cW, cS); addV(cW, cS);
+    addH(cE, cS); addV(cE, cS);
     // Variantes des segments du perimetre (contacts entre segments voisins).
     if (G.refreshAllWallVariants) G.refreshAllWallVariants();
   };

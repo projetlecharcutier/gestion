@@ -8,8 +8,8 @@
 //      C = SE+NE, H = SE+SO+NE, K = NE+NO+SE, X = 4 coins, Z = SO+NO.
 //   4. Pose d'un voisin : les variantes des murs existants sont rafraichies.
 //   5. Destruction (cleanupWalls) : les voisins perdent le contact.
-//   6. drawWall choisit le sprite de la variante (fallback dir A/B), etire
-//      sur l'emprise reelle (continuite visuelle entre palissades).
+//   6. drawWall choisit le sprite de la variante (fallback dir A/B), dessine
+//      a l'echelle commune G.SPRITE_PX (taille stable, proportionnelle au zoom).
 var fs = require("fs"), path = require("path");
 var SRC = path.join(__dirname, "..", "..", "src");
 global.window = global;
@@ -57,10 +57,12 @@ function check(c, m) { if (!c) { console.log("FAIL: " + m); fails++; } }
 var g = G.BUILD_GRID;
 
 // --- 1. Palissade = reference de la grille ---
-var dimsH = (s.plankRotation = 0, G.plankDims());
-var dimsV = (s.plankRotation = 1, G.plankDims());
-check(dimsH.w === g && dimsH.h < g, "rotation 0 : longueur = BUILD_GRID (" + dimsH.w + "x" + dimsH.h + ")");
-check(dimsV.h === g && dimsV.w < g, "rotation 1 : longueur = BUILD_GRID (" + dimsV.w + "x" + dimsV.h + ")");
+// En projection iso : rotation 0 = palissade "v" (w=thick, h=longW, trait /, dir A)
+//                    rotation 1 = palissade "h" (w=longW, h=thick, trait \, dir B)
+var dimsR0 = (s.plankRotation = 0, G.plankDims());
+var dimsR1 = (s.plankRotation = 1, G.plankDims());
+check(dimsR0.h === g && dimsR0.w < g, "rotation 0 : verticale (trait /, dir A) longueur = BUILD_GRID (" + dimsR0.w + "x" + dimsR0.h + ")");
+check(dimsR1.w === g && dimsR1.h < g, "rotation 1 : horizontale (trait \\, dir B) longueur = BUILD_GRID (" + dimsR1.w + "x" + dimsR1.h + ")");
 check(G.wallSpriteDims().longW === g, "wallSpriteDims().longW = BUILD_GRID");
 
 // --- Utilitaires ---
@@ -201,7 +203,7 @@ if (victim) {
   check(p1.variant === "A", "p1 retombe sur A apres destruction du voisin B (obtenu " + p1.variant + ")");
 }
 
-// --- 6. drawWall : sprite de la variante, etire sur l'emprise ---
+// --- 6. drawWall : sprite de la variante, a l'echelle G.SPRITE_PX (stable au zoom) ---
 G.SPRITES.wall = {};
 ["A", "B", "C", "H", "K", "X", "Z"].forEach(function (v) {
   G.SPRITES.wall[v] = { img: { v: v }, w: 16, h: 16 };
@@ -214,10 +216,17 @@ ctxStub.drawImage = function (img, x, y, w, h) { drawn.push({ v: img.v, w: w, h:
 p1.variant = "C";
 G.drawWall(p1);
 check(drawn.length === 1 && drawn[0].v === "C", "drawWall dessine le sprite de la variante C");
-// Etire sur l'emprise : largeur = diagonale horizontale du losange = w*0.5*2*z.
-var Bp = G.proj(p1.x + p1.w, p1.y), Dp = G.proj(p1.x, p1.y + p1.h);
-var expW = Math.abs(Bp[0] - Dp[0]) * 1;
-check(Math.abs(drawn[0].w - expW) < 0.01, "sprite etire sur l'emprise reelle (" + drawn[0].w + " vs " + expW + ")");
+// Echelle commune G.SPRITE_PX (comme les autres PNG) : dw = sprite.w * SPRITE_PX * z.
+// La taille ne depend PAS de l'emprise iso (qui variait avec le zoom).
+var expW = 16 * G.SPRITE_PX * 1;
+check(Math.abs(drawn[0].w - expW) < 0.01, "sprite a echelle SPRITE_PX stable (" + drawn[0].w + " vs " + expW + ")");
+// Le zoom fait varier la taille proportionnellement (pas de regression de taille).
+G.state.zoom = 2;
+drawn.length = 0;
+G.drawWall(p1);
+var expW2 = 16 * G.SPRITE_PX * 2;
+check(Math.abs(drawn[0].w - expW2) < 0.01, "zoom x2 -> taille x2 (" + drawn[0].w + " vs " + expW2 + ")");
+G.state.zoom = 1;
 // Sans variante (mur ancien / snapshot sans champ) : repli sur la direction.
 p1.variant = undefined;
 drawn.length = 0;

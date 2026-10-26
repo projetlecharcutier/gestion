@@ -46,11 +46,13 @@ assert(pb._plankRotation === undefined, "B n'herite pas de la rotation de A");
 srv.applyInput("a1", { rotate: 0 });
 assert(pa._plankRotation === 0, "rotate:0 stocke chez A (valeur absolue, pas toggle)");
 
-// B pose un mur SANS rotation -> horizontal, meme apres les toggles de A.
+// B pose un mur SANS rotation (rotation 0 = verticale, trait /, dir A),
+// meme apres les toggles de A.
 var wB = findWallSpot(pb);
-assert(wB && wB.w >= wB.h, "mur de B pose et horizontal (rotation de B, pas celle de A)");
+assert(wB && wB.h > wB.w, "mur de B pose et vertical (rotation 0 de B = trait /, pas celle de A)");
 
-// A tourne SA palissade et pose -> vertical. B ne doit pas en heriter.
+// A tourne SA palissade (rotation 1 = horizontale, trait \, dir B) et pose.
+// B ne doit pas en heriter.
 srv.applyInput("a1", { rotate: 1 });
 var wA = null;
 outer:
@@ -67,8 +69,8 @@ for (var r2 = 300; r2 < 2400; r2 += 60) {
     if (st.walls.length > b2) { wA = st.walls[st.walls.length - 1]; break outer; }
   }
 }
-assert(wA && wA.h > wA.w, "mur de A pose et vertical (rotation 1 de A)");
-assert(wB && wB.w >= wB.h, "mur de B toujours horizontal apres rotation de A");
+assert(wA && wA.w >= wA.h, "mur de A pose et horizontal (rotation 1 de A = trait \\)");
+assert(wB && wB.h > wB.w, "mur de B toujours vertical apres rotation de A (rotation 0 = trait /)");
 
 // --- 2) buildSel persiste par joueur et ne fuit pas ---
 srv.applyInput("a1", { buildSel: "tour:bois" });
