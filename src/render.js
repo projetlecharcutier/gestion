@@ -1183,22 +1183,17 @@ G.drawGround = function () {
     var A = G.proj(m.x, m.y), C = G.proj(m.x + m.w, m.y + m.h);
     var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
     if (sprite) {
-      // Le PNG remplit TOUTE la cellule (losange iso de cote G.BUILD_GRID) :
-      // largeur = g*z (diagonale horizontale du losange), hauteur = g/2*z
-      // (diagonale verticale, ratio 2:1). Ancre bas-centre sur le coin SE
-      // du losange. Deux palissades adjacentes (cellules jointives) ont
-      // leurs losanges qui se touchent : apparence de mur continu, relie.
-      var g = G.BUILD_GRID || 120;
+      // Taille standard du PNG (G.SPRITE_PX, comme tous les autres sprites),
+      // CENTRE sur le losange de la cellule : le centre du PNG = proj(cx, cy)
+      // = intersection des diagonales du losange. Ni etire (pas g*z), ni
+      // decale (centre horizontal ET vertical sur le losange).
       var ccx = m.x + m.w / 2, ccy = m.y + m.h / 2;
-      var cellSE = G.proj(ccx + g / 2, ccy + g / 2);
-      var cellNO = G.proj(ccx - g / 2, ccy - g / 2);
       var mid = G.proj(ccx, ccy);
-      var dw = Math.abs(cellSE[0] - cellNO[0]) || g * z;
-      var dh = Math.abs(cellSE[1] - cellNO[1]) || g * 0.5 * z;
-      var groundY = cellSE[1];
-      ctx.drawImage(G.animImg(sprite, G.state.time), mid[0] - dw / 2, groundY - dh, dw, dh);
+      var dw = sprite.w * G.SPRITE_PX * z;
+      var dh = dw * sprite.h / sprite.w;
+      ctx.drawImage(G.animImg(sprite, G.state.time), mid[0] - dw / 2, mid[1] - dh / 2, dw, dh);
       // Barre de vie au-dessus du sprite.
-      G.drawWallHpBar(m, mid[0], groundY - dh - 6, Math.max(18, dw * 0.7));
+      G.drawWallHpBar(m, mid[0], mid[1] - dh / 2 - 6, Math.max(18, dw * 0.7));
       return;
     }
     // Fallback : rendu vectoriel iso (faces + toit).

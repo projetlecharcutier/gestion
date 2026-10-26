@@ -8,8 +8,8 @@
 //      C = EST, H = EST+SUD, K = NORD+EST, X = 4 aretes, Z = OUEST.
 //   4. Pose d'un voisin : les variantes des murs existants sont rafraichies.
 //   5. Destruction (cleanupWalls) : les voisins perdent le contact.
-//   6. drawWall choisit le sprite de la variante (fallback dir A/B) et le
-//      remplit toute la cellule (losange g*z x g/2*z, proportionnel au zoom).
+//   6. drawWall choisit le sprite de la variante (fallback dir A/B), dessine
+//      a taille standard (SPRITE_PX) CENTRE sur le losange de la cellule.
 var fs = require("fs"), path = require("path");
 var SRC = path.join(__dirname, "..", "..", "src");
 global.window = global;
@@ -211,7 +211,7 @@ if (victim) {
   check(p1.variant === "C", "p1 retombe sur C apres destruction du voisin NORD (obtenu " + p1.variant + ")");
 }
 
-// --- 6. drawWall : sprite de la variante, remplit toute la cellule (losange) ---
+// --- 6. drawWall : sprite de la variante, CENTRE sur le losange, taille standard ---
 G.SPRITES.wall = {};
 ["A", "B", "C", "H", "K", "X", "Z"].forEach(function (v) {
   G.SPRITES.wall[v] = { img: { v: v }, w: 16, h: 16 };
@@ -220,23 +220,34 @@ G.hasSprite = function (ent, frame) {
   return !!(G.SPRITES[ent] && G.SPRITES[ent][frame] && G.SPRITES[ent][frame].img);
 };
 var drawn = [];
-ctxStub.drawImage = function (img, x, y, w, h) { drawn.push({ v: img.v, w: w, h: h }); };
+ctxStub.drawImage = function (img, x, y, w, h) { drawn.push({ v: img.v, w: w, h: h, x: x, y: y }); };
 p1.variant = "C";
 G.drawWall(p1);
 check(drawn.length === 1 && drawn[0].v === "C", "drawWall dessine le sprite de la variante C");
-// Le PNG remplit le losange de la cellule : largeur = g*z, hauteur = g/2*z (ratio 2:1).
-var expW = g * 1;
-var expH = g * 0.5 * 1;
-check(Math.abs(drawn[0].w - expW) < 0.01, "largeur = g*z (remplit le losange) (" + drawn[0].w + " vs " + expW + ")");
-check(Math.abs(drawn[0].h - expH) < 0.01, "hauteur = g/2*z (ratio 2:1) (" + drawn[0].h + " vs " + expH + ")");
+// Taille standard du PNG : dw = sprite.w * G.SPRITE_PX * z (pas etire sur le losange).
+var expW = 16 * G.SPRITE_PX * 1;
+var expH = expW * 16 / 16;
+check(Math.abs(drawn[0].w - expW) < 0.01, "largeur = sprite.w * SPRITE_PX * z (taille standard) (" + drawn[0].w + " vs " + expW + ")");
+check(Math.abs(drawn[0].h - expH) < 0.01, "hauteur proportionnelle au PNG (" + drawn[0].h + " vs " + expH + ")");
+// CENTRE sur le losange : le centre du PNG = proj(centre cellule) = mid du losange.
+var ccx = p1.x + p1.w / 2, ccy = p1.y + p1.h / 2;
+var mid = G.proj(ccx, ccy);
+var pngCx = drawn[0].x + drawn[0].w / 2;
+var pngCy = drawn[0].y + drawn[0].h / 2;
+check(Math.abs(pngCx - mid[0]) < 0.01, "centre X du PNG = centre X du losange (" + pngCx + " vs " + mid[0] + ")");
+check(Math.abs(pngCy - mid[1]) < 0.01, "centre Y du PNG = centre Y du losange (" + pngCy + " vs " + mid[1] + ")");
 // Le zoom fait varier la taille proportionnellement (pas de regression de taille).
 G.state.zoom = 2;
 drawn.length = 0;
 G.drawWall(p1);
-var expW2 = g * 2;
-var expH2 = g * 0.5 * 2;
-check(Math.abs(drawn[0].w - expW2) < 0.01, "zoom x2 -> largeur x2 (" + drawn[0].w + " vs " + expW2 + ")");
-check(Math.abs(drawn[0].h - expH2) < 0.01, "zoom x2 -> hauteur x2 (" + drawn[0].h + " vs " + expH2 + ")");
+var expW2 = 16 * G.SPRITE_PX * 2;
+check(Math.abs(drawn[0].w - expW2) < 0.01, "zoom x2 -> taille x2 (" + drawn[0].w + " vs " + expW2 + ")");
+// Apres zoom, le PNG reste centre sur le losange.
+var mid2 = G.proj(ccx, ccy);
+var pngCx2 = drawn[0].x + drawn[0].w / 2;
+var pngCy2 = drawn[0].y + drawn[0].h / 2;
+check(Math.abs(pngCx2 - mid2[0]) < 0.01, "zoom x2 -> centre X toujours sur le losange (" + pngCx2 + " vs " + mid2[0] + ")");
+check(Math.abs(pngCy2 - mid2[1]) < 0.01, "zoom x2 -> centre Y toujours sur le losange (" + pngCy2 + " vs " + mid2[1] + ")");
 G.state.zoom = 1;
 // Sans variante (mur ancien / snapshot sans champ) : repli sur la direction.
 p1.variant = undefined;
