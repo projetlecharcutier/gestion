@@ -203,13 +203,13 @@
       church: { src: "assets/sprites/church/church.png", w: 128, h: 128 }
     },
     wall: {
-      A: { src: "assets/sprites/wall/A.png", w: 20, h: 18 },
-      B: { src: "assets/sprites/wall/B.png", w: 20, h: 18 },
-      C: { src: "assets/sprites/wall/C.png", w: 20, h: 18 },
-      H: { src: "assets/sprites/wall/H.png", w: 20, h: 18 },
-      K: { src: "assets/sprites/wall/K.png", w: 20, h: 18 },
-      X: { src: "assets/sprites/wall/X.png", w: 20, h: 18 },
-      Z: { src: "assets/sprites/wall/Z.png", w: 20, h: 18 }
+      A: { src: "assets/sprites/wall/A.png", w: 16, h: 16 },
+      B: { src: "assets/sprites/wall/B.png", w: 16, h: 16 },
+      C: { src: "assets/sprites/wall/C.png", w: 16, h: 16 },
+      H: { src: "assets/sprites/wall/H.png", w: 16, h: 16 },
+      K: { src: "assets/sprites/wall/K.png", w: 16, h: 16 },
+      X: { src: "assets/sprites/wall/X.png", w: 16, h: 16 },
+      Z: { src: "assets/sprites/wall/Z.png", w: 16, h: 16 }
     },
     tour: {
       idle: { src: "assets/sprites/tour/idle.png", w: 96, h: 128 }

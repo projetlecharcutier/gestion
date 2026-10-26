@@ -115,38 +115,38 @@
   "wall": {
     "A": {
       "src": "assets/sprites/wall/A.png",
-      "w": 20,
-      "h": 18
+      "w": 16,
+      "h": 16
     },
     "B": {
       "src": "assets/sprites/wall/B.png",
-      "w": 20,
-      "h": 18
+      "w": 16,
+      "h": 16
     },
     "C": {
       "src": "assets/sprites/wall/C.png",
-      "w": 20,
-      "h": 18
+      "w": 16,
+      "h": 16
     },
     "H": {
       "src": "assets/sprites/wall/H.png",
-      "w": 20,
-      "h": 18
+      "w": 16,
+      "h": 16
     },
     "K": {
       "src": "assets/sprites/wall/K.png",
-      "w": 20,
-      "h": 18
+      "w": 16,
+      "h": 16
     },
     "X": {
       "src": "assets/sprites/wall/X.png",
-      "w": 20,
-      "h": 18
+      "w": 16,
+      "h": 16
     },
     "Z": {
       "src": "assets/sprites/wall/Z.png",
-      "w": 20,
-      "h": 18
+      "w": 16,
+      "h": 16
     }
   },
   "torche": {

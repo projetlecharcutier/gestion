@@ -204,7 +204,7 @@ if (victim) {
 // --- 6. drawWall : sprite de la variante, etire sur l'emprise ---
 G.SPRITES.wall = {};
 ["A", "B", "C", "H", "K", "X", "Z"].forEach(function (v) {
-  G.SPRITES.wall[v] = { img: { v: v }, w: 20, h: 18 };
+  G.SPRITES.wall[v] = { img: { v: v }, w: 16, h: 16 };
 });
 G.hasSprite = function (ent, frame) {
   return !!(G.SPRITES[ent] && G.SPRITES[ent][frame] && G.SPRITES[ent][frame].img);
