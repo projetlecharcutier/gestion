@@ -319,13 +319,19 @@
   G.WALL_PLANKS = 2;
   G.WALL_BUILD_RANGE = 180;
   // Grille de construction : cote d'une cellule (px monde), origine (0,0).
-  // 120 = longueur nominale d'une palissade (PLANK_LONG) : une palissade
-  // occupe exactement une cellule en longueur, deux palissades posees dans
-  // des cellules adjacentes se touchent sans chevauchement ni trou. Le snap
-  // (G.snapToGrid, plus bas dans ce fichier) centre tout batiment pose par le joueur sur
-  // la cellule la plus proche : grille partagee client/serveur (constante,
-  // independante des sprites charges cote client uniquement).
-  G.BUILD_GRID = 120;
+  // La grille est DIMENSIONNEE SUR L'HYPOTENUSE du triangle isometrique de
+  // la palissade : le PNG fait 16x16 (Aseprite), sa base est un triangle
+  // 16x8 (base horizontale 16, hauteur verticale 8). L'hypotenuse de ce
+  // triangle, projetee en monde, a une longueur de 32 * G.SPRITE_PX :
+  //   - trait / (dir A) : delta ecran (+16,-8)*SPRITE_PX -> delta monde (0,-32*SPRITE_PX)
+  //   - trait \ (dir B) : delta ecran (-16,-8)*SPRITE_PX -> delta monde (-32*SPRITE_PX,0)
+  //   => longueur monde = 32 * SPRITE_PX = 64. C'est la cote de la cellule.
+  // Une palissade occupe exactement une cellule en longueur : deux palissades
+  // posees dans des cellules adjacentes se touchent sans trou. Le snap
+  // (G.snapToGrid, plus bas dans ce fichier) centre tout batiment pose par
+  // le joueur sur la cellule la plus proche. Grille partagee client/serveur
+  // (constante, independante des sprites charges cote client uniquement).
+  G.BUILD_GRID = 32 * G.SPRITE_PX;
   G.TREE_CHOP_TIME = 1;
   G.AXE_RANGE = 120;
   G.WALL_AXE_DMG = 10;

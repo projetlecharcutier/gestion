@@ -1227,6 +1227,10 @@
 
       // Marge entre les bâtiments et la muraille de la ville (en unités monde).
       // Les bâtiments en ville ne doivent pas toucher le mur de périmètre.
+      // Le perimetre est maintenant aligne sur la grille de construction :
+      // sa cellule la plus interne mord de (g/2 - TOWN_MIN%g) dans la ville.
+      // L'inset = marge + moitie d'epaisseur de palissade pour eviter tout
+      // chevauchement avec la cellule de mur la plus interne.
       var WALL_MARGIN = 30;
       function placeHouseAt(hx, hy, inTown) {
         var frame = houseNames[G.randi(0, houseNames.length - 1)];
@@ -1241,11 +1245,10 @@
         if (G.villeBoxHits && G.villeBoxHits(hx - side / 2, hy - side / 2, side, side)) return false;
         if (!G.villeBoxHits && G.villeAt && G.villeAt(hx, hy, side / 2)) return false;
         // Distance minimale entre les bâtiments et la muraille de la ville.
-        // WALL_MARGIN couvre l'épaisseur de la palissade (le mur est posé
-        // avec un pad de 6 px à l'extérieur de la ville : sa moitié
-        // déborde de PLANK_THICK/2 + pad vers l'intérieur).
+        // Le mur est centre sur une cellule de grille : sa moitie d'epaisseur
+        // (PLANK_THICK/2) deborde vers l'interieur de la ville.
         if (inTown) {
-          var wallInset = WALL_MARGIN + (G.PLANK_THICK || 24) / 2 + 6;
+          var wallInset = WALL_MARGIN + (G.PLANK_THICK || 16) / 2;
           if (hx - side / 2 < G.TOWN_MIN + wallInset) return false;
           if (hx + side / 2 > G.TOWN_MAX - wallInset) return false;
           if (hy - side / 2 < G.TOWN_MIN + wallInset) return false;

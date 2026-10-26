@@ -59,6 +59,20 @@ var soldat = st.soldats[0];
 var hp0 = st.player.hp;
 st.player.x = soldat.x + 100; st.player.y = soldat.y;
 st.player.alive = true;
+// Corridor de test degage : retire les forets/batiments entre le soldat
+// et le joueur pour que le test soit independant de la generation du monde.
+(function () {
+  var HALF = G.PLAYER_HALF || 3;
+  st.buildings = st.buildings.filter(function (b) {
+    for (var t = 0; t <= 100; t += 2) {
+      var px = soldat.x + t, py = soldat.y;
+      if (px + HALF > b.x && px - HALF < b.x + b.w &&
+          py + HALF > b.y && py - HALF < b.y + b.h) return false;
+    }
+    return true;
+  });
+  if (G.rebuildBuildingGrid) G.rebuildBuildingGrid();
+})();
 G.updateSoldats(0.05);
 assert(soldat.cible !== null, "soldat detecte l'intrus");
 // Le soldat court vers le joueur (distance diminue).

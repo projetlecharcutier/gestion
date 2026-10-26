@@ -7,9 +7,9 @@
   // Reconstruction incrementale : indexWall apres une pose, unindexWall
   // apres une destruction, rebuildWallGrid apres tout remplacement du
   // tableau state.walls (carte recue, snapshot, reinitialisation).
-  // Taille de cellule >= PLANK_LONG (120) : une palissade ne couvre jamais
+  // Taille de cellule >= PLANK_LONG : une palissade ne couvre jamais
   // plus que les cellules qu'elle recouvre -> requete sans voisines.
-  var WALL_CELL = 128;
+  var WALL_CELL = 128; // >= PLANK_LONG (64), puissance de 2 pratique
   var wallGrid = null; // { "cx,cy": [wall, ...] }
   var wallIndexed = null; // wall -> [cles de cellules couvertes]
   var wallCount = 0;
@@ -108,8 +108,10 @@
   // LA PALISSADE EST LA REFERENCE DE LA GRILLE : sa longueur = G.BUILD_GRID
   // (une palissade occupe exactement une cellule). Le repli (sprites absents,
   // ex. tests sans PNG) garde la grille a sa taille nominale.
-  G.PLANK_LONG = (typeof G.BUILD_GRID === "number" && G.BUILD_GRID > 0) ? G.BUILD_GRID : 120;
-  G.PLANK_THICK = 24;
+  G.PLANK_LONG = (typeof G.BUILD_GRID === "number" && G.BUILD_GRID > 0) ? G.BUILD_GRID : 64;
+  // Epaisseur = 1/4 de la longueur (ratio du triangle iso 8/16 = 0.5,
+  // reduit de moitie pour garder une palissade fine).
+  G.PLANK_THICK = G.PLANK_LONG / 4;
 
   // Renvoie les dimensions (longW, thick) d'une palissade, en unités monde.
   // longW = longueur = cote de la grille de construction (la palissade est la

@@ -9,7 +9,8 @@
 //   4. Pose d'un voisin : les variantes des murs existants sont rafraichies.
 //   5. Destruction (cleanupWalls) : les voisins perdent le contact.
 //   6. drawWall choisit le sprite de la variante (fallback dir A/B), dessine
-//      a taille standard (SPRITE_PX) CENTRE sur le losange de la cellule.
+//      a taille standard (SPRITE_PX), ancre sur le MILIEU DE L'HYPOTENUSE du
+//      triangle iso 16x8 aligne sur le centre du losange de la cellule.
 var fs = require("fs"), path = require("path");
 var SRC = path.join(__dirname, "..", "..", "src");
 global.window = global;
@@ -211,7 +212,7 @@ if (victim) {
   check(p1.variant === "C", "p1 retombe sur C apres destruction du voisin NORD (obtenu " + p1.variant + ")");
 }
 
-// --- 6. drawWall : sprite de la variante, CENTRE sur le losange, taille standard ---
+// --- 6. drawWall : sprite de la variante, ancre sur milieu hypotenuse, taille standard ---
 G.SPRITES.wall = {};
 ["A", "B", "C", "H", "K", "X", "Z"].forEach(function (v) {
   G.SPRITES.wall[v] = { img: { v: v }, w: 16, h: 16 };
@@ -229,25 +230,31 @@ var expW = 16 * G.SPRITE_PX * 1;
 var expH = expW * 16 / 16;
 check(Math.abs(drawn[0].w - expW) < 0.01, "largeur = sprite.w * SPRITE_PX * z (taille standard) (" + drawn[0].w + " vs " + expW + ")");
 check(Math.abs(drawn[0].h - expH) < 0.01, "hauteur proportionnelle au PNG (" + drawn[0].h + " vs " + expH + ")");
-// CENTRE sur le losange : le centre du PNG = proj(centre cellule) = mid du losange.
+// ANCRAGE : le MILIEU DE L'HYPOTENUSE du triangle iso 16x8 s'aligne sur le
+// centre du losange. En Aseprite, ce milieu est a (sprite.w/2, sprite.h*3/4).
+// En ecran (zoom 1) : ax = (w/2)*SPRITE_PX, ay = (h*3/4)*SPRITE_PX.
 var ccx = p1.x + p1.w / 2, ccy = p1.y + p1.h / 2;
 var mid = G.proj(ccx, ccy);
-var pngCx = drawn[0].x + drawn[0].w / 2;
-var pngCy = drawn[0].y + drawn[0].h / 2;
-check(Math.abs(pngCx - mid[0]) < 0.01, "centre X du PNG = centre X du losange (" + pngCx + " vs " + mid[0] + ")");
-check(Math.abs(pngCy - mid[1]) < 0.01, "centre Y du PNG = centre Y du losange (" + pngCy + " vs " + mid[1] + ")");
+var ax = (16 / 2) * G.SPRITE_PX * 1;
+var ay = (16 * 0.75) * G.SPRITE_PX * 1;
+var pngAx = drawn[0].x + ax;  // position du milieu de l'hypotenuse dans le PNG dessine
+var pngAy = drawn[0].y + ay;
+check(Math.abs(pngAx - mid[0]) < 0.01, "milieu hypotenuse X = centre X du losange (" + pngAx + " vs " + mid[0] + ")");
+check(Math.abs(pngAy - mid[1]) < 0.01, "milieu hypotenuse Y = centre Y du losange (" + pngAy + " vs " + mid[1] + ")");
 // Le zoom fait varier la taille proportionnellement (pas de regression de taille).
 G.state.zoom = 2;
 drawn.length = 0;
 G.drawWall(p1);
 var expW2 = 16 * G.SPRITE_PX * 2;
 check(Math.abs(drawn[0].w - expW2) < 0.01, "zoom x2 -> taille x2 (" + drawn[0].w + " vs " + expW2 + ")");
-// Apres zoom, le PNG reste centre sur le losange.
+// Apres zoom, le milieu de l'hypotenuse reste sur le centre du losange.
 var mid2 = G.proj(ccx, ccy);
-var pngCx2 = drawn[0].x + drawn[0].w / 2;
-var pngCy2 = drawn[0].y + drawn[0].h / 2;
-check(Math.abs(pngCx2 - mid2[0]) < 0.01, "zoom x2 -> centre X toujours sur le losange (" + pngCx2 + " vs " + mid2[0] + ")");
-check(Math.abs(pngCy2 - mid2[1]) < 0.01, "zoom x2 -> centre Y toujours sur le losange (" + pngCy2 + " vs " + mid2[1] + ")");
+var ax2 = (16 / 2) * G.SPRITE_PX * 2;
+var ay2 = (16 * 0.75) * G.SPRITE_PX * 2;
+var pngAx2 = drawn[0].x + ax2;
+var pngAy2 = drawn[0].y + ay2;
+check(Math.abs(pngAx2 - mid2[0]) < 0.01, "zoom x2 -> milieu hyp X toujours sur le losange (" + pngAx2 + " vs " + mid2[0] + ")");
+check(Math.abs(pngAy2 - mid2[1]) < 0.01, "zoom x2 -> milieu hyp Y toujours sur le losange (" + pngAy2 + " vs " + mid2[1] + ")");
 G.state.zoom = 1;
 // Sans variante (mur ancien / snapshot sans champ) : repli sur la direction.
 p1.variant = undefined;

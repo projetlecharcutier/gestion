@@ -1183,17 +1183,22 @@ G.drawGround = function () {
     var A = G.proj(m.x, m.y), C = G.proj(m.x + m.w, m.y + m.h);
     var cx = (A[0] + C[0]) / 2, by = (A[1] + C[1]) / 2;
     if (sprite) {
-      // Taille standard du PNG (G.SPRITE_PX, comme tous les autres sprites),
-      // CENTRE sur le losange de la cellule : le centre du PNG = proj(cx, cy)
-      // = intersection des diagonales du losange. Ni etire (pas g*z), ni
-      // decale (centre horizontal ET vertical sur le losange).
+      // Taille standard du PNG (G.SPRITE_PX, comme tous les autres sprites).
+      // ANCRAGE : le MILIEU DE L'HYPOTENUSE du triangle iso 16x8 de la
+      // palissade s'aligne sur le CENTRE du losange de la cellule. En
+      // Aseprite, ce milieu est a (sprite.w/2, sprite.h*3/4) pour un PNG
+      // 16x16 (hypotenuse de (0,16)-(16,8) ou (16,16)-(0,8)). La grille
+      // (G.BUILD_GRID) est dimensionnee sur cette hypotenuse (32*SPRITE_PX
+      // en monde), donc le losange et la palissade s'alignent pixel-parfait.
       var ccx = m.x + m.w / 2, ccy = m.y + m.h / 2;
       var mid = G.proj(ccx, ccy);
       var dw = sprite.w * G.SPRITE_PX * z;
-      var dh = dw * sprite.h / sprite.w;
-      ctx.drawImage(G.animImg(sprite, G.state.time), mid[0] - dw / 2, mid[1] - dh / 2, dw, dh);
+      var dh = sprite.h * G.SPRITE_PX * z;
+      var ax = (sprite.w / 2) * G.SPRITE_PX * z;
+      var ay = (sprite.h * 0.75) * G.SPRITE_PX * z;
+      ctx.drawImage(G.animImg(sprite, G.state.time), mid[0] - ax, mid[1] - ay, dw, dh);
       // Barre de vie au-dessus du sprite.
-      G.drawWallHpBar(m, mid[0], mid[1] - dh / 2 - 6, Math.max(18, dw * 0.7));
+      G.drawWallHpBar(m, mid[0], mid[1] - ay - 6, Math.max(18, dw * 0.7));
       return;
     }
     // Fallback : rendu vectoriel iso (faces + toit).

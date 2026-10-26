@@ -58,14 +58,16 @@ function check(c, m) { if (!c) { console.log("FAIL: " + m); fails++; } }
 
 // --- 1. Helpers purs ---
 var g = G.BUILD_GRID;
-check(g === 120, "BUILD_GRID = 120 (taille d'une palissade)");
+// BUILD_GRID = 32 * G.SPRITE_PX = 64 : cote = hypotenuse du triangle iso 16x8.
+check(g === 32 * G.SPRITE_PX, "BUILD_GRID = 32*SPRITE_PX = " + (32 * G.SPRITE_PX) + " (hypotenuse triangle iso, obtenu " + g + ")");
 var sp = G.snapToGrid(37, -23);
-check(sp[0] === 0 && sp[1] === 0, "snapToGrid(37,-23) = (0,0) obtenu " + sp.join(","));
-sp = G.snapToGrid(61, 121);
-check(sp[0] === 120 && sp[1] === 120, "snapToGrid(61,121) = (120,120) obtenu " + sp.join(","));
+check(sp[0] === g && sp[1] === 0, "snapToGrid(37,-23) = (" + g + ",0) obtenu " + sp.join(","));
+sp = G.snapToGrid(33, 65);
+check(sp[0] === g && sp[1] === g, "snapToGrid(33,65) = (" + g + "," + g + ") obtenu " + sp.join(","));
 var cell = G.buildCellAt(200, 200);
-check(cell.cx === 240 && cell.cy === 240 && cell.x === 180 && cell.y === 180 &&
-      cell.w === g && cell.h === g, "buildCellAt(200,200) centre (240,240) coin (180,180)");
+var expCx = Math.round(200 / g) * g, expCy = Math.round(200 / g) * g;
+check(cell.cx === expCx && cell.cy === expCy && cell.x === expCx - g / 2 && cell.y === expCy - g / 2 &&
+      cell.w === g && cell.h === g, "buildCellAt(200,200) centre (" + expCx + "," + expCy + ") coin (" + (expCx - g / 2) + "," + (expCy - g / 2) + ")");
 
 // --- 2. tryBuildWall : snap palissade ---
 s.buildMode = true;
@@ -98,11 +100,12 @@ var dims = G.plankDims();
 var spot = freeCell(5000, 5000, dims.w, dims.h);
 if (!spot) { console.log("FAIL: pas de cellule libre"); process.exit(1); }
 var nW = s.walls.length;
-var ok = G.tryBuildWall(spot[0] + 37, spot[1] - 23);
-check(ok === true, "tryBuildWall accepte le clic decale");
+var dec = Math.floor(g / 4); // decalage < g/2 : snappe sur la meme cellule
+var ok = G.tryBuildWall(spot[0] + dec, spot[1] - dec);
+check(ok === true, "tryBuildWall accepte le clic decale (< g/2)");
 check(s.walls.length === nW + 1, "palissade ajoutee");
 var w1 = s.walls[s.walls.length - 1];
-var exp = G.snapToGrid(spot[0] + 37, spot[1] - 23);
+var exp = G.snapToGrid(spot[0] + dec, spot[1] - dec);
 check(w1.x + w1.w / 2 === exp[0] && w1.y + w1.h / 2 === exp[1],
   "palissade centree sur la cellule snappee (" + exp.join(",") + ") obtenu (" +
   (w1.x + w1.w / 2) + "," + (w1.y + w1.h / 2) + ")");
@@ -147,8 +150,8 @@ for (var x = g; x < G.WORLD && !scSpot; x += g) {
   }
 }
 if (!scSpot) { console.log("FAIL: pas de cellule libre pour la scierie"); process.exit(1); }
-var okS = G.placeFromBuildMenu(scSpot[0] - 29, scSpot[1] + 17);
-check(okS === true, "placeFromBuildMenu scierie accepte le clic decale");
+var okS = G.placeFromBuildMenu(scSpot[0] - Math.floor(g / 4), scSpot[1] + Math.floor(g / 4));
+check(okS === true, "placeFromBuildMenu scierie accepte le clic decale (< g/2)");
 var sc = s.scierie;
 check(sc.x + sc.w / 2 === scSpot[0] && sc.y + sc.h / 2 === scSpot[1],
   "scierie centree sur la cellule (" + scSpot.join(",") + ") obtenu (" +
@@ -158,8 +161,8 @@ s.buildSel = "tour:bois";
 s.mairieGold = 100; s.planks = 1000;
 var tSpot = freeCell(7000, 7000, 84, 84);
 if (!tSpot) { console.log("FAIL: pas de cellule libre pour la tour"); process.exit(1); }
-var okT = G.placeFromBuildMenu(tSpot[0] + 41, tSpot[1] + 13);
-check(okT === true, "placeFromBuildMenu tour accepte le clic decale");
+var okT = G.placeFromBuildMenu(tSpot[0] + Math.floor(g / 4), tSpot[1] + Math.floor(g / 4));
+check(okT === true, "placeFromBuildMenu tour accepte le clic decale (< g/2)");
 var tw = s.towers[s.towers.length - 1];
 check(tw.x + tw.w / 2 === tSpot[0] && tw.y + tw.h / 2 === tSpot[1],
   "tour centree sur la cellule (" + tSpot.join(",") + ") obtenu (" +
@@ -169,7 +172,7 @@ check(tw.x + tw.w / 2 === tSpot[0] && tw.y + tw.h / 2 === tSpot[1],
 G.state.buildMode = true;
 G.state.buildSel = "palissade";
 G.state.mouse.inside = true;
-G.state.mouse.wx = exp[0] + 37; G.state.mouse.wy = exp[1] - 23;
+G.state.mouse.wx = exp[0] + Math.floor(g / 4); G.state.mouse.wy = exp[1] - Math.floor(g / 4);
 G.state.camera.x = 5000; G.state.camera.y = 5000;
 G.state.zoom = 4;
 calls.paths = []; calls.fillText = [];

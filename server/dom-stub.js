@@ -203,8 +203,8 @@ function setupStub() {
   // (longueur = G.BUILD_GRID, defini dans src/config.js charge ensuite).
   // src/walls.js relira ces constantes apres chargement ; on ne les ecrase
   // plus ici pour garder une seule source de verite.
-  G.PLANK_LONG = 120;
-  G.PLANK_THICK = 24;
+  G.PLANK_LONG = 64;
+  G.PLANK_THICK = 16;
 
   // Aucune dépendance au rendu/HUD/audio côté serveur.
   G.updateHud = function () {};
