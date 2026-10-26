@@ -1,15 +1,15 @@
-// Variantes de palissade (PNG A/B/C/H/K/X/Z) par contacts de coins.
+// Variantes de palissade (PNG A/B/C/H/K/X/Z) par contacts d'aretes.
 // Verifie :
 //   1. La palissade est la reference de la grille : longueur = G.BUILD_GRID
 //      (emprise = une cellule), quelle que soit la rotation.
 //   2. Le joueur ne choisit que la direction (A = NESO, B = NOSE) via
 //      state.plankRotation ; la variante est calculee automatiquement.
-//   3. Table des variantes selon les coins en contact avec un mur voisin :
-//      C = SE+NE, H = SE+SO+NE, K = NE+NO+SE, X = 4 coins, Z = SO+NO.
+//   3. Table des variantes selon les aretes en contact (cellules orthogonales) :
+//      C = EST, H = EST+SUD, K = NORD+EST, X = 4 aretes, Z = OUEST.
 //   4. Pose d'un voisin : les variantes des murs existants sont rafraichies.
 //   5. Destruction (cleanupWalls) : les voisins perdent le contact.
-//   6. drawWall choisit le sprite de la variante (fallback dir A/B), dessine
-//      a l'echelle commune G.SPRITE_PX (taille stable, proportionnelle au zoom).
+//   6. drawWall choisit le sprite de la variante (fallback dir A/B) et le
+//      remplit toute la cellule (losange g*z x g/2*z, proportionnel au zoom).
 var fs = require("fs"), path = require("path");
 var SRC = path.join(__dirname, "..", "..", "src");
 global.window = global;
@@ -122,35 +122,43 @@ check(wA.dir === "A", "dir A conservee");
 var wB = poseAt(base[0] + 4 * g, base[1] + 4 * g, "B");
 check(wB.variant === "B", "mur B isole -> variante B (obtenu " + wB.variant + ")");
 
-// --- 3. Table des variantes ---
-// Rappel des contacts (cellule voisin -> coin de la cible) :
-//   NE <- (0,-1)B, (1,-1)A, (1,0)B
-//   NO <- (-1,-1)B, (-1,0)A, (0,-1)A
-//   SE <- (0,1)A, (1,0)A, (1,1)B
-//   SO <- (-1,0)B, (-1,1)A, (0,1)B
-// C = SE+NE : (1,0)A donne SE, (1,0)B donne NE.
-check(variantWith([{ dx: 1, dy: 0, dir: "A" }, { dx: 1, dy: 0, dir: "B" }]) === "C",
-  "voisins (1,0)A + (1,0)B -> coins SE+NE -> variante C");
-// H = SE+SO+NE : SE=(1,0)A, NE=(1,0)B, SO=(0,1)B.
-check(variantWith([{ dx: 1, dy: 0, dir: "A" }, { dx: 1, dy: 0, dir: "B" }, { dx: 0, dy: 1, dir: "B" }]) === "H",
-  "SE+NE+SO -> variante H");
-// K = NE+NO+SE : SE=(1,0)A, NE=(1,0)B, NO=(0,-1)A.
-check(variantWith([{ dx: 1, dy: 0, dir: "A" }, { dx: 1, dy: 0, dir: "B" }, { dx: 0, dy: -1, dir: "A" }]) === "K",
-  "SE+NE+NO -> variante K");
-// X = 4 coins : SE=(1,0)A, NE=(1,0)B, SO=(0,1)B, NO=(0,-1)A.
+// --- 3. Table des variantes (contacts d'aretes = cellules orthogonales) ---
+// Rappel des aretes (cellule voisine orthogonale -> arete de la cible) :
+//   NORD  <- (0,-1)   SUD <- (0,+1)   OUEST <- (-1,0)   EST <- (+1,0)
+// La direction du voisin n'a PAS d'importance (seule la cellule compte).
+// C = arete EST seule : voisine en (1,0).
+check(variantWith([{ dx: 1, dy: 0, dir: "A" }]) === "C",
+  "voisine EST (1,0) -> arete EST -> variante C");
+check(variantWith([{ dx: 1, dy: 0, dir: "B" }]) === "C",
+  "voisine EST (1,0) dir B -> arete EST -> variante C (dir voisin indifferent)");
+// H = aretes EST + SUD : voisines en (1,0) et (0,1).
+check(variantWith([{ dx: 1, dy: 0, dir: "A" }, { dx: 0, dy: 1, dir: "A" }]) === "H",
+  "voisines EST+SUD -> aretes EST+SUD -> variante H");
+// K = aretes NORD + EST : voisines en (0,-1) et (1,0).
+check(variantWith([{ dx: 0, dy: -1, dir: "A" }, { dx: 1, dy: 0, dir: "A" }]) === "K",
+  "voisines NORD+EST -> aretes NORD+EST -> variante K");
+// X = les 4 aretes : voisines N+S+E+O.
 check(variantWith([
-  { dx: 1, dy: 0, dir: "A" }, { dx: 1, dy: 0, dir: "B" },
-  { dx: 0, dy: 1, dir: "B" },
-  { dx: 0, dy: -1, dir: "A" }
-]) === "X", "les 4 coins -> variante X");
-// Z = SO+NO (cible dir B) : SO=(0,1)B, NO=(0,-1)A.
-check(variantWith([{ dx: 0, dy: 1, dir: "B" }, { dx: 0, dy: -1, dir: "A" }], "B") === "Z",
-  "SO+NO (cible dir B) -> variante Z");
-// Combinaison non prevue (SE+SO sans NE) : retombe sur la direction de base.
-check(variantWith([{ dx: 1, dy: 0, dir: "A" }, { dx: 0, dy: 1, dir: "B" }]) === "A",
-  "SE+SO (sans NE) -> repli direction A");
-check(variantWith([{ dx: 1, dy: 0, dir: "A" }, { dx: 0, dy: 1, dir: "B" }], "B") === "B",
-  "SE+SO (sans NE, cible B) -> repli direction B");
+  { dx: 1, dy: 0, dir: "A" }, { dx: -1, dy: 0, dir: "A" },
+  { dx: 0, dy: 1, dir: "A" }, { dx: 0, dy: -1, dir: "A" }
+]) === "X", "4 voisines orthogonales -> variante X");
+// Z = arete OUEST seule : voisine en (-1,0).
+check(variantWith([{ dx: -1, dy: 0, dir: "A" }]) === "Z",
+  "voisine OUEST (-1,0) -> arete OUEST -> variante Z");
+// Voisine SUD seule : pas dans la table -> repli direction.
+check(variantWith([{ dx: 0, dy: 1, dir: "A" }]) === "A",
+  "voisine SUD seule -> repli direction A");
+check(variantWith([{ dx: 0, dy: 1, dir: "A" }], "B") === "B",
+  "voisine SUD seule (cible B) -> repli direction B");
+// Voisine NORD seule : pas dans la table -> repli direction.
+check(variantWith([{ dx: 0, dy: -1, dir: "A" }]) === "A",
+  "voisine NORD seule -> repli direction A");
+// Voisines EST+OUEST (sans N ni S) : pas dans la table -> repli direction.
+check(variantWith([{ dx: 1, dy: 0, dir: "A" }, { dx: -1, dy: 0, dir: "A" }]) === "A",
+  "voisines EST+OUEST -> repli direction A");
+// Voisine DIAGONALE (1,1) : ne compte PAS (seules les orthogonales comptent).
+check(variantWith([{ dx: 1, dy: 1, dir: "A" }]) === "A",
+  "voisine diagonale (1,1) -> pas de contact arete -> A");
 // Un mur non `built` (perimetre de ville) ne compte pas comme contact.
 s.walls.length = 0; G.rebuildWallGrid();
 var t2 = poseAt(base[0], base[1], "A");
@@ -166,7 +174,7 @@ s.walls.splice(s.walls.indexOf(ghost), 1); G.unindexWall(ghost);
 // Les poses reelles passent par tryBuildWall (qui refuse les emprises sur
 // un batiment) : on pose d'abord la cible p1 via tryBuildWall, puis on pose
 // les voisins DIRECTEMENT via poseAt (superposition admise) dans les cellules
-// (1,0) et (0,-1) : leurs extremites aboutissent sur les coins SE et NE de p1.
+// orthogonales : chaque voisin active l'arete correspondante de p1.
 s.walls.length = 0; G.rebuildWallGrid();
 s.planks = 100;
 s.buildMode = true;
@@ -177,33 +185,33 @@ check(ok1 === true, "tryBuildWall accepte le clic decale");
 var p1 = s.walls[s.walls.length - 1];
 check(p1.variant === "A" || p1.variant === "B", "palissade posee a une variante de base (" + p1.variant + ")");
 check(p1.dir === (s.plankRotation ? "B" : "A"), "dir = rotation choisie par le joueur");
-// Voisin dir A en cellule (1,0) : extremite SO sur le coin SE de p1.
+// Voisin en cellule EST (1,0) : arete EST de p1 en contact -> C.
 var spot2 = [spot1[0] + g, spot1[1]];
 poseAt(spot2[0], spot2[1], "A");
-check(p1.variant === "A", "p1 : SE seul -> repli A (obtenu " + p1.variant + ")");
-// Voisin dir B en cellule (0,-1) : extremite SE sur le coin NE de p1.
+check(p1.variant === "C", "p1 : arete EST seule -> C (obtenu " + p1.variant + ")");
+// Voisin en cellule NORD (0,-1) : arete NORD + EST -> K.
 var spot3 = [spot1[0], spot1[1] - g];
 poseAt(spot3[0], spot3[1], "B");
-check(p1.variant === "C", "p1 rafraichie en C apres pose du voisin B (obtenu " + p1.variant + ")");
+check(p1.variant === "K", "p1 rafraichie en K apres pose du voisin NORD (obtenu " + p1.variant + ")");
 
 // --- 5. Destruction : les voisins perdent le contact ---
-// p1 est en C (SE via mur A en (1,0) + NE via mur B en (0,-1)).
-// Detruit le mur B : p1 perd NE -> retombe sur A (SE seul ne suffit pas).
+// p1 est en K (aretes NORD via mur en (0,-1) + EST via mur en (1,0)).
+// Detruit le mur NORD : p1 perd l'arete NORD -> retombe sur C (EST seul).
 var victim = null;
 for (var i = 0; i < s.walls.length; i++) {
   var m = s.walls[i];
   if (m !== p1 && Math.abs(m.x + m.w / 2 - spot3[0]) < 0.001 &&
       Math.abs(m.y + m.h / 2 - spot3[1]) < 0.001 && m.dir === "B") victim = m;
 }
-check(!!victim, "mur B voisin trouve");
+check(!!victim, "mur NORD voisin trouve");
 if (victim) {
   victim.hp = 0;
   G.cleanupWalls();
   check(s.walls.indexOf(victim) < 0, "mur detruit retire");
-  check(p1.variant === "A", "p1 retombe sur A apres destruction du voisin B (obtenu " + p1.variant + ")");
+  check(p1.variant === "C", "p1 retombe sur C apres destruction du voisin NORD (obtenu " + p1.variant + ")");
 }
 
-// --- 6. drawWall : sprite de la variante, a l'echelle G.SPRITE_PX (stable au zoom) ---
+// --- 6. drawWall : sprite de la variante, remplit toute la cellule (losange) ---
 G.SPRITES.wall = {};
 ["A", "B", "C", "H", "K", "X", "Z"].forEach(function (v) {
   G.SPRITES.wall[v] = { img: { v: v }, w: 16, h: 16 };
@@ -216,16 +224,19 @@ ctxStub.drawImage = function (img, x, y, w, h) { drawn.push({ v: img.v, w: w, h:
 p1.variant = "C";
 G.drawWall(p1);
 check(drawn.length === 1 && drawn[0].v === "C", "drawWall dessine le sprite de la variante C");
-// Echelle commune G.SPRITE_PX (comme les autres PNG) : dw = sprite.w * SPRITE_PX * z.
-// La taille ne depend PAS de l'emprise iso (qui variait avec le zoom).
-var expW = 16 * G.SPRITE_PX * 1;
-check(Math.abs(drawn[0].w - expW) < 0.01, "sprite a echelle SPRITE_PX stable (" + drawn[0].w + " vs " + expW + ")");
+// Le PNG remplit le losange de la cellule : largeur = g*z, hauteur = g/2*z (ratio 2:1).
+var expW = g * 1;
+var expH = g * 0.5 * 1;
+check(Math.abs(drawn[0].w - expW) < 0.01, "largeur = g*z (remplit le losange) (" + drawn[0].w + " vs " + expW + ")");
+check(Math.abs(drawn[0].h - expH) < 0.01, "hauteur = g/2*z (ratio 2:1) (" + drawn[0].h + " vs " + expH + ")");
 // Le zoom fait varier la taille proportionnellement (pas de regression de taille).
 G.state.zoom = 2;
 drawn.length = 0;
 G.drawWall(p1);
-var expW2 = 16 * G.SPRITE_PX * 2;
-check(Math.abs(drawn[0].w - expW2) < 0.01, "zoom x2 -> taille x2 (" + drawn[0].w + " vs " + expW2 + ")");
+var expW2 = g * 2;
+var expH2 = g * 0.5 * 2;
+check(Math.abs(drawn[0].w - expW2) < 0.01, "zoom x2 -> largeur x2 (" + drawn[0].w + " vs " + expW2 + ")");
+check(Math.abs(drawn[0].h - expH2) < 0.01, "zoom x2 -> hauteur x2 (" + drawn[0].h + " vs " + expH2 + ")");
 G.state.zoom = 1;
 // Sans variante (mur ancien / snapshot sans champ) : repli sur la direction.
 p1.variant = undefined;

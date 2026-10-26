@@ -129,113 +129,64 @@
     return { w: d.thick, h: d.longW };
   };
 
-  // === Variantes de palissade par contacts de coins ===
-  // Le joueur ne choisit que la DIRECTION : "A" (NESO : monde NE<->SO,
-  // trait écran NO->SE) ou "B" (NOSE : monde NO<->SE, trait écran
-  // NE->SO). La variante (lettre du PNG) est calculee automatiquement a
-  // partir des murs presents dans les 8 cellules voisines : chaque coin du
-  // losange de la cellule teste s'il est en contact avec un mur voisin.
+  // === Variantes de palissade par contacts d'aretes ===
+  // Le joueur ne choisit que la DIRECTION : "A" (NESO, trait écran /) ou
+  // "B" (NOSE, trait écran \). La variante (lettre du PNG) est calculee
+  // automatiquement a partir des palissades presentes dans les 4 cellules
+  // ORTHOGONALES voisines (Nord, Sud, Est, Ouest). Chaque arete du carre
+  // monde de la cellule est "en contact" si une palissade (built) occupe la
+  // cellule partageant cette arete.
   //
-  // Convention des coins (cote MONDE, losange de la cellule centree en
-  // (cx,cy), cote g = G.BUILD_GRID) :
-  //   NO = (cx-g/2, cy-g/2)   coin haut    écran (haut,  centre-x)
-  //   NE = (cx+g/2, cy-g/2)   coin droit   écran (droite, centre-y)
-  //   SE = (cx+g/2, cy+g/2)   coin bas     écran (bas,   centre-x)
-  //   SO = (cx-g/2, cy+g/2)   coin gauche  écran (gauche, centre-y)
-  // ("supérieur/inférieur" = y monde ; "droit/gauche" = x monde.)
+  // Aretes (cote MONDE, cellule centree en (cx,cy), cote g = G.BUILD_GRID) :
+  //   NORD  (y = cy-g/2) partagee avec la cellule (cx,   cy-g)
+  //   SUD   (y = cy+g/2) partagee avec la cellule (cx,   cy+g)
+  //   OUEST (x = cx-g/2) partagee avec la cellule (cx-g, cy)
+  //   EST   (x = cx+g/2) partagee avec la cellule (cx+g, cy)
   //
-  // Table des variantes (cote joueur) :
-  //   A : aucun coin en contact            (mur droit, direction NESO)
-  //   B : aucun coin en contact            (mur droit, direction NOSE)
-  //   C : coins SE + NE en contact          (branchement cote droit)
-  //   H : coins SE + SO + NE en contact      (T : bas + cote droit)
-  //   K : coins NE + NO + SE en contact      (T : haut + cote droit)
-  //   X : les 4 coins en contact            (croix)
-  //   Z : coins SO + NO en contact          (branchement cote gauche, dir. B)
+  // Table des variantes (regles du joueur, "coin" lu comme "arete") :
+  //   A : aucune arete en contact          (mur droit, direction NESO)
+  //   B : aucune arete en contact          (mur droit, direction NOSE)
+  //   C : arete EST seule                   (mur a droite)
+  //   H : aretes EST + SUD                  (T : droite + bas)
+  //   K : aretes NORD + EST                 (T : haut + droite)
+  //   X : les 4 aretes                      (croix)
+  //   Z : arete OUEST seule                 (mur a gauche)
   // Toute autre combinaison retombe sur la direction de base (A ou B).
   G.WALL_VARIANTS = ["A", "B", "C", "H", "K", "X", "Z"];
 
-  // Extremites monde d'une palissade, selon sa direction (A ou B).
-  // A (NESO) joint les coins NE et SO de sa cellule.
-  // B (NOSE) joint les coins NO et SE de sa cellule.
-  G.wallEndpoints = function (m) {
+  // Renvoie true si une palissade (built) occupe la cellule centree en (cx, cy).
+  G.wallAtCell = function (cx, cy, walls) {
+    var list = walls || G.state.walls;
     var g = G.BUILD_GRID;
-    var cx = m.x + m.w / 2, cy = m.y + m.h / 2;
-    if (m.dir === "B") {
-      return [
-        { x: cx - g / 2, y: cy - g / 2, corner: "NO" },
-        { x: cx + g / 2, y: cy + g / 2, corner: "SE" }
-      ];
+    var eps = g * 0.2;
+    for (var i = 0; i < list.length; i++) {
+      var o = list[i];
+      if (!o.built) continue;
+      var ocx = o.x + o.w / 2, ocy = o.y + o.h / 2;
+      if (Math.abs(ocx - cx) <= eps && Math.abs(ocy - cy) <= eps) return true;
     }
-    return [
-      { x: cx + g / 2, y: cy - g / 2, corner: "NE" },
-      { x: cx - g / 2, y: cy + g / 2, corner: "SO" }
-    ];
+    return false;
   };
 
   // Calcule la variante ("A".."Z") d'une palissade a partir des murs voisins.
-  // Chaque coin du losange de la cellule de m est teste : il est "en contact"
-  // si au moins un des DEUX extremites d'un mur voisin (built) coincide avec
-  // ce coin a la tolerance eps pres. Ainsi, un mur pose dans une cellule
-  // orthogonale ou diagonale qui aboutit sur le coin est detecte, quelle que
-  // soit sa propre direction. Les murs du perimetre de ville (non `built`)
-  // ne comptent pas comme contacts (ils sont traversables).
-  //
-  // Les palissades du PERIMETRE de ville sont alignees sur les bords de la
-  // ville (pas sur la grille de construction) : leurs extremites sont decalees
-  // d'une demi-cellule par rapport aux coins de grille. Pour eux, le contact
-  // est teste sur l'AABB elargie du voisin (un coin de la cellule de m a
-  // moins de eps d'un bord du voisin = contact) : deux segments consecutifs
-  // du perimetre se touchent en bout et changent donc de variante.
+  // Teste les 4 aretes du carre monde de la cellule de m : une arete est en
+  // contact si une palissade (built) occupe la cellule orthogonale adjacente.
   G.computeWallVariant = function (m, walls) {
     var list = walls || G.state.walls;
     var g = G.BUILD_GRID;
     var cx = m.x + m.w / 2, cy = m.y + m.h / 2;
-    var c = { NE: false, NO: false, SE: false, SO: false };
-    var eps = g * 0.2; // tolerance de contact : un cinquieme de cellule
-    var corners = [
-      { k: "NE", x: cx + g / 2, y: cy - g / 2 },
-      { k: "NO", x: cx - g / 2, y: cy - g / 2 },
-      { k: "SE", x: cx + g / 2, y: cy + g / 2 },
-      { k: "SO", x: cx - g / 2, y: cy + g / 2 }
-    ];
-    for (var i = 0; i < list.length; i++) {
-      var o = list[i];
-      if (o === m || !o.built) continue;
-      var ends = G.wallEndpoints(o);
-      for (var e = 0; e < ends.length; e++) {
-        var ex = ends[e].x, ey = ends[e].y;
-        for (var k = 0; k < corners.length; k++) {
-          var pt = corners[k];
-          if (c[pt.k]) continue;
-          var dx = ex - pt.x, dy = ey - pt.y;
-          if (dx * dx + dy * dy <= eps * eps) c[pt.k] = true;
-        }
-      }
-      // Contact par chevauchement d'AABB elargie (perimetre de ville) :
-      // le coin de la cellule de m est a moins de eps du rectangle du voisin,
-      // MAIS seulement si ce voisin est centre sur une cellule adjacente a
-      // celle de m (les palissades posees par le joueur sont snappees sur la
-      // grille ; un coin eloigne d'une cellule non voisine ne doit pas
-      // declencher de contact, ex. coin NE d'une cellule 3 cellules plus loin
-      // dont l'AABB touche ce coin).
-      var ocx = o.x + o.w / 2, ocy = o.y + o.h / 2;
-      if (Math.abs(ocx - cx) <= g + eps && Math.abs(ocy - cy) <= g + eps) {
-        for (var k2 = 0; k2 < corners.length; k2++) {
-          var pt2 = corners[k2];
-          if (c[pt2.k]) continue;
-          var nx = Math.max(o.x - pt2.x, 0, pt2.x - (o.x + o.w));
-          var ny = Math.max(o.y - pt2.y, 0, pt2.y - (o.y + o.h));
-          if (nx * nx + ny * ny <= eps * eps) c[pt2.k] = true;
-        }
-      }
-    }
+    var a = {
+      N: G.wallAtCell(cx, cy - g, list),
+      S: G.wallAtCell(cx, cy + g, list),
+      O: G.wallAtCell(cx - g, cy, list),
+      E: G.wallAtCell(cx + g, cy, list)
+    };
     // Resolution par table (les regles du joueur, cote monde) :
-    if (c.SE && c.SO && c.NE && c.NO) return "X";
-    if (c.SE && c.SO && c.NE) return "H";
-    if (c.NE && c.NO && c.SE) return "K";
-    if (c.SE && c.NE) return "C";
-    if (c.SO && c.NO) return "Z";
+    if (a.N && a.S && a.E && a.O) return "X";
+    if (a.S && a.E && !a.N && !a.O) return "H";
+    if (a.N && a.E && !a.S && !a.O) return "K";
+    if (a.E && !a.N && !a.S && !a.O) return "C";
+    if (a.O && !a.N && !a.S && !a.E) return "Z";
     return m.dir === "B" ? "B" : "A";
   };
 
