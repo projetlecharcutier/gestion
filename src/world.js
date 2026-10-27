@@ -1135,8 +1135,11 @@
     // Perimetre = barricades (memes objets que celles du joueur : built:true, bloquent joueur+zombies).
     // Chaque palissade est centree sur une CELLULE de la grille de construction
     // (G.BUILD_GRID) : les cellules adjacentes ont leurs cotes qui se touchent,
-    // formant un anneau ferme autour de la ville. Aux 4 coins, on pose les
-    // DEUX palissades (h + v) pour fermer la jonction (chevauchement THICKxTHICK).
+    // formant un anneau ferme autour de la ville. AUX COINS : UNE SEULE
+    // palissade par cellule (plus de double h+v). La jonction visuelle est
+    // assuree par les VARIANTES (C/H/K/X/Z = cotes du losange) : le coin
+    // nord-ouest a un voisin SUD (mur ouest) + EST (mur nord) -> variante
+    // H (cote BAS). Les 4 coins sont fermes visuellement sans superposition.
     var wd = G.wallSpriteDims();
     var g = wd.longW;
     var thick = wd.thick;
@@ -1159,27 +1162,22 @@
     function addV(cx, cy) {
       addWall({ x: cx - thick / 2, y: cy - half, w: thick, h: g, hp: G.WALL_MAX_HP, orient: "v", dir: "A", built: true });
     }
-    // Cote NORD (mur h, trait \\) : cellules interieures (coins exclus, poses en double plus bas).
-    for (var nx = cW + g; nx < cE; nx += g) {
+    // Cote NORD (mur h, trait \) : TOUTES les cellules, coins compris.
+    for (var nx = cW; nx <= cE; nx += g) {
       if (nx !== gapCx) addH(nx, cN);
     }
-    // Cote SUD (mur h, trait \\) : cellules interieures.
-    for (var sx = cW + g; sx < cE; sx += g) {
+    // Cote SUD (mur h, trait \) : TOUTES les cellules, coins compris.
+    for (var sx = cW; sx <= cE; sx += g) {
       addH(sx, cS);
     }
-    // Cote OUEST (mur v, trait /) : cellules interieures.
+    // Cote OUEST (mur v, trait /) : cellules INTERIEURES (coins deja poses en h).
     for (var wy = cN + g; wy < cS; wy += g) {
       addV(cW, wy);
     }
-    // Cote EST (mur v, trait /) : cellules interieures.
+    // Cote EST (mur v, trait /) : cellules INTERIEURES (coins deja poses en h).
     for (var ey = cN + g; ey < cS; ey += g) {
       addV(cE, ey);
     }
-    // Coins : double palissade (h + v) pour fermer la jonction.
-    addH(cW, cN); addV(cW, cN);
-    addH(cE, cN); addV(cE, cN);
-    addH(cW, cS); addV(cW, cS);
-    addH(cE, cS); addV(cE, cS);
     // Variantes des segments du perimetre (contacts entre segments voisins).
     if (G.refreshAllWallVariants) G.refreshAllWallVariants();
   };

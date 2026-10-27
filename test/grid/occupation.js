@@ -1,16 +1,12 @@
-// Occupation d'un losange : un losange ne contient qu'un seul batiment ou
-// partie de batiment. On ne peut PAS avoir plusieurs batiments (tour,
-// scierie, batiment de ville) sur le meme losange, ni un batiment qui
-// chevauche une palissade posee sur le meme losange.
+// Occupation d'un losange : un losange ne contient qu'un seul element de
+// muraille ou batiment. On ne peut PAS superposer deux palissades, ni un
+// batiment sur une palissade, ni deux batiments sur le meme losange.
 //
 // Verifie :
-//   1. Deux palissades peuvent se superposer sur le meme losange (mur x2,
-//      coins de perimetre) : la superposition mur/mur reste autorisee.
-//   2. Apres une palissade posee sur un losange, tryBuildWall refuse une
-//      palissade perpendiculaire qui chevaucherait son emprise... en fait
-//      non : les palissades se superposent toujours entre elles (coins).
-//      Par contre un BATIMENT (tour) refuse sur un losange contenant une
-//      palissade (towerSpotFree teste les murs).
+//   1. Deux palissades sur le MEME losange : REFUSE (plus de superposition
+//      mur/mur ; les coins sont geres par les variantes C/H/K/X/Z).
+//   2. Apres une palissade posee sur un losange, un BATIMENT (tour) refuse
+//      sur ce losange (towerSpotFree teste les murs).
 //   3. Un batiment (tour) refuse sur un losange contenant deja un batiment.
 //   4. placeFromBuildMenu refuse de poser deux scieries sur le meme losange
 //      (batiment de ville unique : le deuxieme appel est refuse car
@@ -86,21 +82,23 @@ s.buildMode = true;
 s.player.x = 5000; s.player.y = 5000;
 s.planks = 100000;
 
-// --- 1. Deux palissades sur le MEME losange : autorise (superposition) ---
+// --- 1. Deux palissades sur le MEME losange : REFUSE (pas de superposition) ---
 s.walls.length = 0; G.rebuildWallGrid();
 var spot = freeCell(5000, 5000, g, g);
 if (!spot) { console.log("FAIL: pas de cellule libre"); process.exit(1); }
 s.plankRotation = 0; // verticale (trait /)
 var ok1 = G.tryBuildWall(spot[0], spot[1]);
 check(ok1 === true, "1re palissade posee sur le losange");
+check(s.walls.length === 1, "1 palissade presente");
 s.plankRotation = 1; // horizontale (trait \) : meme cellule, perpendiculaire
 var ok2 = G.tryBuildWall(spot[0], spot[1]);
-check(ok2 === true, "2e palissade (perpendiculaire) sur le MEME losange : autorise (superposition mur/mur)");
-check(s.walls.length === 2, "2 palissades presentes sur le losange");
-// Les deux partagent le meme centre de cellule.
-var wA = s.walls[0], wB = s.walls[1];
-check(Math.abs((wA.x + wA.w / 2) - spot[0]) < 0.001 && Math.abs((wB.x + wB.w / 2) - spot[0]) < 0.001,
-  "les 2 palissades sont centrees sur le meme losange");
+check(ok2 === undefined, "2e palissade (perpendiculaire) sur le MEME losange : REFUSEE (pas de superposition mur/mur)");
+check(s.walls.length === 1, "toujours 1 seule palissade sur le losange");
+// La meme direction (rotation 0) sur le meme losange est aussi refusee.
+s.plankRotation = 0;
+var ok2b = G.tryBuildWall(spot[0], spot[1]);
+check(ok2b === undefined, "2e palissade (meme direction) sur le MEME losange : REFUSEE");
+check(s.walls.length === 1, "toujours 1 seule palissade apres 2e tentative");
 
 // --- 2. Tour refuse sur un losange contenant une palissade ---
 // Nettoie les batiments existants pour isoler le test (on garde les murs).
@@ -110,7 +108,7 @@ if (G.rebuildBuildingGrid) G.rebuildBuildingGrid();
 // La scierie doit etre construite pour poser une tour.
 s.scierie = { x: spot[0], y: spot[1], w: 10, h: 10, chantierDone: true };
 s.mairieGold = 10000;
-// Tour sur le losange contenant les 2 palissades : refuse (towerSpotFree).
+// Tour sur le losange contenant la palissade : refuse (towerSpotFree).
 s.buildSel = "tour:bois";
 var tSide = G.towerSide("bois");
 var okTourOnWall = G.placeFromBuildMenu(spot[0], spot[1]);

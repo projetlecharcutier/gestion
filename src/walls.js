@@ -242,11 +242,22 @@
       if (mx < b.x + b.w && mx + w > b.x && my < b.y + b.h && my + h > b.y) return;
     }
     // Tours existantes : une palissade ne chevauche pas une tour (un losange
-    // = un seul bâtiment ; les palissades entre elles peuvent se superposer).
+    // = un seul bâtiment).
     var towers = state.towers || [];
     for (var ti = 0; ti < towers.length; ti++) {
       var t = towers[ti];
       if (mx < t.x + t.w && mx + w > t.x && my < t.y + t.h && my + h > t.y) return;
+    }
+    // Palissades existantes : PLUS DE SUPERPOSITION mur/mur non plus. Un
+    // losange = un seul élément de muraille. Les coins sont gérés par les
+    // VARIANTES (C/H/K/X/Z = cotes du losange), pas par deux palissades
+    // superposées. Le périmètre de la ville (buildPerimeterWall) pose
+    // une seule palissade par cellule de coin.
+    var nearWalls = G.wallsNear(mx, my, w, h);
+    for (var wi = 0; wi < nearWalls.length; wi++) {
+      var m = nearWalls[wi];
+      if (!m.built) continue;
+      if (mx < m.x + m.w && mx + w > m.x && my < m.y + m.h && my + h > m.y) return;
     }
     // Villes PNG : pas de planche sur une cellule solide d'une ville decorative.
     if (G.aabbHitsVilles && G.aabbHitsVilles(mx, my, w, h)) return;
