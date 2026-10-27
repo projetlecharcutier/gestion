@@ -160,6 +160,23 @@ check(variantWith([{ dx: 1, dy: 0, dir: "A" }, { dx: -1, dy: 0, dir: "A" }]) ===
 // Voisine DIAGONALE (1,1) : ne compte PAS (seules les orthogonales comptent).
 check(variantWith([{ dx: 1, dy: 1, dir: "A" }]) === "A",
   "voisine diagonale (1,1) -> pas de contact arete -> A");
+// Les 4 DIAGONALES ne comptent jamais (aucun contact d'arete) : la cible
+// reste sur sa direction de base. En projection iso, la diagonale SUD-OUEST
+// ecran correspond a la cellule monde (-1,+1).
+check(variantWith([{ dx: 1, dy: 1, dir: "A" }]) === "A",
+  "diagonale (+1,+1) -> reste A");
+check(variantWith([{ dx: -1, dy: 1, dir: "A" }]) === "A",
+  "diagonale SUD-OUEST ecran (-1,+1) -> reste A");
+check(variantWith([{ dx: -1, dy: -1, dir: "A" }]) === "A",
+  "diagonale (-1,-1) -> reste A");
+check(variantWith([{ dx: 1, dy: -1, dir: "A" }]) === "A",
+  "diagonale (+1,-1) -> reste A");
+check(variantWith([{ dx: -1, dy: 1, dir: "A" }], "B") === "B",
+  "diagonale SUD-OUEST ecran (-1,+1), cible B -> reste B");
+// Sanity : un voisin ORTHOGONAL OUEST (-1,0) declenche bien Z (prouve que
+// le test detecte les contacts quand ils existent).
+check(variantWith([{ dx: -1, dy: 0, dir: "A" }]) === "Z",
+  "sanity: voisin ORTHOGONAL OUEST (-1,0) -> Z");
 // Un mur non `built` (perimetre de ville) ne compte pas comme contact.
 s.walls.length = 0; G.rebuildWallGrid();
 var t2 = poseAt(base[0], base[1], "A");
