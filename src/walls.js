@@ -135,25 +135,26 @@
   // Le joueur ne choisit que la DIRECTION : "A" (NESO, trait écran /) ou
   // "B" (NOSE, trait écran \). La variante (lettre du PNG) est calculee
   // automatiquement a partir des palissades presentes dans les 4 cellules
-  // ORTHOGONALES voisines (Nord, Sud, Est, Ouest). Chaque arete du carre
-  // monde de la cellule est "en contact" si une palissade (built) occupe la
-  // cellule partageant cette arete.
+  // ORTHOGONALES voisines (Nord, Sud, Est, Ouest). Chaque arete du losange
+  // est "en contact" si une palissade (built) occupe la cellule partageant
+  // cette arete.
   //
-  // Aretes (cote MONDE, cellule centree en (cx,cy), cote g = G.BUILD_GRID) :
-  //   NORD  (y = cy-g/2) partagee avec la cellule (cx,   cy-g)
-  //   SUD   (y = cy+g/2) partagee avec la cellule (cx,   cy+g)
-  //   OUEST (x = cx-g/2) partagee avec la cellule (cx-g, cy)
-  //   EST   (x = cx+g/2) partagee avec la cellule (cx+g, cy)
-  //
-  // Table des variantes (regles du joueur, "coin" lu comme "arete") :
-  //   A : aucune arete en contact          (mur droit, direction NESO)
-  //   B : aucune arete en contact          (mur droit, direction NOSE)
-  //   C : arete EST seule                   (mur a droite)
-  //   H : aretes EST + SUD                  (T : droite + bas)
-  //   K : aretes NORD + EST                 (T : haut + droite)
-  //   X : les 4 aretes                      (croix)
-  //   Z : arete OUEST seule                 (mur a gauche)
-  // Toute autre combinaison retombe sur la direction de base (A ou B).
+  // En projection iso, chaque cellule orthogonale monde correspond a une
+  // arete du losange ECran :
+  //   NORD  (0,-g) -> arete haut-droite  (NORD-EST)
+  //   EST   (+g,0) -> arete bas-droite   (SUD-EST)
+  //   SUD   (0,+g) -> arete bas-gauche   (SUD-OUEST)
+  //   OUEST (-g,0) -> arete haut-gauche  (NORD-OUEST)
+  // Une variante correspond a un COTE COMPLET du losange (2 aretes
+  // adjacentes a l'ecran) :
+  //   C : cote DROITE  = aretes NORD-EST + SUD-EST   = cellules NORD + EST
+  //   H : cote BAS     = aretes SUD-EST + SUD-OUEST  = cellules EST + SUD
+  //   K : cote HAUT    = aretes NORD-OUEST + NORD-EST = cellules OUEST + NORD
+  //   Z : cote GAUCHE  = aretes NORD-OUEST + SUD-OUEST = cellules OUEST + SUD
+  //   X : les 4 aretes (croix)
+  // Un seul contact (1 arete) ou des aretes non adjacentes -> repli sur la
+  // direction de base (A ou B) : la variante n'est declenchee que par un
+  // cote COMPLET du losange.
   G.WALL_VARIANTS = ["A", "B", "C", "H", "K", "X", "Z"];
 
   // Renvoie true si une palissade (built) occupe la cellule centree en (cx, cy).
@@ -183,12 +184,19 @@
       O: G.wallAtCell(cx - g, cy, list),
       E: G.wallAtCell(cx + g, cy, list)
     };
-    // Resolution par table (les regles du joueur, cote monde) :
+    // Resolution par table : chaque variante = un COTE COMPLET du losange
+    // (2 aretes adjacentes a l'ecran, donc 2 cellules monde adjacentes).
+    //   C = cote DROITE (NORD-EST + SUD-EST) = cellules NORD + EST
+    //   H = cote BAS    (SUD-EST + SUD-OUEST) = cellules EST + SUD
+    //   K = cote HAUT   (NORD-OUEST + NORD-EST) = cellules OUEST + NORD
+    //   Z = cote GAUCHE (NORD-OUEST + SUD-OUEST) = cellules OUEST + SUD
+    //   X = les 4 aretes (croix)
+    // 1 seul contact ou aretes non adjacentes -> repli direction A/B.
     if (a.N && a.S && a.E && a.O) return "X";
-    if (a.S && a.E && !a.N && !a.O) return "H";
-    if (a.N && a.E && !a.S && !a.O) return "K";
-    if (a.E && !a.N && !a.S && !a.O) return "C";
-    if (a.O && !a.N && !a.S && !a.E) return "Z";
+    if (a.N && a.E && !a.S && !a.O) return "C";   // cote DROITE
+    if (a.E && a.S && !a.N && !a.O) return "H";   // cote BAS
+    if (a.O && a.N && !a.S && !a.E) return "K";   // cote HAUT
+    if (a.O && a.S && !a.N && !a.E) return "Z";   // cote GAUCHE
     return m.dir === "B" ? "B" : "A";
   };
 
@@ -232,6 +240,13 @@
     for (var i = 0; i < state.buildings.length; i++) {
       var b = state.buildings[i];
       if (mx < b.x + b.w && mx + w > b.x && my < b.y + b.h && my + h > b.y) return;
+    }
+    // Tours existantes : une palissade ne chevauche pas une tour (un losange
+    // = un seul bâtiment ; les palissades entre elles peuvent se superposer).
+    var towers = state.towers || [];
+    for (var ti = 0; ti < towers.length; ti++) {
+      var t = towers[ti];
+      if (mx < t.x + t.w && mx + w > t.x && my < t.y + t.h && my + h > t.y) return;
     }
     // Villes PNG : pas de planche sur une cellule solide d'une ville decorative.
     if (G.aabbHitsVilles && G.aabbHitsVilles(mx, my, w, h)) return;

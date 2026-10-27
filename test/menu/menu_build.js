@@ -70,6 +70,16 @@ for (var px = 0; px < G.WORLD && !spotPl; px += G.BUILD_GRID) {
       var bb = s.buildings[bi];
       if (mx0 < bb.x + bb.w && mx0 + pd0.w > bb.x && my0 < bb.y + bb.h && my0 + pd0.h > bb.y) { hit0 = true; break; }
     }
+    // Une palissade ne chevauche pas une tour (un losange = un seul batiment).
+    // On exige aussi que les cellules adjacentes (pour le test de pose decalee
+    // qui snap sur la cellule voisine) soient libres de tours.
+    if (!hit0) for (var ti0 = 0; ti0 < s.towers.length; ti0++) {
+      var tt0 = s.towers[ti0];
+      if (mx0 < tt0.x + tt0.w && mx0 + pd0.w > tt0.x && my0 < tt0.y + tt0.h && my0 + pd0.h > tt0.y) { hit0 = true; break; }
+      // Marge d'une cellule autour (le clic decale snap sur la voisine).
+      var mg = G.BUILD_GRID;
+      if (mx0 - mg < tt0.x + tt0.w && mx0 + pd0.w + mg > tt0.x && my0 - mg < tt0.y + tt0.h && my0 + pd0.h + mg > tt0.y) { hit0 = true; break; }
+    }
     if (!hit0) { spotPl = [px, py]; break; }
   }
 }

@@ -4,8 +4,11 @@
 //      (emprise = une cellule), quelle que soit la rotation.
 //   2. Le joueur ne choisit que la direction (A = NESO, B = NOSE) via
 //      state.plankRotation ; la variante est calculee automatiquement.
-//   3. Table des variantes selon les aretes en contact (cellules orthogonales) :
-//      C = EST, H = EST+SUD, K = NORD+EST, X = 4 aretes, Z = OUEST.
+//   3. Table des variantes selon les COTES du losange (2 aretes adjacentes
+//      a l'ecran = 2 cellules monde adjacentes) :
+//      C = NORD+EST (cote DROITE), H = EST+SUD (cote BAS),
+//      K = OUEST+NORD (cote HAUT), Z = OUEST+SUD (cote GAUCHE),
+//      X = 4 aretes. 1 seul contact ou aretes non adjacentes -> repli A/B.
 //   4. Pose d'un voisin : les variantes des murs existants sont rafraichies.
 //   5. Destruction (cleanupWalls) : les voisins perdent le contact.
 //   6. drawWall choisit le sprite de la variante (fallback dir A/B), dessine
@@ -123,40 +126,69 @@ check(wA.dir === "A", "dir A conservee");
 var wB = poseAt(base[0] + 4 * g, base[1] + 4 * g, "B");
 check(wB.variant === "B", "mur B isole -> variante B (obtenu " + wB.variant + ")");
 
-// --- 3. Table des variantes (contacts d'aretes = cellules orthogonales) ---
-// Rappel des aretes (cellule voisine orthogonale -> arete de la cible) :
-//   NORD  <- (0,-1)   SUD <- (0,+1)   OUEST <- (-1,0)   EST <- (+1,0)
+// --- 3. Table des variantes (cotes du losange = paires d'aretes adjacentes) ---
+// En projection iso, cellule monde -> arete du losange ECran :
+//   NORD (0,-1) -> haut-droite (NORD-EST)
+//   EST  (+1,0) -> bas-droite  (SUD-EST)
+//   SUD  (0,+1) -> bas-gauche  (SUD-OUEST)
+//   OUEST(-1,0) -> haut-gauche (NORD-OUEST)
+// Chaque variante = un COTE COMPLET (2 aretes adjacentes a l'ecran) :
+//   C = cote DROITE  = NORD-EST + SUD-EST   = cellules NORD + EST
+//   H = cote BAS     = SUD-EST + SUD-OUEST  = cellules EST + SUD
+//   K = cote HAUT    = NORD-OUEST + NORD-EST = cellules OUEST + NORD
+//   Z = cote GAUCHE  = NORD-OUEST + SUD-OUEST = cellules OUEST + SUD
+//   X = les 4 aretes (croix)
+// 1 seul contact ou aretes non adjacentes -> repli direction A/B.
 // La direction du voisin n'a PAS d'importance (seule la cellule compte).
-// C = arete EST seule : voisine en (1,0).
-check(variantWith([{ dx: 1, dy: 0, dir: "A" }]) === "C",
-  "voisine EST (1,0) -> arete EST -> variante C");
-check(variantWith([{ dx: 1, dy: 0, dir: "B" }]) === "C",
-  "voisine EST (1,0) dir B -> arete EST -> variante C (dir voisin indifferent)");
-// H = aretes EST + SUD : voisines en (1,0) et (0,1).
+// C = cote DROITE = cellules NORD (0,-1) + EST (+1,0).
+check(variantWith([{ dx: 0, dy: -1, dir: "A" }, { dx: 1, dy: 0, dir: "A" }]) === "C",
+  "voisines NORD+EST -> cote DROITE -> variante C");
+check(variantWith([{ dx: 0, dy: -1, dir: "B" }, { dx: 1, dy: 0, dir: "B" }]) === "C",
+  "cote DROITE (N+EST), voisins dir B -> variante C (dir voisin indifferent)");
+// H = cote BAS = cellules EST (+1,0) + SUD (0,+1).
 check(variantWith([{ dx: 1, dy: 0, dir: "A" }, { dx: 0, dy: 1, dir: "A" }]) === "H",
-  "voisines EST+SUD -> aretes EST+SUD -> variante H");
-// K = aretes NORD + EST : voisines en (0,-1) et (1,0).
-check(variantWith([{ dx: 0, dy: -1, dir: "A" }, { dx: 1, dy: 0, dir: "A" }]) === "K",
-  "voisines NORD+EST -> aretes NORD+EST -> variante K");
+  "voisines EST+SUD -> cote BAS -> variante H");
+// K = cote HAUT = cellules OUEST (-1,0) + NORD (0,-1).
+check(variantWith([{ dx: -1, dy: 0, dir: "A" }, { dx: 0, dy: -1, dir: "A" }]) === "K",
+  "voisines OUEST+NORD -> cote HAUT -> variante K");
+// Z = cote GAUCHE = cellules OUEST (-1,0) + SUD (0,+1).
+// (le cas du joueur : il faut le contact NORD-OUEST ET SUD-OUEST a l'ecran,
+//  soit les cellules OUEST et SUD en monde).
+check(variantWith([{ dx: -1, dy: 0, dir: "A" }, { dx: 0, dy: 1, dir: "A" }]) === "Z",
+  "voisines OUEST+SUD -> cote GAUCHE (NO+SO ecran) -> variante Z");
+check(variantWith([{ dx: -1, dy: 0, dir: "B" }, { dx: 0, dy: 1, dir: "B" }]) === "Z",
+  "cote GAUCHE (O+SUD), voisins dir B -> variante Z");
 // X = les 4 aretes : voisines N+S+E+O.
 check(variantWith([
   { dx: 1, dy: 0, dir: "A" }, { dx: -1, dy: 0, dir: "A" },
   { dx: 0, dy: 1, dir: "A" }, { dx: 0, dy: -1, dir: "A" }
 ]) === "X", "4 voisines orthogonales -> variante X");
-// Z = arete OUEST seule : voisine en (-1,0).
-check(variantWith([{ dx: -1, dy: 0, dir: "A" }]) === "Z",
-  "voisine OUEST (-1,0) -> arete OUEST -> variante Z");
-// Voisine SUD seule : pas dans la table -> repli direction.
-check(variantWith([{ dx: 0, dy: 1, dir: "A" }]) === "A",
-  "voisine SUD seule -> repli direction A");
-check(variantWith([{ dx: 0, dy: 1, dir: "A" }], "B") === "B",
-  "voisine SUD seule (cible B) -> repli direction B");
-// Voisine NORD seule : pas dans la table -> repli direction.
+// --- 1 seul contact (1 arete) : pas de cote complet -> repli direction ---
+// Voisine NORD seule (arete NORD-EST seule).
 check(variantWith([{ dx: 0, dy: -1, dir: "A" }]) === "A",
-  "voisine NORD seule -> repli direction A");
-// Voisines EST+OUEST (sans N ni S) : pas dans la table -> repli direction.
+  "voisine NORD seule (1 arete) -> repli direction A");
+// Voisine EST seule (arete SUD-EST seule).
+check(variantWith([{ dx: 1, dy: 0, dir: "A" }]) === "A",
+  "voisine EST seule (1 arete) -> repli direction A");
+// Voisine SUD seule (arete SUD-OUEST seule).
+check(variantWith([{ dx: 0, dy: 1, dir: "A" }]) === "A",
+  "voisine SUD seule (1 arete) -> repli direction A");
+check(variantWith([{ dx: 0, dy: 1, dir: "A" }], "B") === "B",
+  "voisine SUD seule (1 arete, cible B) -> repli direction B");
+// Voisine OUEST seule (arete NORD-OUEST seule).
+check(variantWith([{ dx: -1, dy: 0, dir: "A" }]) === "A",
+  "voisine OUEST seule (1 arete) -> repli direction A");
+// --- Aretes OPPOSEES (non adjacentes) : pas de cote -> repli direction ---
+// Voisines NORD+SUD (aretes NORD-EST + SUD-OUEST, non adjacentes).
+check(variantWith([{ dx: 0, dy: -1, dir: "A" }, { dx: 0, dy: 1, dir: "A" }]) === "A",
+  "voisines NORD+SUD (aretes opposees) -> repli direction A");
+// Voisines EST+OUEST (aretes SUD-EST + NORD-OUEST, non adjacentes).
 check(variantWith([{ dx: 1, dy: 0, dir: "A" }, { dx: -1, dy: 0, dir: "A" }]) === "A",
-  "voisines EST+OUEST -> repli direction A");
+  "voisines EST+OUEST (aretes opposees) -> repli direction A");
+// 3 aretes (pas de cote complet isolable) : N+S+E -> pas de paire unique
+// couverte par la table -> repli direction.
+check(variantWith([{ dx: 0, dy: -1, dir: "A" }, { dx: 0, dy: 1, dir: "A" }, { dx: 1, dy: 0, dir: "A" }]) === "A",
+  "3 voisines N+S+EST -> pas de cote unique -> repli direction A");
 // Voisine DIAGONALE (1,1) : ne compte PAS (seules les orthogonales comptent).
 check(variantWith([{ dx: 1, dy: 1, dir: "A" }]) === "A",
   "voisine diagonale (1,1) -> pas de contact arete -> A");
@@ -173,10 +205,13 @@ check(variantWith([{ dx: 1, dy: -1, dir: "A" }]) === "A",
   "diagonale (+1,-1) -> reste A");
 check(variantWith([{ dx: -1, dy: 1, dir: "A" }], "B") === "B",
   "diagonale SUD-OUEST ecran (-1,+1), cible B -> reste B");
-// Sanity : un voisin ORTHOGONAL OUEST (-1,0) declenche bien Z (prouve que
-// le test detecte les contacts quand ils existent).
-check(variantWith([{ dx: -1, dy: 0, dir: "A" }]) === "Z",
-  "sanity: voisin ORTHOGONAL OUEST (-1,0) -> Z");
+// Sanity : cote GAUCHE complet (OUEST+SUD) declenche bien Z, et cote DROITE
+// complet (NORD+EST) declenche bien C (prouve que le test detecte les
+// contacts quand ils existent).
+check(variantWith([{ dx: -1, dy: 0, dir: "A" }, { dx: 0, dy: 1, dir: "A" }]) === "Z",
+  "sanity: cote GAUCHE complet (O+SUD) -> Z");
+check(variantWith([{ dx: 0, dy: -1, dir: "A" }, { dx: 1, dy: 0, dir: "A" }]) === "C",
+  "sanity: cote DROITE complet (N+EST) -> C");
 // Un mur non `built` (perimetre de ville) ne compte pas comme contact.
 s.walls.length = 0; G.rebuildWallGrid();
 var t2 = poseAt(base[0], base[1], "A");
@@ -193,6 +228,7 @@ s.walls.splice(s.walls.indexOf(ghost), 1); G.unindexWall(ghost);
 // un batiment) : on pose d'abord la cible p1 via tryBuildWall, puis on pose
 // les voisins DIRECTEMENT via poseAt (superposition admise) dans les cellules
 // orthogonales : chaque voisin active l'arete correspondante de p1.
+// Avec la table des COTES : cote DROITE = cellules NORD + EST -> C.
 s.walls.length = 0; G.rebuildWallGrid();
 s.planks = 100;
 s.buildMode = true;
@@ -203,18 +239,19 @@ check(ok1 === true, "tryBuildWall accepte le clic decale");
 var p1 = s.walls[s.walls.length - 1];
 check(p1.variant === "A" || p1.variant === "B", "palissade posee a une variante de base (" + p1.variant + ")");
 check(p1.dir === (s.plankRotation ? "B" : "A"), "dir = rotation choisie par le joueur");
-// Voisin en cellule EST (1,0) : arete EST de p1 en contact -> C.
+// Voisin en cellule EST (1,0) seul : 1 seule arete (SUD-EST) -> repli A.
 var spot2 = [spot1[0] + g, spot1[1]];
 poseAt(spot2[0], spot2[1], "A");
-check(p1.variant === "C", "p1 : arete EST seule -> C (obtenu " + p1.variant + ")");
-// Voisin en cellule NORD (0,-1) : arete NORD + EST -> K.
+check(p1.variant === "A", "p1 : arete EST seule (1 contact) -> repli A (obtenu " + p1.variant + ")");
+// Voisin en cellule NORD (0,-1) : aretes NORD-EST + SUD-EST = cote DROITE -> C.
 var spot3 = [spot1[0], spot1[1] - g];
 poseAt(spot3[0], spot3[1], "B");
-check(p1.variant === "K", "p1 rafraichie en K apres pose du voisin NORD (obtenu " + p1.variant + ")");
+check(p1.variant === "C", "p1 rafraichie en C apres pose du voisin NORD (cote DROITE complet, obtenu " + p1.variant + ")");
 
 // --- 5. Destruction : les voisins perdent le contact ---
-// p1 est en K (aretes NORD via mur en (0,-1) + EST via mur en (1,0)).
-// Detruit le mur NORD : p1 perd l'arete NORD -> retombe sur C (EST seul).
+// p1 est en C (cote DROITE = arete NORD-EST via mur NORD + SUD-EST via mur EST).
+// Detruit le mur NORD : p1 perd l'arete NORD-EST -> retombe sur repli A
+// (il ne reste que 1 arete, pas un cote complet).
 var victim = null;
 for (var i = 0; i < s.walls.length; i++) {
   var m = s.walls[i];
@@ -226,7 +263,7 @@ if (victim) {
   victim.hp = 0;
   G.cleanupWalls();
   check(s.walls.indexOf(victim) < 0, "mur detruit retire");
-  check(p1.variant === "C", "p1 retombe sur C apres destruction du voisin NORD (obtenu " + p1.variant + ")");
+  check(p1.variant === "A", "p1 retombe sur A apres destruction du voisin NORD (1 arete -> repli, obtenu " + p1.variant + ")");
 }
 
 // --- 6. drawWall : sprite de la variante, ancre sur milieu hypotenuse, taille standard ---

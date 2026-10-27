@@ -91,7 +91,9 @@
     };
   };
 
-  // Vérifie qu'un rectangle (mx,my,w,h) ne chevauche ni bâtiment ni mur.
+  // Vérifie qu'un rectangle (mx,my,w,h) ne chevauche ni bâtiment ni mur
+  // ni UNE AUTRE TOUR. Un losange = un seul bâtiment : les tours sont dans
+  // state.towers (pas state.buildings), donc on les teste explicitement ici.
   G.towerSpotFree = function (mx, my, w, h) {
     var state = G.state;
     for (var i = 0; i < state.buildings.length; i++) {
@@ -103,6 +105,12 @@
       var m = nearWalls[wi];
       if (!m.built) continue;
       if (mx < m.x + m.w && mx + w > m.x && my < m.y + m.h && my + h > m.y) return false;
+    }
+    // Tours existantes : un losange ne contient qu'un seul bâtiment.
+    var towers = state.towers || [];
+    for (var ti = 0; ti < towers.length; ti++) {
+      var t = towers[ti];
+      if (mx < t.x + t.w && mx + w > t.x && my < t.y + t.h && my + h > t.y) return false;
     }
     // Villes PNG : pas de tour/chantier sur une cellule solide d'une ville
     // decorative (le batiment ne doit pas flotter sur une facade du PNG).
