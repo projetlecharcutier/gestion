@@ -1466,7 +1466,7 @@ G.drawGround = function () {
     // A gauche de la minimap (largeur adaptative, voir minimapWidth) :
     // la boussole reste en bas a droite mais hors du losange, sinon elle
     // est recouverte par la carte.
-    var cx = W - 40 - minimapWidth(W) - 56, cy = H - 56;
+    var cx = W - 40 - minimapWidth(W, H) - 56, cy = H - 56;
     var r = 32;
     ctx.save();
     // Fond de la boussole.
@@ -1507,12 +1507,47 @@ G.drawGround = function () {
     ctx.restore();
   };
 
-  // Largeur de la minimap : adaptative a l'ecran (792 px max sur grand
-  // ecran, ~42% de la largeur sinon) pour rester lisible sans recouvrir le
-  // jeu sur petit ecran / mobile.
-  function minimapWidth(W) {
-    return Math.min(792, Math.max(150, W * 0.42));
+  // Largeur de la minimap : adaptative a l'ecran ET a la hauteur (le
+  // losange fait mw x mw/2, on borne aussi par H pour ne jamais
+  // recouvrir le HUD/joueur sur un ecran bas). ~42% de la largeur,
+  // 792 px max sur grand ecran.
+  function minimapWidth(W, H) {
+    var byW = Math.min(792, Math.max(150, W * 0.42));
+    var byH = Math.max(150, (H - 80) * 2 * 0.42);
+    return Math.min(byW, byH);
   }
+
+  // Minimap retractee : la carte ne se dessine plus (G.minimapOpen =
+  // false), seul le petit losange-bouton reste en bas a droite. La touche
+  // M ou un clic sur le losange bascule l'etat ; le choix est memorise en
+  // localStorage (comme le mode clavier/tactile).
+  G.minimapOpen = true;
+  G.toggleMinimap = function () {
+    G.minimapOpen = !G.minimapOpen;
+    try {
+      window.localStorage.setItem("flexMinimapOpen", G.minimapOpen ? "1" : "0");
+    } catch (e) {}
+  };
+  try {
+    if (window.localStorage.getItem("flexMinimapOpen") === "0") G.minimapOpen = false;
+  } catch (e) {}
+
+  // Geometrie du losange (ouvre ou retracte) : pointe bas a 40 px des bords.
+  function minimapLayout(W, H) {
+    var mw = minimapWidth(W, H), mh = mw / 2;
+    if (G.minimapOpen) return { w: mw, h: mh, cx: W - 40 - mw / 2, cy: H - 40 - mh / 2 };
+    return { w: 56, h: 28, cx: W - 40 - 28, cy: H - 40 - 14 };
+  }
+
+  // Clic sur le losange (ouvert ou retracte) : replie/déplie la carte.
+  // Le losange est le seul element toujours present, c'est la poignee.
+  G.minimapHit = function (sx, sy) {
+    var W = G.canvas.width / (window.devicePixelRatio || 1);
+    var H = G.canvas.height / (window.devicePixelRatio || 1);
+    var l = minimapLayout(W, H);
+    var dx = (sx - l.cx) / (l.w / 2), dy = (sy - l.cy) / (l.h / 2);
+    return (dx * dx + dy * dy) <= 1;
+  };
 
   // Mini-carte globale : losange en bas a droite, a gauche de la boussole.
   // Vue de dessus (plan monde) en VERITABLE projection iso (comme le jeu :
@@ -1527,16 +1562,50 @@ G.drawGround = function () {
     var state = G.state;
     var W = G.canvas.width / (window.devicePixelRatio || 1);
     var H = G.canvas.height / (window.devicePixelRatio || 1);
-    // 4x plus grande (132x66 -> 528x264) pour distinguer les villes PNG
-    // (Laputa/Minas). Ancree en bas a droite : pointe droite et pointe bas
-    // a 40 px des bords de l'ecran.
     // 2x plus grand qu'avant (528 -> 792 px de large sur grand ecran) pour
     // lire les villes PNG (Laputa, Minas, Camp romain). La largeur est
-    // adaptative (minimapWidth). Le losange iso fait exactement
-    // mw x mw/2 : hauteur = largeur / 2.
-    var mw = minimapWidth(W), mh = mw / 2;
-    var cx = W - 40 - mw / 2, cy = H - 40 - mh / 2;
+    // adaptative (minimapWidth) et bornee aussi par la HAUTEUR de l'ecran.
+    // Repliee (G.minimapOpen = false) : seul un petit losange poignee reste.
+    var layout = minimapLayout(W, H);
+    var mw = layout.w, mh = layout.h, cx = layout.cx, cy = layout.cy;
     var w0 = cx - mw / 2, h0 = cy - mh / 2;
+    if (!G.minimapOpen) {
+      // Poignee de repli : losange du meme style que la grande carte.
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(w0, cy);
+      ctx.lineTo(cx, h0);
+      ctx.lineTo(w0 + mw, cy);
+      ctx.lineTo(cx, cy + mh / 2);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(15,23,42,0.7)";
+      ctx.fill();
+      ctx.strokeStyle = "#f8fafc";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // Petite fleche vers le haut : "deplier la carte".
+      ctx.fillStyle = "#f8fafc";
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 6);
+      ctx.lineTo(cx - 7, cy + 4);
+      ctx.lineTo(cx + 7, cy + 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+    // Fleche de repli : petit chevron vers le bas, coin bas-droite du
+    // losange, cliquable (la zone de clic couvre tout le losange).
+    ctx.save();
+    ctx.fillStyle = "#f8fafc";
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + mh / 2 - 6);
+    ctx.lineTo(cx - 7, cy + mh / 2 - 16);
+    ctx.lineTo(cx + 7, cy + mh / 2 - 16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
     // Projection iso monde -> minimap : le monde ENTIER tient dans le
     // losange. sx = (x-y)/2 etendu sur mw, sy = (x+y)/4 etendu sur mh.
     // A l'ecran : (0,0) -> pointe nord, (WORLD,WORLD) -> pointe sud,

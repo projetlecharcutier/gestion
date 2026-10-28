@@ -116,6 +116,15 @@
   // Clic gauche gere aussi le ramassage d'objets et la mairie (clic simple).
   G.canvas.addEventListener("click", function (e) {
     var state = G.state;
+    // Clic sur le losange de la minimap (ouverte ou repliee) : la carte se
+    // replie/se deplie. Traite AVANT tout le reste : le losange est un
+    // bouton d'interface, pas un clic de jeu (fonctionne aussi en pause).
+    if (state.started && G.minimapHit && G.minimapHit(
+        e.clientX - G.canvas.getBoundingClientRect().left,
+        e.clientY - G.canvas.getBoundingClientRect().top)) {
+      G.toggleMinimap();
+      return;
+    }
     if (!state.started || state.paused || state.inBuilding || state.gameOver || state.chestOpen || state.churchOpen || state.buildMenuOpen) return;
     // Tutoriel affiche : aucun clic n'agit sur le jeu.
     if (G.tutoActive && G.tutoActive()) return;
@@ -328,6 +337,11 @@
         G.rotatePlank();
         if (G.netConnected && G.netConnected()) G.netInput({ rotate: state.plankRotation });
       }
+    }
+    // M : replie/deplie la minimap (losange en bas a droite), comme le clic
+    // sur le losange lui-meme.
+    if (e.code === "KeyM") {
+      if (state.started && G.toggleMinimap) G.toggleMinimap();
     }
     // B : menu de construction quand le mode clavier ZQSD est actif (Z y
     // sert a MONTER, il ne peut plus basculer le mode planche).
