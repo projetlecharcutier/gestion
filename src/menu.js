@@ -1,4 +1,4 @@
-// Menu d'accueil : petit habitant anime en bas de l'ecran.
+// Menu d'accueil : petit habitant anime en bas de l'ecran + decor de fond.
 // Charge les frames PNG de course existantes (perso_droite-0..4 /
 // perso_gauche-0..4, 15x20 px) telles quelles — aucune retouche image —
 // et fait courir le personnage de gauche a droite en boucle continue,
@@ -16,6 +16,87 @@
   var SCALE = 3;       // 15x20 px -> 45x60 px, rendu pixelated (CSS)
   var SPEED = 110;     // px/s de deplacement
   var FRAME_MS = 90;   // ~11 fps : rythme de course lisible
+
+  // Images de jeu utilisees pour le decor de fond du menu : chacune avec sa
+  // largeur de rendu cible (px). Les MANQUANTES sont ignorees silencieusement
+  // (onerror), le bandeau reste juste moins fourni. Aucune retouche PNG.
+  var BG_IMAGES = [
+    { src: "assets/sprites/tree/foret1s0.png", w: 150 },
+    { src: "assets/sprites/tree/foret2s0.png", w: 170 },
+    { src: "assets/sprites/tree/foret3s0.png", w: 160 },
+    { src: "assets/sprites/building/mairie.png", w: 200 },
+    { src: "assets/sprites/church/church.png", w: 170 },
+    { src: "assets/sprites/scierie/idle.png", w: 190 },
+    { src: "assets/sprites/universite/idle.png", w: 180 },
+    { src: "assets/sprites/marche/idle.png", w: 180 },
+    { src: "assets/sprites/montgolfiere/idle.png", w: 160 },
+    { src: "assets/sprites/player/perso_droite-0.png", w: 90 },
+    { src: "assets/sprites/tour/idle.png", w: 160 },
+    { src: "assets/sprites/torche/idle.png", w: 130 },
+    { src: "assets/sprites/wall/A.png", w: 140 }
+  ];
+
+  // Melange (Fisher-Yates) : chaque visite du menu montre une composition
+  // differente, dans l'ordre de gauche a droite.
+  function shuffle(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  // Pose le bandeau de fond : images chargees puis positionnees en bande
+  // ancree par le bas, DERRIERE le panneau de menu (z-index), de gauche a
+  // droite. Totalement decoratif : pointer-events none, aria ignore.
+  function initMenuBackdrop() {
+    if (typeof document === "undefined" || !document.getElementById) return;
+    var screen = document.getElementById("startScreen");
+    if (!screen || typeof document.createElement !== "function" ||
+        typeof screen.insertBefore !== "function") return;
+    var layer = document.createElement("div");
+    layer.className = "menu-backdrop";
+    var order = shuffle(BG_IMAGES.slice());
+    var loaded = 0;
+    function place() {
+      loaded++;
+      if (loaded < order.length) return;
+      var usable = [];
+      for (var i = 0; i < order.length; i++) {
+        if (order[i].ok) usable.push(order[i]);
+      }
+      if (!usable.length) return;
+      var W = (typeof innerWidth === "number" && innerWidth > 0) ? innerWidth : 800;
+      var H = (typeof innerHeight === "number" && innerHeight > 0) ? innerHeight : 600;
+      var x = 0;
+      var slot = W / usable.length;
+      for (var u = 0; u < usable.length; u++) {
+        var it = usable[u];
+        var scale = it.w / (it.img.naturalWidth || it.w);
+        // Profondeur suggeree : leger desordre vertical (jitter).
+        var jitter = (Math.random() * 0.18 - 0.09) * H;
+        var el = document.createElement("img");
+        el.src = it.img.src;
+        el.className = "menu-backdrop__img";
+        el.draggable = false;
+        el.alt = "";
+        el.style.left = Math.round(x + slot * 0.06) + "px";
+        el.style.bottom = Math.round(H * 0.06 + jitter) + "px";
+        el.style.width = Math.round(it.w) + "px";
+        layer.appendChild(el);
+        x += slot;
+      }
+      screen.insertBefore(layer, screen.firstChild);
+    }
+    for (var i = 0; i < order.length; i++) {
+      (function (item) {
+        var im = new Image();
+        im.onload = function () { item.img = im; item.ok = true; place(); };
+        im.onerror = place;
+        im.src = item.src;
+      })(order[i]);
+    }
+  }
 
   function initMenuRunner() {
     if (typeof document === "undefined" || !document.getElementById) return null;
@@ -278,6 +359,7 @@
   G.setChatCollapsed = setChatCollapsed;
 
   function boot() {
+    try { initMenuBackdrop(); } catch (e) { /* decoratif : jamais bloquant */ }
     try { initMenuRunner(); } catch (e) { /* decoratif : jamais bloquant */ }
     try { initControlsMenu(); } catch (e) { /* jamais bloquant */ }
     try { initChatToggle(); } catch (e) { /* jamais bloquant */ }

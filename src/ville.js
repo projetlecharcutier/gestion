@@ -118,6 +118,9 @@
     var rng = {};
     var placed = [];  // emprises visuelles [{x0,y0,x1,y1}]
     var MARGE = 400;
+    // Rng injectable : les tests verifient le tirage sur des sequences
+    // arbitraires (G._villeTestRng = fonction retournant [0,1)).
+    var rand01 = G._villeTestRng || function () { return G.rand(0, 1); };
     for (var i = 0; i < defs.length; i++) {
       var d = defs[i];
       var sp = (G.SPRITES && G.SPRITES.ville && G.SPRITES.ville[d.sprite || d.name]) || null;
@@ -134,8 +137,8 @@
       var hi = G.WORLD - side - elev - 200;
       if (hi < lo) hi = lo;
       for (var tryI = 0; tryI < 60; tryI++) {
-        var x = Math.round(G.rand(lo, hi));
-        var y = Math.round(G.rand(lo, hi));
+        var x = Math.round(lo + rand01() * (hi - lo));
+        var y = Math.round(lo + rand01() * (hi - lo));
         // Ville principale (TOWN_MIN..TOWN_MAX) : interdite + marge.
         if (x - MARGE < G.TOWN_MAX && x + side + MARGE > G.TOWN_MIN &&
             y - MARGE < G.TOWN_MAX && y + side + MARGE > G.TOWN_MIN) continue;
@@ -217,9 +220,10 @@
     // (le restart serveur garde la meme carte pour les clients connectes).
     G.villeRandomizePositions();
     G.villeApplyRandomPositions();
+    var missing = false;
     for (var i = 0; i < defs.length; i++) {
       var d = defs[i];
-      if (!G.hasSprite("ville", d.sprite || d.name)) continue;
+      if (!G.hasSprite("ville", d.sprite || d.name)) { missing = true; continue; }
       var sp = G.SPRITES.ville[d.sprite || d.name];
       var side = G.villeSideFor(sp.w, d);
       if (side <= 0) continue;
@@ -250,6 +254,18 @@
       out.push(v);
     }
     st.villes = out;
+    // Villes manquantes (PNG pas encore charge -- join serveur AVANT la fin
+    // de loadAssets) : la pose est RETENTEE des que les assets sont prets,
+    // sinon une ville restait absente DEFINITIVEMENT. villes est remplace
+    // en bloc, la seconde passe ajoute les villes restantes sans toucher aux
+    // autres champs de state.
+    if (missing && !G._villeSetupRetry) {
+      G._villeSetupRetry = true;
+      if (G.assetsReady) {
+        if (G.assetsReady()) { G.villeSetup(st); }
+        else G.loadAssets(function () { G.villeSetup(st); });
+      }
+    }
     G.buildVilleGrids();
     return out;
   };
