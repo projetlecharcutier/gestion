@@ -95,8 +95,10 @@ assert(notListed.length === 0 && notOnDisk.length === 0,
 var menuCode = fs.readFileSync(path.join(REPO, "src", "menu.js"), "utf8");
 assert(menuCode.indexOf("_mask") !== -1,
   "le menu filtre les masques techniques (_mask)");
-assert(/BG_TILE_H\s*=\s*\d+/.test(menuCode),
-  "echelle uniforme : hauteur commune BG_TILE_H definie");
+assert(/!\/-\\d\+\\\.png\$\/i\.test\(p\)/.test(menuCode) || menuCode.indexOf("-\\d+\\.png") !== -1,
+  "le menu filtre les frames d animation (*-N.png)");
+assert(menuCode.indexOf("naturalWidth") !== -1 && menuCode.indexOf("BG_TILE_H") === -1,
+  "echelle native : taille du PNG telle quelle (plus de hauteur commune)");
 assert(menuCode.indexOf("fl.x -= fl.speed * dt") !== -1,
   "vent : les sprites vont de droite a gauche (x decroit)");
 assert(menuCode.indexOf("W + 40") !== -1,

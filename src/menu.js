@@ -21,11 +21,12 @@
   // GAUCHE (apparaissent hors ecran a droite, disparaissent a gauche), comme
   // des feuilles volantes. TOUS les sprites de assets/sprites/ sont eligibles
   // (liste generee : assets/sprites/sprites-list.json), hors masques techniques
-  // (*_mask : donnees de collision rouge/vert, pas des images du jeu). MEME
-  // ECHELLE de pixel pour tous : chaque PNG est rendu a la MEME HAUTEUR, la
-  // largeur suit le ratio (aucun etirement, aucune retouche PNG).
+  // (*_mask : donnees de collision rouge/vert) et hors FRAMES D ANIMATION
+  // (*-0, *-1... : variantes de la meme image, redondantes a l ecran). MEME
+  // ECHELLE de pixel pour tous : chaque PNG est rendu a SA TAILLE NATIVE
+  // (1 px PNG = 1 px ecran) -- une ville est donc plus grande qu une potence,
+  // les proportions du jeu sont respectees, aucune retouche PNG.
   var BG_LIST = "assets/sprites/sprites-list.json";
-  var BG_TILE_H = 84;   // hauteur commune de rendu (px) : echelle uniforme
   var BG_COUNT = 12;    // sprites simultanement en vol
   var BG_WIND_MIN = 50, BG_WIND_MAX = 130; // px/s, pousse du vent droite->gauche
 
@@ -48,9 +49,11 @@
       return r.json();
     }).then(function (list) {
       if (!list || !list.length) return;
-      // Masques de collision exclus : rouge/vert plein, pas des images.
+      // Masques de collision (rouge/vert plein) et frames d animation
+      // (*-N.png : la frame de base suffit, inutile de repeter la meme pose).
       var paths = list.filter(function (p) {
-        return typeof p === "string" && p.indexOf("_mask") === -1;
+        return typeof p === "string" && p.indexOf("_mask") === -1 &&
+               !/-\d+\.png$/i.test(p);
       });
       if (!paths.length) return;
       startBackdrop(screen, shuffle(paths));
@@ -110,9 +113,9 @@
     function spawn(fl, initial) {
       var pick = pool[Math.floor(Math.random() * pool.length)];
       if (!pick) return false;
-      // Meme echelle pour tous : hauteur fixe, largeur par ratio du PNG.
-      var h = BG_TILE_H;
-      var w = Math.max(8, Math.round(h * pick.img.naturalWidth / pick.img.naturalHeight));
+      // Echelle native identique pour tous : 1 px PNG = 1 px ecran. Les
+      // proportions du jeu sont conservees (ville >> potence).
+      var w = pick.img.naturalWidth, h = pick.img.naturalHeight;
       fl.el.src = pick.src;
       fl.el.style.width = w + "px";
       fl.el.style.height = h + "px";
@@ -120,7 +123,7 @@
       fl.speed = BG_WIND_MIN + Math.random() * (BG_WIND_MAX - BG_WIND_MIN);
       fl.bobA = 6 + Math.random() * 14;              // amplitude du vol (px)
       fl.bobP = 2 * Math.PI * (0.25 + Math.random() * 0.5); // pulsation (rad/s)
-      fl.y = H * 0.08 + Math.random() * (H * 0.55);  // bande de vol
+      fl.y = Math.random() * Math.max(10, H - h);   // bande de vol
       // Apparition hors ecran a droite ; au demarrage, on seme l'ecran.
       fl.x = initial ? Math.random() * (W + 200) : W + 40 + Math.random() * 260;
       fl.active = true;
