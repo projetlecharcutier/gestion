@@ -67,17 +67,40 @@ G.villeRandomizePositions();
 var p2 = G._villeRng["est"];
 assert(p2.x === p.x && p2.y === p.y, "meme graine -> meme position (" + p2.x + ", " + p2.y + ")");
 
-// 4) Tous les sprites des BG du menu existent sur le disque (decor d'accueil).
+// 4) Fond de menu volant : la liste sprites-list.json couvre TOUS les PNG
+//    de assets/sprites, sans les masques de collision (*_mask). Le menu
+//    charge cette liste (fetch), rend chaque sprite a la MEME hauteur
+//    (BG_TILE_H) et les pousse de droite a gauche (x decroit).
+var list = JSON.parse(fs.readFileSync(path.join(REPO, "assets", "sprites", "sprites-list.json"), "utf8"));
+var onDisk = [];
+(function walk(dir) {
+  fs.readdirSync(dir).forEach(function (f) {
+    var p = path.join(dir, f);
+    if (fs.statSync(p).isDirectory()) return walk(p);
+    if (/\.png$/i.test(f)) onDisk.push(p.split(path.sep).join("/"));
+  });
+})(path.join(REPO, "assets", "sprites"));
+// Chemins relatifs au repo (comme dans sprites-list.json).
+onDisk = onDisk.map(function (p) { return path.relative(REPO, p).split(path.sep).join("/"); });
+onDisk.sort();
+var diskSet = {};
+onDisk.forEach(function (p) { diskSet[p] = true; });
+var listSet = {};
+list.forEach(function (p) { listSet[p] = true; });
+var notListed = onDisk.filter(function (p) { return !listSet[p]; });
+var notOnDisk = list.filter(function (p) { return !diskSet[p]; });
+assert(notListed.length === 0 && notOnDisk.length === 0,
+  "sprites-list.json couvre exactement tous les PNG du disque (" +
+  list.length + " vs " + onDisk.length + ")");
 var menuCode = fs.readFileSync(path.join(REPO, "src", "menu.js"), "utf8");
-var re = /src:\s*"([^"]+)"/g, m;
-var missing = [];
-while ((m = re.exec(menuCode)) !== null) {
-  var f = m[1];
-  if (f.indexOf("assets/") !== 0) continue;
-  if (!fs.existsSync(path.join(REPO, f))) missing.push(f);
-}
-assert(missing.length === 0, "images du fond de menu toutes presentes" +
-  (missing.length ? " (manquantes: " + missing.join(", ") + ")" : ""));
+assert(menuCode.indexOf("_mask") !== -1,
+  "le menu filtre les masques techniques (_mask)");
+assert(/BG_TILE_H\s*=\s*\d+/.test(menuCode),
+  "echelle uniforme : hauteur commune BG_TILE_H definie");
+assert(menuCode.indexOf("fl.x -= fl.speed * dt") !== -1,
+  "vent : les sprites vont de droite a gauche (x decroit)");
+assert(menuCode.indexOf("W + 40") !== -1,
+  "apparition hors ecran a droite (x initial > W)");
 
 if (fails) { console.log("FAILURES: " + fails); process.exit(1); }
 console.log("ville pose systematique + menu backdrop OK");

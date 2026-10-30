@@ -924,9 +924,11 @@ input:focus-visible,
 }
 .menu-backdrop__img {
   position: absolute;
+  top: 0;
+  left: 0;
   image-rendering: pixelated;
-  opacity: 0.55;
   filter: saturate(0.85) brightness(0.9);
+  will-change: transform;
   -webkit-user-drag: none;
   user-select: none;
 }

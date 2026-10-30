@@ -17,27 +17,18 @@
   var SPEED = 110;     // px/s de deplacement
   var FRAME_MS = 90;   // ~11 fps : rythme de course lisible
 
-  // Images de jeu utilisees pour le decor de fond du menu : chacune avec sa
-  // largeur de rendu cible (px). Les MANQUANTES sont ignorees silencieusement
-  // (onerror), le bandeau reste juste moins fourni. Aucune retouche PNG.
-  var BG_IMAGES = [
-    { src: "assets/sprites/tree/foret1s0.png", w: 150 },
-    { src: "assets/sprites/tree/foret2s0.png", w: 170 },
-    { src: "assets/sprites/tree/foret3s0.png", w: 160 },
-    { src: "assets/sprites/building/mairie.png", w: 200 },
-    { src: "assets/sprites/church/church.png", w: 170 },
-    { src: "assets/sprites/scierie/idle.png", w: 190 },
-    { src: "assets/sprites/universite/idle.png", w: 180 },
-    { src: "assets/sprites/marche/idle.png", w: 180 },
-    { src: "assets/sprites/montgolfiere/idle.png", w: 160 },
-    { src: "assets/sprites/player/perso_droite-0.png", w: 90 },
-    { src: "assets/sprites/tour/idle.png", w: 160 },
-    { src: "assets/sprites/torche/idle.png", w: 130 },
-    { src: "assets/sprites/wall/A.png", w: 140 }
-  ];
+  // Decor de fond du menu : les PNG du jeu pousses par le vent, de DROITE a
+  // GAUCHE (apparaissent hors ecran a droite, disparaissent a gauche), comme
+  // des feuilles volantes. TOUS les sprites de assets/sprites/ sont eligibles
+  // (liste generee : assets/sprites/sprites-list.json), hors masques techniques
+  // (*_mask : donnees de collision rouge/vert, pas des images du jeu). MEME
+  // ECHELLE de pixel pour tous : chaque PNG est rendu a la MEME HAUTEUR, la
+  // largeur suit le ratio (aucun etirement, aucune retouche PNG).
+  var BG_LIST = "assets/sprites/sprites-list.json";
+  var BG_TILE_H = 84;   // hauteur commune de rendu (px) : echelle uniforme
+  var BG_COUNT = 12;    // sprites simultanement en vol
+  var BG_WIND_MIN = 50, BG_WIND_MAX = 130; // px/s, pousse du vent droite->gauche
 
-  // Melange (Fisher-Yates) : chaque visite du menu montre une composition
-  // differente, dans l'ordre de gauche a droite.
   function shuffle(arr) {
     for (var i = arr.length - 1; i > 0; i--) {
       var j = Math.floor(Math.random() * (i + 1));
@@ -46,55 +37,124 @@
     return arr;
   }
 
-  // Pose le bandeau de fond : images chargees puis positionnees en bande
-  // ancree par le bas, DERRIERE le panneau de menu (z-index), de gauche a
-  // droite. Totalement decoratif : pointer-events none, aria ignore.
   function initMenuBackdrop() {
     if (typeof document === "undefined" || !document.getElementById) return;
+    if (typeof fetch !== "function") return;
     var screen = document.getElementById("startScreen");
     if (!screen || typeof document.createElement !== "function" ||
         typeof screen.insertBefore !== "function") return;
+    fetch(BG_LIST, { cache: "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error("http " + r.status);
+      return r.json();
+    }).then(function (list) {
+      if (!list || !list.length) return;
+      // Masques de collision exclus : rouge/vert plein, pas des images.
+      var paths = list.filter(function (p) {
+        return typeof p === "string" && p.indexOf("_mask") === -1;
+      });
+      if (!paths.length) return;
+      startBackdrop(screen, shuffle(paths));
+    }).catch(function () { /* liste indisponible (file://...) : pas de decor */ });
+  }
+
+  function startBackdrop(screen, paths) {
     var layer = document.createElement("div");
     layer.className = "menu-backdrop";
-    var order = shuffle(BG_IMAGES.slice());
-    var loaded = 0;
-    function place() {
-      loaded++;
-      if (loaded < order.length) return;
-      var usable = [];
-      for (var i = 0; i < order.length; i++) {
-        if (order[i].ok) usable.push(order[i]);
-      }
-      if (!usable.length) return;
-      var W = (typeof innerWidth === "number" && innerWidth > 0) ? innerWidth : 800;
-      var H = (typeof innerHeight === "number" && innerHeight > 0) ? innerHeight : 600;
-      var x = 0;
-      var slot = W / usable.length;
-      for (var u = 0; u < usable.length; u++) {
-        var it = usable[u];
-        var scale = it.w / (it.img.naturalWidth || it.w);
-        // Profondeur suggeree : leger desordre vertical (jitter).
-        var jitter = (Math.random() * 0.18 - 0.09) * H;
-        var el = document.createElement("img");
-        el.src = it.img.src;
-        el.className = "menu-backdrop__img";
-        el.draggable = false;
-        el.alt = "";
-        el.style.left = Math.round(x + slot * 0.06) + "px";
-        el.style.bottom = Math.round(H * 0.06 + jitter) + "px";
-        el.style.width = Math.round(it.w) + "px";
-        layer.appendChild(el);
-        x += slot;
-      }
-      screen.insertBefore(layer, screen.firstChild);
+    screen.insertBefore(layer, screen.firstChild);
+
+    // Precharge les PNG un par un (chaine douce, le navigateur cache) :
+    // le volant pioche parmi les images DEJA chargees, la variete grandit au
+    // fil du chargement jusqu'a couvrir tous les sprites.
+    var pool = [];      // [{src, img}] charges
+    var cursor = 0;
+    function preloadNext() {
+      if (cursor >= paths.length) return;
+      var src = paths[cursor++];
+      var im = new Image();
+      im.onload = function () {
+        if (im.naturalWidth > 0) pool.push({ src: src, img: im });
+        preloadNext();
+      };
+      im.onerror = preloadNext;
+      im.src = src;
     }
-    for (var i = 0; i < order.length; i++) {
-      (function (item) {
-        var im = new Image();
-        im.onload = function () { item.img = im; item.ok = true; place(); };
-        im.onerror = place;
-        im.src = item.src;
-      })(order[i]);
+    preloadNext();
+    // Quelques prechargements en parallele pour amorcer la pompe vite.
+    for (var k = 0; k < 5 && k < paths.length; k++) preloadNext();
+
+    var W = (typeof innerWidth === "number" && innerWidth > 0) ? innerWidth : 800;
+    var H = (typeof innerHeight === "number" && innerHeight > 0) ? innerHeight : 600;
+    var flyers = [];
+    for (var f = 0; f < BG_COUNT; f++) {
+      var el = document.createElement("img");
+      el.className = "menu-backdrop__img";
+      el.draggable = false;
+      el.alt = "";
+      layer.appendChild(el);
+      flyers.push({ el: el, active: false, x: 0, y: 0, w: 0, h: 0,
+                   speed: 0, bobA: 0, bobP: 0, t: Math.random() * 10 });
+    }
+
+    // Respecte prefers-reduced-motion : images posees en bande statique.
+    var reduced = false;
+    try {
+      reduced = typeof matchMedia === "function" &&
+                matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch (e) { /* matchMedia indisponible : on anime quand meme */ }
+
+    var raf = (typeof requestAnimationFrame === "function") ? requestAnimationFrame : null;
+    var now = (typeof performance !== "undefined" && performance.now)
+      ? function () { return performance.now(); } : function () { return Date.now(); };
+    var last = now();
+
+    function spawn(fl, initial) {
+      var pick = pool[Math.floor(Math.random() * pool.length)];
+      if (!pick) return false;
+      // Meme echelle pour tous : hauteur fixe, largeur par ratio du PNG.
+      var h = BG_TILE_H;
+      var w = Math.max(8, Math.round(h * pick.img.naturalWidth / pick.img.naturalHeight));
+      fl.el.src = pick.src;
+      fl.el.style.width = w + "px";
+      fl.el.style.height = h + "px";
+      fl.w = w; fl.h = h;
+      fl.speed = BG_WIND_MIN + Math.random() * (BG_WIND_MAX - BG_WIND_MIN);
+      fl.bobA = 6 + Math.random() * 14;              // amplitude du vol (px)
+      fl.bobP = 2 * Math.PI * (0.25 + Math.random() * 0.5); // pulsation (rad/s)
+      fl.y = H * 0.08 + Math.random() * (H * 0.55);  // bande de vol
+      // Apparition hors ecran a droite ; au demarrage, on seme l'ecran.
+      fl.x = initial ? Math.random() * (W + 200) : W + 40 + Math.random() * 260;
+      fl.active = true;
+      return true;
+    }
+
+    function tick(t) {
+      var dt = Math.min(0.1, (t - last) / 1000);
+      last = t;
+      if (!screen.hidden) {
+        for (var i = 0; i < flyers.length; i++) {
+          var fl = flyers[i];
+          if (!fl.active) { spawn(fl, true); continue; }
+          if (!reduced) {
+            fl.t += dt;
+            fl.x -= fl.speed * dt;  // vent : droite -> gauche
+          }
+          // Sorti a gauche : re-apparait a droite sur un nouveau sprite.
+          if (fl.x < -fl.w - 60) { if (!spawn(fl, false)) fl.active = false; continue; }
+          var bob = reduced ? 0 : Math.sin(fl.t * fl.bobP) * fl.bobA;
+          var rot = reduced ? 0 : Math.sin(fl.t * fl.bobP * 0.7 + 1) * 6;
+          fl.el.style.transform =
+            "translate(" + Math.round(fl.x) + "px, " + Math.round(fl.y + bob) + "px)" +
+            " rotate(" + rot.toFixed(1) + "deg)";
+          fl.el.style.opacity = "0.55";
+        }
+      }
+      if (raf) raf(tick);
+    }
+
+    if (raf) raf(tick);
+    else {
+      // Pas de rAF (stubs de test) : une frame statique, sans boucle.
+      tick(now());
     }
   }
 

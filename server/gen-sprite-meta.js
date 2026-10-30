@@ -121,6 +121,16 @@ var out = {};
 fs.writeFileSync(path.join(__dirname, "sprite-meta.json"), JSON.stringify(out));
 console.log("sprite-meta.json : " + Object.keys(out).length + " sprites");
 
+// Liste des PNG de assets/sprites/ (chemins relatifs au repo, tries) pour le
+// decor de fond du menu d'accueil (src/menu.js) : tous les sprites du jeu,
+// charges cote client. Regenerer en meme temps que sprite-meta.json.
+(function genSpritesList() {
+  var list = Object.keys(out).sort().map(function (rel) { return "assets/sprites/" + rel + ".png"; });
+  var dest = path.join(root, "sprites-list.json");
+  fs.writeFileSync(dest, JSON.stringify(list, null, 2) + "\n");
+  console.log("sprites-list.json : " + list.length + " png");
+})();
+
 // --- Grilles de collision des villes PNG (server/ville-grids.json) ---
 // DEPLACEES vers server/ville-sync.js : celui-ci scanne TOUTES les villes
 // du dossier assets/sprites/ville/ (pas seulement VILLE_DEFS), detecte les
